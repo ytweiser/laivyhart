@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Righteous&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
   :root{
     --cream:#FBF3E7; --cream-2:#F3E7D3; --charcoal:#241F1C; --charcoal-dim:#6E655C;
@@ -122,11 +123,11 @@
 <body>
 
 <!-- ====================================================
-  CONFIG — fill these in from Supabase Settings > API
+  CONFIG — lives in config.js (loaded above), single source of truth
 ==================================================== -->
 <script>
-  const SUPABASE_URL = "https://tshkrghrgokplakktvik.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_nvhaOpLWBxZxo7X7tRtCWw_QhQ82dV4";
+  const SUPABASE_URL = window.LAIVY_CONFIG.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = window.LAIVY_CONFIG.SUPABASE_ANON_KEY;
 </script>
 
 <div class="topbar">
