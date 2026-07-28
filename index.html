@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laivy Hart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Righteous&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream: #FBF3E7;
+    --cream-2: #F3E7D3;
+    --charcoal: #241F1C;
+    --charcoal-dim: #6E655C;
+    --coral: #E8543E;
+    --coral-dim: #C7402C;
+    --turquoise: #2A9D8F;
+    --mustard: #E8A93A;
+    --chrome: #D8D2C6;
+    --line: rgba(36,31,28,0.12);
+    --line-strong: rgba(36,31,28,0.26);
+    --display: 'Righteous', cursive;
+    --heb: 'Frank Ruhl Libre', serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--cream);
+    color:var(--charcoal);
+    font-family:var(--body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
+
+  /* ---------- Top nav ---------- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:1.1rem 5vw;
+    border-bottom:3px solid var(--charcoal);
+    flex-wrap:wrap;
+    gap:0.8rem;
+  }
+  .wordmark{
+    font-family:var(--display);
+    font-size:1.7rem;
+    letter-spacing:0.01em;
+    color:var(--charcoal);
+  }
+  .wordmark .hl-ai{color:var(--coral);}
+  .wordmark .hl-art{color:var(--turquoise);}
+  .tagline{
+    font-family:var(--mono);
+    font-size:0.72rem;
+    color:var(--charcoal-dim);
+    letter-spacing:0.03em;
+  }
+
+  /* ---------- Jukebox ---------- */
+  .jukebox-wrap{
+    padding:2rem 5vw 1.4rem;
+  }
+  .jukebox{
+    display:grid;
+    grid-template-columns:280px 1fr;
+    gap:0;
+    border:3px solid var(--charcoal);
+    border-radius:18px;
+    overflow:hidden;
+    background:#fff;
+  }
+  @media (max-width:860px){
+    .jukebox{grid-template-columns:1fr;}
+  }
+
+  /* left machine panel */
+  .machine{
+    background:linear-gradient(180deg, var(--coral), var(--coral-dim));
+    padding:1.4rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    color:#fff;
+    position:relative;
+  }
+  .dome{
+    width:100%;
+    aspect-ratio:1/0.85;
+    background:var(--charcoal);
+    border-radius:14px;
+    border:4px solid var(--mustard);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    margin-bottom:1rem;
+  }
+  .dome svg{width:90%;height:60%;}
+  .machine-grille{
+    display:grid;
+    grid-template-columns:repeat(8, 1fr);
+    gap:4px;
+    width:100%;
+    padding:0.6rem 0.2rem;
+    margin-bottom:1rem;
+  }
+  .machine-grille span{
+    background:rgba(0,0,0,0.18);
+    border-radius:50%;
+    aspect-ratio:1;
+  }
+  .transport{
+    display:flex;
+    gap:0.5rem;
+    margin-bottom:0.9rem;
+  }
+  .tbtn{
+    width:2.6rem; height:2.6rem;
+    border-radius:50%;
+    border:2px solid var(--charcoal);
+    background:var(--cream);
+    color:var(--charcoal);
+    cursor:pointer;
+    font-size:1rem;
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .tbtn.big{width:3.1rem;height:3.1rem;background:var(--mustard); font-size:1.15rem;}
+  .tbtn:hover{transform:translateY(-1px);}
+  .mode-row{
+    display:flex;
+    gap:0.5rem;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .mode-btn{
+    font-family:var(--mono);
+    font-size:0.66rem;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:0.4rem 0.65rem;
+    border-radius:20px;
+    border:2px solid var(--charcoal);
+    background:#fff;
+    color:var(--charcoal);
+    cursor:pointer;
+  }
+  .mode-btn.active{background:var(--turquoise); color:#fff; border-color:var(--turquoise);}
+  .cat-select{
+    margin-top:0.6rem;
+    width:100%;
+    font-family:var(--mono);
+    font-size:0.7rem;
+    padding:0.4rem;
+    border-radius:8px;
+    border:2px solid var(--charcoal);
+    background:#fff;
+    color:var(--charcoal);
+  }
+
+  /* right info panel */
+  .now-panel{
+    padding:1.6rem 1.8rem;
+    display:flex;
+    flex-direction:column;
+    min-height:380px;
+  }
+  .now-empty{
+    margin:auto;
+    text-align:center;
+    color:var(--charcoal-dim);
+    font-family:var(--mono);
+    font-size:0.85rem;
+  }
+  .now-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:1rem;
+    flex-wrap:wrap;
+  }
+  .now-title-he{font-family:var(--heb); direction:rtl; font-size:1.7rem; font-weight:700;}
+  .now-title-translit{font-family:var(--mono); font-size:0.8rem; color:var(--charcoal-dim); margin-top:0.1rem;}
+  .pills{display:flex; gap:0.4rem; flex-wrap:wrap; margin-top:0.7rem;}
+  .pill{
+    font-family:var(--mono);
+    font-size:0.64rem;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
+    padding:0.28rem 0.6rem;
+    border-radius:20px;
+    border:1.5px solid var(--line-strong);
+    color:var(--charcoal-dim);
+  }
+  .pill.cat{background:var(--cream-2); border-color:transparent; color:var(--charcoal);}
+  .pill.lang{background:var(--turquoise); color:#fff; border-color:transparent;}
+  .pill.len{background:var(--mustard); color:var(--charcoal); border-color:transparent;}
+
+  .lang-toggle{display:flex; gap:0.4rem; margin-top:1rem;}
+  .lang-toggle button{
+    font-family:var(--mono); font-size:0.68rem; letter-spacing:0.05em; text-transform:uppercase;
+    padding:0.35rem 0.7rem; border:1.5px solid var(--line-strong); background:transparent;
+    color:var(--charcoal-dim); border-radius:20px; cursor:pointer;
+  }
+  .lang-toggle button.active{background:var(--charcoal); color:#fff; border-color:var(--charcoal);}
+
+  .about-box{
+    margin-top:1.1rem;
+    padding:0.9rem 1rem;
+    background:var(--cream-2);
+    border-radius:10px;
+    font-size:0.92rem;
+    line-height:1.55;
+    color:var(--charcoal);
+  }
+  .about-box .lbl{
+    font-family:var(--mono); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--coral-dim); display:block; margin-bottom:0.3rem;
+  }
+
+  .lyrics-panel{
+    margin-top:1.1rem;
+    max-height:340px;
+    overflow-y:auto;
+    padding-right:0.4rem;
+  }
+  .lyrics{
+    font-size:1rem;
+    line-height:1.85;
+    white-space:pre-line;
+  }
+  .lyrics.heb{direction:rtl; font-family:var(--heb); font-size:1.15rem; text-align:right;}
+  .lyrics.hidden{display:none;}
+
+  /* ---------- Browse list ---------- */
+  main{padding:0.5rem 5vw 8rem;}
+  .list-controls{
+    display:flex; gap:0.8rem; flex-wrap:wrap; align-items:center;
+    padding:1rem 0; border-bottom:2px solid var(--charcoal);
+    position:sticky; top:0; background:rgba(251,243,231,0.94); backdrop-filter:blur(6px); z-index:15;
+  }
+  .search{
+    flex:1 1 220px; background:#fff; border:2px solid var(--line-strong); border-radius:10px;
+    padding:0.55rem 0.85rem; font-family:var(--body); font-size:0.95rem; color:var(--charcoal);
+  }
+  .search:focus{outline:2px solid var(--coral); outline-offset:1px;}
+  .filter-pill{
+    font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:0.42rem 0.75rem; border-radius:20px; border:1.5px solid var(--line-strong);
+    background:transparent; color:var(--charcoal-dim); cursor:pointer;
+  }
+  .filter-pill:hover{border-color:var(--coral-dim); color:var(--charcoal);}
+  .filter-pill.active{background:var(--charcoal); color:#fff; border-color:var(--charcoal);}
+
+  .song-row{
+    display:grid; grid-template-columns:2rem 1fr auto; gap:1rem; align-items:center;
+    padding:0.85rem 0.2rem; border-bottom:1px solid var(--line); cursor:pointer; border-radius:8px;
+  }
+  .song-row:hover{background:#fff;}
+  .song-row.playing{background:var(--cream-2);}
+  .song-num{font-family:var(--mono); color:var(--charcoal-dim); font-size:0.8rem;}
+  .row-title-he{font-family:var(--heb); direction:rtl; font-size:1.15rem; font-weight:500;}
+  .row-title-translit{font-family:var(--mono); font-size:0.72rem; color:var(--charcoal-dim);}
+  .row-pills{display:flex; gap:0.35rem; flex-wrap:wrap; justify-content:flex-end; max-width:16em;}
+
+  .empty{text-align:center; padding:3rem 1rem; color:var(--charcoal-dim); font-family:var(--mono); font-size:0.85rem;}
+
+  audio{display:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wordmark">L<span class="hl-ai">AI</span>VY H<span class="hl-art">ART</span></div>
+  <div class="tagline">songs · sometimes stories, sometimes prayers, always real</div>
+</div>
+
+<div class="jukebox-wrap">
+  <div class="jukebox">
+    <div class="machine">
+      <div class="dome"><svg id="micrography" viewBox="0 0 200 40" aria-hidden="true"></svg></div>
+      <div class="machine-grille" id="grille"></div>
+      <div class="transport">
+        <button class="tbtn" id="prev-btn" aria-label="Previous">⏮</button>
+        <button class="tbtn big" id="play-btn" aria-label="Play or pause">▶</button>
+        <button class="tbtn" id="next-btn" aria-label="Next">⏭</button>
+      </div>
+      <div class="mode-row">
+        <button class="mode-btn" id="radio-btn">📻 Radio</button>
+      </div>
+      <select class="cat-select" id="cat-radio-select">
+        <option value="">▶ Category radio…</option>
+      </select>
+    </div>
+    <div class="now-panel" id="now-panel">
+      <div class="now-empty">Pick a song below, hit Radio, or spin a category to start listening.</div>
+    </div>
+  </div>
+</div>
+
+<div class="list-controls" id="list-controls-wrap">
+  <input class="search" id="search" type="text" placeholder="Search a title, category, or word…" aria-label="Search songs">
+</div>
+<div class="list-controls" style="border-top:none; padding-top:0;" id="cat-pills"></div>
+
+<main id="main"></main>
+
+<audio id="audio-el"></audio>
+
+<script>
+/* ---------------------------------------------------------
+  SONG DATA
+  - categories: array, a song can carry more than one
+  - language: "Hebrew" | "English"
+  - length: placeholder estimate — replace with real runtime
+  - lyrics_en: draft translation — review/edit for nuance
+  - about: draft "inspiration" note — personalize or replace
+  - audio: add hosted mp3/URL to enable playback
+--------------------------------------------------------- */
+const WAVE_COLORS = ['#E8543E','#2A9D8F','#E8A93A','#C7402C'];
+
+const SONGS = [
+{
+  title_he:"הֵן עָם", title_translit:"Hen Am",
+  categories:["Identity","Unity"], language:"Hebrew", length:"3:50",
+  about:"[Draft — personalize] Built around Bilaam's blessing, this one's about what happens when a people stops chasing everyone else's definition of success and just holds together.",
+  lyrics_he:`לֹא נוֹלַדְנוּ לְהֵעָלֵם בְּתוֹךְ קוֹל הֶהָמוֹן
+לֹא לִרְדֹּף אַחֲרֵי זָרִים וְלִשְׁכֹּחַ מִי אָנוּ
+לֹא לִלְבֹּשׁ אֶת הַחֲלוֹמוֹת שֶׁהָעוֹלָם מוֹכֵר
+לֹא לִכְרֹעַ לְתַרְבּוּת שֶׁאֶת הַנֶּפֶשׁ שׁוֹבֶר
+
+כִּי לְבָדָד אֵינוֹ לְבַד וְקָדוֹשׁ אֵינוֹ קָרוֹעַ
+כְּשֶׁאָח מַחֲזִיק בְּאָח אֵין כֹּחַ שֶׁיּוּכַל לִפְגֹּעַ
+
+הֶן עָם לְבָדָד יִשְׁכֹּן וּבַגּוֹיִם לֹא יִתְחַשָּׁב
+הֶן עָם כְּלָבִיא יָקוּם וְכַאֲרִי יִתְנַשָּׂא
+
+אַרְיֵה לֹא קָם בִּכְדֵי רַק מִפְּנֵי שֶׁהוּא חָזָק
+כָּל אֶחָד יוֹדֵעַ מָקוֹם כָּל אֶחָד יוֹדֵעַ צַד
+זֶה שׁוֹמֵר וְזֶה מַקְשִׁיב זֶה מַמְתִּין וְזֶה נָע
+וּכְשֶׁכֻּלָּם נָעִים כְּאֶחָד אֵין בָּעוֹלָם מַה שֶׁיִּמְנַע
+
+כָּךְ יִשְׂרָאֵל כְּשֶׁהוּא אֶחָד כָּל נֶפֶשׁ יוֹדַעַת תַּפְקִיד
+לֹא כֻּלָּם אוֹתוֹ דָּבָר אֲבָל כֻּלָּם לְעַם יָחִיד
+
+הֶן עָם לְבָדָד יִשְׁכֹּן וּבַגּוֹיִם לֹא יִתְחַשָּׁב
+הֶן עָם כְּלָבִיא יָקוּם וְכַאֲרִי יִתְנַשָּׂא
+
+הֵם יִתְּנוּ לָנוּ מַרְאוֹת וְיֹאמְרוּ זֶה הַיֹּפִי
+הֵם יִתְּנוּ לָנוּ שִׁירִים וְיֹאמְרוּ זֶה הַקּוֹלִי
+הֵם יִתְּנוּ לָנוּ כְּתָרִים אִם נִשְׁכַּח אֶת הַשֵּׁם
+אֲבָל עַם שֶׁשּׁוֹכֵחַ אֶת עַצְמוֹ לֹא יָקוּם וְלֹא יִלָּחֵם
+
+אֵין לָנוּ צֹרֶךְ לְהִתְנַצֵּל עַל הָאוֹר שֶׁבְּתוֹכֵנוּ
+וְאֵין לָנוּ צֹרֶךְ לְהִדַּמּוֹת לְמִי שֶׁאֵינוֹ אָנוּ
+
+הֶן עָם לְבָדָד יִשְׁכֹּן וּבַגּוֹיִם לֹא יִתְחַשָּׁב
+הֶן עָם כְּלָבִיא יָקוּם וְכַאֲרִי יִתְנַשָּׂא
+
+זֶה נוֹשֵׂא אֶת הַתּוֹרָה זֶה שׁוֹמֵר עַל הַשַּׁעַר
+זֶה מֵאִיר לֵב שֶׁנָּפַל זֶה מַחֲזִיק אֶת הַנַּעַר
+זֶה בְּקוֹל וְזֶה בְּשֶׁקֶט זֶה בְּאֵשׁ וְזֶה בְּדִמְעָה
+אִם כָּל אֶחָד שׁוֹמֵר מְקוֹמוֹ אָז כָּל הָעָם הוּא נְשָׁמָה
+
+כְּשֶׁנַּפְסִיק לִרְדֹּף צְלָלִים וְנָשׁוּב אֶל מְקוֹמֵנוּ
+כְּשֶׁנַּפְסִיק לִשְׁבֹּר אַחִים וְנַחֲזִיק אֶת יָדֵינוּ
+כְּשֶׁהַמַּחֲנֶה יִהְיֶה אֶחָד וְהַלֵּב יַכִּיר קוֹלוֹ
+אָז הָאֲרִי שֶׁבְּתוֹכֵנוּ יִתְעוֹרֵר בְּכָל כֹּחוֹ
+
+הֶן עָם לְבָדָד יִשְׁכֹּן וּבַגּוֹיִם לֹא יִתְחַשָּׁב
+הֶן עָם כְּלָבִיא יָקוּם וְכַאֲרִי יִתְנַשָּׂא`,
+  lyrics_en:`We weren't born to disappear into the noise of the crowd.
+Not to chase after strangers and forget who we are.
+Not to wear the dreams the world is selling.
+Not to kneel to a culture that breaks the soul.
+
+Because alone doesn't mean lonely, and holy doesn't mean torn apart.
+When brother holds on to brother, no force can touch us.
+
+Behold, a nation that dwells alone, not reckoned among the nations.
+Behold, a people that rises like a lion, lifts itself like a lion.
+
+A lion doesn't rise for no reason, only because it's strong.
+Everyone knows their place, everyone knows their side.
+This one guards, this one listens, this one waits, this one moves.
+And when everyone moves as one, nothing in the world can stop it.
+
+So too Israel, when it's one — every soul knows its role.
+Not everyone the same thing, but everyone one people.
+
+Behold, a nation that dwells alone, not reckoned among the nations.
+Behold, a people that rises like a lion, lifts itself like a lion.
+
+They'll offer us their mirrors and call it beauty.
+They'll offer us their songs and call it our own voice.
+They'll offer us crowns if we forget the Name.
+But a people that forgets itself will neither rise nor fight.
+
+We don't need to apologize for the light inside us.
+And we don't need to imitate whoever isn't us.
+
+Behold, a nation that dwells alone, not reckoned among the nations.
+Behold, a people that rises like a lion, lifts itself like a lion.
+
+This one carries the Torah, this one guards the gate.
+This one lights up a fallen heart, this one holds up the young.
+This one is loud, this one is quiet, this one is fire, this one is tears.
+When each one keeps his place, the whole nation is one soul.
+
+When we stop chasing shadows and return to our place,
+when we stop breaking brothers and hold each other's hands,
+when the camp becomes one and the heart knows its own voice,
+then the lion within us will wake with all its strength.
+
+Behold, a nation that dwells alone, not reckoned among the nations.
+Behold, a people that rises like a lion, lifts itself like a lion.`,
+  audio:""
+},
+{
+  title_he:"עַל בְּלִימָה", title_translit:"Al Blima",
+  categories:["Character","Self-Growth"], language:"Hebrew", length:"4:05",
+  about:"[Draft — personalize] About the discipline of not saying the thing you have every right to say — the strength that's invisible because no one ever sees you hold back.",
+  lyrics_he:`לֹא כָּל אֱמֶת צְרִיכָה קוֹל
+לֹא כָּל כְּאֵב צָרִיךְ לָצֵאת
+יֵשׁ מִלָּה שֶׁבָּאָה לִשְׂרֹף
+וְיֵשׁ שֶׁקֶט שֶׁבָּא לְרַפֵּא
+הַגּוּף רוֹצֶה לַעֲנוֹת
+הַלֵּב רוֹצֶה לְהַכְרִיעַ
+אֲבָל מִי שֶׁבּוֹלֵם אֶת פִּיו
+מַצִּיל עוֹלָם בְּלִי לְהוֹדִיעַ
+
+וְאֵין זֶה שֶׁקֶט שֶׁל חֻלְשָׁה וְאֵין זֶה פַּחַד מִן הַקְּרָב
+זֶה כֹּחַ שֶׁעוֹמֵד בַּדֶּלֶת וְלֹא נוֹתֵן לָאֵשׁ לִכְתֹּב
+
+כָּל הָעוֹלָם עוֹמֵד עַל פֶּה שֶׁלֹּא נִפְתַּח
+עַל לֵב שֶׁבָּעַר בְּתוֹכוֹ וּבָחַר שֶׁלֹּא לִצְרֹחַ
+מִלָּה יָכְלָה לִשְׁבֹּר שְׁתִיקָה יָכְלָה לִבְנוֹת
+וְאוֹר שֶׁנִּבְרָא בַּסֵּתֶר מֵאִיר בֵּין הַשְּׁתִיקוֹת
+
+כַּמָּה פְּעָמִים עָמַדְתִּי עִם תְּשׁוּבָה עַל הַלָּשׁוֹן
+כַּמָּה פְּעָמִים יָדַעְתִּי שֶׁאֲנִי צוֹדֵק בָּרִאשׁוֹן
+הָיָה לִי מַה לְהַחֲזִיר הָיָה לִי אֵיךְ לְנַצֵּחַ
+אֲבָל הַגּוּף מָצָא מַרְפֵּא כְּשֶׁהַפֶּה לָמַד לָנוּחַ
+
+כִּי חָכְמָה בְּלִי גְּדֵר הִיא רוּחַ בְּלִי בַּיִת
+וְדִּבּוּר בְּלִי שְׁמִירָה מַשְׁאִיר אֶת הַלֵּב בְּלִי זַיִת
+
+כָּל הָעוֹלָם עוֹמֵד עַל פֶּה שֶׁלֹּא נִפְתַּח
+עַל לֵב שֶׁבָּעַר בְּתוֹכוֹ וּבָחַר שֶׁלֹּא לִצְרֹחַ
+מִלָּה יָכְלָה לִשְׁבֹּר שְׁתִיקָה יָכְלָה לִבְנוֹת
+וְאוֹר שֶׁנִּבְרָא בַּסֵּתֶר מֵאִיר בֵּין הַשְּׁתִיקוֹת
+
+כְּשֶׁהַכָּבוֹד שֶׁלִּי צוֹעֵק וְהַכַּעַס מְבַקֵּשׁ מָקוֹם
+אֲנִי לוֹמֵד לִהְיוֹת אִלֵּם עַד שֶׁיַּעֲבֹר הַחֹם
+לֹא אִלֵּם מִן הַתּוֹרָה וְלֹא שָׁקֵט מִן הָאֱמֶת
+רַק אִלֵּם מִן הַגַּאֲוָה שֶׁרוֹצָה לִשְׂרֹף וְלָצֵאת
+
+אִם מִלָּה אַחַת שָׁוָה כְּשֶׁהִיא נֶאֱמֶרֶת בְּזְמַנָּהּ
+אָז שְׁתִיקָה שֶׁלֹּא פָּגְעָה שָׁוָה פִּי שְׁנַיִם בַּנְּשָׁמָה
+
+רִבּוֹנוֹ שֶׁל עוֹלָם תֵּן לִי לִשְׁמֹר אֶת פִּי
+כְּשֶׁאֲנִי רוֹצֶה לִפְגֹּעַ כְּשֶׁאֲנִי רוֹצֶה לְהַרְאוֹת מִי אֲנִי
+תֵּן לִי לִבְלֹם אֶת הָרוּחַ תֵּן לִי לִבְחֹר בְּשֶׁקֶט
+תֵּן לִי לִהְיוֹת גִּבּוֹר בַּמָּקוֹם שֶׁאֵין אִישׁ רוֹאֶה
+
+כִּי יֵשׁ אוֹר שֶׁלֹּא רוֹאִים בְּעֵינַיִם שֶׁל עָפָר
+וְיֵשׁ שָׂכָר שֶׁל רֶגַע אֶחָד שֶׁאֵין לְבָרִיָּה לְשַׁעֵר
+כְּשֶׁהָעוֹלָם אוֹמֵר דַּבֵּר וְהַלֵּב אוֹמֵר עֲנֵה
+הַשֶּׁקֶט עוֹלֶה לְמַעְלָה וּמַחֲזִיר אוֹר לַנְּשָׁמָה
+
+כָּל הָעוֹלָם עוֹמֵד עַל פֶּה שֶׁלֹּא נִפְתַּח
+עַל לֵב שֶׁבָּעַר בְּתוֹכוֹ וּבָחַר שֶׁלֹּא לִצְרֹחַ
+מִלָּה יָכְלָה לִשְׁבֹּר שְׁתִיקָה יָכְלָה לִבְנוֹת
+וְאוֹר שֶׁנִּבְרָא בַּסֵּתֶר מֵאִיר בֵּין הַשְּׁתִיקוֹת
+
+לֹא כָּל אֱמֶת צְרִיכָה קוֹל לֹא כָּל כְּאֵב צָרִיךְ לָצֵאת
+יֵשׁ מִלָּה שֶׁבָּאָה לִשְׂרֹף וְיֵשׁ שֶׁקֶט שֶׁבָּא לְרַפֵּא`,
+  lyrics_en:`Not every truth needs a voice.
+Not every pain needs to come out.
+Some words come to burn,
+some silence comes to heal.
+The body wants to answer back,
+the heart wants to have the last word.
+But whoever holds his tongue
+saves a world without ever announcing it.
+
+And this isn't the silence of weakness, and it isn't fear of the fight.
+It's a strength that stands at the door and won't let the fire write.
+
+The whole world stands on a mouth that stayed closed,
+on a heart that burned inside and chose not to scream.
+A word could have broken it, silence could have built it,
+and a light created in secret shines between the silences.
+
+How many times did I stand there with the answer on my tongue,
+how many times did I know I was right first.
+I had something to fire back, I had a way to win,
+but the body found its healing when the mouth learned to rest.
+
+Because wisdom without boundaries is a spirit without a home,
+and speech without restraint leaves the heart bare.
+
+The whole world stands on a mouth that stayed closed,
+on a heart that burned inside and chose not to scream.
+A word could have broken it, silence could have built it,
+and a light created in secret shines between the silences.
+
+When my honor shouts and anger wants the floor,
+I learn to be mute until the heat passes.
+Not mute from Torah, not silent about truth —
+just mute from the pride that wants to burn its way out.
+
+If one word is worth something when said at the right time,
+then a silence that hurt no one is worth twice as much to the soul.
+
+Master of the world, help me guard my mouth
+when I want to hurt, when I want to prove who I am.
+Let me hold back the wind, let me choose quiet,
+let me be a hero where no one is watching.
+
+Because there's a light you can't see with eyes made of dust,
+and there's a reward for a single moment no creature could estimate.
+When the world says speak and the heart says answer,
+the silence rises up and returns light to the soul.
+
+The whole world stands on a mouth that stayed closed,
+on a heart that burned inside and chose not to scream.
+A word could have broken it, silence could have built it,
+and a light created in secret shines between the silences.
+
+Not every truth needs a voice, not every pain needs to come out.
+Some words come to burn, some silence comes to heal.`,
+  audio:""
+},
+{
+  title_he:"סֻלָּם יַעֲקֹב", title_translit:"Sulam Yaakov",
+  categories:["Growth","Faith"], language:"Hebrew", length:"4:40",
+  about:"[Draft — personalize] Jacob's ladder stood on the ground before it reached the sky — a song about how spiritual heights are built from ordinary, grounded life, not an escape from it.",
+  lyrics_he:`יֵשׁ מִי שֶׁרוֹצֶה לָעוּף בְּלִי לָגַעַת בֶּעָפָר
+לִהְיוֹת כְּמוֹ מַלְאָךְ וְלִשְׁכֹּחַ אֶת הַמָּחָר
+אֲבָל הַסֻּלָּם שֶׁל יַעֲקֹב לֹא הִתְחִיל בַּשָּׁמַיִם
+הוּא נָטַע רַגְלַיִם בָּאָרֶץ וְרֹאשׁוֹ נָגַע בַּשָּׁמַיִם
+
+כִּי אֵין עוֹלִים לְמַעְלָה בְּלִי עָפָר עַל הַיָּדַיִם
+וְעַד שֶׁמְּקַדְּשִׁים אֶת הָאָרֶץ אֵין נוֹגְעִים בַּשָּׁמַיִם
+
+וְהִנֵּה סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה
+וְהִנֵּה מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+
+מִשְׁפָּטִים הֵם הַשָּׁלָב שֶׁעוֹמֵד עַל הָאֲדָמָה
+לֹא לִגְנֹב וְלֹא לִפְגֹּעַ לֹא לִשְׁבֹּר אֶת הַנְּשָׁמָה
+קֹדֶם כָּל תִּהְיֶה אָדָם קֹדֶם כָּל תַּעֲמֹד יָשָׁר
+כִּי הַנֶּפֶשׁ מִתְקַדֶּשֶׁת כְּשֶׁהָעוֹלָם אֵינוֹ מֻפְקָר
+
+זֶה לֹא נָמוּךְ זֶה הַשֹּׁרֶשׁ שֶׁל הַכֹּל
+מִי שֶׁאֵינוֹ עוֹמֵד בָּאָרֶץ לֹא יַעֲלֶה בַּקּוֹל
+
+וְהִנֵּה סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה
+וְהִנֵּה מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+
+עֵדוֹת הֵן קוֹל הַלֵּב שֶׁזוֹכֵר לְמִי הוּא שָׁר
+שַׁבָּת וּפֶסַח וְסֻכָּה בְּרִית שֶׁלֹּא נִשְׁבַּר
+תְּפִלִּין עַל הַזְּרוֹעַ וּתְפִלִּין עַל הָרֹאשׁ
+לְהָעִיד בְּכָל יוֹם שֶׁאֲנַחְנוּ שֶׁל הַקָּדוֹשׁ
+
+כָּאן הָרוּחַ מִתְעוֹרֶרֶת כָּאן הַקֶּשֶׁר מִתְגַּלֶּה
+כָּאן הָאָדָם לֹא רַק עוֹשֶׂה הוּא זוֹכֵר לְמִי הוּא עוֹלֶה
+
+וְהִנֵּה סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה
+וְהִנֵּה מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+
+וְיֵשׁ חֻקִּים שֶׁאֵין הַשֵּׂכֶל מַגִּיעַ עַד סוֹדָם
+בָּשָׂר בְּחָלָב וְשַׁעַטְנֵז וְאֵפֶר פָּרָה אֲדֻמָּה
+כָּאן אֵינֶנִּי אוֹמֵר אֲנִי מֵבִין לָמָּה
+כָּאן אֲנִי עוֹלֶה יוֹתֵר כִּי אָמַרְתָּ וְזוֹ נִשְׁמָתִי
+
+כָּאן הַנְּשָׁמָה נוֹגַעַת בְּמַה שֶׁלְּמַעְלָה מִמֶּנִּי
+וְדַוְקָא כְּשֶׁאֵינִי מֵבִין אֲנִי יוֹדֵעַ שֶׁאֲנִי שֶׁלְּךָ
+
+וְהִנֵּה סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה
+וְהִנֵּה מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+
+סֻלָּם צוֹם, סֻלָּם קוֹל, סֻלָּם מָמוֹן — כֻּלָּם עוֹלִים לְמָקוֹם עֶלְיוֹן
+צוֹם הוּא הַגּוּף שֶׁחוֹזֵר בִּתְשׁוּבָה, קוֹל הוּא הַלֵּב שֶׁעוֹלֶה בִּתְפִלָּה
+מָמוֹן הוּא הָאָרֶץ שֶׁנַּעֲשֵׂית צְדָקָה וְכָךְ הָאָדָם עוֹלֶה בַּסֻּלָּם
+
+וְאִם תִּרְצֶה לִהְיוֹת מַלְאָךְ אַל תִּבְרַח מִן הָעוֹלָם
+כִּי מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+עוֹלִים מִן הָאָרֶץ וְיוֹרְדִים לְקַדֵּשׁ אוֹתָהּ
+עוֹלִים אֶל הַשָּׁמַיִם וְחוֹזְרִים עִם הַשֵּׁם לְכָאן
+
+וְהִנֵּה סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה
+וְהִנֵּה מַלְאֲכֵי אֱלֹקִים עֹלִים וְיֹרְדִים בּוֹ
+
+לֹא עוֹלִים לַשָּׁמַיִם בְּלִי לַעֲמֹד בָּאָרֶץ
+לֹא עוֹזְבִים אֶת הָעוֹלָם אֶלָּא מַעֲלִים אוֹתוֹ לַשֵּׁם
+סֻלָּם מֻצָּב אַרְצָה וְרֹאשׁוֹ מַגִּיעַ הַשָּׁמָיְמָה`,
+  lyrics_en:`Some people want to fly without ever touching the ground,
+to be like an angel and forget about tomorrow.
+But Jacob's ladder didn't start in the sky —
+it planted its feet in the earth, and its head touched heaven.
+
+Because you don't rise up without dirt on your hands,
+and until you sanctify the earth, you don't touch the sky.
+
+And behold, a ladder set on the ground, its top reaching the heavens,
+and behold, angels of God going up and down on it.
+
+Mishpatim (civil laws) are the rung that stands on the ground —
+don't steal, don't hurt, don't break a soul.
+First be a person, first stand upright,
+because the soul is sanctified when the world isn't lawless.
+
+This isn't the low rung — it's the root of everything.
+Whoever doesn't stand on the earth won't rise with any voice.
+
+And behold, a ladder set on the ground, its top reaching the heavens,
+and behold, angels of God going up and down on it.
+
+Eidot (testimonies) are the voice of the heart that remembers who it's singing to —
+Shabbos, Pesach, Sukkos, a covenant unbroken.
+Tefillin on the arm, tefillin on the head,
+to testify every day that we belong to the Holy One.
+
+Here the spirit wakes up, here the connection is revealed,
+here a person isn't just doing — he remembers who he's rising toward.
+
+And behold, a ladder set on the ground, its top reaching the heavens,
+and behold, angels of God going up and down on it.
+
+And there are chukim (statutes) reason can't fully reach —
+meat and milk, shatnez, the ashes of the red heifer.
+Here I don't say I understand why.
+Here I rise even higher, because You said so, and this is my soul.
+
+Here the soul touches something above me,
+and precisely when I don't understand, I know that I am Yours.
+
+And behold, a ladder set on the ground, its top reaching the heavens,
+and behold, angels of God going up and down on it.
+
+A ladder of fasting, a ladder of voice, a ladder of money — all climbing to a high place.
+Fasting is the body doing teshuva, voice is the heart rising in prayer,
+money is the earth turned into charity — and so a person climbs the ladder.
+
+And if you want to be an angel, don't run from the world.
+Because angels of God go up and down on it —
+rising from the earth and descending to sanctify it,
+rising to the heavens and coming back down here with God's name.
+
+And behold, a ladder set on the ground, its top reaching the heavens,
+and behold, angels of God going up and down on it.
+
+You don't rise to heaven without standing on the earth.
+You don't leave the world — you elevate it to God.
+A ladder set on the ground, its top reaching the heavens.`,
+  audio:""
+},
+{
+  title_he:"אַל תַּשְׁלִיכֵנִי", title_translit:"Al Tashlicheini",
+  categories:["Family","Legacy"], language:"Hebrew", length:"4:20",
+  about:"[Draft — personalize] Written from the perspective of someone older, still with something to give — built around the verse from Tehillim 71, 'do not cast me aside in old age.'",
+  lyrics_he:`יֵשׁ פַּחַד שֶׁבָּא בְּשֶׁקֶט כְּשֶׁהַשָּׁנִים מִתְקָרְבוֹת
+כְּשֶׁהַצְּעָדִים קְצָת כְּבֵדִים וְהַיָּדַיִם רוֹעֲדוֹת
+פַּעַם אֲנִי נָשָׂאתִי וְעַכְשָׁיו אוֹתִי נוֹשְׂאִים
+פַּעַם אֲנִי הוֹבַלְתִּי וְעַכְשָׁיו לִי מַסְבִּירִים
+
+אֲבָל אֵין זֶה סוֹף הַדֶּרֶךְ וְאֵין זֶה סוֹף הַשִּׁיר
+כִּי יֵשׁ בִּי עוֹד מַה לָתֵת וְיֵשׁ בִּי עוֹד לְהָאִיר
+
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+
+יֵשׁ לִי צַלָּקוֹת בַּלֵּב שֶׁנַּעֲשׂוּ לִי תּוֹרָה
+יֵשׁ לִי מִלְחָמוֹת בַּנֶּפֶשׁ שֶׁאַף אֶחָד לֹא רָאָה
+יֵשׁ לִי שָׁנִים שֶׁל עֲבוֹדָה בַּתְּפִלָּה וּבַנְּשָׁמָה
+לְהִתְקָרֵב אֵלֶיךָ גַּם כְּשֶׁגּוּפִי שׁוֹקֵעַ בִּדְמָמָה
+
+וְאִם אֵינֶנִּי רָץ כְּמוֹ אָז וְאִם קוֹלִי כְּבָר לֹא גָּדוֹל
+כָּל מִלָּה שֶׁאֲנִי נוֹתֵן עוֹד יְכוֹלָה לִפְתֹּחַ כֹּל
+
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+
+וְגַם עַד זִקְנָה וְשֵׂיבָה אֱלֹקִים אַל תַּעַזְבֵנִי
+עַד אַגִּיד זְרוֹעֲךָ לְדוֹר לְכָל יָבוֹא גְּבוּרָתֶךָ
+יֵשׁ מַה לִמְסֹר יֵשׁ מַה לְהַשְׁאִיר
+יֵשׁ אֵשׁ שֶׁל שָׁנִים שֶׁעוֹד יְכוֹלָה לְהָאִיר
+
+עוֹד יְנוּבוּן בְּשֵׂיבָה דְּשֵׁנִים וְרַעֲנַנִּים יִהְיוּ
+לְהַגִּיד כִּי יָשָׁר הַשֵּׁם צוּרִי וְלֹא עַוְלָתָה בּוֹ
+אִם אֵין בִּי כֹּחַ לִבְנוֹת יֵשׁ בִּי חָכְמָה לְהַדְרִיךְ
+אִם אֵין בִּי כֹּחַ לָרוּץ יֵשׁ בִּי אוֹר לְהַמְשִׁיךְ
+
+וּמַה שֶּׁלָּמַדְתִּי בְּדָם וּבְדִמְעָה יַעֲבֹר לַדּוֹר הַבָּא וְיִפְרַח פִּי מֵאָה
+וְכָל מַה שֶׁבָּנִיתִי בְּכֹחַ וּבִתְפִלָּה יִמְשִׁיךְ לָלֶכֶת גַּם כְּשֶׁאֲנִי כְּבָר לֹא אוּכַל
+
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+אַל תַּשְׁלִיכֵנִי לְעֵת זִקְנָה כִּכְלוֹת כֹּחִי אַל תַּעַזְבֵנִי
+
+גַּם כְּשֶׁאֵין בִּי כֹּחַ תֵּן לִי עוֹד לָתֵת
+גַּם כְּשֶׁאֵין בִּי כֹּחַ אַל תַּעַזְבֵנִי כָּעֵת`,
+  lyrics_en:`There's a fear that comes quietly as the years get closer,
+when the steps get a little heavy and the hands start to shake.
+Once I used to carry others, now they carry me.
+Once I used to lead, now people explain things to me.
+
+But this isn't the end of the road, and it isn't the end of the song,
+because I still have something to give, I still have something to light up.
+
+Don't cast me aside in old age, don't abandon me when my strength fails.
+Don't cast me aside in old age, don't abandon me when my strength fails.
+
+I have scars on my heart that became my Torah.
+I have battles in my soul that no one ever saw.
+I have years of work in prayer and in soul,
+drawing close to You even as my body sinks into stillness.
+
+And if I don't run like I used to, and if my voice isn't loud anymore,
+every word I still give can still open everything.
+
+Don't cast me aside in old age, don't abandon me when my strength fails.
+Don't cast me aside in old age, don't abandon me when my strength fails.
+
+And even to old age and grey hair, God, don't abandon me,
+until I tell of Your strength to the next generation, Your might to all who come.
+There's still something to hand down, something to leave behind,
+there's a fire of years that can still give light.
+
+They will still flourish in old age, full of sap and green,
+to declare that God is upright, my Rock, in whom there is no wrong.
+If I don't have the strength to build, I have the wisdom to guide.
+If I don't have the strength to run, I have light to keep going.
+
+And what I learned in blood and tears will pass to the next generation and bloom a hundredfold.
+And everything I built with strength and prayer will keep walking even when I no longer can.
+
+Don't cast me aside in old age, don't abandon me when my strength fails.
+Don't cast me aside in old age, don't abandon me when my strength fails.
+
+Even when I have no strength left, let me still give.
+Even when I have no strength left, don't abandon me now.`,
+  audio:""
+},
+{
+  title_he:"כְּאִלּוּ בָּנָה", title_translit:"K'ilu Bana",
+  categories:["Celebration","Wedding"], language:"Hebrew", length:"3:35",
+  about:"[Draft — personalize] A wedding song built on the Chazal that whoever brings joy to a chatan and kallah is considered to have rebuilt a piece of Yerushalayim.",
+  lyrics_he:`כָּל הָאוּלָם מַמְתִּין וְהַשֶּׁקֶט מִתְמַלֵּא
+כְּשֶׁהַחָתָן נִכְנָס וְכָל לֵב מִתְעַלֶּה
+יָד בְּיָד עִם אָב וָאֵם בְּדֶרֶךְ שֶׁל תְּפִלָּה
+כָּל צַעַד הוֹלֵךְ וּבוֹנֶה עוֹד אֶבֶן שֶׁל גְּאֻלָּה
+
+וְכָל הַלְּבָבוֹת עוֹמְדִים אִתּוֹ בַּדֶּרֶךְ
+וְכָל הַדְּמָעוֹת נִשְׂפָּכוֹת לִפְנֵי הַמֶּלֶך
+
+כְּאִלּוּ בָּנָה אַחַת מֵחֻרְבוֹת יְרוּשָׁלַיִם
+כְּשֶׁחָתָן וְכַלָּה הוֹלְכִים לִבְנוֹת בַּיִת
+עוֹד אֶבֶן שָׁבָה עוֹד אוֹר מִתְגַּלֶּה
+וּבֵין דִּמְעָה לְשִׂמְחָה יְרוּשָׁלַיִם נִבְנֵית
+
+כָּל עַיִן מִסְתַּכֶּלֶת כְּשֶׁהַכַּלָּה מִתְקָרֶבֶת
+בְּלָבָן שֶׁל תְּפִלָּה וּבִשְׁתִיקָה שֶׁמְּדַבֶּרֶת
+יָד בְּיָד עִם אָב וָאֵם וְהַלֵּב כְּבָר לֹא שׁוֹאֵל
+כִּי בְּכָל צַעַד קָטָן נִבְנֶה בַּיִת בְּיִשְׂרָאֵל
+
+וְכָל הַבְּרָכוֹת עוֹלוֹת אִתָּהּ לְמַעְלָה
+וְכָל הַדּוֹרוֹת עוֹמְדִים סָבִיב לַכַּלָּה
+
+כְּאִלּוּ בָּנָה אַחַת מֵחֻרְבוֹת יְרוּשָׁלַיִם
+כְּשֶׁחָתָן וְכַלָּה הוֹלְכִים לִבְנוֹת בַּיִת
+עוֹד אֶבֶן שָׁבָה עוֹד אוֹר מִתְגַּלֶּה
+וּבֵין דִּמְעָה לְשִׂמְחָה יְרוּשָׁלַיִם נִבְנֵית
+
+תַּחַת הַחֻפָּה הַזְּמַן עוֹמֵד בְּשֶׁקֶט
+שְׁנֵי לְבָבוֹת בָּאִים לִבְנוֹת דֶּרֶךְ מְבֹרֶכֶת
+לֹא רַק לַיְלָה אֶחָד וְלֹא רַק שִׁיר וּבְרָכָה
+אֶלָּא בַּיִת לַשְּׁכִינָה וְדֶלֶת לִגְאֻלָּה
+
+כָּל הַמְשַׂמֵּחַ חָתָן וְכַלָּה כְּאִלּוּ בָּנָה אַחַת מֵחֻרְבוֹת יְרוּשָׁלַיִם
+כָּל הַמְשַׂמֵּחַ חָתָן וְכַלָּה כְּאִלּוּ בָּנָה אַחַת מֵחֻרְבוֹת יְרוּשָׁלַיִם
+
+כְּאִלּוּ בָּנָה אַחַת מֵחֻרְבוֹת יְרוּשָׁלַיִם
+כְּשֶׁחָתָן וְכַלָּה הוֹלְכִים לִבְנוֹת בַּיִת
+עוֹד אֶבֶן שָׁבָה עוֹד אוֹר מִתְגַּלֶּה
+וּבֵין דִּמְעָה לְשִׂמְחָה יְרוּשָׁלַיִם נִבְנֵית`,
+  lyrics_en:`The whole hall waits, and the silence fills up,
+as the chatan walks in and every heart lifts.
+Hand in hand with father and mother, on a path of prayer,
+every step goes on building another stone of geula.
+
+And every heart stands with him along the way,
+and every tear is poured out before the King.
+
+It's as if he rebuilt one of the ruins of Jerusalem —
+when a chatan and kallah go to build a home.
+One more stone returns, one more light is revealed,
+and between tears and joy, Jerusalem is being built.
+
+Every eye watches as the kallah approaches,
+in the white of prayer and a silence that speaks.
+Hand in hand with father and mother, the heart no longer asks questions,
+because with every small step, a home is built in Israel.
+
+And every blessing rises up with her,
+and every generation stands around the kallah.
+
+It's as if he rebuilt one of the ruins of Jerusalem —
+when a chatan and kallah go to build a home.
+One more stone returns, one more light is revealed,
+and between tears and joy, Jerusalem is being built.
+
+Under the chuppah, time stands still.
+Two hearts come to build a blessed path.
+Not just one night, not just a song and a blessing,
+but a home for the Shechina and a door to redemption.
+
+Whoever brings joy to a chatan and kallah, it's as if he rebuilt one of the ruins of Jerusalem.
+Whoever brings joy to a chatan and kallah, it's as if he rebuilt one of the ruins of Jerusalem.
+
+It's as if he rebuilt one of the ruins of Jerusalem —
+when a chatan and kallah go to build a home.
+One more stone returns, one more light is revealed,
+and between tears and joy, Jerusalem is being built.`,
+  audio:""
+},
+{
+  title_he:"עוֹשֶׂה שָׁלוֹם", title_translit:"Oseh Shalom",
+  categories:["Peace","Relationships"], language:"Hebrew", length:"4:10",
+  about:"[Draft — personalize] Everyone wants world peace, but the song's point is that it starts at your own table — the empty chair, the neighbor you stopped greeting.",
+  lyrics_he:`כֻּלָּם מְדַבְּרִים עַל שָׁלוֹם בֵּין עַמִּים וּבֵין גְּבוּלוֹת
+שֶׁלֹּא יִהְיוּ עוֹד אַזְעָקוֹת שֶׁיְּלָדִים יִישְׁנוּ בַּלֵּילוֹת
+כֻּלָּם רוֹצִים שֶׁהָעוֹלָם יִלְמַד סוֹף סוֹף לִחְיוֹת
+שֶׁחֶרֶב לֹא תִּשָּׁלֵף עוֹד וְשֶׁלֹּא נֵדַע מִלְחָמוֹת
+
+זֶה חֲלוֹם גָּדוֹל וְיָקָר אֲבָל הוּא לֹא מַתְחִיל רָחוֹק
+הוּא מַתְחִיל בְּמָקוֹם אֶחָד בַּמָּקוֹם שֶׁהוּא הַכִּי קָרוֹב
+
+עוֹשֶׂה שָׁלוֹם בִּמְרוֹמָיו הוּא יַעֲשֶׂה שָׁלוֹם עָלֵינוּ
+וְעַל כָּל יִשְׂרָאֵל וְאִמְרוּ אָמֵן
+
+יֵשׁ שָׁכֵן שֶׁכְּבָר לֹא אוֹמְרִים לוֹ בֹּקֶר טוֹב בַּחֲדַר הַמַּדְרֵגוֹת
+יֵשׁ חָבֵר שֶׁפַּעַם הָיָה קָרוֹב וְנִשְׁאַר רָחוֹק בִּגְלַל מִלִּים קְטַנּוֹת
+יֵשׁ אָדָם שֶׁיּוֹשֵׁב לְיָדְךָ וְכָל שִׂיחָה נִשְׁמַעַת כְּמוֹ מִלְחָמָה
+וּלְפָנֵי שֶׁתָּבִיא שָׁלוֹם לָעוֹלָם תַּתְחִיל בָּרְחוֹב שֶׁלְּךָ
+
+בַּקֵּשׁ שָׁלוֹם וְרָדְפֵהוּ לֹא רַק בֵּין גְּבוּלוֹת רְחוֹקִים
+בַּקֵּשׁ שָׁלוֹם וְרָדְפֵהוּ בֵּין הָאֲנָשִׁים שֶׁאַתָּה פּוֹגֵשׁ כָּל יוֹם
+
+יֵשׁ שֻׁלְחָן אֶחָד בַּבַּיִת וְכִסֵּא שֶׁנִּשְׁאַר רֵיק
+יֵשׁ אָח שֶׁפַּעַם עָמַד קָרוֹב וְהַיּוֹם הוּא כְּבָר רָחוֹק
+יֵשׁ מִלָּה שֶׁלֹּא נֶאֶמְרָה וּסְלִיחָה שֶׁעוֹד מְחַכָּה
+וּלְפָנֵי שֶׁתָּבִיא שָׁלוֹם לָעוֹלָם תָּבִיא שָׁלוֹם לְתוֹךְ בֵּיתְךָ
+
+עוֹשֶׂה שָׁלוֹם בִּמְרוֹמָיו הוּא יַעֲשֶׂה שָׁלוֹם עָלֵינוּ
+וְעַל כָּל יִשְׂרָאֵל וְאִמְרוּ אָמֵן
+
+וּלְפָנֵי שֶׁתַּשְׁלִים אֶת כָּל הָעוֹלָם תַּשְׁלִים עִם עַצְמְךָ
+לִפְנֵי שֶׁתְּחַבֵּר לְבָבוֹת רְחוֹקִים תֶּאֱסֹף אֶת הַלֵּב שֶׁבִּפְנִים
+
+יֵשׁ בְּךָ אֵשׁ וְיֵשׁ בְּךָ מַיִם יֵשׁ בְּךָ פַּחַד וְיֵשׁ בְּךָ אוֹר
+וּכְשֶׁכָּל הַקּוֹלוֹת שֶׁבְּתוֹכְךָ מַפְסִיקִים לְהִלָּחֵם אַתָּה חוֹזֵר לִהְיוֹת שָׁלֵם
+
+לֹא מָצָא הַקָּדוֹשׁ בָּרוּךְ הוּא כְּלִי מַחֲזִיק בְּרָכָה לְיִשְׂרָאֵל אֶלָּא הַשָּׁלוֹם
+
+עוֹשֶׂה שָׁלוֹם בִּמְרוֹמָיו הוּא יַעֲשֶׂה שָׁלוֹם עָלֵינוּ
+וְעַל כָּל יִשְׂרָאֵל וְעַל כָּל יוֹשְׁבֵי תֵבֵל וְאִמְרוּ אָמֵן`,
+  lyrics_en:`Everyone talks about peace between nations and borders,
+so there won't be sirens anymore, so children can sleep through the night.
+Everyone wants the world to finally learn how to live,
+so no sword is drawn again and we know war no more.
+
+It's a big, precious dream, but it doesn't start far away.
+It starts in one place — the place closest to you.
+
+He who makes peace in His heights, may He make peace upon us,
+and upon all of Israel, and say Amen.
+
+There's a neighbor you no longer say good morning to on the stairs.
+There's a friend who was once close and stayed distant over small words.
+There's someone sitting next to you and every conversation sounds like war.
+And before you bring peace to the world, start on your own street.
+
+Seek peace and pursue it — not just between distant borders.
+Seek peace and pursue it — between the people you meet every day.
+
+There's one table at home and a chair that stayed empty.
+There's a brother who once stood close and today is already far.
+There's a word that was never said, and a sorry still waiting.
+And before you bring peace to the world, bring peace into your own home.
+
+He who makes peace in His heights, may He make peace upon us,
+and upon all of Israel, and say Amen.
+
+And before you make peace with the whole world, make peace with yourself.
+Before you connect distant hearts, gather the heart that's inside you.
+
+There's fire in you and there's water in you, there's fear in you and there's light in you.
+And when all the voices inside you stop fighting each other, you become whole again.
+
+The Holy One found no vessel that holds blessing for Israel except peace.
+
+He who makes peace in His heights, may He make peace upon us,
+and upon all of Israel and all who dwell on earth, and say Amen.`,
+  audio:""
+},
+{
+  title_he:"תִּפְאֶרֶת בָּנִים", title_translit:"Tiferet Banim",
+  categories:["Family","Legacy"], language:"Hebrew", length:"3:55",
+  about:"[Draft — personalize] Grandparents and grandchildren, told from both sides — the applause we got as kids, and the applause we finally learn to give back.",
+  lyrics_he:`כְּשֶׁהָיִינוּ עוֹד קְטַנִּים וְכָל צַעַד הָיָה חָדָשׁ
+אַתֶּם מְחָאתֶם כַּפַּיִם כְּאִלּוּ כָּבַשְׁנוּ אֶת הָעוֹלָם מַמָּשׁ
+כָּל מִלָּה שֶׁאָמַרְנוּ כָּל צִיּוּר עַל הַשֻּׁלְחָן
+הָפַךְ אֶצְלְכֶם לְאוֹצָר לְזִכָּרוֹן שֶׁלֹּא נֶעֱלַם
+
+אַתֶּם רְאִיתֶם בָּנוּ מַה שֶׁעוֹד לֹא יָדַעְנוּ לִרְאוֹת
+אַתֶּם הֶאֱמַנְתֶּם בָּנוּ עוֹד לִפְנֵי שֶׁיָּדַעְנוּ מַה לִּהְיוֹת
+
+עֲטֶרֶת זְקֵנִים בְּנֵי בָנִים וְתִפְאֶרֶת בָּנִים אֲבוֹתָם
+אֲנַחְנוּ הָיִינוּ הַכֶּתֶר שֶׁלָּכֶם וְאַתֶּם הַתִּפְאֶרֶת שֶׁלָּנוּ לְעוֹלָם
+
+כְּשֶׁגָּדַלְנוּ הָיִינוּ עֲסוּקִים וְהַיָּמִים רָצוּ מַהֵר
+לֹא תָּמִיד עָצַרְנוּ לִשְׁאֹל מֵאַיִן הַכֹּל הִתְחִיל
+מִי נָשָׂא אֶת הַשֵּׁמוֹת מִי שָׁמַר אֶת הַסִּפּוּר
+מִי הֶעֱבִיר לָנוּ בְּשֶׁקֶט אֶת הַנִּגּוּן מִדּוֹר לְדוֹר
+
+הַיּוֹם אֲנַחְנוּ מַבִּיטִים וּמַתְחִילִים סוֹף סוֹף לִרְאוֹת
+כַּמָּה כֹּחַ הָיָה בַּדֶּרֶךְ כַּמָּה אוֹר בֵּין הַדְּמָעוֹת
+
+עֲטֶרֶת זְקֵנִים בְּנֵי בָנִים וְתִפְאֶרֶת בָּנִים אֲבוֹתָם
+אֲנַחְנוּ הָיִינוּ הַכֶּתֶר שֶׁלָּכֶם וְאַתֶּם הַתִּפְאֶרֶת שֶׁלָּנוּ לְעוֹלָם
+
+זְכֹר יְמוֹת עוֹלָם בִּינוּ שְׁנוֹת דֹּר וָדֹר
+שְׁאַל אָבִיךָ וְיַגֵּדְךָ זְקֵנֶיךָ וְיֹאמְרוּ לָך
+
+יֵשׁ סִפּוּר בְּכָל קֶמֶט יֵשׁ תְּפִלָּה בְּכָל מַבָּט
+יֵשׁ עוֹלָם שָׁלֵם שֶׁהִגִּיעַ עַד אֵלֵינוּ לְאַט לְאַט
+וְאִם פַּעַם אַתֶּם עָמַדְתֶּם וּמְחָאתֶם לָנוּ כַּפַּיִם
+הַיּוֹם אֲנַחְנוּ עוֹמְדִים וּמוֹחֲאִים לָכֶם פִּי שְׁנַיִם
+
+עֲטֶרֶת זְקֵנִים בְּנֵי בָנִים וְתִפְאֶרֶת בָּנִים אֲבוֹתָם
+אֲנַחְנוּ הָיִינוּ הַכֶּתֶר שֶׁלָּכֶם וְאַתֶּם הַתִּפְאֶרֶת שֶׁלָּנוּ לְעוֹלָם
+
+אַתֶּם הַשֹּׁרֶשׁ וַאֲנַחְנוּ הָעֲנָפִים
+אַתֶּם הַסִּפּוּר שֶׁאֲנַחְנוּ מַמְשִׁיכִים
+וְכָל מַה שֶּׁיָּפֶה בָּנוּ הִתְחִיל אֵצְלְכֶם בַּפְּנִים
+
+עֲטֶרֶת זְקֵנִים בְּנֵי בָנִים וְתִפְאֶרֶת בָּנִים אֲבוֹתָם`,
+  lyrics_en:`When we were still small and every step was new,
+you clapped your hands like we'd conquered the whole world.
+Every word we said, every drawing on the table,
+became a treasure to you, a memory that never faded.
+
+You saw in us what we didn't yet know how to see in ourselves.
+You believed in us before we even knew what we'd become.
+
+Grandchildren are the crown of the old, and parents are the glory of children.
+We were your crown — and you are our glory, forever.
+
+When we grew up we got busy, and the days moved fast.
+We didn't always stop to ask where it all began,
+who carried the names, who kept the story,
+who quietly passed the melody down from generation to generation.
+
+Today we're looking back and finally starting to see
+how much strength was on that road, how much light between the tears.
+
+Grandchildren are the crown of the old, and parents are the glory of children.
+We were your crown — and you are our glory, forever.
+
+Remember the days of old, understand the years of generation after generation.
+Ask your father and he will tell you, your elders, and they will say to you.
+
+There's a story in every wrinkle, a prayer in every glance.
+There's a whole world that slowly made its way down to us.
+And if you once stood and clapped for us,
+today we stand and clap for you twice as loud.
+
+Grandchildren are the crown of the old, and parents are the glory of children.
+We were your crown — and you are our glory, forever.
+
+You are the root and we are the branches.
+You are the story we get to continue.
+And everything beautiful in us started inside you.
+
+Grandchildren are the crown of the old, and parents are the glory of children.`,
+  audio:""
+},
+{
+  title_he:"קָמוּ בָנֶיהָ", title_translit:"Kamu Vaneha",
+  categories:["Family","Gratitude"], language:"Hebrew", length:"3:45",
+  about:"[Draft — personalize] Built around Eshet Chayil — the idea that the people closest to you, in the unglamorous everyday moments, are the ones who actually see your greatness.",
+  lyrics_he:`כֻּלָּם רוֹאִים אֶת הָאוֹר כְּשֶׁהַדֶּלֶת פְּתוּחָה
+אֲבָל אֲנַחְנוּ מַכִּירִים גַּם אֶת מַה שֶׁבַּשְּׁתִיקָה
+אֶת הַחֶסֶד בְּלִי מִלִּים אֶת הַלֵּב שֶׁתָּמִיד נוֹתֵן
+אֶת הָאוֹר שֶׁמִּתְגַּלֶּה כְּשֶׁאַף אֶחָד לֹא מִסְתַּכֵּל
+
+כָּל מַבָּט מִקָּרוֹב מְגַלֶּה עוֹד אוֹר
+כָּל יוֹם שֶׁעוֹבֵר נוֹתֵן עוֹד סִבָּה לִזְכֹּר
+
+קָמוּ בָנֶיהָ וַיְאַשְּׁרוּהָ כִּי הֵם רָאוּ מִבִּפְנִים אֶת הָאוֹר שֶׁבַּשְּׁתִיקָה
+בַּעְלָהּ וַיְהַלְלָהּ כִּי דַּוְקָא מִי שֶׁקָּרוֹב מִכֹּל רוֹאֶה אֶת הַגְּדֻלָּה
+
+אֲנַחְנוּ רוֹאִים מִקָּרוֹב אֶת כָּל מַה שֶׁאֵין רוֹאִים
+אֶת הַיָּמִים הַפְּשׁוּטִים אֶת הָרְגָעִים הַקְּטַנִּים
+אֶת הַסַּבְלָנוּת בַּדֶּרֶךְ אֶת הָאֹמֶץ בַּלֵּילוֹת
+אֶת כָּל הַמַּעֲלוֹת שֶׁלֹּא צְרִיכוֹת כוֹתָרוֹת
+
+קָמוּ בָנֶיהָ וַיְאַשְּׁרוּהָ כִּי הֵם רָאוּ מִבִּפְנִים אֶת הָאוֹר שֶׁבַּשְּׁתִיקָה
+בַּעְלָהּ וַיְהַלְלָהּ כִּי דַּוְקָא מִי שֶׁקָּרוֹב מִכֹּל רוֹאֶה אֶת הַגְּדֻלָּה
+
+אֵין אִישׁ שֶׁמַּכִּיר אוֹתָךְ כְּמוֹ אֵלֶּה שֶׁבַּבַּיִת
+אֵין אִישׁ שֶׁרוֹאֶה אוֹתָךְ בָּרְגָעִים שֶׁאֵין בָּהֶם קָהָל
+וְכָל שָׁנָה שֶׁעוֹבֶרֶת רַק מַגְדִּילָה אֶת הַפְּלִיאָה
+כִּי דַּוְקָא מִקָּרוֹב רוֹאִים אֶת הַגְּדֻלָּה
+
+רַבּוֹת בָּנוֹת עָשׂוּ חָיִל וְאַתְּ עָלִית עַל כֻּלָּנָה
+רַבּוֹת בָּנוֹת עָשׂוּ חָיִל וְאַתְּ עָלִית עַל כֻּלָּנָה
+
+קָמוּ בָנֶיהָ וַיְאַשְּׁרוּהָ כִּי הֵם רָאוּ מִבִּפְנִים אֶת הָאוֹר שֶׁבַּשְּׁתִיקָה
+בַּעְלָהּ וַיְהַלְלָהּ כִּי דַּוְקָא מִי שֶׁקָּרוֹב מִכֹּל רוֹאֶה אֶת הַגְּדֻלָּה
+
+כִּי דַּוְקָא מִקָּרוֹב רוֹאִים אֶת הַגְּדֻלָּה`,
+  lyrics_en:`Everyone sees the light when the door is open,
+but we also know what's in the silence —
+the kindness with no words, the heart that always gives,
+the light that's revealed when no one's watching.
+
+Every close-up look reveals a little more light.
+Every day that passes gives another reason to remember.
+
+Her children rise and call her happy — because they saw from the inside the light hidden in the silence.
+Her husband praises her — because the ones who are closest are exactly the ones who see the greatness.
+
+We see up close everything the world doesn't see —
+the simple days, the small moments,
+the patience along the way, the courage in the nights,
+all the qualities that never needed a headline.
+
+Her children rise and call her happy — because they saw from the inside the light hidden in the silence.
+Her husband praises her — because the ones who are closest are exactly the ones who see the greatness.
+
+No one knows you like the people at home.
+No one sees you in the moments with no audience.
+And every passing year only deepens the wonder,
+because it's precisely up close that you see the greatness.
+
+Many women have done well, but you surpass them all.
+Many women have done well, but you surpass them all.
+
+Her children rise and call her happy — because they saw from the inside the light hidden in the silence.
+Her husband praises her — because the ones who are closest are exactly the ones who see the greatness.
+
+Because it's precisely up close that you see the greatness.`,
+  audio:""
+},
+{
+  title_he:"לָגַעַת בְּנִשְׁמָתִי", title_translit:"Lagaat B'Nishmati",
+  categories:["Faith","Longing"], language:"Hebrew", length:"4:15",
+  about:"[Draft — personalize] Searching for meaning everywhere else and forgetting there was a spark right here the whole time — an open, soaring prayer just to actually feel it.",
+  lyrics_he:`חִפַּשְׂתִּי בַּדְּרָכִים בְּעָרִים רְחוֹקוֹת
+חִפַּשְׂתִּי בָּאֲנָשִׁים בְּדַלְתוֹת נִפְתָּחוֹת
+וְכָל מַה שֶּׁמָּצָאתִי חָלַף כְּמוֹ רוּחַ
+וְשָׁכַחְתִּי שֶׁבְּתוֹכִי יֵשׁ מָקוֹם לָנוּחַ
+
+כָּל כָּךְ קָרוֹב אֵלַי כָּל כָּךְ רָחוֹק
+כָּל כָּךְ קָרוֹב אֵלַי כָּל כָּךְ רָחוֹק
+
+לָגַעַת בְּנִשְׁמָתִי בַּנִּיצוֹץ שֶׁנָּתַתָּ בִּי
+לָעוּף מֵעַל הָעוֹלָם לָדָאוֹת אֶל הָאוֹר
+לָגַעַת בְּנִשְׁמָתִי כָּל נַפְשִׁי כָּמֵהָה
+רִבּוֹנוֹ שֶׁל עוֹלָם תֵּן לִי לָגַעַת בָּהּ
+
+מֵאֲחוֹרֵי הָרְעָשִׁים מִסְתַּתֵּר עָמוֹק
+הַיֵּצֶר מוֹשֵׁךְ לְמַטָּה הָעוֹלָם לֹא מְחַכֶּה
+וְהַנְּשָׁמָה בְּתוֹכִי עוֹד לוֹחֶשֶׁת: תָּעוּף
+
+לָגַעַת בְּנִשְׁמָתִי בַּנִּיצוֹץ שֶׁנָּתַתָּ בִּי
+לָעוּף מֵעַל הָעוֹלָם לָדָאוֹת אֶל הָאוֹר
+לָגַעַת בְּנִשְׁמָתִי כָּל נַפְשִׁי כָּמֵהָה
+רִבּוֹנוֹ שֶׁל עוֹלָם תֵּן לִי לָגַעַת בָּהּ
+
+פְּתַח לִי שַׁעַר בְּתוֹךְ לִבִּי הָסֵר אֶת הַמָּסָךְ שֶׁעוֹמֵד בֵּינִי לְבֵינִי
+כָּל נַפְשִׁי כּוֹסֶפֶת כָּל לִבִּי מְבַקֵּשׁ רִבּוֹנוֹ שֶׁל עוֹלָם תֵּן לִי לְהִתְקָרֵב
+
+לָעוּף לָדָאוֹת לָעוּף לָדָאוֹת לָגַעַת בְּנִשְׁמָתִי
+
+לָגַעַת בְּנִשְׁמָתִי בַּנִּיצוֹץ שֶׁנָּתַתָּ בִּי
+לָעוּף מֵעַל הָעוֹלָם לָדָאוֹת אֶל הָאוֹר
+לָגַעַת בְּנִשְׁמָתִי כָּל נַפְשִׁי כָּמֵהָה
+רִבּוֹנוֹ שֶׁל עוֹלָם תֵּן לִי לָגַעַת
+
+כָּל כָּךְ קָרוֹב אֵלַי כָּל כָּךְ רָחוֹק
+לָגַעַת בְּנִשְׁמָתִי`,
+  lyrics_en:`I searched on the roads, in faraway cities.
+I searched in people, through doors that opened.
+And everything I found passed like wind,
+and I forgot that inside me there's a place to rest.
+
+So close to me, so far away.
+So close to me, so far away.
+
+To touch my soul, the spark You placed inside me,
+to fly above the world, to soar toward the light.
+To touch my soul, my whole being aches for it —
+Master of the world, let me touch it.
+
+Behind all the noise, something hides deep down.
+The yetzer pulls downward, the world won't wait,
+and the soul inside me still whispers: fly.
+
+To touch my soul, the spark You placed inside me,
+to fly above the world, to soar toward the light.
+To touch my soul, my whole being aches for it —
+Master of the world, let me touch it.
+
+Open a gate inside my heart, remove the screen standing between me and myself.
+My whole soul longs, my whole heart pleads — Master of the world, let me come close.
+
+Fly, soar, fly, soar — touch my soul.
+
+To touch my soul, the spark You placed inside me,
+to fly above the world, to soar toward the light.
+To touch my soul, my whole being aches for it —
+Master of the world, let me touch it.
+
+So close to me, so far away.
+To touch my soul.`,
+  audio:""
+},
+{
+  title_he:"אֱמֶת לַאֲמִתּוֹ", title_translit:"Emet La'amito",
+  categories:["Growth","Motivation"], language:"Hebrew", length:"3:30",
+  about:"[Draft — personalize] Upbeat, no drama about failure: the truth doesn't change, I have to — a thousand falls, a thousand more tries.",
+  lyrics_he:`אֲנִי יוֹדֵעַ אֶת הָאֱמֶת אֲנִי יוֹדֵעַ לְאָן לָלֶכֶת
+אֲבָל הָרַגְלַיִם עוֹד כְּבֵדוֹת וַאֲנִי עוֹד לוֹמֵד לָלֶכֶת
+יֵשׁ עוֹפֶרֶת בְּרַגְלַי וְהַשָּׁמַיִם קוֹרְאִים אֵלַי
+אֲנִי פּוֹרֵשׂ אֶת הַכְּנָפַיִם וְשׁוּב נוֹפֵל עַל הַבִּרְכַּיִם
+
+אֲנִי צָרִיךְ לְהִשְׁתַּנּוֹת הָאֱמֶת לֹא מִשְׁתַּנָּה
+גַּם אִם נָפַלְתִּי עוֹד הַפַּעַם מָחָר שׁוּב אֲנַסֶּה
+
+הָאֱמֶת לֹא מִשְׁתַּנָּה רַק אֲנִי צָרִיךְ לְהִשְׁתַּנּוֹת
+אֶלֶף פְּעָמִים עוֹד אֶפֹּל אֶלֶף פְּעָמִים אֲנַסֶּה לַעֲלוֹת
+הָאֱמֶת לֹא מִשְׁתַּנָּה לֹא בְּכִשָּׁלוֹן וְלֹא בְּהַצְלָחוֹת
+אֲנִי עֲדַיִן לֹא שָׁם אֲבָל אֶת הָאֱמֶת לֹא אֶעֱזֹב
+
+כְּבָר הִתְרַגַּלְתִּי לְעַצְמִי לַדְּרָכִים שֶׁלֹּא עוֹזְבוֹת אוֹתִי
+לַתֵּרוּצִים הַיְּשָׁנִים לַקּוֹלוֹת שֶׁמַּרְגִּיעִים אוֹתִי
+כָּל כָּךְ קַל לוֹמַר זֶה פָּשׁוּט מִי שֶׁאֲנִי
+אֲבָל אֲנִי לֹא מוֹרִיד אֶת הָרָף כְּדֵי שֶׁיִּתְאִים לִי
+
+אֲנִי צָרִיךְ לְהִשְׁתַּנּוֹת הָאֱמֶת לֹא מִשְׁתַּנָּה
+גַּם אִם נָפַלְתִּי עוֹד הַפַּעַם מָחָר שׁוּב אֲנַסֶּה
+
+הָאֱמֶת לֹא מִשְׁתַּנָּה רַק אֲנִי צָרִיךְ לְהִשְׁתַּנּוֹת
+אֶלֶף פְּעָמִים עוֹד אֶפֹּל אֶלֶף פְּעָמִים אֲנַסֶּה לַעֲלוֹת
+הָאֱמֶת לֹא מִשְׁתַּנָּה לֹא בְּכִשָּׁלוֹן וְלֹא בְּהַצְלָחוֹת
+אֲנִי עֲדַיִן לֹא שָׁם אֲבָל אֶת הָאֱמֶת לֹא אֶעֱזֹב
+
+גַּם כְּשֶׁאֲנִי נוֹפֵל הָאֱמֶת נִשְׁאֶרֶת עוֹמֶדֶת
+הִיא לֹא בִּקְּשָׁה שֶׁאֶהְיֶה מֻשְׁלָם רַק שֶׁלֹּא אֶעֱזֹב אֶת הַדֶּרֶךְ
+
+עוֹד פַּעַם אֶפֹּל עוֹד פַּעַם אָקוּם עוֹד פַּעַם אֶכָּשֵׁל עוֹד פַּעַם אָשׁוּב
+
+וּבַיּוֹם הָאַחֲרוֹן כְּשֶׁאַבִּיט לְאָחוֹר
+מוּטָב לִי לְהִכָּשֵׁל וְלִחְיוֹת עִם הָאוֹר
+מוּטָב לִי לְהִכָּשֵׁל וְלִחְיוֹת בָּאֱמֶת
+מִלְּהַצְלִיחַ בַּכֹּל וְלִחְיוֹת בְּתוֹךְ שֶׁקֶר
+
+הָאֱמֶת לֹא מִשְׁתַּנָּה רַק אֲנִי צָרִיךְ לְהִשְׁתַּנּוֹת
+אֶלֶף פְּעָמִים עוֹד אֶפֹּל אֶלֶף פְּעָמִים אֲנַסֶּה לַעֲלוֹת
+הָאֱמֶת לֹא מִשְׁתַּנָּה לֹא בְּכִשָּׁלוֹן וְלֹא בְּהַצְלָחוֹת
+אֲנִי עֲדַיִן לֹא שָׁם אֲבָל אֶת הָאֱמֶת לֹא אֶעֱזֹב
+
+אֲנִי עֲדַיִן לֹא שָׁם אֲבָל אֶת הָאֱמֶת לֹא אֶעֱזֹב`,
+  lyrics_en:`I know the truth, I know where to go,
+but my legs are still heavy, and I'm still learning to walk.
+There's lead in my feet and the sky is calling me.
+I spread my wings and fall on my knees again.
+
+I need to change. The truth doesn't change.
+Even if I fell again this time, tomorrow I'll try again.
+
+The truth doesn't change, only I need to change.
+A thousand times I'll still fall, a thousand times I'll try to rise.
+The truth doesn't change — not in failure, not in success.
+I'm still not there, but I won't abandon the truth.
+
+I've already gotten used to myself, to the habits that won't let go of me,
+to the old excuses, to the voices that soothe me.
+It's so easy to say "this is just who I am,"
+but I won't lower the bar just to make myself comfortable.
+
+I need to change. The truth doesn't change.
+Even if I fell again this time, tomorrow I'll try again.
+
+The truth doesn't change, only I need to change.
+A thousand times I'll still fall, a thousand times I'll try to rise.
+The truth doesn't change — not in failure, not in success.
+I'm still not there, but I won't abandon the truth.
+
+Even when I fall, the truth stays standing.
+It never asked me to be perfect — only not to abandon the path.
+
+I'll fall again, I'll get up again, I'll fail again, I'll come back again.
+
+And on that final day, when I look back,
+better to have failed and lived with the light,
+better to have failed and lived in truth,
+than to have succeeded at everything and lived inside a lie.
+
+The truth doesn't change, only I need to change.
+A thousand times I'll still fall, a thousand times I'll try to rise.
+The truth doesn't change — not in failure, not in success.
+I'm still not there, but I won't abandon the truth.
+
+I'm still not there, but I won't abandon the truth.`,
+  audio:""
+},
+{
+  title_he:"רְפָאֵנוּ", title_translit:"Refaeinu",
+  categories:["Faith","Healing"], language:"Hebrew", length:"3:50",
+  about:"[Draft — personalize] For everyone fighting something invisible — a prayer for real, full healing, not just getting by.",
+  lyrics_he:`יֵשׁ עֶצֶם שֶׁנִּשְׁבְּרָה וְיֵשׁ לֵב שֶׁנִּשְׁבַּר
+יֵשׁ מִי שֶׁנִּלְחָם כָּל בֹּקֶר בְּכְאֵב שֶׁלֹּא נִגְמַר
+יֵשׁ מִי שֶׁמְּחַכֶּה לִתְשׁוּבָה וּמְפַחֵד מִמַּה שֶׁתָּבוֹא
+יֵשׁ מִי שֶׁרַק רוֹצֶה לָקוּם לְיוֹם בְּלִי פַּחַד וּבְלִי מוֹרָא
+
+כָּל מַכְאוֹב כָּל מַחֲלָה כָּל לֵב שֶׁמְּבַקֵּשׁ רְפוּאָה
+אַתָּה רוֹאֶה מַה שֶׁאֵין אִישׁ רוֹאֶה אַתָּה יָכוֹל לַעֲשׂוֹת אוֹתָנוּ שְׁלֵמִים
+
+רְפָאֵנוּ הַשֵּׁם וְנֵרָפֵא הוֹשִׁיעֵנוּ וְנִוָּשֵׁעָה
+וְהַעֲלֵה אֲרוּכָה לְכָל תַּחֲלוּאֵינוּ וּלְכָל מַכְאוֹבֵינוּ כִּי תְהִלָּתֵנוּ אָתָּה
+
+יֵשׁ מִי שֶׁקָּם עִם כְּאֵב כָּל יוֹם וְכָל צַעַד הוּא מִלְחָמָה
+יֵשׁ מִי שֶׁחַי עִם שָׁעוֹן וְעִם גְּזֵרָה שֶׁלֹּא נֶעֶלְמָה
+יֵשׁ מִי שֶׁמַּסְתִּיר אֶת הַכֹּל מֵאַחוֹרֵי חִיּוּךְ שָׁקֵט
+יֵשׁ מִי שֶׁרַק רוֹצֶה לַעֲלוֹת בַּמַּדְרֵגוֹת בְּלִי לְהִתְמוֹטֵט
+
+כָּל מַכְאוֹב כָּל מַחֲלָה כָּל לֵב שֶׁמְּבַקֵּשׁ רְפוּאָה
+אַתָּה רוֹאֶה מַה שֶׁאֵין אִישׁ רוֹאֶה אַתָּה יָכוֹל לַעֲשׂוֹת אוֹתָנוּ שְׁלֵמִים
+
+רְפָאֵנוּ הַשֵּׁם וְנֵרָפֵא הוֹשִׁיעֵנוּ וְנִוָּשֵׁעָה
+וְהַעֲלֵה אֲרוּכָה לְכָל תַּחֲלוּאֵינוּ וּלְכָל מַכְאוֹבֵינוּ כִּי תְהִלָּתֵנוּ אָתָּה
+
+לֹא רַק שֶׁהַפֶּצַע יִסָּגֵר לֹא רַק שֶׁהַכְּאֵב יַעֲבֹר
+תֵּן לָנוּ לָקוּם בְּכֹחַ תֵּן לָנוּ לִצְחֹק וְלִזְכֹּר
+תֵּן לַיְלָדִים לָרוּץ תֵּן לַיְּגֵעִים לַעֲמֹד
+תֵּן לְעַמְּךָ לָקוּם שְׁלֵמִים וּלְהַרְגִּישׁ אֶת הַחַיִּים מְאֹד
+
+רְפָאֵנוּ הַשֵּׁם וְנֵרָפֵא הוֹשִׁיעֵנוּ וְנִוָּשֵׁעָה
+וְהַעֲלֵה אֲרוּכָה לְכָל תַּחֲלוּאֵינוּ וּלְכָל מַכְאוֹבֵינוּ כִּי תְהִלָּתֵנוּ אָתָּה
+
+תֵּן לְעַמְּךָ לָקוּם שׁוּב בְּרִיאִים וַחֲזָקִים
+תֵּן לַצְּחוֹק לְמַלֵּא אֶת הַבָּתִּים תֵּן לַחַיִּים לַחֲזֹר לַפָּנִים
+
+כִּי קֵל מֶלֶך רוֹפֵא נֶאֱמָן וְרַחֲמָן אָתָּה`,
+  lyrics_en:`There's a bone that broke, and there's a heart that broke.
+There's someone fighting every morning against pain that never ends.
+There's someone waiting for results, afraid of what's coming.
+There's someone who just wants to get up to a day without fear.
+
+Every ache, every illness, every heart asking for healing —
+You see what no one else sees. You can make us whole again.
+
+Heal us, Hashem, and we will be healed. Save us, and we will be saved.
+Bring complete healing to all our sicknesses and all our pains, for You are our praise.
+
+There's someone who gets up with pain every day, and every step is a battle.
+There's someone living by the clock, with a diagnosis that hasn't gone away.
+There's someone hiding it all behind a quiet smile.
+There's someone who just wants to climb the stairs without collapsing.
+
+Every ache, every illness, every heart asking for healing —
+You see what no one else sees. You can make us whole again.
+
+Heal us, Hashem, and we will be healed. Save us, and we will be saved.
+Bring complete healing to all our sicknesses and all our pains, for You are our praise.
+
+Not just that the wound closes, not just that the pain passes —
+let us rise up with strength, let us laugh and remember.
+Let the children run, let the weary stand.
+Let Your people rise whole and truly feel alive.
+
+Heal us, Hashem, and we will be healed. Save us, and we will be saved.
+Bring complete healing to all our sicknesses and all our pains, for You are our praise.
+
+Let Your people rise again, healthy and strong.
+Let laughter fill the homes, let life return to their faces.
+
+For God is a faithful, merciful Healer and King.`,
+  audio:""
+},
+{
+  title_he:"מָלְאָה הָאָרֶץ דֵּעָה", title_translit:"Mal'ah Ha'aretz Deah",
+  categories:["Hope","Faith"], language:"Hebrew", length:"4:00",
+  about:"[Draft — personalize] A world confused about right and wrong, and the promise that one day everything will finally make sense — hopeful, not heavy.",
+  lyrics_he:`יֵשׁ עוֹלָם שֶׁמִּתְבַּלְבֵּל וְלֹא יוֹדֵעַ מַה לִרְאוֹת
+קוֹרֵא לַחֹשֶׁךְ אוֹר גָּדוֹל וְלָאוֹר קוֹרֵא חֲלוֹמוֹת
+שָׁחֹר נִקְרָא לָבָן וְלָבָן נִקְרָא שָׁחֹר
+וַאֲנַחְנוּ מְחַכִּים שֶׁיִּפָּתַח שַׁעַר הָאוֹר
+
+וְאָז נִרְאֶה מַה שֶׁלֹּא רָאִינוּ וְאָז נֵדַע שֶׁלֹּא הָיִינוּ לְבַד
+
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+
+אַלְפַּיִם שָׁנָה הָלַכְנוּ עִם דְּמָעוֹת בַּתְּפִלָּה
+שָׁאַלְנוּ לָמָּה וְעַד מָתַי וְהַלֵּב לֹא מָצָא מִלָּה
+כַּמָּה לֵילוֹת עָבַרְנוּ כַּמָּה דְּרָכִים בְּלִי אוֹר
+אַךְ בְּתוֹךְ כָּל דִּמְעָה הָיָה רַחֲמִים גָּדוֹל
+
+וְאָז נִרְאֶה מַה שֶׁלֹּא רָאִינוּ וְאָז נוֹדֶה עַל כָּל הַדֶּרֶךְ יַחַד
+
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+
+וְהַיָּם שֶׁל דְּמָעוֹת שֶׁחָשַׁבְנוּ שֶׁבָּא לְהַטְבִּיעַ
+יִתְגַּלֶּה כְּיַם רַחֲמִים שֶׁבָּא אוֹתָנוּ לְהַחֲיוֹת
+וְכָל מַה שֶׁהָיָה נִסְתָּר יִהְיֶה בָּהִיר וְטוֹב
+וְנַעֲמֹד מְלֵאִים תּוֹדָה כִּי הַשֵּׁם הָיָה קָרוֹב
+
+עַל כָּל דִּמְעָה עַל כָּל תְּפִלָּה עַל כָּל לַיְלָה שֶׁהָיָה נִרְאֶה אָרֹךְ
+עַל כָּל הַדֶּרֶךְ עַל כָּל הַחֶסֶד עַל הָרַחֲמִים שֶׁלֹּא יָדַעְנוּ לִרְאוֹת
+
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים
+
+כַּמַּיִם לַיָּם מְכַסִּים כִּי מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם`,
+  lyrics_en:`There's a world that's confused, that doesn't know what to look at,
+calling darkness a great light, and calling light a dream.
+Black is called white, white is called black,
+and we're waiting for the gate of light to open.
+
+And then we'll see what we never saw, and then we'll know we were never alone.
+
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+
+Two thousand years we walked with tears in prayer.
+We asked why, and until when, and the heart found no words.
+So many nights we passed through, so many roads without light —
+but inside every tear there was great mercy.
+
+And then we'll see what we never saw, and then we'll give thanks for the whole road together.
+
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+
+And the sea of tears we thought had come to drown us
+will reveal itself as a sea of mercy that came to bring us back to life.
+And everything that was hidden will become clear and good,
+and we'll stand full of gratitude, because God was near.
+
+For every tear, for every prayer, for every night that seemed so long,
+for the whole road, for all the kindness, for the mercy we didn't know how to see.
+
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+For the earth will be filled with knowledge of God, as the waters cover the sea.
+
+As the waters cover the sea, for the earth will be filled with knowledge of God.`,
+  audio:""
+},
+{
+  title_he:"בִּשְׁבִילִי", title_translit:"Bishvili",
+  categories:["Gratitude","Wonder"], language:"Hebrew", length:"3:40",
+  about:"[Draft — personalize] A children's-choir feel built on 'the world was created for my sake' — every blade of grass has its own mazal telling it to grow.",
+  lyrics_he:`הַמְשַׁלֵּחַ מַעְיָנִים בַּנְּחָלִים בֵּין הָרִים יְהַלֵּכוּ
+טִפָּה יוֹרֶדֶת מִן הַשָּׁמַיִם וְהָאָרֶץ מְחַיֶּכֶת בַּשְּׂדֵה
+רוּחַ עוֹבֶרֶת בֵּין הָעֵצִים וְהָעָלִים מְלַחֲשִׁים שִׁירָה
+אֶבֶן בַּדֶּרֶךְ צֵל מִן הַסֶּלַע וְהַכֹּל מַרְאֶה אוֹתְךָ
+
+וְאִם אֶפְתַּח אֶת עֵינַי אֶרְאֶה אוֹתְךָ בְּכָל פְּרָט
+בְּהָר וּבְנַחַל בְּרוּחַ קַלָּה הַכֹּל לוֹחֵשׁ אֵין עוֹד מִלְּבַדּוֹ
+
+מָה רַבּוּ מַעֲשֶׂיךָ הַשֵּׁם כֻּלָּם בְּחָכְמָה עָשִׂיתָ
+מָלְאָה הָאָרֶץ קִנְיָנֶךָ מָה רַבּוּ מַעֲשֶׂיךָ הַשֵּׁם
+
+עֲלֵיהֶם עוֹף הַשָּׁמַיִם יִשְׁכּוֹן מִבֵּין עֳפָאיִם יִתְּנוּ קוֹל
+צִפּוֹר קְטַנָּה עַל עָנָף שֶׁל בֹּקֶר שָׁרָה לְךָ בְּלִי מִלִּים
+הָרִים הַגְּבֹהִים לַיְּעֵלִים סְלָעִים מַחְסֶה לַשְׁפַנִּים
+כָּל מָקוֹם וְכָל בְּרִיאָה יֵשׁ לָהּ דֶּרֶךְ וְיֵשׁ לָהּ שִׁירָה
+
+וְאִם אֶפְתַּח אֶת עֵינַי אֶרְאֶה אוֹתְךָ בְּכָל פְּרָט
+בְּצֵל וּבְשֶׁמֶשׁ בְּקוֹל צִפּוֹר הַכֹּל מֵאִיר אֶת כְּבוֹדְךָ
+
+מָה רַבּוּ מַעֲשֶׂיךָ הַשֵּׁם כֻּלָּם בְּחָכְמָה עָשִׂיתָ
+מָלְאָה הָאָרֶץ קִנְיָנֶךָ מָה רַבּוּ מַעֲשֶׂיךָ הַשֵּׁם
+
+לְפִיכָךְ כָּל אֶחָד וְאֶחָד חַיָּב לוֹמַר בִּשְׁבִילִי נִבְרָא הָעוֹלָם
+בִּשְׁבִילִי לֹא לְבַדִּי בִּשְׁבִילִי לִרְאוֹת אוֹתְךָ
+כָּל מַה שֶּׁבָּרָא הַקָּדוֹשׁ בָּרוּךְ הוּא בְּעוֹלָמוֹ לֹא בְרָאוֹ אֶלָּא לִכְבוֹדוֹ
+
+אֵין לְךָ כָּל עֵשֶׂב וָעֵשֶׂב שֶׁאֵין לוֹ מַזָּל בָּרָקִיעַ
+שֶׁמַּכֶּה אוֹתוֹ וְאוֹמֵר לוֹ גְּדַל גְּדַל
+
+וְגַם לִי הָעוֹלָם לוֹחֵשׁ בְּכָל יוֹם גְּדַל וּרְאֵה אֶת כְּבוֹד הַשֵּׁם
+פְּתַח עֵינֶיךָ פְּתַח לִבְּךָ כָּל הָעוֹלָם קוֹרֵא לְךָ`,
+  lyrics_en:`He who sends springs into the streams, they flow between the mountains.
+A drop falls from the sky and the earth smiles in the field.
+Wind passes between the trees and the leaves whisper a song.
+A stone on the path, shade from the rock — and everything shows You.
+
+And if I open my eyes I'll see You in every detail,
+in mountain and stream, in a light breeze — everything whispers there's nothing else.
+
+How great are Your works, God, You made them all with wisdom.
+The earth is full of Your possessions. How great are Your works, God.
+
+Above them the birds of the sky dwell, from among the branches they give voice.
+A little bird on a morning branch sings to You without words.
+The high mountains for the ibex, rocks a shelter for the rabbits.
+Every place and every creature has its own path and its own song.
+
+And if I open my eyes I'll see You in every detail,
+in shade and sun, in a bird's voice — everything shines with Your glory.
+
+How great are Your works, God, You made them all with wisdom.
+The earth is full of Your possessions. How great are Your works, God.
+
+Therefore every single person must say: the world was created for my sake.
+For my sake — not alone, for my sake — to see You.
+Everything the Holy One created in His world, He created only for His glory.
+
+There isn't a single blade of grass that doesn't have its own star in the sky
+that strikes it and tells it: grow, grow.
+
+And the world whispers to me too, every day: grow, and see the glory of God.
+Open your eyes, open your heart — the whole world is calling you.`,
+  audio:""
+},
+{
+  title_he:"רֹאשׁ חֹדֶשׁ", title_translit:"Rosh Chodesh",
+  categories:["Renewal","Hope"], language:"Hebrew", length:"4:05",
+  about:"[Draft — personalize] The moon disappears for a moment and comes back — renewal, and a nation that also knows how to disappear for a while and return.",
+  lyrics_he:`הַלְּבָנָה נֶעֱלֶמֶת וְהַלַּיְלָה נִשְׁאָר רֵיק
+אֲבָל בַּשָּׁמַיִם יוֹדְעִים שֶׁהָאוֹר עוֹד מַחֲזִיק
+רַק רֶגַע הִיא נִסְתֶּרֶת רַק רֶגַע בְּלִי קוֹל
+וּמִתּוֹךְ הַחֹשֶׁךְ הִיא חוֹזֶרֶת לִגְדֹּל
+
+וְגַם אֲנַחְנוּ כָּךְ קְטַנִּים בַּלַּיְלָה
+אֲבָל הַבְּרִית עוֹד חַיָּה וְהַדֶּרֶךְ עוֹד עוֹלָה
+
+וְלַלְּבָנָה אָמַר שֶׁתִּתְחַדֵּשׁ עֲטֶרֶת תִּפְאֶרֶת לַעֲמוּסֵי בָטֶן
+שֶׁהֵם עֲתִידִים לְהִתְחַדֵּשׁ כְּמוֹתָהּ וּלְפָאֵר לְיוֹצְרָם עַל שֵׁם כְּבוֹד מַלְכוּתוֹ
+
+רֹאשׁ חֹדֶשׁ מְלַחֵשׁ לָנוּ שֶׁשּׁוּם אוֹר לֹא נֶאֱבַד
+גַּם אִם הַבַּיִת רָחוֹק הַלֵּב עוֹד עוֹמֵד לְבַד
+מִצִּיּוֹן עוֹד קוֹרֵא לָנוּ קוֹל עָתִיק וְקוֹל חָדָשׁ
+לֹא רַק לְהַתְחִיל מֵחָדָשׁ אֶלָּא לָשׁוּב אֶל הַמִּקְדָּשׁ
+
+כִּי מַה שֶׁהָיָה שֶׁלָּנוּ לֹא נִלְקַח לְעוֹלָם
+וּמַה שֶׁעֲדַיִן נֶחְסָר עוֹד יָשׁוּב בְּרַחֲמִים שְׁלֵמִים
+
+וְלַלְּבָנָה אָמַר שֶׁתִּתְחַדֵּשׁ עֲטֶרֶת תִּפְאֶרֶת לַעֲמוּסֵי בָטֶן
+שֶׁהֵם עֲתִידִים לְהִתְחַדֵּשׁ כְּמוֹתָהּ וּלְפָאֵר לְיוֹצְרָם עַל שֵׁם כְּבוֹד מַלְכוּתוֹ
+
+מִזְבֵּחַ חָדָשׁ בְּצִיּוֹן תָּכִין וְעוֹלַת רֹאשׁ חֹדֶשׁ נַעֲלֶה עָלָיו
+אַהֲבַת עוֹלָם תָּבִיא לָהֶם וּבְרִית אָבוֹת לַבָּנִים תִּזְכֹּר
+
+תָּבִיא אוֹתָנוּ בְּרַחֲמִים אֶל הַקֶּשֶׁר שֶׁלֹּא נִפְסַק
+אֶל הָאוֹר שֶׁל רֹאשׁ חֹדֶשׁ אֶל הַבַּיִת שֶׁעוֹד מְחַכֶּה
+לֹא אֶל חֲלוֹם רָחוֹק וְלֹא אֶל זִכָּרוֹן יָשָׁן
+אֶל הֶעָתִיד שֶׁהִבְטַחְתָּ אֶל הָאַהֲבָה שֶׁהָיְתָה כָּאן
+
+וְלַלְּבָנָה אָמַר שֶׁתִּתְחַדֵּשׁ עֲטֶרֶת תִּפְאֶרֶת לַעֲמוּסֵי בָטֶן
+שֶׁהֵם עֲתִידִים לְהִתְחַדֵּשׁ כְּמוֹתָהּ וּלְפָאֵר לְיוֹצְרָם עַל שֵׁם כְּבוֹד מַלְכוּתוֹ`,
+  lyrics_en:`The moon disappears and the night stays empty,
+but in the heavens they know the light still holds.
+Just a moment she's hidden, just a moment without a sound,
+and out of the darkness she returns to grow again.
+
+And we're the same way — small in the night —
+but the covenant is still alive, and the road still climbs.
+
+And to the moon He said: renew yourself, a crown of glory for those He carried from the womb,
+for they too are destined to be renewed like her, and to glorify their Maker for His glorious kingship.
+
+Rosh Chodesh whispers to us that no light is ever truly lost.
+Even if home feels far, the heart still stands, not alone.
+From Zion a voice still calls us, an ancient voice and a new voice —
+not just to start over, but to return to the Mikdash.
+
+Because what was once ours is never taken away forever,
+and whatever is still missing will yet return in complete mercy.
+
+And to the moon He said: renew yourself, a crown of glory for those He carried from the womb,
+for they too are destined to be renewed like her, and to glorify their Maker for His glorious kingship.
+
+Prepare a new altar in Zion, and let us bring up the Rosh Chodesh offering upon it.
+Bring them everlasting love, and remember the covenant of the fathers for the children.
+
+Bring us in mercy to the bond that was never broken,
+to the light of Rosh Chodesh, to the home that's still waiting —
+not to some distant dream, not to an old memory,
+but to the future You promised, to the love that was always here.
+
+And to the moon He said: renew yourself, a crown of glory for those He carried from the womb,
+for they too are destined to be renewed like her, and to glorify their Maker for His glorious kingship.`,
+  audio:""
+},
+{
+  title_he:"גֶּשֶׁם וְטַל", title_translit:"Geshem V'Tal",
+  categories:["Hope","Gratitude"], language:"Hebrew", length:"4:20",
+  about:"[Draft — personalize] Rain fixes what's outside; dew fills what's inside — the difference between relief and actual joy.",
+  lyrics_he:`גֶּשֶׁם בִּקַּשְׁנוּ לֶחֶם וְשָׁלוֹם בַּיִת וּפַרְנָסָה אוֹר בְּכָל יוֹם
+שֶׁיִּהְיֶה לָנוּ שֶׁקֶט שֶׁיִּהְיֶה לָנוּ דַּי שֶׁהַלֵּב יָנוּחַ וְלֹא יִשְׁאַל עַד מָתַי
+
+אַתָּה שׁוֹמֵעַ אֶת הַכְּאֵב שֶׁבַּקּוֹל אֲבָל אַתָּה יוֹדֵעַ מַה מְמַלֵּא אֶת הַכֹּל
+
+גֶּשֶׁם לָאָרֶץ טַל לַנְּשָׁמָה גֶּשֶׁם לְהָקֵל טַל לַשִּׂמְחָה
+גֶּשֶׁם מִבַּחוּץ טַל בִּפְנִים אֶהְיֶה כַטַּל לְיִשְׂרָאֵל לְעוֹלָם לְעוֹלָם לְעוֹלָם וָעֶד
+
+חָשַׁבְנוּ עוֹד קְצָת וְנִהְיֶה שְׂמֵחִים עוֹד כֶּסֶף עוֹד שֶׁקֶט עוֹד יָמִים טוֹבִים
+אֲבָל גֶּשֶׁם הוּא לְבוּשׁ עַל הַקֹּר וְהַדְּאָגָה הוּא מֵסִיר אֶת הַמַּכְשׁוֹל אַךְ לֹא מְמַלֵּא נְשָׁמָה
+
+מַה שֶׁבָּא מִבַּחוּץ פֹּותֵחַ שְׁעָרִים אֲבָל רַק טַל מִלְמַעְלָה מְמַלֵּא אֶת הַחַיִּים
+
+גֶּשֶׁם לָאָרֶץ טַל לַנְּשָׁמָה גֶּשֶׁם לְהָקֵל טַל לַשִּׂמְחָה
+גֶּשֶׁם מִבַּחוּץ טַל בִּפְנִים אֶהְיֶה כַטַּל לְיִשְׂרָאֵל לְעוֹלָם לְעוֹלָם לְעוֹלָם וָעֶד
+
+וְיָבוֹא כַגֶּשֶׁם לָנוּ כָּךְ בִּקְּשָׁה יִשְׂרָאֵל דָּבָר שֶׁפְּעָמִים רוֹצִים וּפְעָמִים אֵינוֹ שׁוֹאֵל
+וְאַתָּה עָנִיתָ בְּרַחֲמִים גְּדוֹלִים אֶהְיֶה כַטַּל לְיִשְׂרָאֵל לְעוֹלָמִים
+
+טַל שֶׁל תְּחִיָּה טַל שֶׁל נְשָׁמָה טַל שֶׁל קִרְבָה טַל שֶׁל שִׂמְחָה
+טַל בָּעוֹלָם הַזֶּה טַל לָעוֹלָם הַבָּא טַל שֶׁמְּמַלֵּא אוֹתִי מִבַּחוּץ וּמִבִּפְנִימָה
+
+גֶּשֶׁם לָאָרֶץ טַל לַנְּשָׁמָה גֶּשֶׁם לְהָקֵל טַל לַשִּׂמְחָה
+גֶּשֶׁם מִבַּחוּץ טַל בִּפְנִים אֶהְיֶה כַטַּל לְיִשְׂרָאֵל לְעוֹלָם לְעוֹלָם לְעוֹלָם וָעֶד
+
+אֶהְיֶה כַטַּל לְיִשְׂרָאֵל לְעוֹלָם לְעוֹלָם לְעוֹלָם וָעֶד לְעוֹלְמֵי עוֹלָמִים`,
+  lyrics_en:`We asked for rain — bread and peace, a home and a livelihood, light every day.
+That we'd have quiet, that we'd have enough, that the heart could rest and stop asking "until when."
+
+You hear the pain in the voice, but You know what actually fills everything.
+
+Rain for the earth, dew for the soul. Rain to ease things, dew for joy.
+Rain from the outside, dew on the inside. I will be like dew to Israel, forever, forever, forever and ever.
+
+We thought a little more and we'd finally be happy — a little more money, a little more quiet, a few more good days.
+But rain is only a covering over the cold and the worry. It removes the obstacle, but it doesn't fill the soul.
+
+What comes from outside opens gates, but only dew from above actually fills a life.
+
+Rain for the earth, dew for the soul. Rain to ease things, dew for joy.
+Rain from the outside, dew on the inside. I will be like dew to Israel, forever, forever, forever and ever.
+
+And let it come like rain to us, so Israel asked — something we sometimes want and sometimes don't even ask for.
+And You answered with great mercy: I will be like dew to Israel forever.
+
+Dew of revival, dew of the soul, dew of closeness, dew of joy.
+Dew in this world, dew for the World to Come — dew that fills me, outside and in.
+
+Rain for the earth, dew for the soul. Rain to ease things, dew for joy.
+Rain from the outside, dew on the inside. I will be like dew to Israel, forever, forever, forever and ever.
+
+I will be like dew to Israel, forever, forever, forever and ever, for all eternity.`,
+  audio:""
+}
+];
+
+/* ---------------------------------------------------------
+  State + rendering
+--------------------------------------------------------- */
+const mainEl = document.getElementById('main');
+const catPillsEl = document.getElementById('cat-pills');
+const searchEl = document.getElementById('search');
+const catRadioSelect = document.getElementById('cat-radio-select');
+let activeCat = 'all';
+let searchTerm = '';
+let currentIdx = null;
+let currentLangView = 'he';
+let mode = 'manual'; // manual | radio | catRadio
+let radioQueue = [];
+let radioPos = 0;
+let idleTimer = null;
+
+function allCategories(){
+  const set = new Set();
+  SONGS.forEach(s => s.categories.forEach(c => set.add(c)));
+  return Array.from(set);
+}
+
+function renderCatPills(){
+  let html = `<button class="filter-pill ${activeCat==='all'?'active':''}" data-cat="all">All songs</button>`;
+  allCategories().forEach(c => {
+    html += `<button class="filter-pill ${activeCat===c?'active':''}" data-cat="${c}">${c}</button>`;
+  });
+  catPillsEl.innerHTML = html;
+  catPillsEl.querySelectorAll('.filter-pill').forEach(btn => {
+    btn.addEventListener('click', () => { activeCat = btn.dataset.cat; renderList(); });
+  });
+
+  catRadioSelect.innerHTML = `<option value="">▶ Category radio…</option>` +
+    allCategories().map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function songMatches(s){
+  const inCat = activeCat === 'all' || s.categories.includes(activeCat);
+  if(!inCat) return false;
+  const term = searchTerm.trim().toLowerCase();
+  if(!term) return true;
+  const hay = (s.title_translit + ' ' + s.title_he + ' ' + s.categories.join(' ') + ' ' + s.about).toLowerCase();
+  return hay.includes(term);
+}
+
+function renderList(){
+  const filtered = SONGS.map((s,i)=>({...s, idx:i})).filter(songMatches);
+  if(filtered.length === 0){
+    mainEl.innerHTML = `<div class="empty">Nothing matches. Try a different word or clear the filter.</div>`;
+    return;
+  }
+  let html = '';
+  filtered.forEach(s => {
+    const isPlaying = currentIdx === s.idx;
+    html += `
+      <div class="song-row ${isPlaying?'playing':''}" tabindex="0" data-idx="${s.idx}" role="button">
+        <span class="song-num">${String(s.idx+1).padStart(2,'0')}</span>
+        <span>
+          <div class="row-title-he">${s.title_he}</div>
+          <div class="row-title-translit">${s.title_translit}</div>
+        </span>
+        <span class="row-pills">
+          ${s.categories.map(c=>`<span class="pill cat">${c}</span>`).join('')}
+          <span class="pill lang">${s.language}</span>
+          <span class="pill len">${s.length}</span>
+        </span>
+      </div>`;
+  });
+  mainEl.innerHTML = html;
+  mainEl.querySelectorAll('.song-row').forEach(row => {
+    const idx = Number(row.dataset.idx);
+    row.addEventListener('click', () => { mode = 'manual'; loadSong(idx); });
+  });
+}
+
+/* ---------------------------------------------------------
+  Jukebox now-playing panel
+--------------------------------------------------------- */
+const nowPanel = document.getElementById('now-panel');
+const audioEl = document.getElementById('audio-el');
+const playBtn = document.getElementById('play-btn');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const radioBtn = document.getElementById('radio-btn');
+const micro = document.getElementById('micrography');
+const grille = document.getElementById('grille');
+let animId = null;
+let t = 0;
+
+// build speaker grille dots once
+(function initGrille(){
+  let html = '';
+  for(let i=0;i<24;i++) html += '<span></span>';
+  grille.innerHTML = html;
+})();
+
+function loadSong(idx){
+  currentIdx = idx;
+  currentLangView = 'he';
+  renderNowPanel();
+  renderList();
+  playCurrent();
+  document.querySelector('.jukebox-wrap').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function renderNowPanel(){
+  if(currentIdx === null){
+    nowPanel.innerHTML = `<div class="now-empty">Pick a song below, hit Radio, or spin a category to start listening.</div>`;
+    return;
+  }
+  const s = SONGS[currentIdx];
+  nowPanel.innerHTML = `
+    <div class="now-head">
+      <div>
+        <div class="now-title-he">${s.title_he}</div>
+        <div class="now-title-translit">${s.title_translit}</div>
+        <div class="pills">
+          ${s.categories.map(c=>`<span class="pill cat">${c}</span>`).join('')}
+          <span class="pill lang">${s.language}</span>
+          <span class="pill len">${s.length}</span>
+        </div>
+      </div>
+      <div class="lang-toggle">
+        <button data-lang="he" class="${currentLangView==='he'?'active':''}">עברית</button>
+        <button data-lang="en" class="${currentLangView==='en'?'active':''}">EN</button>
+      </div>
+    </div>
+    <div class="about-box"><span class="lbl">About this song</span>${s.about}</div>
+    <div class="lyrics-panel">
+      <div class="lyrics heb ${currentLangView==='he'?'':'hidden'}">${s.lyrics_he}</div>
+      <div class="lyrics ${currentLangView==='en'?'':'hidden'}">${s.lyrics_en}</div>
+    </div>
+  `;
+  nowPanel.querySelectorAll('.lang-toggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentLangView = btn.dataset.lang;
+      renderNowPanel();
+    });
+  });
+}
+
+function playCurrent(){
+  if(currentIdx === null) return;
+  const s = SONGS[currentIdx];
+  buildMicrography(s.title_he.replace(/\s+/g,''));
+  clearTimeout(idleTimer);
+  if(s.audio){
+    audioEl.src = s.audio;
+    audioEl.play().catch(()=>{});
+    playBtn.textContent = '❚❚';
+    startWave();
+  } else {
+    audioEl.pause();
+    playBtn.textContent = '▶';
+    startWave(true);
+    if(mode !== 'manual'){
+      // demo pacing until real audio is hooked up
+      idleTimer = setTimeout(advanceQueue, 12000);
+    }
+  }
+}
+
+playBtn.addEventListener('click', () => {
+  if(currentIdx === null) return;
+  if(audioEl.paused){
+    if(SONGS[currentIdx].audio) audioEl.play().catch(()=>{});
+    playBtn.textContent = '❚❚';
+    startWave();
+  } else {
+    audioEl.pause();
+    playBtn.textContent = '▶';
+    cancelAnimationFrame(animId);
+    clearTimeout(idleTimer);
+  }
+});
+
+audioEl.addEventListener('ended', () => {
+  if(mode !== 'manual') advanceQueue();
+});
+
+function shuffledIndices(catFilter){
+  let idxs = SONGS.map((s,i)=>i).filter(i => !catFilter || SONGS[i].categories.includes(catFilter));
+  for(let i=idxs.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [idxs[i],idxs[j]]=[idxs[j],idxs[i]];
+  }
+  return idxs;
+}
+
+function advanceQueue(){
+  if(radioQueue.length === 0) return;
+  radioPos = (radioPos+1) % radioQueue.length;
+  loadSong(radioQueue[radioPos]);
+}
+
+radioBtn.addEventListener('click', () => {
+  mode = 'radio';
+  radioQueue = shuffledIndices(null);
+  radioPos = 0;
+  radioBtn.classList.add('active');
+  loadSong(radioQueue[0]);
+});
+
+catRadioSelect.addEventListener('change', (e) => {
+  const cat = e.target.value;
+  if(!cat) return;
+  mode = 'catRadio';
+  radioBtn.classList.remove('active');
+  radioQueue = shuffledIndices(cat);
+  radioPos = 0;
+  if(radioQueue.length) loadSong(radioQueue[0]);
+});
+
+prevBtn.addEventListener('click', () => {
+  if(mode !== 'manual' && radioQueue.length){
+    radioPos = (radioPos-1+radioQueue.length) % radioQueue.length;
+    loadSong(radioQueue[radioPos]);
+  } else if(currentIdx !== null){
+    loadSong((currentIdx-1+SONGS.length) % SONGS.length);
+  }
+});
+nextBtn.addEventListener('click', () => {
+  if(mode !== 'manual' && radioQueue.length){
+    advanceQueue();
+  } else if(currentIdx !== null){
+    loadSong((currentIdx+1) % SONGS.length);
+  }
+});
+
+function buildMicrography(chars){
+  const list = chars.split('');
+  let svg = '';
+  for(let i=0;i<20;i++){
+    const ch = list[i % list.length];
+    const color = WAVE_COLORS[i % WAVE_COLORS.length];
+    svg += `<text data-i="${i}" x="${i*10+5}" y="21" font-size="13" text-anchor="middle" fill="${color}">${ch}</text>`;
+  }
+  micro.innerHTML = svg;
+}
+
+function startWave(idle){
+  cancelAnimationFrame(animId);
+  const texts = micro.querySelectorAll('text');
+  function frame(){
+    t += idle ? 0.03 : 0.09;
+    texts.forEach((el, i) => {
+      const amp = idle ? 4 : 12;
+      const y = 21 + Math.sin(t + i*0.5) * amp * 0.4;
+      const scale = 1 + Math.sin(t*1.3 + i*0.4) * (idle ? 0.05 : 0.18);
+      el.setAttribute('y', y.toFixed(1));
+      el.setAttribute('transform', `scale(${scale.toFixed(2)})`);
+      el.setAttribute('transform-origin', `${(i*10+5)} 21`);
+    });
+    animId = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+searchEl.addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
+
+renderCatPills();
+renderList();
+renderNowPanel();
+</script>
+</body>
+</html>
