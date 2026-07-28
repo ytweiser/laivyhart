@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laivy Hart — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Righteous&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --cream:#FBF3E7; --cream-2:#F3E7D3; --charcoal:#241F1C; --charcoal-dim:#6E655C;
+    --coral:#E8543E; --coral-dim:#C7402C; --turquoise:#2A9D8F; --mustard:#E8A93A;
+    --line:rgba(36,31,28,0.12); --line-strong:rgba(36,31,28,0.26);
+    --display:'Righteous',cursive; --heb:'Frank Ruhl Libre',serif; --body:'Inter',sans-serif; --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--cream); color:var(--charcoal); font-family:var(--body); min-height:100vh;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.1rem 5vw; border-bottom:3px solid var(--charcoal); flex-wrap:wrap; gap:0.8rem;
+  }
+  .wordmark{font-family:var(--display); font-size:1.4rem;}
+  .wordmark .hl-ai{color:var(--coral);} .wordmark .hl-art{color:var(--turquoise);}
+  .admin-tag{font-family:var(--mono); font-size:0.7rem; color:var(--charcoal-dim);}
+  .logout-btn{
+    font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:0.4rem 0.8rem; border-radius:20px; border:1.5px solid var(--line-strong);
+    background:transparent; color:var(--charcoal-dim); cursor:pointer;
+  }
+  .logout-btn:hover{border-color:var(--coral-dim); color:var(--charcoal);}
+
+  /* ---------- Login ---------- */
+  .login-wrap{
+    max-width:420px; margin:14vh auto; padding:2rem; background:#fff;
+    border:3px solid var(--charcoal); border-radius:18px; text-align:center;
+  }
+  .login-wrap h1{font-family:var(--display); font-size:1.6rem; margin:0 0 0.4rem;}
+  .login-wrap p{color:var(--charcoal-dim); font-size:0.92rem; margin-bottom:1.4rem;}
+  .login-wrap input{
+    width:100%; padding:0.7rem 0.9rem; border:2px solid var(--line-strong); border-radius:10px;
+    font-family:var(--body); font-size:1rem; margin-bottom:0.8rem;
+  }
+  .login-wrap button{
+    width:100%; padding:0.75rem; border-radius:10px; border:2px solid var(--charcoal);
+    background:var(--mustard); color:var(--charcoal); font-family:var(--mono); font-size:0.8rem;
+    text-transform:uppercase; letter-spacing:0.05em; cursor:pointer;
+  }
+  .login-wrap button:hover{background:var(--coral); color:#fff;}
+  .login-status{margin-top:1rem; font-family:var(--mono); font-size:0.78rem; color:var(--turquoise);}
+
+  /* ---------- Admin layout ---------- */
+  .admin-layout{display:grid; grid-template-columns:300px 1fr; min-height:calc(100vh - 70px);}
+  @media (max-width:860px){ .admin-layout{grid-template-columns:1fr;} }
+
+  .song-list{border-right:2px solid var(--charcoal); padding:1.2rem; overflow-y:auto;}
+  .new-song-btn{
+    width:100%; padding:0.7rem; margin-bottom:1rem; border-radius:10px; border:2px solid var(--charcoal);
+    background:var(--turquoise); color:#fff; font-family:var(--mono); font-size:0.75rem;
+    text-transform:uppercase; letter-spacing:0.05em; cursor:pointer;
+  }
+  .list-item{
+    padding:0.7rem 0.6rem; border-bottom:1px solid var(--line); cursor:pointer; border-radius:8px;
+  }
+  .list-item:hover{background:var(--cream-2);}
+  .list-item.active{background:var(--cream-2); border-left:4px solid var(--coral);}
+  .list-item .lt-he{font-family:var(--heb); direction:rtl; font-size:1rem;}
+  .list-item .lt-translit{font-family:var(--mono); font-size:0.68rem; color:var(--charcoal-dim);}
+  .list-item .lt-audio{font-size:0.65rem; margin-top:0.2rem;}
+  .lt-audio.has{color:var(--turquoise);} .lt-audio.missing{color:var(--coral-dim);}
+
+  .form-area{padding:2rem 3vw; overflow-y:auto;}
+  .form-area h2{font-family:var(--display); font-size:1.3rem; margin-top:0;}
+  .field{margin-bottom:1.1rem;}
+  .field label{
+    display:block; font-family:var(--mono); font-size:0.68rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--charcoal-dim); margin-bottom:0.35rem;
+  }
+  .field input[type=text], .field select, .field textarea{
+    width:100%; padding:0.6rem 0.8rem; border:2px solid var(--line-strong); border-radius:8px;
+    font-family:var(--body); font-size:0.95rem; background:#fff; color:var(--charcoal);
+  }
+  .field textarea{min-height:110px; resize:vertical; font-family:var(--heb); font-size:1rem;}
+  .field.two-col{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  .cat-checks{display:flex; flex-wrap:wrap; gap:0.5rem;}
+  .cat-check{
+    font-family:var(--mono); font-size:0.7rem; padding:0.35rem 0.7rem; border-radius:20px;
+    border:1.5px solid var(--line-strong); cursor:pointer; user-select:none;
+  }
+  .cat-check.on{background:var(--charcoal); color:#fff; border-color:var(--charcoal);}
+  .add-cat-row{display:flex; gap:0.5rem; margin-top:0.5rem;}
+  .add-cat-row input{flex:1; padding:0.4rem 0.6rem; border:1.5px solid var(--line-strong); border-radius:8px; font-family:var(--body); font-size:0.85rem;}
+  .add-cat-row button{
+    font-family:var(--mono); font-size:0.7rem; padding:0.4rem 0.7rem; border-radius:8px;
+    border:1.5px solid var(--charcoal); background:#fff; cursor:pointer;
+  }
+  .audio-box{
+    padding:1rem; background:var(--cream-2); border-radius:10px; display:flex; align-items:center; gap:1rem; flex-wrap:wrap;
+  }
+  .audio-box .status{font-family:var(--mono); font-size:0.75rem;}
+  .audio-box audio{max-width:220px;}
+  .save-row{display:flex; gap:0.8rem; margin-top:1.6rem; flex-wrap:wrap;}
+  .save-btn{
+    padding:0.8rem 1.6rem; border-radius:10px; border:2px solid var(--charcoal); background:var(--mustard);
+    color:var(--charcoal); font-family:var(--mono); font-size:0.78rem; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;
+  }
+  .save-btn:hover{background:var(--coral); color:#fff;}
+  .delete-btn{
+    padding:0.8rem 1.2rem; border-radius:10px; border:2px solid var(--coral-dim); background:#fff;
+    color:var(--coral-dim); font-family:var(--mono); font-size:0.78rem; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;
+  }
+  .delete-btn:hover{background:var(--coral-dim); color:#fff;}
+  .save-msg{font-family:var(--mono); font-size:0.78rem; margin-top:0.7rem;}
+  .save-msg.ok{color:var(--turquoise);} .save-msg.err{color:var(--coral-dim);}
+  .empty-form{color:var(--charcoal-dim); font-family:var(--mono); font-size:0.85rem; padding:2rem 0;}
+</style>
+</head>
+<body>
+
+<!-- ====================================================
+  CONFIG — fill these in from Supabase Settings > API
+==================================================== -->
+<script>
+  const SUPABASE_URL = "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE";
+  const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_PUBLIC_KEY_HERE";
+</script>
+
+<div class="topbar">
+  <div>
+    <div class="wordmark">L<span class="hl-ai">AI</span>VY H<span class="hl-art">ART</span></div>
+    <div class="admin-tag">admin</div>
+  </div>
+  <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
+</div>
+
+<div id="login-view" class="login-wrap">
+  <h1>Admin login</h1>
+  <p>Enter your email and password.</p>
+  <input type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
+  <input type="password" id="password-input" placeholder="Password" autocomplete="current-password">
+  <button id="send-link-btn">Log in</button>
+  <div class="login-status" id="login-status"></div>
+</div>
+
+<div id="admin-view" class="admin-layout" style="display:none;">
+  <div class="song-list">
+    <button class="new-song-btn" id="new-song-btn">+ New song</button>
+    <div id="list-items"></div>
+  </div>
+  <div class="form-area" id="form-area">
+    <div class="empty-form">Pick a song on the left to edit, or start a new one.</div>
+  </div>
+</div>
+
+<script>
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const KNOWN_CATEGORIES = ["Identity","Unity","Character","Self-Growth","Growth","Faith","Family",
+  "Legacy","Celebration","Wedding","Peace","Relationships","Gratitude","Wonder","Longing",
+  "Motivation","Healing","Hope","Renewal"];
+
+let songs = [];
+let currentSong = null; // null = nothing loaded, {} = new, {...} = existing row
+let pendingAudioFile = null;
+
+/* ---------------------------------------------------------
+  Auth
+--------------------------------------------------------- */
+const loginView = document.getElementById('login-view');
+const adminView = document.getElementById('admin-view');
+const logoutBtn = document.getElementById('logout-btn');
+const loginStatus = document.getElementById('login-status');
+
+document.getElementById('send-link-btn').addEventListener('click', async () => {
+  const email = document.getElementById('email-input').value.trim();
+  const password = document.getElementById('password-input').value;
+  if(!email || !password){ loginStatus.textContent = 'Enter both email and password.'; return; }
+  loginStatus.textContent = 'Logging in...';
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if(error){
+    loginStatus.textContent = 'Error: ' + error.message;
+  } else {
+    loginStatus.textContent = '';
+    checkSession();
+  }
+});
+
+logoutBtn.addEventListener('click', async () => {
+  await supabaseClient.auth.signOut();
+  window.location.reload();
+});
+
+async function checkSession(){
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if(session){
+    loginView.style.display = 'none';
+    adminView.style.display = 'grid';
+    logoutBtn.style.display = 'inline-block';
+    await loadSongs();
+  } else {
+    loginView.style.display = 'block';
+    adminView.style.display = 'none';
+    logoutBtn.style.display = 'none';
+  }
+}
+
+supabaseClient.auth.onAuthStateChange(() => checkSession());
+checkSession();
+
+/* ---------------------------------------------------------
+  Load + render song list
+--------------------------------------------------------- */
+async function loadSongs(){
+  const { data, error } = await supabaseClient.from('songs').select('*').order('title');
+  if(error){ console.error(error); return; }
+  songs = data;
+  renderList();
+}
+
+function renderList(){
+  const el = document.getElementById('list-items');
+  el.innerHTML = songs.map(s => `
+    <div class="list-item ${currentSong && currentSong.id===s.id ? 'active':''}" onclick="window.selectSong('${s.id}')">
+      <div class="lt-he">${s.title || '(untitled)'}</div>
+      <div class="lt-translit">${s.title_translit || ''}</div>
+      <div class="lt-audio ${s.audio_url ? 'has':'missing'}">${s.audio_url ? '♪ audio attached' : '— no audio yet'}</div>
+    </div>
+  `).join('');
+}
+
+window.selectSong = function(id){
+  const song = songs.find(s => s.id === id);
+  if(!song){ console.error('Song not found for id', id); return; }
+  loadIntoForm(song);
+};
+
+document.getElementById('new-song-btn').addEventListener('click', () => {
+  loadIntoForm({
+    title:'', title_translit:'', categories:[], language:'Hebrew',
+    lyrics_original:'', lyrics_translation:'', about:'', audio_url:null
+  });
+});
+
+/* ---------------------------------------------------------
+  Form
+--------------------------------------------------------- */
+function loadIntoForm(song){
+  currentSong = song;
+  pendingAudioFile = null;
+  renderList();
+  renderForm();
+}
+
+function renderForm(){
+  const area = document.getElementById('form-area');
+  if(!currentSong){
+    area.innerHTML = `<div class="empty-form">Pick a song on the left to edit, or start a new one.</div>`;
+    return;
+  }
+  const s = currentSong;
+  const cats = s.categories || [];
+
+  area.innerHTML = `
+    <h2>${s.id ? 'Edit song' : 'New song'}</h2>
+
+    <div class="field two-col">
+      <div>
+        <label>Title</label>
+        <input type="text" id="f-title" value="${escAttr(s.title)}">
+      </div>
+      <div>
+        <label>Transliteration (optional)</label>
+        <input type="text" id="f-translit" value="${escAttr(s.title_translit)}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Language</label>
+      <select id="f-language">
+        <option value="Hebrew" ${s.language==='Hebrew'?'selected':''}>Hebrew</option>
+        <option value="English" ${s.language==='English'?'selected':''}>English</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Categories</label>
+      <div class="cat-checks" id="cat-checks">
+        ${KNOWN_CATEGORIES.map(c => `<span class="cat-check ${cats.includes(c)?'on':''}" data-cat="${c}">${c}</span>`).join('')}
+      </div>
+      <div class="add-cat-row">
+        <input type="text" id="new-cat-input" placeholder="Add a new category...">
+        <button id="add-cat-btn" type="button">Add</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Lyrics (original language)</label>
+      <textarea id="f-lyrics-original">${escHtml(s.lyrics_original)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>English translation (leave blank if the song is already in English)</label>
+      <textarea id="f-lyrics-translation" style="font-family:var(--body); direction:ltr;">${escHtml(s.lyrics_translation)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>About / inspiration / meaning</label>
+      <textarea id="f-about" style="font-family:var(--body); direction:ltr; min-height:80px;">${escHtml(s.about)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>Audio</label>
+      <div class="audio-box">
+        <div class="status" id="audio-status">
+          ${s.audio_url ? 'Audio attached ✓' : 'No audio attached yet'}
+        </div>
+        ${s.audio_url ? `<audio controls src="${s.audio_url}"></audio>` : ''}
+        <input type="file" id="f-audio-file" accept="audio/*">
+      </div>
+    </div>
+
+    <div class="save-row">
+      <button class="save-btn" id="save-btn">Save song</button>
+      ${s.id ? `<button class="delete-btn" id="delete-btn">Delete song</button>` : ''}
+    </div>
+    <div class="save-msg" id="save-msg"></div>
+  `;
+
+  area.querySelectorAll('.cat-check').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('on'));
+  });
+  document.getElementById('add-cat-btn').addEventListener('click', () => {
+    const input = document.getElementById('new-cat-input');
+    const val = input.value.trim();
+    if(!val) return;
+    const chip = document.createElement('span');
+    chip.className = 'cat-check on';
+    chip.dataset.cat = val;
+    chip.textContent = val;
+    chip.addEventListener('click', () => chip.classList.toggle('on'));
+    document.getElementById('cat-checks').appendChild(chip);
+    input.value = '';
+  });
+  document.getElementById('f-audio-file').addEventListener('change', (e) => {
+    pendingAudioFile = e.target.files[0] || null;
+    if(pendingAudioFile){
+      document.getElementById('audio-status').textContent = 'New file selected: ' + pendingAudioFile.name + ' (click Save to upload)';
+    }
+  });
+  document.getElementById('save-btn').addEventListener('click', saveSong);
+  if(s.id){
+    document.getElementById('delete-btn').addEventListener('click', deleteSong);
+  }
+}
+
+function escHtml(str){
+  return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(str){
+  return (str||'').replace(/"/g,'&quot;');
+}
+
+async function saveSong(){
+  const msg = document.getElementById('save-msg');
+  msg.textContent = 'Saving...';
+  msg.className = 'save-msg';
+
+  const selectedCats = Array.from(document.querySelectorAll('.cat-check.on')).map(c => c.dataset.cat);
+
+  const payload = {
+    title: document.getElementById('f-title').value.trim(),
+    title_translit: document.getElementById('f-translit').value.trim() || null,
+    language: document.getElementById('f-language').value,
+    categories: selectedCats,
+    lyrics_original: document.getElementById('f-lyrics-original').value,
+    lyrics_translation: document.getElementById('f-lyrics-translation').value || null,
+    about: document.getElementById('f-about').value || null,
+  };
+
+  // Upload audio first if a new file was chosen
+  if(pendingAudioFile){
+    const safeName = payload.title.toLowerCase()
+      .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') || 'untitled';
+    const path = `${safeName}-${Date.now()}.mp3`;
+    const { error: uploadErr } = await supabaseClient.storage
+      .from('audio')
+      .upload(path, pendingAudioFile, { upsert: true });
+    if(uploadErr){
+      msg.textContent = 'Audio upload failed: ' + uploadErr.message;
+      msg.className = 'save-msg err';
+      return;
+    }
+    const { data: urlData } = supabaseClient.storage.from('audio').getPublicUrl(path);
+    payload.audio_url = urlData.publicUrl;
+  }
+
+  let error;
+  if(currentSong.id){
+    ({ error } = await supabaseClient.from('songs').update(payload).eq('id', currentSong.id));
+  } else {
+    ({ error } = await supabaseClient.from('songs').insert(payload));
+  }
+
+  if(error){
+    msg.textContent = 'Error: ' + error.message;
+    msg.className = 'save-msg err';
+  } else {
+    msg.textContent = 'Saved ✓';
+    msg.className = 'save-msg ok';
+    pendingAudioFile = null;
+    await loadSongs();
+  }
+}
+
+async function deleteSong(){
+  if(!confirm('Delete this song? This cannot be undone.')) return;
+  const { error } = await supabaseClient.from('songs').delete().eq('id', currentSong.id);
+  if(error){ alert('Error: ' + error.message); return; }
+  currentSong = null;
+  await loadSongs();
+  renderForm();
+}
+</script>
+</body>
+</html>
