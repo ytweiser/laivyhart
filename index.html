@@ -325,6 +325,9 @@
 --------------------------------------------------------- */
 const WAVE_COLORS = ['#E8543E','#2A9D8F','#E8A93A','#C7402C'];
 
+// Play counts are tracked silently. Flip this to true to reveal them publicly.
+const SHOW_PLAY_COUNTS = false;
+
 let SONGS = []; // populated live from Supabase in loadSongs()
 
 /* ---------------------------------------------------------
@@ -360,7 +363,8 @@ function mapSong(r){
     about: r.about || '',
     lyrics_he: r.lyrics_original || '',
     lyrics_en: r.lyrics_translation || '',
-    audio: r.audio_url || ''
+    audio: r.audio_url || '',
+    play_count: r.play_count || 0
   };
 }
 
@@ -395,6 +399,7 @@ let mode = 'manual'; // manual | radio | catRadio
 let radioQueue = [];
 let radioPos = 0;
 let idleTimer = null;
+let playCounted = false; // guards one increment per play (not per pause/resume)
 
 function allCategories(){
   const set = new Set();
@@ -445,6 +450,7 @@ function renderList(){
           ${s.categories.map(c=>`<span class="pill cat">${c}</span>`).join('')}
           <span class="pill lang">${s.language}</span>
           ${s.length ? `<span class="pill len">${s.length}</span>` : ''}
+          ${SHOW_PLAY_COUNTS ? `<span class="pill len">▶ ${s.play_count}</span>` : ''}
         </span>
       </div>`;
   });
@@ -479,6 +485,7 @@ let t = 0;
 function loadSong(idx){
   currentIdx = idx;
   currentLangView = 'he';
+  playCounted = false;
   renderNowPanel();
   renderList();
   playCurrent();
@@ -500,6 +507,7 @@ function renderNowPanel(){
           ${s.categories.map(c=>`<span class="pill cat">${c}</span>`).join('')}
           <span class="pill lang">${s.language}</span>
           ${s.length ? `<span class="pill len">${s.length}</span>` : ''}
+          ${SHOW_PLAY_COUNTS ? `<span class="pill len">▶ ${s.play_count}</span>` : ''}
         </div>
       </div>
       <div class="lang-toggle">
@@ -557,8 +565,28 @@ playBtn.addEventListener('click', () => {
 });
 
 audioEl.addEventListener('ended', () => {
+  playCounted = false; // a fresh replay of the same track should count again
   if(mode !== 'manual') advanceQueue();
 });
+
+// Count a play the moment real playback starts. The 'play' event fires on
+// start AND on resume-after-pause, so playCounted ensures only one bump per
+// play. loadSong()/ended reset it for the next genuine play.
+audioEl.addEventListener('play', () => {
+  if(playCounted || currentIdx === null) return;
+  const s = SONGS[currentIdx];
+  if(!s || !s.audio || !s.id) return;
+  playCounted = true;
+  incrementPlay(s.id);
+});
+
+async function incrementPlay(songId){
+  try {
+    await supabaseClient.rpc('increment_play_count', { song_id: songId });
+  } catch(_){
+    // Play counting is best-effort — never let it disrupt playback.
+  }
+}
 
 function shuffledIndices(catFilter){
   let idxs = SONGS.map((s,i)=>i).filter(i => !catFilter || SONGS[i].categories.includes(catFilter));

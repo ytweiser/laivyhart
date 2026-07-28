@@ -71,6 +71,7 @@
   .list-item .lt-translit{font-family:var(--mono); font-size:0.68rem; color:var(--charcoal-dim);}
   .list-item .lt-audio{font-size:0.65rem; margin-top:0.2rem;}
   .lt-audio.has{color:var(--turquoise);} .lt-audio.missing{color:var(--coral-dim);}
+  .list-item .lt-plays{font-family:var(--mono); font-size:0.62rem; color:var(--charcoal-dim); margin-top:0.15rem;}
 
   .form-area{padding:2rem 3vw; overflow-y:auto;}
   .form-area h2{font-family:var(--display); font-size:1.3rem; margin-top:0;}
@@ -118,6 +119,24 @@
   .save-msg{font-family:var(--mono); font-size:0.78rem; margin-top:0.7rem;}
   .save-msg.ok{color:var(--turquoise);} .save-msg.err{color:var(--coral-dim);}
   .empty-form{color:var(--charcoal-dim); font-family:var(--mono); font-size:0.85rem; padding:2rem 0;}
+
+  /* ---------- Category manager ---------- */
+  .cat-manager{margin-top:1.5rem; padding-top:1rem; border-top:2px solid var(--charcoal);}
+  .cat-manager h3{font-family:var(--display); font-size:1rem; margin:0 0 0.6rem;}
+  .cm-list{display:flex; flex-direction:column; gap:0.3rem; margin-bottom:0.6rem;}
+  .cm-item{display:flex; align-items:center; gap:0.4rem; font-family:var(--mono); font-size:0.72rem;}
+  .cm-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cm-count{background:var(--cream-2); border-radius:10px; padding:0.05rem 0.45rem; color:var(--charcoal-dim); font-size:0.66rem;}
+  .cm-btn{
+    font-family:var(--mono); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.03em;
+    padding:0.2rem 0.45rem; border:1.5px solid var(--line-strong); background:#fff;
+    color:var(--charcoal-dim); border-radius:6px; cursor:pointer;
+  }
+  .cm-btn:hover{border-color:var(--charcoal); color:var(--charcoal);}
+  .cm-btn.danger:hover{border-color:var(--coral-dim); color:var(--coral-dim);}
+  .cm-empty{font-family:var(--mono); font-size:0.72rem; color:var(--charcoal-dim);}
+  .cm-msg{font-family:var(--mono); font-size:0.7rem; margin-top:0.35rem; min-height:1em;}
+  .cm-msg.ok{color:var(--turquoise);} .cm-msg.err{color:var(--coral-dim);}
 </style>
 </head>
 <body>
@@ -151,6 +170,16 @@
   <div class="song-list">
     <button class="new-song-btn" id="new-song-btn">+ New song</button>
     <div id="list-items"></div>
+
+    <div class="cat-manager">
+      <h3>Categories</h3>
+      <div id="cat-manager-list" class="cm-list"></div>
+      <div class="add-cat-row">
+        <input type="text" id="new-global-cat" placeholder="New category…">
+        <button type="button" id="add-global-cat">Add</button>
+      </div>
+      <div class="cm-msg" id="cat-manager-msg"></div>
+    </div>
   </div>
   <div class="form-area" id="form-area">
     <div class="empty-form">Pick a song on the left to edit, or start a new one.</div>
@@ -160,9 +189,8 @@
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const KNOWN_CATEGORIES = ["Identity","Unity","Character","Self-Growth","Growth","Faith","Family",
-  "Legacy","Celebration","Wedding","Peace","Relationships","Gratitude","Wonder","Longing",
-  "Motivation","Healing","Hope","Renewal"];
+// Category vocabulary — loaded live from the `categories` table.
+let categories = []; // array of { id, name, sort_order }
 
 let songs = [];
 let currentSong = null; // null = nothing loaded, {} = new, {...} = existing row
@@ -202,6 +230,8 @@ async function checkSession(){
     adminView.style.display = 'grid';
     logoutBtn.style.display = 'inline-block';
     await loadSongs();
+    await loadCategories();
+    renderCategoryManager();
   } else {
     loginView.style.display = 'block';
     adminView.style.display = 'none';
@@ -222,6 +252,151 @@ async function loadSongs(){
   renderList();
 }
 
+/* ---------------------------------------------------------
+  Categories (managed vocabulary, backed by the categories table)
+  Songs still store category *names* in their text[] column, so
+  rename/delete go through DB functions that also rewrite the song
+  arrays; we mirror that change in the local cache to keep the open
+  form's edits intact without a full reload.
+--------------------------------------------------------- */
+async function loadCategories(){
+  const { data, error } = await supabaseClient
+    .from('categories').select('*').order('sort_order').order('name');
+  if(error){ console.error(error); return; }
+  categories = data || [];
+}
+
+function catCount(name){
+  return songs.reduce((n, s) => n + ((s.categories || []).includes(name) ? 1 : 0), 0);
+}
+
+function renderCategoryManager(){
+  const list = document.getElementById('cat-manager-list');
+  if(!list) return;
+  if(categories.length === 0){
+    list.innerHTML = `<div class="cm-empty">No categories yet — add one below.</div>`;
+    return;
+  }
+  list.innerHTML = categories.map(c => {
+    const n = catCount(c.name);
+    return `<div class="cm-item">
+      <span class="cm-name" title="${escAttr(c.name)}">${escHtml(c.name)}</span>
+      <span class="cm-count" title="songs using this">${n}</span>
+      <button type="button" class="cm-btn" data-act="rename" data-name="${escAttr(c.name)}">rename</button>
+      <button type="button" class="cm-btn danger" data-act="delete" data-name="${escAttr(c.name)}">delete</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.cm-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      if(btn.dataset.act === 'rename') renameCategory(name);
+      else deleteCategory(name);
+    });
+  });
+}
+
+function catMsg(text, kind){
+  const el = document.getElementById('cat-manager-msg');
+  if(!el) return;
+  el.textContent = text || '';
+  el.className = 'cm-msg' + (kind ? ' ' + kind : '');
+}
+
+// Capture in-progress form edits into currentSong so a re-render (after a
+// category change) doesn't discard unsaved typing.
+function syncFormToCurrent(){
+  if(!currentSong) return;
+  const g = id => document.getElementById(id);
+  if(!g('f-title')) return; // form not currently on screen
+  currentSong.title = g('f-title').value;
+  currentSong.title_translit = g('f-translit').value;
+  currentSong.language = g('f-language').value;
+  currentSong.lyrics_original = g('f-lyrics-original').value;
+  currentSong.lyrics_translation = g('f-lyrics-translation').value;
+  currentSong.about = g('f-about').value;
+  currentSong.categories = Array.from(document.querySelectorAll('.cat-check.on')).map(c => c.dataset.cat);
+}
+
+function applyCatRenameLocal(oldName, newName){
+  const fix = arr => (arr || []).map(c => c === oldName ? newName : c);
+  songs.forEach(s => { s.categories = fix(s.categories); });
+  if(currentSong) currentSong.categories = fix(currentSong.categories);
+}
+function applyCatDeleteLocal(name){
+  const strip = arr => (arr || []).filter(c => c !== name);
+  songs.forEach(s => { s.categories = strip(s.categories); });
+  if(currentSong) currentSong.categories = strip(currentSong.categories);
+}
+
+async function addCategory(){
+  const input = document.getElementById('new-global-cat');
+  const name = (input.value || '').trim();
+  if(!name){ catMsg('Type a category name first.', 'err'); return; }
+  if(categories.some(c => c.name.toLowerCase() === name.toLowerCase())){
+    catMsg(`“${name}” already exists.`, 'err'); return;
+  }
+  const nextOrder = categories.reduce((m, c) => Math.max(m, c.sort_order || 0), 0) + 1;
+  const { error } = await supabaseClient.from('categories').insert({ name, sort_order: nextOrder });
+  if(error){ catMsg('Error: ' + error.message, 'err'); return; }
+  input.value = '';
+  syncFormToCurrent();
+  await loadCategories();
+  renderCategoryManager();
+  if(currentSong) renderForm();
+  catMsg(`Added “${name}”.`, 'ok');
+}
+
+async function renameCategory(oldName){
+  const newName = (window.prompt(`Rename “${oldName}” to:`, oldName) || '').trim();
+  if(!newName || newName === oldName) return;
+  if(categories.some(c => c.name.toLowerCase() === newName.toLowerCase())){
+    catMsg(`“${newName}” already exists.`, 'err'); return;
+  }
+  const { error } = await supabaseClient.rpc('rename_category', { p_old: oldName, p_new: newName });
+  if(error){ catMsg('Error: ' + error.message, 'err'); return; }
+  syncFormToCurrent();
+  applyCatRenameLocal(oldName, newName);
+  await loadCategories();
+  renderCategoryManager();
+  renderList();
+  if(currentSong) renderForm();
+  catMsg(`Renamed to “${newName}”.`, 'ok');
+}
+
+async function deleteCategory(name){
+  const n = catCount(name);
+  const warning = n > 0
+    ? `Delete “${name}”?\n\nIt is used by ${n} song${n === 1 ? '' : 's'}. Deleting will remove this tag from ${n === 1 ? 'that song' : 'those songs'}.`
+    : `Delete “${name}”?`;
+  if(!confirm(warning)) return;
+  const { error } = await supabaseClient.rpc('delete_category', { p_name: name });
+  if(error){ catMsg('Error: ' + error.message, 'err'); return; }
+  syncFormToCurrent();
+  applyCatDeleteLocal(name);
+  await loadCategories();
+  renderCategoryManager();
+  renderList();
+  if(currentSong) renderForm();
+  catMsg(`Deleted “${name}”.`, 'ok');
+}
+
+// Keep the vocabulary in sync if a song was tagged with a brand-new
+// category via the in-form "add category" box.
+async function syncNewCategories(names){
+  const existing = new Set(categories.map(c => c.name));
+  const toAdd = [...new Set(names.filter(n => n && !existing.has(n)))];
+  if(toAdd.length === 0) return;
+  let ord = categories.reduce((m, c) => Math.max(m, c.sort_order || 0), 0);
+  const rows = toAdd.map(n => ({ name: n, sort_order: ++ord }));
+  const { error } = await supabaseClient.from('categories').insert(rows);
+  if(error) console.error('category sync failed', error);
+}
+
+document.getElementById('add-global-cat').addEventListener('click', addCategory);
+document.getElementById('new-global-cat').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ e.preventDefault(); addCategory(); }
+});
+
 function renderList(){
   const el = document.getElementById('list-items');
   el.innerHTML = songs.map(s => `
@@ -229,6 +404,7 @@ function renderList(){
       <div class="lt-he">${s.title || '(untitled)'}</div>
       <div class="lt-translit">${s.title_translit || ''}</div>
       <div class="lt-audio ${s.audio_url ? 'has':'missing'}">${s.audio_url ? '♪ audio attached' : '— no audio yet'}</div>
+      <div class="lt-plays">▶ ${s.play_count ?? 0} play${(s.play_count ?? 0) === 1 ? '' : 's'}</div>
     </div>
   `).join('');
 }
@@ -264,6 +440,7 @@ function renderForm(){
   }
   const s = currentSong;
   const cats = s.categories || [];
+  const chipNames = Array.from(new Set([...categories.map(c => c.name), ...cats]));
 
   area.innerHTML = `
     <h2>${s.id ? 'Edit song' : 'New song'}</h2>
@@ -290,7 +467,7 @@ function renderForm(){
     <div class="field">
       <label>Categories</label>
       <div class="cat-checks" id="cat-checks">
-        ${KNOWN_CATEGORIES.map(c => `<span class="cat-check ${cats.includes(c)?'on':''}" data-cat="${c}">${c}</span>`).join('')}
+        ${chipNames.map(c => `<span class="cat-check ${cats.includes(c)?'on':''}" data-cat="${escAttr(c)}">${escHtml(c)}</span>`).join('')}
       </div>
       <div class="add-cat-row">
         <input type="text" id="new-cat-input" placeholder="Add a new category...">
@@ -413,7 +590,10 @@ async function saveSong(){
     msg.textContent = 'Saved ✓';
     msg.className = 'save-msg ok';
     pendingAudioFile = null;
+    await syncNewCategories(selectedCats);
     await loadSongs();
+    await loadCategories();
+    renderCategoryManager();
   }
 }
 
@@ -423,6 +603,7 @@ async function deleteSong(){
   if(error){ alert('Error: ' + error.message); return; }
   currentSong = null;
   await loadSongs();
+  renderCategoryManager();
   renderForm();
 }
 </script>
