@@ -157,6 +157,38 @@ body{
 }
 .quiet-link:hover{color:var(--text);}
 
+/* ---------- Share / Install buttons, toast, iOS hint ---------- */
+.pill-btn{
+  font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.02em;
+  padding:0.4rem 0.8rem; border-radius:16px; cursor:pointer; white-space:nowrap;
+  background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text-dim);
+  transition:color 0.2s var(--ease), border-color 0.2s var(--ease), filter 0.2s var(--ease);
+}
+.pill-btn:hover{color:var(--text); border-color:var(--accent-2);}
+.pill-btn.accent{background:var(--accent-grad); border-color:transparent; color:#fff;}
+.pill-btn.accent:hover{filter:brightness(1.08); color:#fff;}
+.pill-btn[hidden]{display:none;}
+
+.laivy-toast{
+  position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%) translateY(0.8rem);
+  background:var(--bg-2); color:var(--text); border:1px solid var(--glass-border);
+  padding:0.6rem 1rem; border-radius:14px; font-family:var(--font-ui); font-size:0.82rem;
+  box-shadow:0 12px 30px rgba(0,0,0,0.4); opacity:0; pointer-events:none; z-index:200;
+  transition:opacity 0.25s var(--ease), transform 0.25s var(--ease);
+}
+.laivy-toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+.ios-hint{
+  position:fixed; left:1rem; right:1rem; bottom:1rem; margin:0 auto; max-width:26rem;
+  display:flex; align-items:center; gap:0.7rem; z-index:150;
+  background:var(--bg-2); border:1px solid var(--glass-border); border-radius:14px;
+  padding:0.7rem 0.9rem; box-shadow:0 12px 30px rgba(0,0,0,0.4);
+  font-family:var(--font-ui); font-size:0.82rem; color:var(--text);
+}
+.ios-hint strong{color:var(--accent-2); font-weight:600;}
+.ios-hint-close{margin-left:auto; background:none; border:none; color:var(--text-faint); font-size:1.15rem; line-height:1; cursor:pointer; padding:0 0.2rem;}
+.ios-hint[hidden]{display:none;}
+
 /* ---------- Chips and pills ---------- */
 .chip{
   font-family:var(--font-ui);

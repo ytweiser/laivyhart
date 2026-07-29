@@ -23,6 +23,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Laivy Hart">
+<meta property="og:site_name" content="Laivy Hart">
+<meta property="og:title" content="Laivy Hart">
+<meta property="og:description" content="Original songs. Sometimes stories, sometimes prayers.">
+<meta property="og:url" content="https://laivyhart.com/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://laivyhart.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Laivy Hart">
+<meta name="twitter:description" content="Original songs. Sometimes stories, sometimes prayers.">
+<meta name="twitter:image" content="https://laivyhart.com/og-image.png">
 <script src="pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -274,6 +286,8 @@
     <div class="topbar">
       <div class="logo"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
       <div class="topbar-right">
+        <button class="pill-btn" id="share-btn" type="button">Share</button>
+        <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
         <a class="quiet-link" href="about.html">About</a>
         <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
       </div>
@@ -360,6 +374,11 @@
       <button class="pl-mini primary" id="picker-done">Done</button>
     </div>
   </div>
+</div>
+
+<div class="ios-hint" id="ios-hint" hidden>
+  <span>Install: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</span>
+  <button class="ios-hint-close" type="button" aria-label="Dismiss">&times;</button>
 </div>
 
 <audio id="audio-el"></audio>
