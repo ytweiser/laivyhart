@@ -197,7 +197,9 @@
   .pl-new input:focus{outline:none; border-color:var(--accent-2);}
   .pl-new button{font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; padding:0.5rem 0.9rem; border-radius:12px; border:none; background:var(--accent-grad); color:#fff; cursor:pointer;}
   .pl-card{border:1px solid var(--line); border-radius:14px; padding:0.7rem 0.8rem; margin-bottom:0.6rem;}
-  .pl-card-head{display:flex; align-items:center; gap:0.5rem;}
+  .pl-card-head{display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;}
+  .pl-mini.primary{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .pl-mini.primary:hover{filter:brightness(1.08); color:#fff; border-color:transparent;}
   .pl-name{flex:1; font-family:var(--font-display); font-size:1rem; font-style:italic;}
   .pl-count{font-family:var(--font-ui); font-size:0.68rem; color:var(--text-faint);}
   .pl-mini{font-family:var(--font-ui); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.04em; padding:0.25rem 0.55rem; border-radius:10px; border:1px solid var(--chip-border); background:transparent; color:var(--text-dim); cursor:pointer;}
@@ -224,6 +226,22 @@
   .add-menu button:hover{background:var(--glass-hi);}
   .add-menu .sep{height:1px; background:var(--line); margin:0.3rem 0;}
   .add-menu .new{color:var(--accent-2);}
+
+  /* Playlist song picker (playlist-first add flow) */
+  .picker-overlay{position:fixed; inset:0; z-index:100; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding:1rem;}
+  .picker{width:min(30rem, 100%); max-height:82vh; display:flex; flex-direction:column; padding:1.1rem; background:var(--bg-2); border:1px solid var(--glass-border);}
+  .picker-head{display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.7rem;}
+  .picker-title{font-family:var(--font-display); font-size:1.05rem;}
+  .picker-title span{font-style:italic; color:var(--accent-2);}
+  #picker-search{margin-bottom:0.7rem; flex-shrink:0;}
+  .picker-list{flex:1; min-height:0; overflow-y:auto;}
+  .pick{display:flex; align-items:center; gap:0.7rem; padding:0.55rem 0.35rem; border-bottom:1px solid var(--line); cursor:pointer;}
+  .pick:hover{background:var(--glass-hi);}
+  .pick-check{width:1.55rem; height:1.55rem; border-radius:50%; border:1px solid var(--chip-border); display:inline-flex; align-items:center; justify-content:center; font-size:0.85rem; color:var(--text-faint); flex-shrink:0;}
+  .pick.added .pick-check{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .pick-title{flex:1; min-width:0; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--font-heb); direction:rtl; font-size:1.05rem;}
+  .pick-title.en{font-family:var(--font-display); direction:ltr; font-style:italic;}
+  .picker-foot{display:flex; align-items:center; justify-content:space-between; margin-top:0.7rem; padding-top:0.7rem; border-top:1px solid var(--line); flex-shrink:0;}
 
   .hidden{display:none !important;}
 
@@ -322,6 +340,21 @@
 
 </div>
 
+<div class="picker-overlay hidden" id="picker-overlay">
+  <div class="picker glass">
+    <div class="picker-head">
+      <div class="picker-title">Add to <span id="picker-plname"></span></div>
+      <button class="icon-btn" id="picker-close" aria-label="Close">&times;</button>
+    </div>
+    <input class="search" id="picker-search" type="text" placeholder="Search songs to add" aria-label="Search songs to add">
+    <div class="picker-list" id="picker-list"></div>
+    <div class="picker-foot">
+      <span class="pl-count" id="picker-count"></span>
+      <button class="pl-mini primary" id="picker-done">Done</button>
+    </div>
+  </div>
+</div>
+
 <audio id="audio-el"></audio>
 
 <script>
@@ -384,6 +417,11 @@ themeToggle.addEventListener('click', () => {
    ============================================================ */
 let SONGS = [];
 
+const DUR_KEY = 'laivy-durations-v1';
+let durCache = loadDurCache();
+function loadDurCache(){ try{ return JSON.parse(localStorage.getItem(DUR_KEY)) || {}; }catch(e){ return {}; } }
+function saveDurCache(){ try{ localStorage.setItem(DUR_KEY, JSON.stringify(durCache)); }catch(e){} }
+
 function mapSong(r){
   return {
     id: r.id,
@@ -391,7 +429,7 @@ function mapSong(r){
     title: r.title || '',
     title_translit: r.title_translit || '',
     categories: Array.isArray(r.categories) ? r.categories : [],
-    length: formatLength(r.length_seconds),
+    length: formatLength(r.length_seconds) || (durCache[r.id] ? formatLength(durCache[r.id]) : ''),
     about: r.about || '',
     lyrics_original: r.lyrics_original || '',
     lyrics_translation: r.lyrics_translation || '',
@@ -414,6 +452,40 @@ async function loadSongs(){
   renderList();
   renderNow();
   renderPlaylists();
+  fetchMissingDurations();
+}
+
+/* ============================================================
+   Auto-read song durations from audio metadata (cached in localStorage,
+   keyed by song id). No manual length entry needed; songs without a
+   playable file simply never get a length.
+   ============================================================ */
+let durQueue = [], durBusy = false, rowsRefreshTimer = null;
+function scheduleRowsRefresh(){ clearTimeout(rowsRefreshTimer); rowsRefreshTimer = setTimeout(renderList, 140); }
+function fetchMissingDurations(){
+  durQueue = SONGS.filter(s => s.audio && !durCache[s.id]);
+  if(!durBusy) processDurQueue();
+}
+function processDurQueue(){
+  if(durQueue.length === 0){ durBusy = false; return; }
+  durBusy = true;
+  const s = durQueue.shift();
+  const probe = new Audio();
+  probe.preload = 'metadata';
+  let done = false;
+  const finish = () => { if(done) return; done = true; try{ probe.src = ''; }catch(e){} processDurQueue(); };
+  probe.addEventListener('loadedmetadata', () => {
+    if(isFinite(probe.duration) && probe.duration > 0){
+      durCache[s.id] = Math.round(probe.duration);
+      saveDurCache();
+      s.length = formatLength(durCache[s.id]);
+      scheduleRowsRefresh();
+    }
+    finish();
+  });
+  probe.addEventListener('error', finish);
+  setTimeout(finish, 15000);
+  probe.src = s.audio;
 }
 
 /* ============================================================
@@ -773,7 +845,7 @@ function songById(id){ return SONGS.find(s => s.id === id); }
 function renderPlaylists(){
   const body = document.getElementById('playlists-body');
   if(playlists.length === 0){
-    body.innerHTML = `<div class="muted">No playlists yet. Name one above, then use the + on any song to add it.</div>`;
+    body.innerHTML = `<div class="muted">No playlists yet. Create one above, then open it to add songs.</div>`;
     return;
   }
   body.innerHTML = playlists.map(pl => {
@@ -791,11 +863,12 @@ function renderPlaylists(){
       <div class="pl-card-head">
         <span class="pl-name">${escHtml(pl.name)}</span>
         <span class="pl-count">${pl.songIds.length}</span>
+        <button class="pl-mini primary" data-act="add" data-pl="${pl.id}">Add songs</button>
         <button class="pl-mini" data-act="play" data-pl="${pl.id}">Play</button>
         <button class="pl-mini" data-act="rename" data-pl="${pl.id}">Rename</button>
         <button class="pl-mini danger" data-act="delete" data-pl="${pl.id}">Delete</button>
       </div>
-      <div class="pl-songs">${songsHtml || '<div class="pl-count">Empty. Add songs with the + button.</div>'}</div>
+      <div class="pl-songs">${songsHtml || `<button class="pl-mini primary" data-act="add" data-pl="${pl.id}">+ Add songs</button>`}</div>
     </div>`;
   }).join('');
 
@@ -803,7 +876,8 @@ function renderPlaylists(){
     btn.addEventListener('click', () => {
       const pl = playlists.find(p => p.id === btn.dataset.pl);
       if(!pl) return;
-      if(btn.dataset.act === 'play') playPlaylist(pl);
+      if(btn.dataset.act === 'add') openPicker(pl.id);
+      else if(btn.dataset.act === 'play') playPlaylist(pl);
       else if(btn.dataset.act === 'rename'){
         const name = (window.prompt('Rename playlist', pl.name) || '').trim();
         if(name){ pl.name = name; savePlaylists(); renderPlaylists(); }
@@ -871,6 +945,69 @@ function openAddMenu(anchor, idx){
   });
   setTimeout(() => document.addEventListener('click', closeAddMenu), 0);
 }
+
+/* ============================================================
+   Playlist-first song picker (primary add flow)
+   ============================================================ */
+let pickerFor = null, pickerSearch = '';
+const pickerOverlay = document.getElementById('picker-overlay');
+
+function openPicker(plId){
+  const pl = playlists.find(p => p.id === plId);
+  if(!pl) return;
+  pickerFor = plId; pickerSearch = '';
+  document.getElementById('picker-plname').textContent = pl.name;
+  const si = document.getElementById('picker-search');
+  si.value = '';
+  pickerOverlay.classList.remove('hidden');
+  renderPickerList();
+  si.focus();
+}
+function closePicker(){
+  pickerOverlay.classList.add('hidden');
+  pickerFor = null;
+  renderPlaylists();
+}
+function updatePickerCount(){
+  const pl = playlists.find(p => p.id === pickerFor);
+  if(!pl) return;
+  const c = pl.songIds.length;
+  document.getElementById('picker-count').textContent = c + (c === 1 ? ' song in playlist' : ' songs in playlist');
+}
+function renderPickerList(){
+  const pl = playlists.find(p => p.id === pickerFor);
+  if(!pl) return;
+  const term = pickerSearch.trim().toLowerCase();
+  const list = document.getElementById('picker-list');
+  const matches = SONGS.filter(s => !term ||
+    (s.title_translit + ' ' + s.title + ' ' + s.categories.join(' ')).toLowerCase().includes(term));
+  list.innerHTML = matches.map(s => {
+    const heb = isHebrew(s);
+    const label = heb ? s.title : (s.title || s.title_translit);
+    const added = pl.songIds.includes(s.id);
+    return `<div class="pick ${added?'added':''}" data-id="${escHtml(s.id)}">
+      <span class="pick-check">${added ? '✓' : '+'}</span>
+      <span class="pick-title ${heb?'':'en'}">${escHtml(label)}</span>
+    </div>`;
+  }).join('') || `<div class="muted">No songs match.</div>`;
+  updatePickerCount();
+  list.querySelectorAll('.pick').forEach(el => {
+    el.addEventListener('click', () => togglePick(el.dataset.id, el));
+  });
+}
+function togglePick(songId, el){
+  const pl = playlists.find(p => p.id === pickerFor);
+  if(!pl) return;
+  const i = pl.songIds.indexOf(songId);
+  if(i >= 0){ pl.songIds.splice(i, 1); el.classList.remove('added'); el.querySelector('.pick-check').textContent = '+'; }
+  else { pl.songIds.push(songId); el.classList.add('added'); el.querySelector('.pick-check').textContent = '✓'; }
+  savePlaylists();
+  updatePickerCount();
+}
+pickerOverlay.addEventListener('click', (e) => { if(e.target === pickerOverlay) closePicker(); });
+document.getElementById('picker-close').addEventListener('click', closePicker);
+document.getElementById('picker-done').addEventListener('click', closePicker);
+document.getElementById('picker-search').addEventListener('input', (e) => { pickerSearch = e.target.value; renderPickerList(); });
 
 /* ============================================================
    Init
