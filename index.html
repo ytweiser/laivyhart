@@ -46,15 +46,15 @@
     border:1px solid var(--glass-border);
     box-shadow:0 6px 18px rgba(0,0,0,0.28);
   }
-  .now-titles{min-width:0;}
+  .now-titles{min-width:0; text-align:left;}
   .now-title-primary{
-    font-size:1.6rem; line-height:1.1; font-weight:600;
+    font-size:1.65rem; line-height:1.18; font-weight:600;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .now-title-secondary{
     font-family:var(--font-display);
-    font-size:1.05rem; font-style:italic; color:var(--text-dim);
-    line-height:1.2; margin-top:0.1rem;
+    font-size:1.02rem; font-style:italic; color:var(--text-dim);
+    line-height:1.2; margin-top:0.05rem;
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .heb{font-family:var(--font-heb); direction:rtl;}
@@ -153,26 +153,38 @@
   .filter-pills{display:flex; gap:0.4rem; flex-wrap:wrap; max-height:4.6rem; overflow-y:auto;}
 
   .rows{flex:1; min-height:0; overflow-y:auto; margin-right:-0.3rem; padding-right:0.3rem;}
+  /* Art-free rows: whisper metadata left, titles carry the weight on the right. */
   .row{
-    display:grid; grid-template-columns:44px 1fr auto; gap:0.75rem; align-items:center;
-    padding:0.55rem 0.5rem; border-radius:12px; cursor:pointer;
+    display:flex; align-items:center; gap:1rem;
+    padding:0.82rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
     transition:background 0.18s var(--ease);
   }
+  .row:last-child{border-bottom:none;}
   .row:hover{background:var(--glass-hi);}
   .row.playing{background:var(--glass-hi);}
-  .row-thumb{width:44px; height:44px; border-radius:9px; background-size:cover; background-position:center; border:1px solid var(--glass-border);}
-  .row-main{min-width:0;}
-  .row-title{font-family:var(--font-heb); direction:rtl; font-size:1.12rem; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .row-title.en{font-family:var(--font-display); direction:ltr; font-style:italic;}
-  .row-sub{font-family:var(--font-display); font-style:italic; font-size:0.78rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .row-meta{display:flex; align-items:center; gap:0.5rem; color:var(--text-faint); font-family:var(--font-ui); font-size:0.72rem;}
-  .row-add{
-    width:1.6rem; height:1.6rem; border-radius:50%; border:1px solid var(--chip-border);
-    background:transparent; color:var(--text-dim); cursor:pointer; font-size:0.85rem; line-height:1;
-    display:inline-flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.18s var(--ease);
+  .row.playing .row-title-primary{color:var(--accent-2);}
+  .row-meta{display:flex; flex-direction:column; gap:0.14rem; text-align:left; flex-shrink:0; min-width:2.6rem;}
+  .row-cat{
+    font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:9rem;
   }
-  .row:hover .row-add{opacity:1;}
+  .row-len{font-family:var(--font-ui); font-size:0.66rem; color:var(--text-faint); display:flex; align-items:center; gap:0.35rem;}
+  .row-titles{margin-left:auto; text-align:right; min-width:0; display:flex; flex-direction:column; gap:0.05rem;}
+  .row-title-primary{font-size:1.2rem; line-height:1.28; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row-title-primary.he{font-family:var(--font-heb); direction:rtl; font-weight:500;}
+  .row-title-primary.en{font-family:var(--font-display); font-weight:600;}
+  .row-title-secondary{
+    font-family:var(--font-display); font-style:italic; font-size:0.8rem; line-height:1.28;
+    color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .row-add{
+    width:1.8rem; height:1.8rem; border-radius:50%; border:1px solid var(--chip-border);
+    background:var(--chip-bg); color:var(--text-dim); cursor:pointer; font-size:1rem; line-height:1;
+    display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    transition:border-color 0.18s var(--ease), color 0.18s var(--ease);
+  }
   .row-add:hover{border-color:var(--accent-2); color:var(--text);}
+  .row-add.added{border-color:var(--accent-2); color:var(--accent-2);}
 
   .muted{color:var(--text-faint); font-family:var(--font-ui); font-size:0.85rem; padding:2rem 0.5rem; text-align:center;}
 
@@ -232,7 +244,7 @@
     </div>
 
     <div class="topbar">
-      <div class="wordmark"><span class="brand-dot"></span>L<span class="hl-ai">ai</span>vy Hart</div>
+      <div class="wordmark"><span class="brand-dot"></span>Laivy Hart</div>
       <div class="topbar-right">
         <a class="quiet-link" href="about.html">About</a>
         <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
@@ -474,21 +486,22 @@ function renderList(){
   rows.innerHTML = filtered.map(({s, idx}) => {
     const playing = currentIdx === idx;
     const heb = isHebrew(s);
+    // Primary is always the song's own language (bold), secondary is muted below.
     const primary = heb ? s.title : (s.title || s.title_translit);
-    const sub = heb ? s.title_translit : '';
-    const meta = playing ? eqHTML()
-      : (SHOW_PLAY_COUNTS ? `&#9654; ${s.play_count}` : (s.length || ''));
+    const secondary = heb ? s.title_translit : '';
+    const cat = s.categories[0] || '';
     return `
       <div class="row ${playing?'playing':''}" data-idx="${idx}">
-        <div class="row-thumb" style="${thumbStyle(s)}"></div>
-        <div class="row-main">
-          <div class="row-title ${heb?'':'en'}">${escHtml(primary)}</div>
-          ${sub ? `<div class="row-sub">${escHtml(sub)}</div>` : ''}
-        </div>
         <div class="row-meta">
-          <span>${meta}</span>
-          <button class="row-add" data-idx="${idx}" title="Add to playlist" aria-label="Add to playlist">+</button>
+          ${cat ? `<div class="row-cat">${escHtml(cat)}</div>` : ''}
+          ${(playing || s.length) ? `<div class="row-len">${playing ? eqHTML() : escHtml(s.length)}</div>` : ''}
+          ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
+        <div class="row-titles">
+          <div class="row-title-primary ${heb?'he':'en'}">${escHtml(primary)}</div>
+          ${secondary ? `<div class="row-title-secondary">${escHtml(secondary)}</div>` : ''}
+        </div>
+        <button class="row-add" data-idx="${idx}" title="Add to playlist" aria-label="Add to playlist">+</button>
       </div>`;
   }).join('');
 
@@ -848,6 +861,7 @@ function openAddMenu(anchor, idx){
         const pl = playlists.find(p => p.id === b.dataset.pl);
         if(pl && !pl.songIds.includes(song.id)){ pl.songIds.push(song.id); savePlaylists(); }
       }
+      anchor.classList.add('added');
       closeAddMenu();
       if(!document.getElementById('playlists-panel').classList.contains('hidden')) renderPlaylists();
     });
