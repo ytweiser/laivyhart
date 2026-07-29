@@ -136,11 +136,13 @@
   .transport{display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;}
   .tbtn{
     width:2.4rem; height:2.4rem; border-radius:50%; flex-shrink:0;
-    border:1px solid var(--glass-border); background:var(--glass-hi); color:var(--text);
+    border:1px solid var(--glass-border); background:var(--glass-hi); color:var(--text-dim);
     cursor:pointer; font-size:0.95rem; display:inline-flex; align-items:center; justify-content:center;
-    transition:transform 0.2s var(--ease);
+    transition:transform 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
   }
+  .tbtn svg{width:1.05rem; height:1.05rem; fill:currentColor; display:block;}
   .tbtn:hover{transform:translateY(-1px);}
+  .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
   .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(158,43,78,0.45);}
   .dock-right{margin-left:auto; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;}
   .radio-btn{
@@ -324,9 +326,9 @@
         <time id="t-remaining">0:00</time>
       </div>
       <div class="transport">
-        <button class="tbtn" id="prev-btn" aria-label="Previous">&#9198;</button>
+        <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
-        <button class="tbtn" id="next-btn" aria-label="Next">&#9197;</button>
+        <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <div class="dock-right">
           <button class="radio-btn" id="radio-btn">Radio</button>
           <select class="cat-radio" id="cat-radio-select"><option value="">Category radio</option></select>
