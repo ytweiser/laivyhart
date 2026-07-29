@@ -120,6 +120,21 @@ body{
   font-style:italic;
 }
 
+/* ---------- Stacked LAIVY / HART logo ---------- */
+.logo{
+  display:inline-flex; flex-direction:column; align-items:flex-start;
+  font-family:'Archivo Black', var(--font-ui);
+  font-weight:900; text-transform:uppercase;
+  letter-spacing:-0.03em; line-height:0.88;
+  font-size:1.4rem; text-decoration:none;
+}
+.logo .l1{ color:var(--text); }
+.logo .l2{
+  background:linear-gradient(135deg, #9E2B4E, #E0699A);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:transparent;
+}
+
 /* ---------- Small icon / ghost buttons ---------- */
 .icon-btn{
   width:2.2rem; height:2.2rem; border-radius:50%;
