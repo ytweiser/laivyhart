@@ -1,5 +1,5 @@
 /* ============================================================
-   Laivy Hart — shared Supabase config
+   Laivy Hart shared Supabase config
    Single source of truth for the Supabase URL + publishable key.
    Loaded by both index.html and admin.html before their app code.
 

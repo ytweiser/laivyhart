@@ -1,0 +1,214 @@
+/* ============================================================
+   Laivy Hart shared theme: Pure Bordeaux palette, typography,
+   light/dark tokens, and shared UI primitives.
+   Loaded by index.html, about.html and admin.html so the whole
+   site feels like one place in two lightings.
+   ============================================================ */
+
+:root{
+  /* Warm accent, identical in both lightings */
+  --accent-1:#9E2B4E;
+  --accent-2:#C13584;
+  --accent-grad:linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  --accent-solid:#9E2B4E;
+
+  --font-heb:'Frank Ruhl Libre', serif;
+  --font-display:'Fraunces', 'Frank Ruhl Libre', Georgia, serif;
+  --font-ui:'Inter', system-ui, -apple-system, sans-serif;
+
+  --radius:20px;
+  --radius-sm:12px;
+  --radius-xs:9px;
+
+  --ease:cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Dark is the default lighting */
+:root,
+[data-theme="dark"]{
+  --bg:#140810;
+  --bg-2:#1d0d17;
+  --text:#F4E9EE;
+  --text-dim:#B598A4;
+  --text-faint:#7C6470;
+
+  --glass-bg:rgba(255,255,255,0.045);
+  --glass-border:rgba(255,255,255,0.10);
+  --glass-hi:rgba(255,255,255,0.07);
+  --line:rgba(255,255,255,0.08);
+
+  --chip-bg:rgba(255,255,255,0.06);
+  --chip-border:rgba(255,255,255,0.12);
+
+  --play-bg:var(--accent-grad);
+  --play-fg:#ffffff;
+
+  --ambient-opacity:0.55;
+  --ambient-blur:72px;
+
+  color-scheme:dark;
+}
+
+[data-theme="light"]{
+  --bg:#F5ECEE;
+  --bg-2:#efe1e5;
+  --text:#2A1018;
+  --text-dim:#8A6875;
+  --text-faint:#A88E99;
+
+  --glass-bg:rgba(255,255,255,0.58);
+  --glass-border:rgba(42,16,24,0.09);
+  --glass-hi:rgba(255,255,255,0.75);
+  --line:rgba(42,16,24,0.10);
+
+  --chip-bg:rgba(42,16,24,0.05);
+  --chip-border:rgba(42,16,24,0.12);
+
+  --play-bg:var(--accent-solid);
+  --play-fg:#ffffff;
+
+  --ambient-opacity:0.16;
+  --ambient-blur:84px;
+
+  color-scheme:light;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0; padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;
+  transition:background 0.5s var(--ease), color 0.4s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+}
+
+/* ---------- Glass surface ---------- */
+.glass{
+  background:var(--glass-bg);
+  border:1px solid var(--glass-border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(22px) saturate(1.25);
+  -webkit-backdrop-filter:blur(22px) saturate(1.25);
+}
+
+/* ---------- Brand wordmark ---------- */
+.wordmark{
+  font-family:var(--font-display);
+  font-weight:600;
+  font-size:1.15rem;
+  letter-spacing:0.01em;
+  display:inline-flex;
+  align-items:center;
+  gap:0.5rem;
+  color:var(--text);
+}
+.wordmark .brand-dot{
+  width:0.7rem; height:0.7rem; border-radius:50%;
+  background:var(--accent-grad);
+  box-shadow:0 0 14px rgba(193,53,132,0.6);
+  flex-shrink:0;
+}
+.wordmark .hl-ai{
+  background:var(--accent-grad);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  font-style:italic;
+}
+
+/* ---------- Small icon / ghost buttons ---------- */
+.icon-btn{
+  width:2.2rem; height:2.2rem; border-radius:50%;
+  border:1px solid var(--glass-border);
+  background:var(--glass-hi);
+  color:var(--text);
+  cursor:pointer; font-size:0.95rem;
+  display:inline-flex; align-items:center; justify-content:center;
+  transition:transform 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.icon-btn:hover{transform:translateY(-1px); border-color:var(--accent-2);}
+
+.quiet-link{
+  font-family:var(--font-ui);
+  font-size:0.82rem;
+  color:var(--text-dim);
+  text-decoration:none;
+  letter-spacing:0.02em;
+  transition:color 0.2s var(--ease);
+}
+.quiet-link:hover{color:var(--text);}
+
+/* ---------- Chips and pills ---------- */
+.chip{
+  font-family:var(--font-ui);
+  font-size:0.68rem;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  padding:0.3rem 0.66rem;
+  border-radius:20px;
+  background:var(--chip-bg);
+  border:1px solid var(--chip-border);
+  color:var(--text-dim);
+  cursor:pointer;
+  white-space:nowrap;
+  transition:all 0.2s var(--ease);
+}
+.chip:hover{color:var(--text); border-color:var(--accent-2);}
+.chip.active{
+  background:var(--accent-grad);
+  border-color:transparent;
+  color:#fff;
+}
+
+/* ---------- Ambient background wash ---------- */
+.ambient{
+  position:absolute; inset:0;
+  overflow:hidden;
+  z-index:0;
+  pointer-events:none;
+  border-radius:inherit;
+  opacity:var(--ambient-opacity);
+  transition:opacity 0.6s var(--ease);
+}
+.ambient .blob{
+  position:absolute;
+  width:60%; aspect-ratio:1;
+  border-radius:50%;
+  filter:blur(var(--ambient-blur));
+  animation:drift 24s var(--ease) infinite alternate;
+  animation-play-state:paused;
+}
+.ambient.is-playing .blob{animation-play-state:running;}
+.ambient .blob.b1{background:radial-gradient(circle, var(--accent-2), transparent 68%); top:-12%; left:-10%;}
+.ambient .blob.b2{background:radial-gradient(circle, var(--accent-1), transparent 68%); bottom:-18%; right:-12%; animation-duration:31s;}
+.ambient .blob.b3{background:radial-gradient(circle, #7a1f6b, transparent 68%); top:35%; left:38%; animation-duration:38s; width:50%;}
+
+@keyframes drift{
+  0%{transform:translate(0,0) scale(1);}
+  50%{transform:translate(8%, 6%) scale(1.14);}
+  100%{transform:translate(-6%, -8%) scale(0.96);}
+}
+
+/* ---------- Playing equalizer ---------- */
+.eq{display:inline-flex; align-items:flex-end; gap:2px; height:14px;}
+.eq span{
+  width:3px; background:var(--accent-2); border-radius:2px;
+  animation:eqbar 0.9s var(--ease) infinite;
+}
+.eq span:nth-child(1){animation-delay:-0.1s;}
+.eq span:nth-child(2){animation-delay:-0.45s;}
+.eq span:nth-child(3){animation-delay:-0.25s;}
+.eq span:nth-child(4){animation-delay:-0.6s;}
+@keyframes eqbar{
+  0%,100%{height:25%;}
+  50%{height:100%;}
+}
+
+/* ---------- Scrollbars ---------- */
+*::-webkit-scrollbar{width:9px; height:9px;}
+*::-webkit-scrollbar-thumb{background:var(--line); border-radius:8px;}
+*::-webkit-scrollbar-thumb:hover{background:var(--text-faint);}

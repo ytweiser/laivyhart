@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About &middot; Laivy Hart</title>
+<script>
+  (function(){
+    try{
+      var t = localStorage.getItem('laivy-theme');
+      if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+      document.documentElement.setAttribute('data-theme', t);
+    }catch(e){ document.documentElement.setAttribute('data-theme','dark'); }
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="theme.css" rel="stylesheet">
+<style>
+  body{min-height:100vh; position:relative; overflow-x:hidden;}
+  .page-ambient{position:fixed; inset:0; z-index:0;}
+  .topbar{
+    position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:1.2rem 6vw; border-bottom:1px solid var(--line);
+  }
+  .topbar-right{display:flex; align-items:center; gap:1rem;}
+
+  main{position:relative; z-index:2; padding:5vh 6vw 12vh; display:flex; justify-content:center;}
+  article{width:100%; max-width:40rem;}
+
+  .about-kicker{
+    font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:1rem;
+  }
+  .about-title{
+    font-family:var(--font-display); font-weight:600;
+    font-size:clamp(2.6rem, 7vw, 4rem); line-height:1.02; letter-spacing:-0.01em;
+    margin:0 0 1.6rem;
+  }
+  .about-title .hl-ai{
+    background:var(--accent-grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; font-style:italic;
+  }
+  .about-lede{
+    font-family:var(--font-display); font-style:italic;
+    font-size:1.35rem; line-height:1.55; color:var(--text-dim);
+    margin:0 0 2rem; padding-bottom:2rem; border-bottom:1px solid var(--line);
+  }
+  .about-body{font-family:var(--font-ui); font-size:1.06rem; line-height:1.9; color:var(--text);}
+  .about-body p{margin:0 0 1.4rem;}
+  .about-body h2{
+    font-family:var(--font-display); font-weight:600; font-size:1.5rem;
+    margin:2.4rem 0 0.9rem;
+  }
+  .about-body a{color:var(--accent-2);}
+
+  .placeholder-note{
+    font-family:var(--font-ui); font-size:0.82rem; color:var(--text-faint);
+    border:1px dashed var(--chip-border); border-radius:12px; padding:0.8rem 1rem; margin-top:2.5rem;
+  }
+  .back-link{margin-top:3rem; display:inline-block;}
+</style>
+</head>
+<body>
+
+<div class="page-ambient ambient is-playing" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+</div>
+
+<div class="topbar">
+  <a class="wordmark" href="index.html" style="text-decoration:none;"><span class="brand-dot"></span>L<span class="hl-ai">ai</span>vy Hart</a>
+  <div class="topbar-right">
+    <a class="quiet-link" href="index.html">Jukebox</a>
+    <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
+  </div>
+</div>
+
+<main>
+  <article>
+    <div class="about-kicker">About</div>
+    <h1 class="about-title">L<span class="hl-ai">ai</span>vy Hart</h1>
+
+    <p class="about-lede">
+      Every soul has a song.
+    </p>
+
+    <div class="about-body" id="about-body">
+      <p>
+        For many of us, that song lies buried deep within, waiting to be heard. Not everyone can write
+        lyrics that move the heart. Not everyone has the voice of a gifted singer or the musical talent
+        to compose and arrange a melody. Without those tools, the song often remains buried forever.
+      </p>
+      <p>
+        Someone who loses a limb can, with determination and a prosthetic, learn to walk again. Someone
+        living with ALS may lose the ability to speak, yet technology can give them a voice. We are
+        blessed to live in a generation where AI can become a creative prosthetic for the soul.
+      </p>
+      <p>
+        If you truly want to express the song hidden in your heart, AI can help you find the words buried
+        within you and shape the melodies already echoing in your bones. Not to replace the soul's song,
+        but to help it be heard.
+      </p>
+      <p>
+        For me, creating these songs has been a profound catharsis. For the first time, I can hear
+        melodies that once existed only in my imagination and give voice to thoughts and emotions that
+        might otherwise have remained unexpressed. What was once pent up can finally be released.
+      </p>
+      <p>
+        I named this site Laivy Hart. The Leviim were the singers of the Beis Hamikdash, and every one of
+        us carries something of that sweet, uplifting song within. Sometimes it needs only one more gift
+        to be heard, and today, that gift can be L<span class="hl-ai">AI</span>vy. Listen closely and
+        you'll find the rest: a Levi, with heart, and the art to bring it into the world.
+      </p>
+      <p>
+        My hope is that these songs inspire you to discover the music within your own soul, use the tools
+        now at your fingertips, and share your unique voice with the world. The world doesn't need another
+        copy of someone else. It needs the song that only you can sing.
+      </p>
+    </div>
+
+    <a class="quiet-link back-link" href="index.html">&larr; Back to the jukebox</a>
+  </article>
+</main>
+
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('laivy-theme', next); }catch(e){}
+  });
+</script>
+</body>
+</html>
