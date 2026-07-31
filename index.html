@@ -387,11 +387,13 @@
   .comment-submit:disabled{opacity:0.55; cursor:default;}
 
   /* ---------- Homepage listener feed (full-width, below the app) ---------- */
-  .feed{margin:0 16px 16px; padding:1.5rem 1.7rem; display:flex; flex-direction:column;}
-  .feed-head{margin-bottom:1.05rem;}
-  .feed-title{font-family:var(--font-display); font-weight:600; font-size:1.45rem; margin:0;}
-  .feed-sub{font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.03em; color:var(--text-faint); margin-top:0.2rem;}
-  .feed-list{display:flex; flex-direction:column; gap:1rem; max-height:56vh; overflow-y:auto; padding-right:0.5rem;}
+  /* Global listener feed, shown in the left panel's engage zone when idle. */
+  .panel-feed{display:flex; flex-direction:column;}
+  .panel-feed.hidden{display:none;}
+  .feed-head{margin-bottom:0.9rem;}
+  .feed-title{font-family:var(--font-display); font-weight:600; font-size:1.3rem; margin:0; color:var(--text); line-height:1.15;}
+  .feed-sub{font-family:var(--font-ui); font-size:0.76rem; letter-spacing:0.02em; color:var(--text-faint); margin-top:0.22rem;}
+  .feed-list{display:flex; flex-direction:column; gap:0.95rem;}
   .feed-empty{font-family:var(--font-display); font-style:italic; color:var(--text-faint); font-size:0.95rem;}
   .feed-item{
     padding:0.15rem 0 0.15rem 0.95rem;
@@ -487,8 +489,18 @@
       </div>
     </div>
 
-    <!-- Engagement zone: like + reflections, below the pinned controls -->
-    <div class="engage hidden" id="engage">
+    <!-- Engagement zone (below the pinned controls): the global listener feed
+         when nothing is playing, this song's reflections when one is. -->
+    <div class="engage" id="engage">
+      <!-- Idle / opening: the global "Comments from listeners" feed -->
+      <div class="panel-feed" id="panel-feed">
+        <div class="feed-head">
+          <h2 class="feed-title">Comments from listeners</h2>
+          <div class="feed-sub">Tap a song name to hear it.</div>
+        </div>
+        <div class="feed-list" id="feed-list"></div>
+      </div>
+
       <div class="nowlike-block hidden" id="nowlike-block">
         <div id="now-like-wrap"></div>
       </div>
@@ -540,15 +552,6 @@
   </section>
 
 </div>
-
-<!-- ================= Comments from listeners (all songs) ================= -->
-<section class="feed glass" id="listener-feed" aria-label="Comments from listeners">
-  <div class="feed-head">
-    <h2 class="feed-title">Comments from listeners</h2>
-    <div class="feed-sub">Tap a song name to hear it.</div>
-  </div>
-  <div class="feed-list" id="feed-list"></div>
-</section>
 
 <div class="picker-overlay hidden" id="picker-overlay">
   <div class="picker glass">
@@ -878,16 +881,22 @@ function renderNow(){
   const nowLike = document.getElementById('now-like-wrap');
   const nowLikeBlock = document.getElementById('nowlike-block');
   const engage = document.getElementById('engage');
+  const panelFeed = document.getElementById('panel-feed');
 
   if(currentIdx === null){
+    // Idle / opening: fill the engage zone with the global listener feed.
     empty.classList.remove('hidden');
     orig.classList.add('hidden'); trans.classList.add('hidden');
     primary.textContent = ''; secondary.textContent = '';
     thumb.style.cssText = genArtStyle('laivy hart');
     chips.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
-    nowLike.innerHTML = ''; nowLikeBlock.classList.add('hidden'); engage.classList.add('hidden');
+    nowLike.innerHTML = ''; nowLikeBlock.classList.add('hidden');
+    panelFeed.classList.remove('hidden');
+    engage.classList.remove('hidden');
     return;
   }
+  // A song is playing: the engage zone shows this song's reflections.
+  panelFeed.classList.add('hidden');
   const s = SONGS[currentIdx];
   const heb = isHebrew(s);
   empty.classList.add('hidden');
