@@ -161,8 +161,13 @@
   .cat-manager{margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--line);}
   .cat-manager h3{font-family:var(--font-display); font-weight:600; font-size:1.05rem; margin:0 0 0.6rem;}
   .cm-list{display:flex; flex-direction:column; gap:0.3rem; margin-bottom:0.6rem;}
-  .cm-item{display:flex; align-items:center; gap:0.4rem; font-family:var(--font-ui); font-size:0.74rem;}
-  .cm-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cm-item{display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; font-family:var(--font-ui); font-size:0.74rem;}
+  .cm-name{flex:1; min-width:5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .cm-group{
+    font-family:var(--font-ui); font-size:0.62rem; padding:0.2rem 0.35rem; border-radius:8px;
+    border:1px solid var(--chip-border); background:var(--chip-bg); color:var(--text-dim); cursor:pointer;
+  }
+  .cm-group:focus{outline:none; border-color:var(--accent-2);}
   .cm-count{background:var(--chip-bg); border-radius:10px; padding:0.05rem 0.45rem; color:var(--text-faint); font-size:0.66rem;}
   .cm-btn{
     font-family:var(--font-ui); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.03em;
@@ -174,6 +179,26 @@
   .cm-empty{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint);}
   .cm-msg{font-family:var(--font-ui); font-size:0.7rem; margin-top:0.35rem; min-height:1em;}
   .cm-msg.ok{color:var(--accent-2);} .cm-msg.err{color:var(--accent-1);}
+
+  /* Comment moderation */
+  .mod-head{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap; margin-bottom:1.3rem;}
+  .mod-head h2{margin:0;}
+  .mod-empty{color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1rem; padding:1.5rem 0;}
+  .mod-item{border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.9rem; max-width:44rem;}
+  .mod-song{font-family:var(--font-display); font-style:italic; color:var(--accent-2); font-size:0.95rem; margin-bottom:0.4rem;}
+  .mod-body{font-size:0.98rem; line-height:1.55; color:var(--text); white-space:pre-line; margin-bottom:0.55rem;}
+  .mod-meta{font-family:var(--font-ui); font-size:0.7rem; color:var(--text-faint); margin-bottom:0.8rem;}
+  .mod-actions{display:flex; gap:0.5rem; flex-wrap:wrap;}
+  .mod-actions button{
+    font-family:var(--font-ui); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:0.45rem 0.95rem; border-radius:10px; cursor:pointer;
+    border:1px solid var(--chip-border); background:var(--chip-bg); color:var(--text-dim);
+    transition:all 0.18s var(--ease);
+  }
+  .mod-approve{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .mod-approve:hover{filter:brightness(1.08);}
+  .mod-reject:hover{border-color:var(--accent-2); color:var(--text);}
+  .mod-delete:hover{border-color:var(--accent-1); color:var(--accent-1);}
 </style>
 </head>
 <body>
@@ -193,6 +218,7 @@
   </div>
   <div class="topbar-right">
     <a class="quiet-link" href="index.html">Jukebox</a>
+    <button class="logout-btn" id="comments-btn" style="display:none;">Comments</button>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
   </div>
@@ -277,13 +303,16 @@ async function checkSession(){
     loginView.style.display = 'none';
     adminView.style.display = 'grid';
     logoutBtn.style.display = 'inline-block';
+    document.getElementById('comments-btn').style.display = 'inline-block';
     await loadSongs();
     await loadCategories();
     renderCategoryManager();
+    refreshCommentCount();
   } else {
     loginView.style.display = 'block';
     adminView.style.display = 'none';
     logoutBtn.style.display = 'none';
+    document.getElementById('comments-btn').style.display = 'none';
   }
 }
 
@@ -327,9 +356,16 @@ function renderCategoryManager(){
   }
   list.innerHTML = categories.map(c => {
     const n = catCount(c.name);
+    const g = c.group_name || '';
     return `<div class="cm-item">
       <span class="cm-name" title="${escAttr(c.name)}">${escHtml(c.name)}</span>
       <span class="cm-count" title="songs using this">${n}</span>
+      <select class="cm-group" data-id="${escAttr(c.id)}" title="Filter group on the jukebox">
+        <option value="" ${g===''?'selected':''}>Ungrouped</option>
+        <option value="mood" ${g==='mood'?'selected':''}>Mood</option>
+        <option value="time" ${g==='time'?'selected':''}>Time</option>
+        <option value="subject" ${g==='subject'?'selected':''}>Subject</option>
+      </select>
       <button type="button" class="cm-btn" data-act="rename" data-name="${escAttr(c.name)}">rename</button>
       <button type="button" class="cm-btn danger" data-act="delete" data-name="${escAttr(c.name)}">delete</button>
     </div>`;
@@ -341,6 +377,17 @@ function renderCategoryManager(){
       else deleteCategory(name);
     });
   });
+  list.querySelectorAll('.cm-group').forEach(sel => {
+    sel.addEventListener('change', () => assignCategoryGroup(sel.dataset.id, sel.value));
+  });
+}
+
+async function assignCategoryGroup(id, group){
+  const { error } = await supabaseClient.from('categories').update({ group_name: group || null }).eq('id', id);
+  if(error){ catMsg('Error: ' + error.message, 'err'); return; }
+  const c = categories.find(x => x.id === id);
+  if(c) c.group_name = group || null;
+  catMsg('Group saved.', 'ok');
 }
 
 function catMsg(text, kind){
@@ -681,6 +728,80 @@ async function saveSong(){
     await loadCategories();
     renderCategoryManager();
   }
+}
+
+/* ---------------------------------------------------------
+  Comment moderation (phase 1: approve in-admin, no email yet)
+--------------------------------------------------------- */
+document.getElementById('comments-btn').addEventListener('click', showComments);
+
+async function refreshCommentCount(){
+  const btn = document.getElementById('comments-btn');
+  const { count, error } = await supabaseClient
+    .from('comments').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+  if(error){ btn.textContent = 'Comments'; return; }
+  btn.textContent = 'Comments' + (count ? ` (${count})` : '');
+}
+
+async function showComments(){
+  // Leave the song form: deselect any open song.
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Pending comments</h2>
+      <button class="logout-btn" id="mod-refresh" type="button">Refresh</button>
+    </div>
+    <div id="mod-list"><div class="mod-empty">Loading…</div></div>`;
+  document.getElementById('mod-refresh').addEventListener('click', showComments);
+
+  const { data, error } = await supabaseClient
+    .from('comments')
+    .select('id, name, city, body, created_at, song_id, songs(title, title_translit)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  const list = document.getElementById('mod-list');
+  if(error){ list.innerHTML = `<div class="mod-empty">Error loading comments: ${escHtml(error.message)}</div>`; return; }
+  if(!data || data.length === 0){ list.innerHTML = `<div class="mod-empty">No pending comments. All clear.</div>`; return; }
+
+  list.innerHTML = data.map(c => {
+    const song = c.songs ? (c.songs.title || c.songs.title_translit || 'Unknown song') : 'Unknown song';
+    const sig = [c.name, c.city].map(x => (x || '').trim()).filter(Boolean).join(', ');
+    const who = sig ? escHtml(sig) : 'Anonymous';
+    let when = '';
+    try{ when = new Date(c.created_at).toLocaleString(); }catch(e){}
+    return `<div class="mod-item">
+      <div class="mod-song">${escHtml(song)}</div>
+      <div class="mod-body">${escHtml(c.body)}</div>
+      <div class="mod-meta">${who} · ${escHtml(when)}</div>
+      <div class="mod-actions">
+        <button class="mod-approve" data-act="approve" data-id="${escAttr(c.id)}">Approve</button>
+        <button class="mod-reject" data-act="reject" data-id="${escAttr(c.id)}">Reject</button>
+        <button class="mod-delete" data-act="delete" data-id="${escAttr(c.id)}">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.mod-actions button').forEach(b => {
+    b.addEventListener('click', () => moderateComment(b.dataset.act, b.dataset.id));
+  });
+}
+
+async function moderateComment(act, id){
+  let error;
+  if(act === 'approve'){
+    ({ error } = await supabaseClient.from('comments').update({ status: 'approved' }).eq('id', id));
+  } else if(act === 'reject'){
+    ({ error } = await supabaseClient.from('comments').update({ status: 'rejected' }).eq('id', id));
+  } else if(act === 'delete'){
+    if(!confirm('Delete this comment permanently?')) return;
+    ({ error } = await supabaseClient.from('comments').delete().eq('id', id));
+  }
+  if(error){ alert('Error: ' + error.message); return; }
+  await refreshCommentCount();
+  showComments();
 }
 
 async function deleteSong(){

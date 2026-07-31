@@ -43,7 +43,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <style>
-  body{height:100vh; overflow:hidden;}
+  body{min-height:100vh;}
   .app{
     display:grid;
     grid-template-columns:1.15fr 0.85fr;
@@ -174,7 +174,26 @@
   }
   .search:focus{outline:none; border-color:var(--accent-2);}
   .search::placeholder{color:var(--text-faint);}
-  .filter-pills{display:flex; gap:0.4rem; flex-wrap:wrap; max-height:4.6rem; overflow-y:auto;}
+  /* Category pills grouped into labeled, horizontally-scrollable rows */
+  .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
+  .cat-allrow{display:flex;}
+  .cat-all{padding-inline:0.9rem;}
+  .cat-group{display:flex; align-items:center; gap:0.55rem; min-width:0;}
+  .cat-group-label{
+    flex-shrink:0; width:3.4rem;
+    font-family:var(--font-ui); font-size:0.56rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--text-faint); text-align:right;
+  }
+  .cat-scroll{
+    display:flex; gap:0.4rem; overflow-x:auto; flex:1; min-width:0;
+    padding-bottom:2px; scroll-behavior:smooth;
+    scrollbar-width:none; -ms-overflow-style:none;
+    -webkit-overflow-scrolling:touch;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 0.6rem, #000 calc(100% - 0.9rem), transparent 100%);
+    mask-image:linear-gradient(90deg, transparent 0, #000 0.6rem, #000 calc(100% - 0.9rem), transparent 100%);
+  }
+  .cat-scroll::-webkit-scrollbar{display:none; height:0;}
+  .cat-scroll .chip{flex-shrink:0;}
 
   .rows{flex:1; min-height:0; overflow-y:auto; margin-right:-0.3rem; padding-right:0.3rem;}
   /* Art-free rows: whisper metadata left, titles carry the weight on the right. */
@@ -264,6 +283,81 @@
   .pick-title.en{font-family:var(--font-display); direction:ltr; font-style:italic;}
   .picker-foot{display:flex; align-items:center; justify-content:space-between; margin-top:0.7rem; padding-top:0.7rem; border-top:1px solid var(--line); flex-shrink:0;}
 
+  /* ---------- Like (heart) ---------- */
+  .like-btn{
+    display:inline-flex; align-items:center; gap:0.32rem; flex-shrink:0;
+    background:none; border:none; cursor:pointer; padding:0.2rem 0.15rem;
+    color:var(--text-faint); font-family:var(--font-ui); font-size:0.72rem; line-height:1;
+    transition:color 0.18s var(--ease);
+  }
+  .like-btn .heart{
+    width:1.05rem; height:1.05rem; fill:none; stroke:currentColor; stroke-width:1.7;
+    overflow:visible; transition:transform 0.18s var(--ease);
+  }
+  .like-btn:hover{color:var(--accent-2);}
+  .like-btn.liked{color:var(--accent-1);}
+  .like-btn.liked .heart{fill:var(--accent-1); stroke:var(--accent-1); animation:heart-pop 0.34s var(--ease);}
+  .like-btn .like-count{min-width:0.7em; text-align:left; font-variant-numeric:tabular-nums;}
+  @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
+  .now-like-wrap{margin-left:auto; align-self:flex-start;}
+  .like-btn.now-like{font-size:0.82rem;}
+  .like-btn.now-like .heart{width:1.28rem; height:1.28rem;}
+
+  /* ---------- Reflections (comments) ---------- */
+  .comments-wrap{margin-top:1.7rem; padding-top:1.1rem; border-top:1px solid var(--line);}
+  .comments-wrap.hidden{display:none;}
+  .comments-head{margin-bottom:0.75rem;}
+  .comments-head .lbl{font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint);}
+  .comments-list{display:flex; flex-direction:column; gap:0.95rem; margin-bottom:1.15rem;}
+  .comments-empty{font-family:var(--font-display); font-style:italic; color:var(--text-faint); font-size:0.92rem;}
+  .comment{border-left:2px solid transparent; border-image:var(--accent-grad) 1; padding:0.05rem 0 0.05rem 0.85rem;}
+  .comment-body{font-family:var(--font-display); font-size:1rem; line-height:1.55; color:var(--text); white-space:pre-line;}
+  .comment-meta{display:flex; gap:0.6rem; margin-top:0.32rem; font-family:var(--font-ui); font-size:0.68rem; color:var(--text-faint);}
+  .comment-who{color:var(--text-dim);}
+  .comment-form{display:flex; flex-direction:column; gap:0.55rem;}
+  .comment-input, .comment-textarea{
+    width:100%; background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:12px;
+    padding:0.6rem 0.85rem; font-family:var(--font-ui); font-size:0.9rem; color:var(--text);
+  }
+  .comment-input:focus, .comment-textarea:focus{outline:none; border-color:var(--accent-2);}
+  .comment-input::placeholder, .comment-textarea::placeholder{color:var(--text-faint);}
+  .comment-textarea{min-height:4.6rem; resize:vertical; line-height:1.5; font-family:var(--font-ui);}
+  .comment-optnote{font-family:var(--font-display); font-style:italic; font-size:0.85rem; color:var(--text-faint); margin:0.1rem 0 0.1rem;}
+  .comment-idrow{display:flex; gap:0.55rem;}
+  .comment-idrow .comment-input{flex:1; min-width:0;}
+  .comment-formfoot{display:flex; align-items:center; justify-content:space-between; gap:0.7rem;}
+  .comment-status{font-family:var(--font-ui); font-size:0.74rem; color:var(--text-dim); flex:1;}
+  .comment-status.ok{color:var(--accent-2);}
+  .comment-status.err{color:var(--accent-1);}
+  .comment-submit{
+    font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
+    padding:0.5rem 1.1rem; border-radius:12px; border:none; background:var(--accent-grad); color:#fff; cursor:pointer;
+    transition:filter 0.18s var(--ease); flex-shrink:0;
+  }
+  .comment-submit:hover{filter:brightness(1.08);}
+  .comment-submit:disabled{opacity:0.55; cursor:default;}
+
+  /* ---------- Homepage listener feed (full-width, below the app) ---------- */
+  .feed{margin:0 16px 16px; padding:1.5rem 1.7rem; display:flex; flex-direction:column;}
+  .feed-head{margin-bottom:1.05rem;}
+  .feed-title{font-family:var(--font-display); font-weight:600; font-size:1.45rem; margin:0;}
+  .feed-sub{font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.03em; color:var(--text-faint); margin-top:0.2rem;}
+  .feed-list{display:flex; flex-direction:column; gap:1rem; max-height:56vh; overflow-y:auto; padding-right:0.5rem;}
+  .feed-empty{font-family:var(--font-display); font-style:italic; color:var(--text-faint); font-size:0.95rem;}
+  .feed-item{
+    padding:0.15rem 0 0.15rem 0.95rem;
+    border-left:2px solid transparent; border-image:var(--accent-grad) 1;
+    font-family:var(--font-display); font-size:1.04rem; line-height:1.6; color:var(--text);
+  }
+  .feed-song{
+    color:var(--accent-2); cursor:pointer; font-weight:600; font-style:normal;
+    background:none; border:none; padding:0; font-family:inherit; font-size:inherit; line-height:inherit;
+    transition:color 0.18s var(--ease);
+  }
+  .feed-song:hover{color:var(--accent-1); text-decoration:underline;}
+  .feed-song.heb{font-family:var(--font-heb);}
+  .feed-sig{color:var(--text-dim); font-style:italic; white-space:nowrap;}
+
   .hidden{display:none !important;}
 
   @media (max-width:900px){
@@ -302,6 +396,7 @@
           <div class="now-title-primary" id="now-title-primary"></div>
           <div class="now-title-secondary" id="now-title-secondary"></div>
         </div>
+        <div class="now-like-wrap" id="now-like-wrap"></div>
       </div>
       <div class="now-chips" id="now-chips"></div>
       <div class="pullquote hidden" id="now-about"></div>
@@ -316,6 +411,23 @@
         <div class="now-empty" id="now-empty">Pick a song, hit Radio, or spin a category to begin.</div>
         <div class="lyrics is-heb hidden" id="lyrics-orig"></div>
         <div class="lyrics hidden" id="lyrics-trans"></div>
+
+        <div class="comments-wrap hidden" id="comments-wrap">
+          <div class="comments-head"><span class="lbl">Reflections</span></div>
+          <div class="comments-list" id="comments-list"></div>
+          <form class="comment-form" id="comment-form">
+            <textarea id="comment-body" class="comment-textarea" placeholder="Share a reflection…" maxlength="1000" aria-label="Your comment"></textarea>
+            <div class="comment-optnote">If you'd like to leave your name and/or location, feel free.</div>
+            <div class="comment-idrow">
+              <input type="text" id="comment-name" class="comment-input" placeholder="Name (optional)" maxlength="80" autocomplete="name" aria-label="Name (optional)">
+              <input type="text" id="comment-city" class="comment-input" placeholder="City (optional)" maxlength="80" autocomplete="address-level2" aria-label="City (optional)">
+            </div>
+            <div class="comment-formfoot">
+              <span class="comment-status" id="comment-status"></span>
+              <button type="submit" class="comment-submit" id="comment-submit">Share</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
@@ -362,6 +474,15 @@
   </section>
 
 </div>
+
+<!-- ================= Comments from listeners (all songs) ================= -->
+<section class="feed glass" id="listener-feed" aria-label="Comments from listeners">
+  <div class="feed-head">
+    <h2 class="feed-title">Comments from listeners</h2>
+    <div class="feed-sub">Tap a song name to hear it.</div>
+  </div>
+  <div class="feed-list" id="feed-list"></div>
+</section>
 
 <div class="picker-overlay hidden" id="picker-overlay">
   <div class="picker glass">
@@ -445,6 +566,34 @@ themeToggle.addEventListener('click', () => {
    ============================================================ */
 let SONGS = [];
 
+// Category -> group ('mood'|'time'|'subject'), loaded from the categories table.
+let categoryGroup = new Map();
+async function loadCategoryGroups(){
+  const { data, error } = await supabaseClient.from('categories').select('name, group_name');
+  if(error){ console.error(error); return; }
+  categoryGroup = new Map((data || []).filter(c => c.group_name).map(c => [c.name, c.group_name]));
+}
+
+/* Shuffle the song list ONCE per browser session so languages intersperse.
+   The order is remembered in sessionStorage, so it stays stable while
+   browsing/reloading within a visit, but a new visit reshuffles. */
+const SONG_ORDER_KEY = 'laivy-song-order-v1';
+function applySessionShuffle(){
+  let order = null;
+  try{ order = JSON.parse(sessionStorage.getItem(SONG_ORDER_KEY)); }catch(e){}
+  if(Array.isArray(order) && order.length){
+    // Reuse this session's order; any songs added since sort to the end.
+    const pos = new Map(order.map((id, i) => [id, i]));
+    SONGS.sort((a, b) => (pos.has(a.id) ? pos.get(a.id) : Infinity) - (pos.has(b.id) ? pos.get(b.id) : Infinity));
+  } else {
+    for(let i = SONGS.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [SONGS[i], SONGS[j]] = [SONGS[j], SONGS[i]];
+    }
+    try{ sessionStorage.setItem(SONG_ORDER_KEY, JSON.stringify(SONGS.map(s => s.id))); }catch(e){}
+  }
+}
+
 const DUR_KEY = 'laivy-durations-v1';
 let durCache = loadDurCache();
 function loadDurCache(){ try{ return JSON.parse(localStorage.getItem(DUR_KEY)) || {}; }catch(e){ return {}; } }
@@ -463,7 +612,8 @@ function mapSong(r){
     lyrics_translation: r.lyrics_translation || '',
     audio: r.audio_url || '',
     cover: r.cover_url || '',
-    play_count: r.play_count || 0
+    play_count: r.play_count || 0,
+    like_count: r.like_count || 0
   };
 }
 function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
@@ -476,10 +626,13 @@ async function loadSongs(){
     return;
   }
   SONGS = (data || []).map(mapSong);
+  applySessionShuffle();
+  await loadCategoryGroups();
   renderFilterPills();
   renderList();
   renderNow();
   renderPlaylists();
+  loadFeed();
   fetchMissingDurations();
 }
 
@@ -552,9 +705,28 @@ function allCategories(){
 }
 function renderFilterPills(){
   const el = document.getElementById('filter-pills');
-  let html = `<button class="chip ${activeCat==='all'?'active':''}" data-cat="all">All</button>`;
+  const GROUPS = [
+    { key: 'mood', label: 'Mood' },
+    { key: 'time', label: 'Time' },
+    { key: 'subject', label: 'Subject' },
+  ];
+  // Bucket categories by group; anything not yet assigned falls under Subject.
+  const buckets = { mood: [], time: [], subject: [] };
   allCategories().forEach(c => {
-    html += `<button class="chip ${activeCat===c?'active':''}" data-cat="${escHtml(c)}">${escHtml(c)}</button>`;
+    const g = categoryGroup.get(c);
+    (buckets[g] || buckets.subject).push(c);
+  });
+
+  let html = `<div class="cat-allrow"><button class="chip cat-all ${activeCat==='all'?'active':''}" data-cat="all">All</button></div>`;
+  GROUPS.forEach(g => {
+    const cats = buckets[g.key];
+    if(!cats.length) return; // hide an empty group row (e.g. Time until occasions exist)
+    html += `<div class="cat-group" data-group="${g.key}">
+      <span class="cat-group-label">${g.label}</span>
+      <div class="cat-scroll">${
+        cats.map(c => `<button class="chip ${activeCat===c?'active':''}" data-cat="${escHtml(c)}">${escHtml(c)}</button>`).join('')
+      }</div>
+    </div>`;
   });
   el.innerHTML = html;
   el.querySelectorAll('.chip').forEach(btn => {
@@ -604,13 +776,14 @@ function renderList(){
           <div class="row-title-primary ${heb?'he':'en'}">${escHtml(primary)}</div>
           ${secondary ? `<div class="row-title-secondary">${escHtml(secondary)}</div>` : ''}
         </div>
+        ${likeBtnHTML(s)}
         <button class="row-add" data-idx="${idx}" title="Add to playlist" aria-label="Add to playlist">+</button>
       </div>`;
   }).join('');
 
   rows.querySelectorAll('.row').forEach(row => {
     row.addEventListener('click', (e) => {
-      if(e.target.closest('.row-add')) return;
+      if(e.target.closest('.row-add') || e.target.closest('.like-btn')) return;
       mode = 'manual';
       document.getElementById('radio-btn').classList.remove('active');
       loadSong(Number(row.dataset.idx));
@@ -637,6 +810,7 @@ function renderNow(){
   const chips = document.getElementById('now-chips');
   const about = document.getElementById('now-about');
   const langToggle = document.getElementById('lang-toggle');
+  const nowLike = document.getElementById('now-like-wrap');
 
   if(currentIdx === null){
     empty.classList.remove('hidden');
@@ -644,6 +818,7 @@ function renderNow(){
     primary.textContent = ''; secondary.textContent = '';
     thumb.style.cssText = genArtStyle('laivy hart');
     chips.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    nowLike.innerHTML = '';
     return;
   }
   const s = SONGS[currentIdx];
@@ -662,6 +837,8 @@ function renderNow(){
   } else {
     secondary.style.display = 'none';
   }
+
+  nowLike.innerHTML = likeBtnHTML(s, 'now-like');
 
   chips.innerHTML = s.categories.map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
 
@@ -709,6 +886,7 @@ function loadSong(idx){
   playCounted = false;
   renderNow();
   renderList();
+  loadComments();
   playCurrent();
 }
 
@@ -777,6 +955,181 @@ audioEl.addEventListener('ended', () => {
 async function incrementPlay(songId){
   try{ await supabaseClient.rpc('increment_play_count', { song_id: songId }); }
   catch(_){ /* best effort, never disrupt playback */ }
+}
+
+/* ============================================================
+   Likes (per-visitor heart, remembered in this browser)
+   The global count lives on songs.like_count; which songs THIS
+   browser has liked lives in localStorage so tapping toggles.
+   ============================================================ */
+const LIKES_KEY = 'laivy-likes-v1';
+let likedSet = loadLikes();
+function loadLikes(){ try{ return new Set(JSON.parse(localStorage.getItem(LIKES_KEY)) || []); }catch(e){ return new Set(); } }
+function saveLikes(){ try{ localStorage.setItem(LIKES_KEY, JSON.stringify([...likedSet])); }catch(e){} }
+
+function heartSVG(){
+  return `<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg>`;
+}
+function likeBtnHTML(s, extraClass){
+  const liked = likedSet.has(s.id);
+  return `<button class="like-btn ${liked?'liked':''} ${extraClass||''}" data-like="${s.id}" type="button"
+    aria-pressed="${liked?'true':'false'}" aria-label="${liked?'Unlike this song':'Like this song'}" title="${liked?'Unlike':'Like'}">${heartSVG()}<span class="like-count">${s.like_count}</span></button>`;
+}
+function updateLikeUI(songId){
+  const s = SONGS.find(x => x.id === songId);
+  if(!s) return;
+  const liked = likedSet.has(songId);
+  document.querySelectorAll(`[data-like="${songId}"]`).forEach(btn => {
+    btn.classList.toggle('liked', liked);
+    btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
+    btn.setAttribute('aria-label', liked ? 'Unlike this song' : 'Like this song');
+    btn.title = liked ? 'Unlike' : 'Like';
+    const c = btn.querySelector('.like-count');
+    if(c) c.textContent = s.like_count;
+  });
+}
+async function toggleLike(songId){
+  const s = SONGS.find(x => x.id === songId);
+  if(!s) return;
+  const liked = !likedSet.has(songId);
+  // Optimistic: flip locally first so the heart feels instant.
+  if(liked){ likedSet.add(songId); s.like_count = (s.like_count || 0) + 1; }
+  else { likedSet.delete(songId); s.like_count = Math.max(0, (s.like_count || 0) - 1); }
+  saveLikes();
+  updateLikeUI(songId);
+  try{
+    const { data, error } = await supabaseClient.rpc('toggle_like', { song_id: songId, liked });
+    if(!error && typeof data === 'number'){ s.like_count = data; updateLikeUI(songId); }
+  }catch(_){ /* best effort; local state already reflects the tap */ }
+}
+// One delegated handler covers rows (re-rendered) and the now-playing heart.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.like-btn');
+  if(!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  toggleLike(btn.dataset.like);
+});
+
+/* ============================================================
+   Reflections (comments): post as pending, read only approved.
+   Tied to the currently playing song, shown under the lyrics.
+   ============================================================ */
+function fmtCommentDate(iso){
+  try{ return new Date(iso).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }
+  catch(e){ return ''; }
+}
+// Signature from whatever the visitor filled in: "Name, City" / "Name" /
+// "City" / "" (nothing). We keep the leading dash out of here so callers
+// can place it where it belongs.
+function sigJoin(name, city){
+  return [name, city].map(x => (x || '').trim()).filter(Boolean).join(', ');
+}
+function renderCommentList(rows){
+  const list = document.getElementById('comments-list');
+  if(!rows || rows.length === 0){
+    list.innerHTML = `<div class="comments-empty">No reflections yet. Be the first to share one.</div>`;
+    return;
+  }
+  list.innerHTML = rows.map(c => {
+    const sig = sigJoin(c.name, c.city);
+    return `<div class="comment">
+      <div class="comment-body">${escHtml(c.body)}</div>
+      <div class="comment-meta">${sig ? `<span class="comment-who">– ${escHtml(sig)}</span>` : ''}<span class="comment-when">${fmtCommentDate(c.created_at)}</span></div>
+    </div>`;
+  }).join('');
+}
+async function loadComments(){
+  const wrap = document.getElementById('comments-wrap');
+  if(currentIdx === null){ wrap.classList.add('hidden'); return; }
+  const song = SONGS[currentIdx];
+  const reqId = song.id;
+  wrap.classList.remove('hidden');
+  // Fresh form state for the new song.
+  const status = document.getElementById('comment-status');
+  status.textContent = ''; status.className = 'comment-status';
+  document.getElementById('comment-body').value = '';
+  const list = document.getElementById('comments-list');
+  list.innerHTML = `<div class="comments-empty">Loading…</div>`;
+  const { data, error } = await supabaseClient
+    .from('comments')
+    .select('name, city, body, created_at')
+    .eq('song_id', reqId)
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false });
+  // Ignore if the visitor switched songs while this was in flight.
+  if(currentIdx === null || SONGS[currentIdx].id !== reqId) return;
+  if(error){ list.innerHTML = `<div class="comments-empty">Couldn't load reflections right now.</div>`; return; }
+  renderCommentList(data);
+}
+document.getElementById('comment-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if(currentIdx === null) return;
+  const song = SONGS[currentIdx];
+  const nameEl = document.getElementById('comment-name');
+  const cityEl = document.getElementById('comment-city');
+  const bodyEl = document.getElementById('comment-body');
+  const status = document.getElementById('comment-status');
+  const btn = document.getElementById('comment-submit');
+  const body = bodyEl.value.trim();
+  if(!body){ status.textContent = 'Please write something first.'; status.className = 'comment-status err'; return; }
+  btn.disabled = true;
+  status.textContent = 'Sending…'; status.className = 'comment-status';
+  const name = nameEl.value.trim();
+  const city = cityEl.value.trim();
+  const { error } = await supabaseClient
+    .from('comments')
+    .insert({ song_id: song.id, name: name || null, city: city || null, body });
+  btn.disabled = false;
+  if(error){
+    status.textContent = "Couldn't send that just now. Please try again.";
+    status.className = 'comment-status err';
+    return;
+  }
+  bodyEl.value = '';
+  status.textContent = 'Thanks! Your comment is awaiting approval.';
+  status.className = 'comment-status ok';
+});
+
+/* ============================================================
+   Homepage "Comments from listeners" feed: every approved
+   comment across all songs, newest first, song name plays it.
+   ============================================================ */
+function playSongById(id){
+  const idx = SONGS.findIndex(s => s.id === id);
+  if(idx < 0) return;
+  mode = 'manual';
+  document.getElementById('radio-btn').classList.remove('active');
+  loadSong(idx);
+  try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  catch(e){ window.scrollTo(0, 0); }
+}
+async function loadFeed(){
+  const listEl = document.getElementById('feed-list');
+  if(!listEl) return;
+  const { data, error } = await supabaseClient
+    .from('comments')
+    .select('song_id, name, city, body, created_at')
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false });
+  if(error){ listEl.innerHTML = `<div class="feed-empty">Couldn't load comments right now.</div>`; return; }
+  if(!data || data.length === 0){
+    listEl.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share a reflection.</div>`;
+    return;
+  }
+  listEl.innerHTML = data.map(c => {
+    const s = SONGS.find(x => x.id === c.song_id);
+    const heb = s ? isHebrew(s) : false;
+    const name = s ? (heb ? s.title : (s.title || s.title_translit)) : 'A song';
+    const songEl = s
+      ? `<button class="feed-song ${heb ? 'heb' : ''}" data-song="${s.id}" type="button">${escHtml(name)}</button>`
+      : `<span class="feed-song" style="cursor:default; text-decoration:none;">${escHtml(name)}</span>`;
+    const sig = sigJoin(c.name, c.city);
+    return `<div class="feed-item">${songEl}: ${escHtml(c.body)}${sig ? ` <span class="feed-sig">– ${escHtml(sig)}</span>` : ''}</div>`;
+  }).join('');
+  listEl.querySelectorAll('.feed-song[data-song]').forEach(b => {
+    b.addEventListener('click', () => playSongById(b.dataset.song));
+  });
 }
 
 /* ============================================================
