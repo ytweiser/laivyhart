@@ -363,7 +363,7 @@ function renderCategoryManager(){
       <select class="cm-group" data-id="${escAttr(c.id)}" title="Filter group on the jukebox">
         <option value="" ${g===''?'selected':''}>Ungrouped</option>
         <option value="mood" ${g==='mood'?'selected':''}>Mood</option>
-        <option value="time" ${g==='time'?'selected':''}>Time</option>
+        <option value="occasion" ${g==='occasion'?'selected':''}>Occasion</option>
         <option value="subject" ${g==='subject'?'selected':''}>Subject</option>
       </select>
       <button type="button" class="cm-btn" data-act="rename" data-name="${escAttr(c.name)}">rename</button>

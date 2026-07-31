@@ -632,7 +632,7 @@ themeToggle.addEventListener('click', () => {
    ============================================================ */
 let SONGS = [];
 
-// Category -> group ('mood'|'time'|'subject'), loaded from the categories table.
+// Category -> group ('mood'|'occasion'|'subject'), loaded from the categories table.
 let categoryGroup = new Map();
 async function loadCategoryGroups(){
   const { data, error } = await supabaseClient.from('categories').select('name, group_name');
@@ -773,11 +773,11 @@ function renderFilterPills(){
   const el = document.getElementById('filter-pills');
   const GROUPS = [
     { key: 'mood', label: 'Mood' },
-    { key: 'time', label: 'Time' },
+    { key: 'occasion', label: 'Occasion' },
     { key: 'subject', label: 'Subject' },
   ];
   // Bucket categories by group; anything not yet assigned falls under Subject.
-  const buckets = { mood: [], time: [], subject: [] };
+  const buckets = { mood: [], occasion: [], subject: [] };
   allCategories().forEach(c => {
     const g = categoryGroup.get(c);
     (buckets[g] || buckets.subject).push(c);
@@ -786,7 +786,7 @@ function renderFilterPills(){
   let html = `<div class="cat-allrow"><button class="chip cat-all ${activeCat==='all'?'active':''}" data-cat="all">All</button></div>`;
   GROUPS.forEach(g => {
     const cats = buckets[g.key];
-    if(!cats.length) return; // hide an empty group row (e.g. Time until occasions exist)
+    if(!cats.length) return; // hide an empty group row (e.g. Occasion until you tag occasion categories)
     html += `<div class="cat-group" data-group="${g.key}">
       <span class="cat-group-label">${g.label}</span>
       <div class="cat-scroll">${
