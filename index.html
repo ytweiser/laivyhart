@@ -86,6 +86,45 @@
   .heb{font-family:var(--font-heb); direction:rtl;}
   .disp{font-family:var(--font-display);}
 
+  /* Cover-art banner: shown at the top of the now-playing panel when the
+     current song has a cover_url. Full-bleed to the panel's side edges
+     (negative margins cancel the .now padding). The image shows UNCOVERED
+     (object-fit:cover, focal point upper-center) with only a soft fade at the
+     very bottom so it melts into the panel; the title sits in that fade zone
+     over a dark strip so white text stays readable in BOTH themes. */
+  .now-banner{
+    position:relative; margin:0.35rem -1.5rem 0.35rem; height:270px;
+    overflow:hidden; border-bottom:1px solid var(--glass-border);
+  }
+  .now-banner.hidden{display:none;}
+  .now-banner-img{
+    width:100%; height:100%; display:block;
+    object-fit:cover; object-position:center 30%;
+  }
+  /* Two stacked gradients: (1) top layer melts the very bottom edge into the
+     panel background per theme; (2) a dark scrim darkens the lower portion so
+     the white title reads in light mode too (never over the middle). */
+  .now-banner::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(to bottom, transparent 93%, var(--bg) 100%),
+      linear-gradient(to bottom, transparent 52%, rgba(8,4,8,0.74) 100%);
+  }
+  .now-banner-titles{
+    position:absolute; left:1.5rem; right:1.5rem; bottom:1.6rem; z-index:1;
+  }
+  .now-banner-title{
+    color:#fff; font-weight:600; font-size:1.75rem; line-height:1.16;
+    text-shadow:0 2px 14px rgba(0,0,0,0.72), 0 1px 3px rgba(0,0,0,0.6);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .now-banner-sub{
+    color:rgba(255,255,255,0.94); font-family:var(--font-display);
+    font-style:italic; font-size:1.05rem; line-height:1.25; margin-top:0.12rem;
+    text-shadow:0 1px 10px rgba(0,0,0,0.7), 0 1px 3px rgba(0,0,0,0.55);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+
   .now-chips{display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.55rem;}
   .now-chips .chip{cursor:default; text-transform:none; letter-spacing:0.02em;}
 
@@ -423,17 +462,31 @@
     .app{grid-template-columns:minmax(0,1fr); height:auto; min-height:100dvh; padding:12px; gap:12px;}
     .panel{overflow:visible; min-width:0;}
     .now{padding:1.1rem 1.15rem;}
+    /* Banner: a touch shorter so it is prominent but not overwhelming on a
+       small screen, and full-bleed to the mobile panel padding. */
+    .now-banner{height:200px; margin:0.25rem -1.15rem 0.35rem;}
+    .now-banner-titles{left:1.15rem; right:1.15rem; bottom:1.2rem;}
+    .now-banner-title{font-size:1.5rem;}
     .browse{padding:1rem 1rem 0.4rem;}
-    /* On mobile the now-playing panel is NOT a fixed-height flex frame with a
-       bounded lyrics box, pinned controls, and a capped reflections zone.
-       Everything just stacks and flows so the PAGE scrolls to reveal the
-       like heart, the reflection form, and the comments. (Desktop keeps the
-       bounded/pinned behavior untouched, above.) */
-    .lyrics-wrap{flex:0 0 auto; height:auto !important; min-height:0;}
+    /* On mobile the now-playing panel is NOT a fixed-height flex frame with
+       pinned controls and a capped reflections zone. Sections just stack and
+       flow so the PAGE scrolls to reveal the like heart, the reflection form,
+       and the comments. (Desktop keeps the bounded/pinned behavior above.)
+       EXCEPTION: the lyrics get their OWN generous-but-capped box that scrolls
+       internally, so a long song does not push the controls and comments far
+       down the page. The box grows with the lyrics up to ~50vh, then the
+       lyrics scroll inside it. */
+    .lyrics-wrap{flex:0 0 auto; height:auto !important; min-height:0; max-height:50vh;}
     .lyrics-resize{display:none;}          /* resize handle stays hidden on mobile */
-    .lyrics-scroll{flex:0 0 auto; max-height:none; overflow-y:visible;}
+    /* Lyrics scroll inside the capped .lyrics-wrap. overscroll-behavior:contain
+       keeps a touch-scroll of the lyrics from yanking the whole page, while
+       still leaving the page free to scroll when the touch starts outside the
+       box (controls, like, comments). */
+    .lyrics-scroll{flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto;
+      -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
     /* Reflections zone flows at natural height instead of being a short inner
-       scroller trapped behind the controls. */
+       scroller trapped behind the controls. This must stay uncapped so the
+       comment box is always reachable (the old .engage 9rem-floor trap). */
     .engage{flex:0 0 auto; min-height:0; max-height:none; height:auto; overflow:visible;}
     /* Let the song list grow with the page rather than trapping it in a
        short inner scroller wedged between other sections. */
@@ -462,7 +515,14 @@
     </div>
 
     <div id="now-content">
-      <div class="now-topline">
+      <div class="now-banner hidden" id="now-banner">
+        <img class="now-banner-img" id="now-banner-img" alt="">
+        <div class="now-banner-titles">
+          <div class="now-banner-title" id="now-banner-title"></div>
+          <div class="now-banner-sub" id="now-banner-sub"></div>
+        </div>
+      </div>
+      <div class="now-topline" id="now-topline">
         <div class="now-thumb" id="now-thumb"></div>
         <div class="now-titles">
           <div class="now-title-primary" id="now-title-primary"></div>
@@ -893,6 +953,11 @@ function renderNow(){
   const primary = document.getElementById('now-title-primary');
   const secondary = document.getElementById('now-title-secondary');
   const thumb = document.getElementById('now-thumb');
+  const topline = document.getElementById('now-topline');
+  const banner = document.getElementById('now-banner');
+  const bannerImg = document.getElementById('now-banner-img');
+  const bannerTitle = document.getElementById('now-banner-title');
+  const bannerSub = document.getElementById('now-banner-sub');
   const chips = document.getElementById('now-chips');
   const about = document.getElementById('now-about');
   const langToggle = document.getElementById('lang-toggle');
@@ -907,6 +972,8 @@ function renderNow(){
     orig.classList.add('hidden'); trans.classList.add('hidden');
     primary.textContent = ''; secondary.textContent = '';
     thumb.style.cssText = genArtStyle('laivy hart');
+    banner.classList.add('hidden'); bannerImg.removeAttribute('src');
+    topline.classList.remove('hidden');
     chips.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
     nowLike.innerHTML = ''; nowLikeBlock.classList.add('hidden');
     panelFeed.classList.remove('hidden');
@@ -930,6 +997,29 @@ function renderNow(){
     secondary.style.display = '';
   } else {
     secondary.style.display = 'none';
+  }
+
+  // Cover-art banner when the song has a cover; otherwise fall back to the
+  // compact generative-art thumb + text titles (the current look), so songs
+  // without a cover still look complete.
+  if(s.cover){
+    bannerImg.src = s.cover;
+    bannerImg.alt = (s.title || s.title_translit || '') + ' cover art';
+    bannerTitle.textContent = heb ? s.title : (s.title || s.title_translit);
+    bannerTitle.className = 'now-banner-title ' + (heb ? 'heb' : 'disp');
+    if(heb && s.title_translit){
+      bannerSub.textContent = s.title_translit;
+      bannerSub.style.display = '';
+    } else {
+      bannerSub.textContent = '';
+      bannerSub.style.display = 'none';
+    }
+    banner.classList.remove('hidden');
+    topline.classList.add('hidden');
+  } else {
+    banner.classList.add('hidden');
+    bannerImg.removeAttribute('src');
+    topline.classList.remove('hidden');
   }
 
   nowLike.innerHTML = likeBtnHTML(s, 'now-like') +
