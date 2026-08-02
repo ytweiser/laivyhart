@@ -43,23 +43,27 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <style>
-  body{min-height:100vh;}
+  body{min-height:100vh; overflow-x:hidden;}
   .app{
     display:grid;
-    grid-template-columns:1.15fr 0.85fr;
+    /* minmax(0,...) lets each column shrink below its content's intrinsic
+       width instead of forcing the track (and the whole page) wider than
+       the screen. Bare 1fr resolves to minmax(auto,1fr), which does not. */
+    grid-template-columns:minmax(0,1.15fr) minmax(0,0.85fr);
     gap:16px;
     height:100vh;
     padding:16px;
   }
-  .panel{position:relative; overflow:hidden; display:flex; flex-direction:column;}
+  /* min-width:0 so a grid item can shrink past its content's min-content. */
+  .panel{position:relative; overflow:hidden; display:flex; flex-direction:column; min-width:0;}
 
   /* content sits above the ambient wash */
   .panel > *:not(.ambient){position:relative; z-index:1;}
 
   /* ---------- LEFT: now playing ---------- */
   .now{padding:1.3rem 1.5rem;}
-  .topbar{display:flex; align-items:center; justify-content:space-between; gap:0.8rem;}
-  .topbar-right{display:flex; align-items:center; gap:0.8rem;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap;}
+  .topbar-right{display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; justify-content:flex-end;}
 
   .now-topline{display:flex; align-items:center; gap:0.9rem; margin-top:1.05rem;}
   .now-thumb{
@@ -412,14 +416,21 @@
   .hidden{display:none !important;}
 
   @media (max-width:900px){
-    body{height:auto; overflow:auto;}
-    .app{grid-template-columns:1fr; height:auto; min-height:100vh;}
-    .panel{overflow:visible;}
+    /* Collapse the two desktop columns into ONE vertical stack: player on
+       top, song list / playlists below. Everything is reached by scrolling
+       down; nothing sits off to the side. */
+    body{height:auto; overflow-y:auto; overflow-x:hidden;}
+    .app{grid-template-columns:minmax(0,1fr); height:auto; min-height:100dvh; padding:12px; gap:12px;}
+    .panel{overflow:visible; min-width:0;}
+    .now{padding:1.1rem 1.15rem;}
+    .browse{padding:1rem 1rem 0.4rem;}
     .lyrics-wrap{height:auto !important;}
     .lyrics-resize{display:none;}
     .lyrics-scroll{max-height:52vh;}
     .engage{max-height:none; overflow:visible;}
-    .rows{max-height:70vh;}
+    /* Let the song list grow with the page rather than trapping it in a
+       short inner scroller wedged between other sections. */
+    .rows{max-height:none;}
   }
 </style>
 </head>
