@@ -424,10 +424,17 @@
     .panel{overflow:visible; min-width:0;}
     .now{padding:1.1rem 1.15rem;}
     .browse{padding:1rem 1rem 0.4rem;}
-    .lyrics-wrap{height:auto !important;}
-    .lyrics-resize{display:none;}
-    .lyrics-scroll{max-height:52vh;}
-    .engage{max-height:none; overflow:visible;}
+    /* On mobile the now-playing panel is NOT a fixed-height flex frame with a
+       bounded lyrics box, pinned controls, and a capped reflections zone.
+       Everything just stacks and flows so the PAGE scrolls to reveal the
+       like heart, the reflection form, and the comments. (Desktop keeps the
+       bounded/pinned behavior untouched, above.) */
+    .lyrics-wrap{flex:0 0 auto; height:auto !important; min-height:0;}
+    .lyrics-resize{display:none;}          /* resize handle stays hidden on mobile */
+    .lyrics-scroll{flex:0 0 auto; max-height:none; overflow-y:visible;}
+    /* Reflections zone flows at natural height instead of being a short inner
+       scroller trapped behind the controls. */
+    .engage{flex:0 0 auto; min-height:0; max-height:none; height:auto; overflow:visible;}
     /* Let the song list grow with the page rather than trapping it in a
        short inner scroller wedged between other sections. */
     .rows{max-height:none;}
