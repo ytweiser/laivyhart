@@ -51,7 +51,14 @@
        the screen. Bare 1fr resolves to minmax(auto,1fr), which does not. */
     grid-template-columns:minmax(0,1.15fr) minmax(0,0.85fr);
     gap:16px;
-    height:100vh;
+    /* Was a hard 100vh cap that trapped both panels into internal scrollers.
+       Now the grid grows with its content and the PAGE scrolls: the left
+       now-playing column stacks at natural, generous heights, while the right
+       browse column stays pinned to the viewport (sticky, below) with its own
+       independent list scroll. align-items:start keeps the two columns from
+       stretching each other. */
+    min-height:100vh;
+    align-items:start;
     padding:16px;
   }
   /* min-width:0 so a grid item can shrink past its content's min-content. */
@@ -148,7 +155,7 @@
   /* Lyrics box: a bounded, resizable frame sitting close to the title. Its
      height is JS-driven (drag handle, remembered per session); this is the
      pre-JS fallback. It scrolls within its own frame. */
-  .lyrics-wrap{flex:0 0 auto; height:44vh; min-height:4.5rem; display:flex; flex-direction:column; margin-top:0.45rem; position:relative;}
+  .lyrics-wrap{flex:0 0 auto; height:52vh; min-height:4.5rem; display:flex; flex-direction:column; margin-top:0.45rem; position:relative;}
   /* Drag handle on the lyrics box bottom edge (session-only resize). */
   .lyrics-resize{
     flex:0 0 auto; height:15px; margin-top:1px;
@@ -159,11 +166,12 @@
   .lyrics-resize:hover, .lyrics-resize:focus-visible{background:var(--glass-hi); outline:none;}
   .lyrics-resize .grip{width:2.4rem; height:4px; border-radius:4px; background:var(--chip-border); transition:background 0.15s var(--ease);}
   .lyrics-resize:hover .grip, .lyrics-resize:focus-visible .grip{background:var(--accent-2);}
-  /* Engagement zone (like + reflections) fills the space left below the
-     pinned player controls and scrolls on its own if there are many comments. */
+  /* Engagement zone (like + reflections). It flows at its natural height below
+     the controls so the like heart and every comment are reachable by
+     scrolling the PAGE, never trapped in a short inner scroller. */
   .engage{
-    flex:1 1 0; min-height:9rem;
-    overflow-y:auto; padding-right:0.4rem;
+    flex:0 0 auto; min-height:0;
+    overflow:visible; padding-right:0.4rem;
     margin-top:1rem; padding-top:1.15rem; border-top:1px solid var(--line);
   }
   .engage.hidden{display:none !important;}
@@ -224,7 +232,14 @@
   }
 
   /* ---------- RIGHT: browse ---------- */
-  .browse{padding:1.1rem 1.1rem 0.4rem;}
+  /* Pinned to the viewport so the song list keeps its own independent scroll
+     and does NOT get stretched by the now-taller left column. As the page
+     scrolls the left column, this stays in view; .rows scrolls internally. */
+  .browse{
+    padding:1.1rem 1.1rem 0.4rem;
+    position:sticky; top:16px; align-self:start;
+    height:calc(100vh - 32px);
+  }
   .tabs{display:flex; gap:0.4rem; margin-bottom:0.9rem;}
   .tab{
     font-family:var(--font-ui); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.06em;
@@ -467,7 +482,9 @@
     .now-banner{height:200px; margin:0.25rem -1.15rem 0.35rem;}
     .now-banner-titles{left:1.15rem; right:1.15rem; bottom:1.2rem;}
     .now-banner-title{font-size:1.5rem;}
-    .browse{padding:1rem 1rem 0.4rem;}
+    /* Undo the desktop sticky/viewport-height pin so the list stacks in the
+       single-column flow and grows with the page. */
+    .browse{padding:1rem 1rem 0.4rem; position:static; top:auto; height:auto;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame with
        pinned controls and a capped reflections zone. Sections just stack and
        flow so the PAGE scrolls to reveal the like heart, the reflection form,
@@ -1606,29 +1623,23 @@ document.getElementById('picker-search').addEventListener('input', (e) => { pick
   const panel = document.querySelector('.panel.now');
   const wrap = document.getElementById('lyrics-wrap');
   const handle = document.getElementById('lyrics-resize');
-  const dock = panel ? panel.querySelector('.dock') : null;
-  const nowContent = document.getElementById('now-content');
   if(!panel || !wrap || !handle) return;
 
   const KEY = 'laivy-lyrics-h-v1';
-  const ENGAGE_MIN = 180;   // px kept for the like + reflections zone
-  const MIN_H = 90;
+  const MIN_H = 120;
   const isMobile = () => window.matchMedia('(max-width:900px)').matches;
 
-  function available(){
-    const nc = nowContent ? nowContent.offsetHeight : 0;
-    const dk = dock ? dock.offsetHeight : 0;
-    return panel.clientHeight - nc - dk;
-  }
-  function clampH(h){
-    const maxH = Math.max(MIN_H, available() - ENGAGE_MIN);
-    return Math.min(Math.max(h, MIN_H), maxH);
-  }
+  // The now-playing panel is free-flowing (the page scrolls), so the lyrics
+  // box is sized against the VIEWPORT, not the panel height. A generous
+  // default shows many lines; the banner/title above and controls/like/
+  // comments below stay reachable by scrolling the page.
+  function maxH(){ return Math.max(MIN_H, Math.round(window.innerHeight * 0.9)); }
+  function clampH(h){ return Math.min(Math.max(h, MIN_H), maxH()); }
   function apply(h){ wrap.style.height = clampH(h) + 'px'; }
   function desired(){
     let s = null; try{ s = parseFloat(sessionStorage.getItem(KEY)); }catch(e){}
     if(s && isFinite(s)) return s;
-    return available() * 0.48;   // default: lyrics a touch under half
+    return Math.round(window.innerHeight * 0.52);   // generous: ~half the screen
   }
   function refresh(){
     if(isMobile()){ wrap.style.height = ''; return; }
