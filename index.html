@@ -776,6 +776,8 @@ function mapSong(r){
     lyrics_translation: r.lyrics_translation || '',
     audio: r.audio_url || '',
     cover: r.cover_url || '',
+    cover_focus_x: (r.cover_focus_x == null ? null : Number(r.cover_focus_x)),
+    cover_focus_y: (r.cover_focus_y == null ? null : Number(r.cover_focus_y)),
     play_count: r.play_count || 0,
     like_count: r.like_count || 0
   };
@@ -1021,6 +1023,15 @@ function renderNow(){
   // without a cover still look complete.
   if(s.cover){
     bannerImg.src = s.cover;
+    // Anchor the crop to the song's chosen focal point when set; otherwise
+    // clear the inline style so the CSS default (center 30%) applies.
+    if(s.cover_focus_x == null && s.cover_focus_y == null){
+      bannerImg.style.objectPosition = '';
+    } else {
+      const fx = (s.cover_focus_x == null ? 50 : s.cover_focus_x);
+      const fy = (s.cover_focus_y == null ? 50 : s.cover_focus_y);
+      bannerImg.style.objectPosition = `${fx}% ${fy}%`;
+    }
     bannerImg.alt = (s.title || s.title_translit || '') + ' cover art';
     bannerTitle.textContent = heb ? s.title : (s.title || s.title_translit);
     bannerTitle.className = 'now-banner-title ' + (heb ? 'heb' : 'disp');

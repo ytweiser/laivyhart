@@ -140,6 +140,30 @@
   .audio-box audio{max-width:220px;}
   .cover-preview{width:52px; height:52px; border-radius:10px; background-size:cover; background-position:center; border:1px solid var(--glass-border); flex-shrink:0;}
 
+  /* Focal-point picker: click the full image to choose the spot that stays
+     in view when the cover is cropped into the jukebox banner. */
+  .focus-block{display:flex; gap:1.1rem; flex-wrap:wrap; align-items:flex-start; margin-top:0.9rem; width:100%;}
+  .focus-col{display:flex; flex-direction:column; gap:0.4rem;}
+  .focus-col .status{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-dim);}
+  .focus-img-wrap{
+    position:relative; display:inline-block; max-width:320px; line-height:0;
+    border:1px solid var(--line); border-radius:12px; overflow:hidden; cursor:crosshair;
+    background:var(--chip-bg);
+  }
+  .focus-img-wrap img{display:block; width:100%; height:auto;}
+  .focus-dot{
+    position:absolute; width:18px; height:18px; margin:-9px 0 0 -9px; border-radius:50%;
+    border:2px solid #fff; background:var(--accent-2);
+    box-shadow:0 0 0 2px rgba(0,0,0,0.45), 0 1px 6px rgba(0,0,0,0.5);
+    pointer-events:none; transition:left .05s linear, top .05s linear;
+  }
+  /* Crop preview mirrors the jukebox banner (object-fit:cover + object-position). */
+  .crop-preview{
+    width:300px; max-width:100%; aspect-ratio:20 / 9; border-radius:12px; overflow:hidden;
+    border:1px solid var(--line); background:var(--chip-bg);
+  }
+  .crop-preview img{width:100%; height:100%; object-fit:cover; display:block;}
+
   .save-row{display:flex; gap:0.8rem; margin-top:1.6rem; flex-wrap:wrap;}
   .save-btn{
     padding:0.8rem 1.7rem; border-radius:12px; border:none; background:var(--accent-grad);
@@ -263,6 +287,10 @@ let songs = [];
 let currentSong = null; // null = nothing loaded, {} = new, {...} = existing row
 let pendingAudioFile = null;
 let pendingCoverFile = null;
+// Focal point of the current cover, as percentages (0-100) of the image.
+// Defaults to center; overwritten from the row when the editor loads.
+let pendingFocusX = 50;
+let pendingFocusY = 50;
 
 document.getElementById('theme-toggle').addEventListener('click', () => {
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -524,6 +552,8 @@ function loadIntoForm(song){
   currentSong = song;
   pendingAudioFile = null;
   pendingCoverFile = null;
+  pendingFocusX = (song && song.cover_focus_x != null) ? Number(song.cover_focus_x) : 50;
+  pendingFocusY = (song && song.cover_focus_y != null) ? Number(song.cover_focus_y) : 50;
   renderList();
   renderForm();
 }
@@ -605,6 +635,23 @@ function renderForm(){
           ${s.cover_url ? 'Cover attached ✓' : 'No cover yet. Jukebox will use generative art.'}
         </div>
         <input type="file" id="f-cover-file" accept="image/*">
+        <div class="focus-block" id="focus-block" style="${s.cover_url ? '' : 'display:none;'}">
+          <div class="focus-col">
+            <div class="status">Click the image to set the focal point</div>
+            <div class="focus-img-wrap" id="focus-img-wrap">
+              <img id="focus-img" src="${s.cover_url ? escAttr(s.cover_url) : ''}" alt="cover">
+              <div class="focus-dot" id="focus-dot" style="left:${pendingFocusX}%; top:${pendingFocusY}%;"></div>
+            </div>
+          </div>
+          <div class="focus-col">
+            <div class="status">Banner crop preview</div>
+            <div class="crop-preview">
+              <img id="crop-img" src="${s.cover_url ? escAttr(s.cover_url) : ''}"
+                   style="object-position:${pendingFocusX}% ${pendingFocusY}%;" alt="banner preview">
+            </div>
+            <div class="status" id="focus-readout">Focus: ${Math.round(pendingFocusX)}% / ${Math.round(pendingFocusY)}%</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -639,14 +686,40 @@ function renderForm(){
   document.getElementById('f-cover-file').addEventListener('change', (e) => {
     pendingCoverFile = e.target.files[0] || null;
     if(pendingCoverFile){
+      const objUrl = URL.createObjectURL(pendingCoverFile);
       document.getElementById('cover-status').textContent = 'New image selected: ' + pendingCoverFile.name + ' (click Save to upload)';
-      document.getElementById('cover-preview').style.backgroundImage = `url('${URL.createObjectURL(pendingCoverFile)}')`;
+      document.getElementById('cover-preview').style.backgroundImage = `url('${objUrl}')`;
+      // Reset the focal point to center for the new image and reveal the picker.
+      pendingFocusX = 50; pendingFocusY = 50;
+      document.getElementById('focus-block').style.display = '';
+      document.getElementById('focus-img').src = objUrl;
+      document.getElementById('crop-img').src = objUrl;
+      applyFocusUI();
     }
   });
+  const focusWrap = document.getElementById('focus-img-wrap');
+  if(focusWrap){
+    focusWrap.addEventListener('click', (e) => {
+      const rect = focusWrap.getBoundingClientRect();
+      pendingFocusX = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100));
+      pendingFocusY = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100));
+      applyFocusUI();
+    });
+  }
   document.getElementById('save-btn').addEventListener('click', saveSong);
   if(s.id){
     document.getElementById('delete-btn').addEventListener('click', deleteSong);
   }
+}
+
+// Reflect the current focal point onto the dot, crop preview, and readout.
+function applyFocusUI(){
+  const dot = document.getElementById('focus-dot');
+  const crop = document.getElementById('crop-img');
+  const readout = document.getElementById('focus-readout');
+  if(dot){ dot.style.left = pendingFocusX + '%'; dot.style.top = pendingFocusY + '%'; }
+  if(crop){ crop.style.objectPosition = pendingFocusX + '% ' + pendingFocusY + '%'; }
+  if(readout){ readout.textContent = 'Focus: ' + Math.round(pendingFocusX) + '% / ' + Math.round(pendingFocusY) + '%'; }
 }
 
 function escHtml(str){
@@ -671,6 +744,8 @@ async function saveSong(){
     lyrics_original: document.getElementById('f-lyrics-original').value,
     lyrics_translation: document.getElementById('f-lyrics-translation').value || null,
     about: document.getElementById('f-about').value || null,
+    cover_focus_x: Math.round(pendingFocusX),
+    cover_focus_y: Math.round(pendingFocusY),
   };
 
   // Upload audio first if a new file was chosen
