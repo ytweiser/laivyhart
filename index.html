@@ -132,6 +132,49 @@
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
 
+  /* The cover banner is tappable to open the full image in a lightbox. */
+  .now-banner{cursor:pointer;}
+  .now-banner:focus-visible{outline:2px solid var(--accent-2); outline-offset:-2px;}
+  .now-banner-zoom{
+    position:absolute; top:0.7rem; right:0.7rem; z-index:2;
+    width:2rem; height:2rem; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(20,8,16,0.42); border:1px solid rgba(255,255,255,0.3); color:#fff;
+    box-shadow:0 2px 10px rgba(0,0,0,0.35); pointer-events:none;
+    transition:background 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.18s var(--ease);
+  }
+  .now-banner:hover .now-banner-zoom{background:var(--accent-2); border-color:transparent; transform:scale(1.06);}
+  .now-banner-zoom svg{width:1rem; height:1rem;}
+
+  /* Full-image lightbox: dimmed, blurred backdrop; image shown uncropped. */
+  .lightbox{
+    position:fixed; inset:0; z-index:400; display:flex; align-items:center; justify-content:center;
+    padding:5vh 4vw; box-sizing:border-box;
+    background:rgba(8,4,8,0.82); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+    opacity:0; visibility:hidden; transition:opacity 0.2s var(--ease), visibility 0.2s var(--ease);
+  }
+  .lightbox.open{opacity:1; visibility:visible;}
+  .lightbox-img{
+    max-width:min(96vw, 1100px); max-height:86vh; width:auto; height:auto;
+    object-fit:contain; border-radius:12px; background:var(--bg-2);
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  }
+  .lightbox-cap{
+    position:absolute; left:0; right:0; bottom:max(1rem, env(safe-area-inset-bottom));
+    text-align:center; padding:0 1.2rem; pointer-events:none;
+    color:rgba(255,255,255,0.94); font-family:var(--font-display); font-size:1.02rem;
+    text-shadow:0 1px 10px rgba(0,0,0,0.75); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .lightbox-cap.heb{font-family:var(--font-heb); direction:rtl;}
+  .lightbox-close{
+    position:absolute; top:max(1rem, env(safe-area-inset-top)); right:1rem; z-index:1;
+    width:2.6rem; height:2.6rem; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; line-height:1; font-size:1.6rem;
+    background:rgba(20,8,16,0.5); border:1px solid rgba(255,255,255,0.3); color:#fff;
+    transition:background 0.18s var(--ease), border-color 0.18s var(--ease);
+  }
+  .lightbox-close:hover{background:var(--accent-2); border-color:transparent;}
+
   .now-chips{display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.55rem;}
   .now-chips .chip{cursor:default; text-transform:none; letter-spacing:0.02em;}
 
@@ -543,8 +586,11 @@
     </div>
 
     <div id="now-content">
-      <div class="now-banner hidden" id="now-banner">
+      <div class="now-banner hidden" id="now-banner" role="button" tabindex="0" aria-label="View the full cover image">
         <img class="now-banner-img" id="now-banner-img" alt="">
+        <span class="now-banner-zoom" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
+        </span>
         <div class="now-banner-titles">
           <div class="now-banner-title" id="now-banner-title"></div>
           <div class="now-banner-sub" id="now-banner-sub"></div>
@@ -683,6 +729,12 @@
 </div>
 
 <audio id="audio-el"></audio>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Cover image">
+  <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Close">&times;</button>
+  <img class="lightbox-img" id="lightbox-img" alt="">
+  <div class="lightbox-cap" id="lightbox-cap"></div>
+</div>
 
 <script>
 /* ============================================================
@@ -1777,6 +1829,49 @@ function songShareUrl(s){ return location.origin + '/?song=' + encodeURIComponen
     } else {
       window.prompt('Copy this link:', url);
     }
+  });
+})();
+
+/* ============================================================
+   Cover lightbox: tap the now-playing banner to see the full,
+   uncropped cover image. List thumbnails are unaffected.
+   ============================================================ */
+(function(){
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lightbox-img');
+  const lbCap = document.getElementById('lightbox-cap');
+  const lbClose = document.getElementById('lightbox-close');
+  const banner = document.getElementById('now-banner');
+  if(!lb || !banner) return;
+
+  function openLightbox(){
+    if(currentIdx === null) return;
+    const s = SONGS[currentIdx];
+    if(!s || !s.cover) return;               // only real covers, never the generative fallback
+    const heb = isHebrew(s);
+    lbImg.src = s.cover;
+    lbImg.alt = (s.title || s.title_translit || '') + ' cover art';
+    lbCap.textContent = heb ? s.title : (s.title || s.title_translit || '');
+    lbCap.className = 'lightbox-cap' + (heb ? ' heb' : '');
+    lb.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    lbClose.focus();
+  }
+  function closeLightbox(){
+    lb.classList.remove('open');
+    document.body.style.overflow = '';
+    lbImg.removeAttribute('src');
+  }
+
+  banner.addEventListener('click', openLightbox);
+  banner.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openLightbox(); }
+  });
+  lbClose.addEventListener('click', closeLightbox);
+  // Click on the dark backdrop (not the image or caption) closes.
+  lb.addEventListener('click', (e) => { if(e.target === lb) closeLightbox(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && lb.classList.contains('open')) closeLightbox();
   });
 })();
 
