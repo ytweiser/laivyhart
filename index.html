@@ -1039,6 +1039,9 @@ function renderFilterPills(){
   const sel = document.getElementById('cat-radio-select');
   sel.innerHTML = `<option value="">Category radio</option>` +
     allCategories().map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  // Keep the Category radio control in sync with the active filter, so the pill
+  // and this dropdown always show the same category (or "Category radio" for All).
+  sel.value = (activeCat && activeCat !== 'all') ? activeCat : '';
 }
 function songMatches(s){
   const inCat = activeCat === 'all' || s.categories.includes(activeCat);
@@ -1560,6 +1563,11 @@ document.getElementById('cat-radio-select').addEventListener('change', (e) => {
   if(!cat) return;
   mode = 'catRadio';
   document.getElementById('radio-btn').classList.remove('active');
+  // Behave like clicking that category pill: filter the list + activate the
+  // pill so the listener sees the exact set being played.
+  activeCat = cat;
+  renderFilterPills();
+  renderList();
   queue = shuffledIndices(cat); queuePos = 0;
   if(queue.length) loadSong(queue[0]);
 });
