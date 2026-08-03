@@ -281,7 +281,7 @@
      quiet category floating in the gap just left of the title. */
   .row{
     display:flex; align-items:center; gap:0.9rem;
-    padding:0.72rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
+    padding:0.8rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
     transition:background 0.18s var(--ease);
   }
   .row:last-child{border-bottom:none;}
@@ -289,7 +289,7 @@
   .row.playing{background:var(--glass-hi);}
   .row.playing .row-title-primary{color:var(--accent-2);}
   .row-thumb{
-    width:40px; height:40px; border-radius:50%; object-fit:cover; object-position:center;
+    width:45px; height:45px; border-radius:50%; object-fit:cover; object-position:center;
     flex-shrink:0; display:block; border:1px solid var(--line); background:var(--chip-bg);
   }
   /* Middle slot: pushed to the right so it sits just left of the title. */
@@ -300,11 +300,11 @@
   }
   .row-len{font-family:var(--font-ui); font-size:0.66rem; color:var(--text-faint); display:flex; align-items:center; gap:0.35rem;}
   .row-titles{text-align:right; min-width:0; display:flex; flex-direction:column; gap:0.05rem;}
-  .row-title-primary{font-size:1.2rem; line-height:1.28; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row-title-primary{font-size:1.325rem; line-height:1.28; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .row-title-primary.he{font-family:var(--font-heb); direction:rtl; font-weight:500;}
   .row-title-primary.en{font-family:var(--font-display); font-weight:600;}
   .row-title-secondary{
-    font-family:var(--font-display); font-style:italic; font-size:0.8rem; line-height:1.28;
+    font-family:var(--font-display); font-style:italic; font-size:0.9rem; line-height:1.28;
     color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .row-add{
