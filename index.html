@@ -262,17 +262,38 @@
   .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
   .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(158,43,78,0.45);}
   .dock-right{margin-left:auto; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;}
+  /* Radio + Category radio: a tidy pair of playback actions in the Bordeaux
+     palette, warmer and more present than a plain form field, but distinct
+     from the round play button and from the Love/Share reaction pair. */
   .radio-btn{
-    font-family:var(--font-ui); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em;
-    padding:0.45rem 0.8rem; border-radius:16px; cursor:pointer;
-    background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text-dim);
-    transition:all 0.2s var(--ease);
+    display:inline-flex; align-items:center; gap:0.4rem; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
+    padding:0.5rem 0.85rem; border-radius:14px; cursor:pointer; color:var(--accent-2);
+    background:linear-gradient(135deg, rgba(158,43,78,0.12), rgba(193,53,132,0.12));
+    border:1px solid var(--accent-2); box-shadow:0 2px 10px rgba(158,43,78,0.14);
+    transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease);
   }
-  .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .radio-btn svg{width:0.95rem; height:0.95rem; display:block; flex-shrink:0;}
+  .radio-btn:hover{transform:translateY(-1px);
+    background:linear-gradient(135deg, rgba(158,43,78,0.2), rgba(193,53,132,0.2));
+    box-shadow:0 6px 16px rgba(158,43,78,0.26);}
+  .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(158,43,78,0.4);}
+
+  .cat-radio-wrap{position:relative; display:inline-flex; align-items:center;}
+  .cat-radio-ic{position:absolute; left:0.66rem; width:0.9rem; height:0.9rem; color:var(--accent-2); pointer-events:none;}
+  .cat-radio-arrow{position:absolute; right:0.62rem; width:0.82rem; height:0.82rem; color:var(--accent-2); pointer-events:none;}
   .cat-radio{
-    font-family:var(--font-ui); font-size:0.68rem; padding:0.42rem 0.6rem; border-radius:14px;
-    background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text-dim); cursor:pointer; max-width:11rem;
+    appearance:none; -webkit-appearance:none; -moz-appearance:none;
+    font-family:var(--font-ui); font-size:0.7rem; font-weight:600; letter-spacing:0.02em;
+    padding:0.5rem 1.85rem 0.5rem 1.95rem; border-radius:14px; cursor:pointer; max-width:12rem;
+    color:var(--accent-2);
+    background:linear-gradient(135deg, rgba(158,43,78,0.12), rgba(193,53,132,0.12));
+    border:1px solid var(--accent-2);
+    transition:background 0.2s var(--ease), box-shadow 0.2s var(--ease);
   }
+  .cat-radio:hover{background:linear-gradient(135deg, rgba(158,43,78,0.2), rgba(193,53,132,0.2)); box-shadow:0 6px 16px rgba(158,43,78,0.22);}
+  .cat-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  .cat-radio option{color:var(--text); background:var(--bg-2);}
 
   /* ---------- RIGHT: browse ---------- */
   /* Pinned to the viewport so the song list keeps its own independent scroll
@@ -649,8 +670,15 @@
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <div class="dock-right">
-          <button class="radio-btn" id="radio-btn">Radio</button>
-          <select class="cat-radio" id="cat-radio-select"><option value="">Category radio</option></select>
+          <button class="radio-btn" id="radio-btn" aria-label="Shuffle and play everything">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
+            Radio
+          </button>
+          <span class="cat-radio-wrap">
+            <svg class="cat-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
+            <select class="cat-radio" id="cat-radio-select" aria-label="Category radio"><option value="">Category radio</option></select>
+            <svg class="cat-radio-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
         </div>
       </div>
     </div>
