@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v24';
+const CACHE_VERSION = 'v25';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 

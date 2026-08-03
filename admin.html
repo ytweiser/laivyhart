@@ -746,6 +746,34 @@ function applyFocusUI(){
   if(readout){ readout.textContent = 'Focus: ' + Math.round(pendingFocusX) + '% / ' + Math.round(pendingFocusY) + '%'; }
 }
 
+// Downscale an image file to at most maxDim on its longest side and re-encode
+// as JPEG. Returns a Blob, or rejects if the image cannot be decoded.
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    if(!file || !/^image\//.test(file.type || '')){ reject(new Error('not an image')); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if(!w || !h){ reject(new Error('no dimensions')); return; }
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      // Flatten any transparency onto white so JPEG does not go black.
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('encode failed')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+    img.src = url;
+  });
+}
+
 function escHtml(str){
   return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
@@ -790,15 +818,23 @@ async function saveSong(){
     payload.audio_url = urlData.publicUrl;
   }
 
-  // Upload cover image if a new one was chosen (writes to the covers bucket)
+  // Upload cover image if a new one was chosen (writes to the covers bucket).
+  // Downscale + re-encode to JPEG first so covers stay small everywhere (page
+  // banner, lightbox, and social previews), instead of shipping multi-MB PNGs.
   if(pendingCoverFile){
     const base = payload.title.toLowerCase()
       .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') || 'cover';
-    const ext = (pendingCoverFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+    let blob = pendingCoverFile;
+    let ext = (pendingCoverFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+    let ctype = pendingCoverFile.type || undefined;
+    try {
+      const c = await compressImage(pendingCoverFile, 1600, 0.82);
+      if(c){ blob = c; ext = 'jpg'; ctype = 'image/jpeg'; }
+    } catch(e){ /* fall back to the original file if compression fails */ }
     const path = `${base}-${Date.now()}.${ext}`;
     const { error: coverErr } = await supabaseClient.storage
       .from('covers')
-      .upload(path, pendingCoverFile, { upsert: true });
+      .upload(path, blob, { upsert: true, contentType: ctype });
     if(coverErr){
       msg.textContent = 'Cover upload failed: ' + coverErr.message;
       msg.className = 'save-msg err';

@@ -829,6 +829,15 @@ function genArtStyle(seed){
        + `linear-gradient(135deg, ${base1}, ${base2});`;
 }
 
+// Serve on-page covers through the wsrv.nl image CDN, resized to the size
+// actually needed, so heavy source covers (multi-MB PNGs) do not bloat the
+// page. Callers set an onerror that falls back to the raw URL if the CDN is
+// unavailable, so images always render.
+function cdnImg(url, w){
+  if(!url) return url;
+  return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=' + w + '&output=jpg&q=80';
+}
+
 /* ============================================================
    Theme toggle (persisted)
    ============================================================ */
@@ -1064,7 +1073,7 @@ function rowThumbHTML(s){
   if(s.cover){
     const fx = s.cover_focus_x == null ? 50 : s.cover_focus_x;
     const fy = s.cover_focus_y == null ? 50 : s.cover_focus_y;
-    return `<img class="row-thumb" src="${escHtml(s.cover)}" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
+    return `<img class="row-thumb" src="${escHtml(cdnImg(s.cover, 140))}" data-raw="${escHtml(s.cover)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
   }
   return `<div class="row-thumb" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
 }
@@ -1175,7 +1184,8 @@ function renderNow(){
   // compact generative-art thumb + text titles (the current look), so songs
   // without a cover still look complete.
   if(s.cover){
-    bannerImg.src = s.cover;
+    bannerImg.src = cdnImg(s.cover, 1000);
+    bannerImg.onerror = () => { bannerImg.onerror = null; bannerImg.src = s.cover; };
     // Anchor the crop to the song's chosen focal point when set; otherwise
     // clear the inline style so the CSS default (center 30%) applies.
     if(s.cover_focus_x == null && s.cover_focus_y == null){
@@ -1901,7 +1911,8 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
     const s = SONGS[currentIdx];
     if(!s || !s.cover) return;               // only real covers, never the generative fallback
     const heb = isHebrew(s);
-    lbImg.src = s.cover;
+    lbImg.src = cdnImg(s.cover, 1600);
+    lbImg.onerror = () => { lbImg.onerror = null; lbImg.src = s.cover; };
     lbImg.alt = (s.title || s.title_translit || '') + ' cover art';
     lbCap.textContent = heb ? s.title : (s.title || s.title_translit || '');
     lbCap.className = 'lightbox-cap' + (heb ? ' heb' : '');
