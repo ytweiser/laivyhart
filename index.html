@@ -387,8 +387,10 @@
   .like-btn .like-count{min-width:0.7em; text-align:left; font-variant-numeric:tabular-nums;}
   @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
   /* ---------- Now-playing LIKE control: big, warm, impossible to miss ---------- */
-  .nowlike-block{margin:0 0 1.05rem;}
+  .nowlike-block{margin:0 0 1.05rem; display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap;}
   .nowlike-block.hidden{display:none;}
+  .now-share-btn{display:inline-flex; align-items:center; gap:0.35rem; flex-shrink:0;}
+  .now-share-ic{font-size:0.95em; line-height:1;}
   #now-like-wrap{display:flex; align-items:center; gap:0.8rem;}
   .like-btn.now-like{
     color:var(--accent-1); font-size:0.9rem; gap:0.42rem;
@@ -607,6 +609,9 @@
 
       <div class="nowlike-block hidden" id="nowlike-block">
         <div id="now-like-wrap"></div>
+        <button class="pill-btn now-share-btn" id="now-share-btn" type="button" aria-label="Share this song">
+          <span class="now-share-ic" aria-hidden="true">&#8599;</span> Share this song
+        </button>
       </div>
 
       <div class="comments-wrap hidden" id="comments-wrap">
@@ -810,6 +815,19 @@ async function loadSongs(){
   renderPlaylists();
   loadFeed();
   fetchMissingDurations();
+  handleDeepLink();
+}
+
+// If the page was opened with ?song=ID, select, load, and play that song
+// (cued if autoplay is blocked) and bring the now-playing panel into view.
+function handleDeepLink(){
+  let id;
+  try{ id = new URLSearchParams(location.search).get('song'); }catch(e){ return; }
+  if(!id) return;
+  if(SONGS.findIndex(s => s.id === id) < 0) return;
+  playSongById(id);
+  const now = document.querySelector('.panel.now');
+  if(now){ try{ now.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} }
 }
 
 /* ============================================================
@@ -1150,7 +1168,10 @@ function playCurrent(){
   clearTimeout(idleTimer);
   if(s.audio){
     audioEl.src = s.audio;
-    audioEl.play().catch(()=>{});
+    const p = audioEl.play();
+    // If autoplay is blocked (e.g. a fresh deep-link with no user gesture yet),
+    // leave the song cued and show the play icon so one tap starts it.
+    if(p && p.catch){ p.catch(()=>{ setPlayIcon(false); setAmbientPlaying(false); }); }
     setPlayIcon(true);
     setAmbientPlaying(true);
   } else {
@@ -1725,6 +1746,38 @@ document.getElementById('picker-search').addEventListener('input', (e) => { pick
   });
   window.addEventListener('resize', refresh);
   refresh();
+})();
+
+/* ============================================================
+   Share this song (per-song deep link)
+   ============================================================ */
+function laivyToast(msg){
+  let t = document.getElementById('laivy-toast');
+  if(!t){ t = document.createElement('div'); t.id = 'laivy-toast'; t.className = 'laivy-toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function songShareUrl(s){ return location.origin + '/?song=' + encodeURIComponent(s.id); }
+(function(){
+  const btn = document.getElementById('now-share-btn');
+  if(!btn) return;
+  btn.addEventListener('click', () => {
+    if(currentIdx === null) return;
+    const s = SONGS[currentIdx];
+    if(!s) return;
+    const url = songShareUrl(s);
+    const title = s.title || s.title_translit || 'Laivy Hart';
+    const shareData = { title: title, text: 'Listen to ' + title + ' on Laivy Hart', url: url };
+    if(navigator.share){
+      navigator.share(shareData).catch(() => { /* user cancelled */ });
+    } else if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(() => laivyToast('Link copied')).catch(() => window.prompt('Copy this link:', url));
+    } else {
+      window.prompt('Copy this link:', url);
+    }
+  });
 })();
 
 /* ============================================================

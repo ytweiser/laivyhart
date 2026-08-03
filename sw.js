@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v19';
+const CACHE_VERSION = 'v20';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
 
   // HTML documents: network-first.
   if (isDoc && sameOrigin) {
-    event.respondWith(networkFirst(req));
+    event.respondWith(networkFirstDoc(req, url));
     return;
   }
 
@@ -81,11 +81,20 @@ self.addEventListener('fetch', (event) => {
   // Everything else: default network handling (no respondWith).
 });
 
-async function networkFirst(req) {
+// Network-first for navigations. The live network response always goes to the
+// user, so an online visitor always gets the correct edge-injected per-song
+// Open Graph HTML. IMPORTANT: per-song responses (URLs carrying ?song=...) are
+// NEVER written to the cache, so the service worker can never serve one song's
+// preview HTML for another song, or a stale preview. Only the canonical
+// homepage shell (no query) is cached, and it is what a ?song deep-link falls
+// back to when offline (the app then reads ?song from the URL and boots).
+async function networkFirstDoc(req, url) {
   try {
     const res = await fetch(req);
-    const cache = await caches.open(SHELL_CACHE);
-    cache.put(req, res.clone());
+    if (!url.searchParams.has('song')) {
+      const cache = await caches.open(SHELL_CACHE);
+      cache.put('index.html', res.clone());
+    }
     return res;
   } catch (err) {
     const cached = await caches.match(req);
