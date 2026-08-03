@@ -1859,7 +1859,11 @@ function laivyToast(msg){
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-function songShareUrl(s){ return location.origin + '/?song=' + encodeURIComponent(s.id); }
+// Always share the canonical www link: that is the domain the edge middleware
+// runs on (the bare domain 308-redirects to it), so crawlers get the injected
+// per-song preview directly instead of relying on redirect-following.
+const SHARE_ORIGIN = 'https://www.laivyhart.com';
+function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s.id); }
 (function(){
   const btn = document.getElementById('now-share-btn');
   if(!btn) return;

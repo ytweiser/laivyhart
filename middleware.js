@@ -78,18 +78,33 @@ export default async function middleware(request) {
 
   const title = escapeAttr(song.title);
   const desc = escapeAttr(song.title_translit || 'Original songs. Sometimes stories, sometimes prayers.');
-  const cover = (song.cover_url && /^https?:\/\//i.test(song.cover_url)) ? song.cover_url : DEFAULT_OG_IMAGE;
-  const image = escapeAttr(cover);
-  const pageUrl = escapeAttr(url.origin + '/?song=' + id);
+  const hasCover = song.cover_url && /^https?:\/\//i.test(song.cover_url);
+  // Crawlers (WhatsApp especially) silently drop large og:images, and the raw
+  // covers are multi-megabyte PNGs. Serve a small resized JPEG through the
+  // wsrv.nl image CDN so the preview actually renders. The default og-image is
+  // already small, so it is used directly.
+  const image = hasCover
+    ? 'https://wsrv.nl/?url=' + encodeURIComponent(song.cover_url) + '&w=1200&output=jpg&q=80'
+    : DEFAULT_OG_IMAGE;
+  const imageAttr = escapeAttr(image);
+  // Canonical host: middleware runs on www (the bare domain 308-redirects here).
+  const pageUrl = escapeAttr('https://www.laivyhart.com/?song=' + id);
 
   html = setMeta(html, 'property', 'og:title', title);
   html = setMeta(html, 'property', 'og:description', desc);
   html = setMeta(html, 'property', 'og:url', pageUrl);
-  html = setMeta(html, 'property', 'og:image', image);
+  html = setMeta(html, 'property', 'og:image', imageAttr);
   html = setMeta(html, 'name', 'twitter:title', title);
   html = setMeta(html, 'name', 'twitter:description', desc);
-  html = setMeta(html, 'name', 'twitter:image', image);
+  html = setMeta(html, 'name', 'twitter:image', imageAttr);
   html = html.replace(/<title>[^<]*<\/title>/, () => '<title>' + title + '</title>');
+  // The static 1200x630 dimensions describe the default og-image only. wsrv keeps
+  // each cover's own aspect ratio, so drop the hints for covers to avoid lying.
+  if (hasCover) {
+    html = html
+      .replace(/\s*<meta property="og:image:width" content="[^"]*">/, '')
+      .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
+  }
 
   return new Response(html, {
     status: 200,
