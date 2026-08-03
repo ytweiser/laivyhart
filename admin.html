@@ -115,6 +115,7 @@
     font-family:var(--font-ui); font-size:0.95rem; background:var(--chip-bg); color:var(--text);
   }
   .field input[type=text]:focus, .field select:focus, .field textarea:focus{outline:none; border-color:var(--accent-2);}
+  .cm-note{margin-top:0.4rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-dim); line-height:1.4;}
   .field textarea{min-height:120px; resize:vertical; font-family:var(--font-heb); font-size:1.05rem; line-height:1.7;}
   .field.two-col{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
   .cat-checks{display:flex; flex-wrap:wrap; gap:0.5rem;}
@@ -438,6 +439,8 @@ function syncFormToCurrent(){
   currentSong.lyrics_translation = g('f-lyrics-translation').value;
   currentSong.about = g('f-about').value;
   currentSong.categories = Array.from(document.querySelectorAll('.cat-check.on')).map(c => c.dataset.cat);
+  const feat = g('f-featured');
+  if(feat) currentSong.featured_category = feat.value || null;
 }
 
 function applyCatRenameLocal(oldName, newName){
@@ -602,6 +605,12 @@ function renderForm(){
     </div>
 
     <div class="field">
+      <label>Featured category (shown in the song list)</label>
+      <select id="f-featured"></select>
+      <div class="cm-note">The one category shown on this song's list row. Leave on "Automatic" to use the default order (occasion, then mood, then subject).</div>
+    </div>
+
+    <div class="field">
       <label>Lyrics (original language)</label>
       <textarea id="f-lyrics-original">${escHtml(s.lyrics_original)}</textarea>
     </div>
@@ -663,7 +672,7 @@ function renderForm(){
   `;
 
   area.querySelectorAll('.cat-check').forEach(chip => {
-    chip.addEventListener('click', () => chip.classList.toggle('on'));
+    chip.addEventListener('click', () => { chip.classList.toggle('on'); refreshFeaturedOptions(); });
   });
   document.getElementById('add-cat-btn').addEventListener('click', () => {
     const input = document.getElementById('new-cat-input');
@@ -673,10 +682,12 @@ function renderForm(){
     chip.className = 'cat-check on';
     chip.dataset.cat = val;
     chip.textContent = val;
-    chip.addEventListener('click', () => chip.classList.toggle('on'));
+    chip.addEventListener('click', () => { chip.classList.toggle('on'); refreshFeaturedOptions(); });
     document.getElementById('cat-checks').appendChild(chip);
     input.value = '';
+    refreshFeaturedOptions();
   });
+  refreshFeaturedOptions();
   document.getElementById('f-audio-file').addEventListener('change', (e) => {
     pendingAudioFile = e.target.files[0] || null;
     if(pendingAudioFile){
@@ -710,6 +721,19 @@ function renderForm(){
   if(s.id){
     document.getElementById('delete-btn').addEventListener('click', deleteSong);
   }
+}
+
+// Rebuild the "featured category" dropdown from the song's currently-checked
+// categories, preserving the current pick (or the saved one on first load) and
+// falling back to Automatic if that category is no longer assigned.
+function refreshFeaturedOptions(){
+  const sel = document.getElementById('f-featured');
+  if(!sel) return;
+  const onCats = Array.from(document.querySelectorAll('.cat-check.on')).map(c => c.dataset.cat);
+  const current = sel.value || (currentSong && currentSong.featured_category) || '';
+  sel.innerHTML = `<option value="">Automatic (default order)</option>` +
+    onCats.map(c => `<option value="${escAttr(c)}"${c===current?' selected':''}>${escHtml(c)}</option>`).join('');
+  if(current && !onCats.includes(current)) sel.value = '';
 }
 
 // Reflect the current focal point onto the dot, crop preview, and readout.
@@ -746,6 +770,7 @@ async function saveSong(){
     about: document.getElementById('f-about').value || null,
     cover_focus_x: Math.round(pendingFocusX),
     cover_focus_y: Math.round(pendingFocusY),
+    featured_category: document.getElementById('f-featured').value || null,
   };
 
   // Upload audio first if a new file was chosen

@@ -277,23 +277,29 @@
   .cat-scroll .chip{flex-shrink:0;}
 
   .rows{flex:1; min-height:0; overflow-y:auto; margin-right:-0.3rem; padding-right:0.3rem;}
-  /* Art-free rows: whisper metadata left, titles carry the weight on the right. */
+  /* Round cover thumb on the left, titles carry the weight on the right, one
+     quiet category floating in the gap just left of the title. */
   .row{
-    display:flex; align-items:center; gap:1rem;
-    padding:0.82rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
+    display:flex; align-items:center; gap:0.9rem;
+    padding:0.72rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
     transition:background 0.18s var(--ease);
   }
   .row:last-child{border-bottom:none;}
   .row:hover{background:var(--glass-hi);}
   .row.playing{background:var(--glass-hi);}
   .row.playing .row-title-primary{color:var(--accent-2);}
-  .row-meta{display:flex; flex-direction:column; gap:0.14rem; text-align:left; flex-shrink:0; min-width:2.6rem;}
+  .row-thumb{
+    width:40px; height:40px; border-radius:50%; object-fit:cover; object-position:center;
+    flex-shrink:0; display:block; border:1px solid var(--line); background:var(--chip-bg);
+  }
+  /* Middle slot: pushed to the right so it sits just left of the title. */
+  .row-mid{display:flex; align-items:center; gap:0.5rem; margin-left:auto; flex-shrink:0; min-width:0;}
   .row-cat{
     font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:9rem;
+    color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:8.5rem;
   }
   .row-len{font-family:var(--font-ui); font-size:0.66rem; color:var(--text-faint); display:flex; align-items:center; gap:0.35rem;}
-  .row-titles{margin-left:auto; text-align:right; min-width:0; display:flex; flex-direction:column; gap:0.05rem;}
+  .row-titles{text-align:right; min-width:0; display:flex; flex-direction:column; gap:0.05rem;}
   .row-title-primary{font-size:1.2rem; line-height:1.28; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .row-title-primary.he{font-family:var(--font-heb); direction:rtl; font-weight:500;}
   .row-title-primary.en{font-family:var(--font-display); font-weight:600;}
@@ -508,6 +514,9 @@
     /* Let the song list grow with the page rather than trapping it in a
        short inner scroller wedged between other sections. */
     .rows{max-height:none;}
+    /* Keep the single category from crowding the title on a narrow screen. */
+    .row{gap:0.7rem;}
+    .row-cat{max-width:5.5rem;}
   }
 </style>
 </head>
@@ -778,6 +787,7 @@ function mapSong(r){
     cover: r.cover_url || '',
     cover_focus_x: (r.cover_focus_x == null ? null : Number(r.cover_focus_x)),
     cover_focus_y: (r.cover_focus_y == null ? null : Number(r.cover_focus_y)),
+    featured_category: r.featured_category || null,
     play_count: r.play_count || 0,
     like_count: r.like_count || 0
   };
@@ -917,6 +927,30 @@ function songMatches(s){
    ============================================================ */
 function eqHTML(){ return `<span class="eq"><span></span><span></span><span></span><span></span></span>`; }
 
+// The single category shown on a song row. An admin-set featured_category wins
+// (if it is still one of the song's categories); otherwise fall back to a group
+// hierarchy: first occasion, then mood, then subject (ungrouped counts as
+// subject); else nothing.
+function pickRowCategory(s){
+  if(s.featured_category && s.categories.includes(s.featured_category)) return s.featured_category;
+  const groupOf = c => categoryGroup.get(c) || 'subject';
+  return s.categories.find(c => groupOf(c) === 'occasion')
+      || s.categories.find(c => groupOf(c) === 'mood')
+      || s.categories.find(c => groupOf(c) === 'subject')
+      || '';
+}
+
+// Round thumbnail markup for a row: the cover (anchored to its focal point)
+// when present, else a Bordeaux generative circle seeded from the title.
+function rowThumbHTML(s){
+  if(s.cover){
+    const fx = s.cover_focus_x == null ? 50 : s.cover_focus_x;
+    const fy = s.cover_focus_y == null ? 50 : s.cover_focus_y;
+    return `<img class="row-thumb" src="${escHtml(s.cover)}" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
+  }
+  return `<div class="row-thumb" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+}
+
 function renderList(){
   const rows = document.getElementById('rows');
   const filtered = SONGS.map((s,i)=>({s, idx:i})).filter(o => songMatches(o.s));
@@ -930,12 +964,13 @@ function renderList(){
     // Primary is always the song's own language (bold), secondary is muted below.
     const primary = heb ? s.title : (s.title || s.title_translit);
     const secondary = heb ? s.title_translit : '';
-    const cat = s.categories[0] || '';
+    const cat = pickRowCategory(s);
     return `
       <div class="row ${playing?'playing':''}" data-idx="${idx}">
-        <div class="row-meta">
+        ${rowThumbHTML(s)}
+        <div class="row-mid">
+          ${playing ? eqHTML() : ''}
           ${cat ? `<div class="row-cat">${escHtml(cat)}</div>` : ''}
-          ${(playing || s.length) ? `<div class="row-len">${playing ? eqHTML() : escHtml(s.length)}</div>` : ''}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
         <div class="row-titles">
