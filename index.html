@@ -13,13 +13,19 @@
 </script>
 <title>Laivy Hart</title>
 <script>
-  /* Set the lighting before first paint to avoid a flash. */
+  /* Set the lighting and color theme before first paint to avoid a flash. */
   (function(){
     try{
       var t = localStorage.getItem('laivy-theme');
       if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
       document.documentElement.setAttribute('data-theme', t);
-    }catch(e){ document.documentElement.setAttribute('data-theme','dark'); }
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
+      document.documentElement.setAttribute('data-color', c);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme','dark');
+      document.documentElement.setAttribute('data-color','bordeaux');
+    }
   })();
 </script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -268,7 +274,7 @@
   .tbtn svg{width:1.05rem; height:1.05rem; fill:currentColor; display:block;}
   .tbtn:hover{transform:translateY(-1px);}
   .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
-  .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(158,43,78,0.45);}
+  .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.45);}
   .dock-right{margin-left:auto; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;}
   /* Radio + Category radio: a tidy pair of playback actions in the Bordeaux
      palette, warmer and more present than a plain form field, but distinct
@@ -277,15 +283,15 @@
     display:inline-flex; align-items:center; gap:0.4rem; white-space:nowrap;
     font-family:var(--font-ui); font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
     padding:0.5rem 0.85rem; border-radius:14px; cursor:pointer; color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(158,43,78,0.12), rgba(193,53,132,0.12));
-    border:1px solid var(--accent-2); box-shadow:0 2px 10px rgba(158,43,78,0.14);
+    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
+    border:1px solid var(--accent-2); box-shadow:0 2px 10px rgba(var(--accent-1-rgb),0.14);
     transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease);
   }
   .radio-btn svg{width:0.95rem; height:0.95rem; display:block; flex-shrink:0;}
   .radio-btn:hover{transform:translateY(-1px);
-    background:linear-gradient(135deg, rgba(158,43,78,0.2), rgba(193,53,132,0.2));
-    box-shadow:0 6px 16px rgba(158,43,78,0.26);}
-  .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(158,43,78,0.4);}
+    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2));
+    box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.26);}
+  .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
 
   .cat-radio-wrap{position:relative; display:inline-flex; align-items:center;}
   .cat-radio-ic{position:absolute; left:0.66rem; width:0.9rem; height:0.9rem; color:var(--accent-2); pointer-events:none;}
@@ -295,11 +301,11 @@
     font-family:var(--font-ui); font-size:0.7rem; font-weight:600; letter-spacing:0.02em;
     padding:0.5rem 1.85rem 0.5rem 1.95rem; border-radius:14px; cursor:pointer; max-width:12rem;
     color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(158,43,78,0.12), rgba(193,53,132,0.12));
+    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
     border:1px solid var(--accent-2);
     transition:background 0.2s var(--ease), box-shadow 0.2s var(--ease);
   }
-  .cat-radio:hover{background:linear-gradient(135deg, rgba(158,43,78,0.2), rgba(193,53,132,0.2)); box-shadow:0 6px 16px rgba(158,43,78,0.22);}
+  .cat-radio:hover{background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2)); box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.22);}
   .cat-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .cat-radio option{color:var(--text); background:var(--bg-2);}
 
@@ -471,22 +477,22 @@
     flex-shrink:0; width:3rem; height:3rem; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     background:var(--accent-grad); color:#fff;
-    box-shadow:0 6px 18px rgba(158,43,78,0.32);
+    box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.32);
     transition:transform 0.18s var(--ease), filter 0.18s var(--ease), box-shadow 0.18s var(--ease);
   }
-  .share-invite:hover .share-invite-ic{transform:translateY(-2px); filter:brightness(1.06); box-shadow:0 10px 24px rgba(158,43,78,0.45);}
+  .share-invite:hover .share-invite-ic{transform:translateY(-2px); filter:brightness(1.06); box-shadow:0 10px 24px rgba(var(--accent-1-rgb),0.45);}
   .share-invite:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:12px;}
   .share-invite-ic svg{width:1.5rem; height:1.5rem;}
   .share-invite .nowlike-title{color:var(--accent-2);}
   .like-btn.now-like{
     color:var(--accent-1); font-size:0.9rem; gap:0.42rem;
     padding:0.46rem 0.72rem; border-radius:15px;
-    background:linear-gradient(135deg, rgba(158,43,78,0.10), rgba(193,53,132,0.10));
+    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.10), rgba(var(--accent-2-rgb),0.10));
     border:1px solid var(--chip-border);
     transition:transform 0.18s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease);
   }
   .like-btn.now-like:hover{transform:translateY(-1px); border-color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(158,43,78,0.18), rgba(193,53,132,0.18));}
+    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.18), rgba(var(--accent-2-rgb),0.18));}
   .like-btn.now-like .heart{width:1.6rem; height:1.6rem; stroke-width:1.7;}
   .like-btn.now-like .like-count{font-size:0.92rem; font-weight:600; min-width:1ch;}
   .nowlike-text{display:flex; flex-direction:column; gap:0.08rem;}
@@ -624,6 +630,12 @@
         <button class="pill-btn" id="share-btn" type="button">Share</button>
         <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
         <a class="quiet-link" href="about.html">About</a>
+        <div class="palette" role="group" aria-label="Color theme">
+          <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
+          <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
+          <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
+          <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
+        </div>
         <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
       </div>
     </div>
@@ -823,14 +835,25 @@ function hashStr(s){
   for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) | 0; }
   return Math.abs(h);
 }
-// Deterministic generative art in the Bordeaux family, seeded from the title.
+// Per color-theme hue/saturation ranges for the generative fallback art, so a
+// coverless song's tile always sits in the currently chosen color family
+// instead of clashing Bordeaux magenta. Seeded from the title so it is stable.
+const ART_THEMES = {
+  bordeaux: { a0:300, aSpan:60, b0:260, bSpan:80, s1:66, s2:60, l1:46, l2:42 },
+  emerald:  { a0:150, aSpan:44, b0:135, bSpan:44, s1:56, s2:52, l1:42, l2:38 },
+  royal:    { a0:216, aSpan:44, b0:224, bSpan:40, s1:60, s2:56, l1:48, l2:44 },
+  gold:     { a0:36,  aSpan:22, b0:30,  bSpan:22, s1:62, s2:58, l1:50, l2:46 }
+};
+// Deterministic generative art in the active color-theme family, seeded from
+// the title. Reads colorTheme so switching color recolors coverless tiles.
 function genArtStyle(seed){
+  const cfg = ART_THEMES[colorTheme] || ART_THEMES.bordeaux;
   const h = hashStr(seed);
-  const a = 300 + (h % 60);
-  const b = 260 + ((h>>3) % 80);
+  const a = cfg.a0 + (h % cfg.aSpan);
+  const b = cfg.b0 + ((h>>3) % cfg.bSpan);
   const x1 = 12 + (h % 55), y1 = 12 + ((h>>2)%55);
   const x2 = 45 + ((h>>4)%50), y2 = 40 + ((h>>5)%55);
-  const c1 = `hsl(${a} 66% 46%)`, c2 = `hsl(${b} 60% 42%)`;
+  const c1 = `hsl(${a} ${cfg.s1}% ${cfg.l1}%)`, c2 = `hsl(${b} ${cfg.s2}% ${cfg.l2}%)`;
   const base1 = `hsl(${(a+b)>>1} 45% 20%)`, base2 = `hsl(${a} 42% 12%)`;
   return `background:radial-gradient(60% 60% at ${x1}% ${y1}%, ${c1}, transparent 70%),`
        + `radial-gradient(55% 55% at ${x2}% ${y2}%, ${c2}, transparent 70%),`
@@ -855,6 +878,50 @@ themeToggle.addEventListener('click', () => {
   document.documentElement.setAttribute('data-theme', next);
   try{ localStorage.setItem('laivy-theme', next); }catch(e){}
 });
+
+/* ============================================================
+   Color theme (persisted, separate from the light/dark key).
+   Accent/background/text/wash all live in CSS variables keyed on the
+   data-color attribute, so switching recolors the whole UI instantly.
+   The only thing not driven by CSS is the generative fallback art (drawn
+   with inline styles in JS), so we redraw those tiles on a color change.
+   ============================================================ */
+const COLOR_KEY = 'laivy-color';
+const COLORS = ['bordeaux', 'emerald', 'royal', 'gold'];
+function readColor(){
+  const c = document.documentElement.getAttribute('data-color');
+  return COLORS.includes(c) ? c : 'bordeaux';
+}
+let colorTheme = readColor();
+function markActiveSwatch(name){
+  document.querySelectorAll('.swatch').forEach(sw => {
+    const on = sw.dataset.color === name;
+    sw.classList.toggle('is-active', on);
+    sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+function refreshGenArt(){
+  // Coverless tiles are the only theme-colored surface not made of CSS vars.
+  if(!Array.isArray(SONGS) || !SONGS.length) return;
+  renderList();
+  const thumb = document.getElementById('now-thumb');
+  if(thumb){
+    if(currentIdx === null) thumb.style.cssText = genArtStyle('laivy hart');
+    else { const s = SONGS[currentIdx]; if(s) thumb.style.cssText = thumbStyle(s); }
+  }
+}
+function applyColor(name){
+  if(!COLORS.includes(name)) name = 'bordeaux';
+  colorTheme = name;
+  document.documentElement.setAttribute('data-color', name);
+  try{ localStorage.setItem(COLOR_KEY, name); }catch(e){}
+  markActiveSwatch(name);
+  refreshGenArt();
+}
+document.querySelectorAll('.swatch').forEach(sw => {
+  sw.addEventListener('click', () => applyColor(sw.dataset.color));
+});
+markActiveSwatch(colorTheme);
 
 /* ============================================================
    Data

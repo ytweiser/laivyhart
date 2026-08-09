@@ -18,7 +18,13 @@
       var t = localStorage.getItem('laivy-theme');
       if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
       document.documentElement.setAttribute('data-theme', t);
-    }catch(e){ document.documentElement.setAttribute('data-theme','dark'); }
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
+      document.documentElement.setAttribute('data-color', c);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme','dark');
+      document.documentElement.setAttribute('data-color','bordeaux');
+    }
   })();
 </script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -110,6 +116,12 @@
     <button class="pill-btn" id="share-btn" type="button">Share</button>
     <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
     <a class="quiet-link" href="index.html">Jukebox</a>
+    <div class="palette" role="group" aria-label="Color theme">
+      <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
+      <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
+      <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
+      <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
+    </div>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
   </div>
 </div>
@@ -172,6 +184,30 @@
     document.documentElement.setAttribute('data-theme', next);
     try{ localStorage.setItem('laivy-theme', next); }catch(e){}
   });
+
+  /* Color theme picker (persisted, shared with the jukebox via the same key).
+     Everything on this page is CSS-variable driven, so switching data-color
+     recolors the whole page with no extra work. */
+  (function(){
+    const COLORS = ['bordeaux', 'emerald', 'royal', 'gold'];
+    const swatches = document.querySelectorAll('.swatch');
+    function mark(name){
+      swatches.forEach(sw => {
+        const on = sw.dataset.color === name;
+        sw.classList.toggle('is-active', on);
+        sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    function apply(name){
+      if(COLORS.indexOf(name) === -1) name = 'bordeaux';
+      document.documentElement.setAttribute('data-color', name);
+      try{ localStorage.setItem('laivy-color', name); }catch(e){}
+      mark(name);
+    }
+    swatches.forEach(sw => sw.addEventListener('click', () => apply(sw.dataset.color)));
+    const cur = document.documentElement.getAttribute('data-color');
+    mark(COLORS.indexOf(cur) === -1 ? 'bordeaux' : cur);
+  })();
 </script>
 </body>
 </html>

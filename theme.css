@@ -5,12 +5,33 @@
    site feels like one place in two lightings.
    ============================================================ */
 
+/* ------------------------------------------------------------
+   Theming is two independent dimensions:
+     data-color = bordeaux | emerald | royal | gold  (the accent family)
+     data-theme = dark | light                       (the lighting)
+   The final look is color x lighting. The accent family (accent 1/2/3,
+   wash tones) is identical in both lightings; the backgrounds and text
+   change with the lighting. Both attributes live on <html> and are set
+   before first paint by an inline script on each page.
+   ------------------------------------------------------------ */
 :root{
-  /* Warm accent, identical in both lightings */
+  /* Bordeaux is the default color theme. accent-*-rgb are bare triplets so
+     they can be dropped into rgba() for accent-tinted shadows and washes. */
   --accent-1:#9E2B4E;
   --accent-2:#C13584;
+  --accent-3:#E0699A;
+  --accent-1-rgb:158,43,78;
+  --accent-2-rgb:193,53,132;
+  --wash-1:#4A1230;
+  --wash-2:#7A1F6B;
+  --stroke-alpha:0.16;
+
+  /* Derived accent tokens, shared by every color theme. Because these hold
+     var() references, they resolve per-element against whichever accent the
+     active data-color sets, so switching color recolors the whole UI. */
   --accent-grad:linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  --accent-solid:#9E2B4E;
+  --accent-solid:var(--accent-1);
+  --logo-grad:linear-gradient(135deg, var(--accent-1), var(--accent-3));
 
   --font-heb:'Frank Ruhl Libre', serif;
   --font-display:'Fraunces', 'Frank Ruhl Libre', Georgia, serif;
@@ -23,15 +44,40 @@
   --ease:cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* Dark is the default lighting */
+/* ---- Color themes: accent family + wash (identical in both lightings) ---- */
+[data-color="emerald"]{
+  --accent-1:#0F7B5A;
+  --accent-2:#14A67C;
+  --accent-3:#4FD1A5;
+  --accent-1-rgb:15,123,90;
+  --accent-2-rgb:20,166,124;
+  --wash-1:#0E4A38;
+  --wash-2:#166B52;
+}
+[data-color="royal"]{
+  --accent-1:#3A4FC4;
+  --accent-2:#5B6BF0;
+  --accent-3:#8E9BFF;
+  --accent-1-rgb:58,79,196;
+  --accent-2-rgb:91,107,240;
+  --wash-1:#1E2456;
+  --wash-2:#3730A3;
+}
+[data-color="gold"]{
+  --accent-1:#B08423;
+  --accent-2:#D6A93E;
+  --accent-3:#EBCB7E;
+  --accent-1-rgb:176,132,35;
+  --accent-2-rgb:214,169,62;
+  --wash-1:#4A3714;
+  --wash-2:#6B5220;
+  --stroke-alpha:0.18;
+}
+
+/* ---- Lighting: neutral tokens (same across all color themes) ---- */
+/* Dark is the default lighting. */
 :root,
 [data-theme="dark"]{
-  --bg:#140810;
-  --bg-2:#1d0d17;
-  --text:#F4E9EE;
-  --text-dim:#B598A4;
-  --text-faint:#7C6470;
-
   --glass-bg:rgba(255,255,255,0.045);
   --glass-border:rgba(255,255,255,0.10);
   --glass-hi:rgba(255,255,255,0.07);
@@ -43,6 +89,9 @@
   --play-bg:var(--accent-grad);
   --play-fg:#ffffff;
 
+  /* Accent-tinted hairline: accent-2 in dark, accent-1 in light. */
+  --accent-stroke:rgba(var(--accent-2-rgb), var(--stroke-alpha));
+
   --ambient-opacity:0.55;
   --ambient-blur:72px;
 
@@ -50,12 +99,6 @@
 }
 
 [data-theme="light"]{
-  --bg:#F5ECEE;
-  --bg-2:#efe1e5;
-  --text:#2A1018;
-  --text-dim:#8A6875;
-  --text-faint:#A88E99;
-
   --glass-bg:rgba(255,255,255,0.58);
   --glass-border:rgba(42,16,24,0.09);
   --glass-hi:rgba(255,255,255,0.75);
@@ -67,10 +110,48 @@
   --play-bg:var(--accent-solid);
   --play-fg:#ffffff;
 
+  --accent-stroke:rgba(var(--accent-1-rgb), var(--stroke-alpha));
+
   --ambient-opacity:0.16;
   --ambient-blur:84px;
 
   color-scheme:light;
+}
+
+/* ---- Backgrounds + text: color theme x lighting ---- */
+/* :root doubles as the Bordeaux-dark fallback if JS is disabled. */
+:root,
+[data-color="bordeaux"][data-theme="dark"]{
+  --bg:#140810; --bg-2:#1d0d17;
+  --text:#F4E9EE; --text-dim:#B598A4; --text-faint:#7C6470;
+}
+[data-color="bordeaux"][data-theme="light"]{
+  --bg:#F5ECEE; --bg-2:#efe1e5;
+  --text:#2A1018; --text-dim:#8A6875; --text-faint:#A88E99;
+}
+[data-color="emerald"][data-theme="dark"]{
+  --bg:#08130F; --bg-2:#0E1F17;
+  --text:#E9F5EF; --text-dim:#94B8AB; --text-faint:#5E7C71;
+}
+[data-color="emerald"][data-theme="light"]{
+  --bg:#ECF4F0; --bg-2:#E2EDE7;
+  --text:#0C231A; --text-dim:#5E7C71; --text-faint:#8AA89C;
+}
+[data-color="royal"][data-theme="dark"]{
+  --bg:#0A0C1A; --bg-2:#12152B;
+  --text:#ECEEF9; --text-dim:#9599B8; --text-faint:#63678A;
+}
+[data-color="royal"][data-theme="light"]{
+  --bg:#ECEEF7; --bg-2:#E2E5F1;
+  --text:#12152C; --text-dim:#63678A; --text-faint:#9599B8;
+}
+[data-color="gold"][data-theme="dark"]{
+  --bg:#14100A; --bg-2:#201A0F;
+  --text:#F5EEDE; --text-dim:#B8A582; --text-faint:#7C6E52;
+}
+[data-color="gold"][data-theme="light"]{
+  --bg:#F5F0E4; --bg-2:#EDE6D3;
+  --text:#2A2110; --text-dim:#7C6E52; --text-faint:#A89A76;
 }
 
 *{box-sizing:border-box;}
@@ -110,7 +191,7 @@ body{
 .wordmark .brand-dot{
   width:0.7rem; height:0.7rem; border-radius:50%;
   background:var(--accent-grad);
-  box-shadow:0 0 14px rgba(193,53,132,0.6);
+  box-shadow:0 0 14px rgba(var(--accent-2-rgb),0.6);
   flex-shrink:0;
 }
 .wordmark .hl-ai{
@@ -130,7 +211,7 @@ body{
 }
 .logo .l1{ color:var(--text); }
 .logo .l2{
-  background:linear-gradient(135deg, #9E2B4E, #E0699A);
+  background:var(--logo-grad);
   -webkit-background-clip:text; background-clip:text;
   -webkit-text-fill-color:transparent; color:transparent;
 }
@@ -146,6 +227,33 @@ body{
   transition:transform 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 .icon-btn:hover{transform:translateY(-1px); border-color:var(--accent-2);}
+
+/* ---------- Color-theme swatch picker ---------- */
+/* Four small round swatches, each showing its own theme gradient (fixed, so
+   they always advertise the color they switch to). The active one wears a
+   ring in the current text color so it reads in both light and dark. */
+.palette{display:inline-flex; align-items:center; gap:0.4rem;}
+.swatch{
+  width:1.15rem; height:1.15rem; border-radius:50%;
+  border:none; padding:0; cursor:pointer;
+  box-shadow:0 0 0 1px var(--glass-border);
+  transition:transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.swatch:hover{transform:translateY(-1px) scale(1.1);}
+.swatch:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+.swatch.is-active{
+  transform:scale(1.12);
+  box-shadow:0 0 0 2px var(--bg), 0 0 0 3px var(--text);
+}
+.swatch.bordeaux{background:linear-gradient(135deg, #9E2B4E, #C13584);}
+.swatch.emerald{background:linear-gradient(135deg, #0F7B5A, #14A67C);}
+.swatch.royal{background:linear-gradient(135deg, #3A4FC4, #5B6BF0);}
+.swatch.gold{background:linear-gradient(135deg, #B08423, #D6A93E);}
+
+@media (max-width: 460px){
+  .swatch{width:1.05rem; height:1.05rem;}
+  .palette{gap:0.32rem;}
+}
 
 .quiet-link{
   font-family:var(--font-ui);
@@ -232,7 +340,7 @@ body{
 .ambient.is-playing .blob{animation-play-state:running;}
 .ambient .blob.b1{background:radial-gradient(circle, var(--accent-2), transparent 68%); top:-12%; left:-10%;}
 .ambient .blob.b2{background:radial-gradient(circle, var(--accent-1), transparent 68%); bottom:-18%; right:-12%; animation-duration:31s;}
-.ambient .blob.b3{background:radial-gradient(circle, #7a1f6b, transparent 68%); top:35%; left:38%; animation-duration:38s; width:50%;}
+.ambient .blob.b3{background:radial-gradient(circle, var(--wash-2), transparent 68%); top:35%; left:38%; animation-duration:38s; width:50%;}
 
 @keyframes drift{
   0%{transform:translate(0,0) scale(1);}
