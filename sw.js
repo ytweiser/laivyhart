@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v26';
+const CACHE_VERSION = 'v27';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -55,6 +55,14 @@ self.addEventListener('fetch', (event) => {
 
   // Supabase REST + Storage (audio): stay live, never cache.
   if (url.hostname === SUPABASE_HOST) return;
+
+  // Google Analytics (gtag.js loader + collect beacons): never cache or
+  // intercept. GA must reach Google's servers live, so let these pass through
+  // to the network untouched.
+  if (url.hostname === 'www.googletagmanager.com' ||
+      url.hostname === 'googletagmanager.com' ||
+      /(^|\.)google-analytics\.com$/.test(url.hostname) ||
+      /(^|\.)analytics\.google\.com$/.test(url.hostname)) return;
 
   const sameOrigin = url.origin === self.location.origin;
   const isDoc = req.mode === 'navigate' ||
