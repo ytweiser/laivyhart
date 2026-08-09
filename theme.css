@@ -245,10 +245,13 @@ body{
   transform:scale(1.12);
   box-shadow:0 0 0 2px var(--bg), 0 0 0 3px var(--text);
 }
-.swatch.bordeaux{background:linear-gradient(135deg, #9E2B4E, #C13584);}
-.swatch.emerald{background:linear-gradient(135deg, #0F7B5A, #14A67C);}
-.swatch.royal{background:linear-gradient(135deg, #3A4FC4, #5B6BF0);}
-.swatch.gold{background:linear-gradient(135deg, #B08423, #D6A93E);}
+/* Swatch fills are deliberately DEEPER jewel tones than the live accents, so
+   the picker reads as a set of dark, elegant gems rather than bright circles.
+   These colors are cosmetic to the swatch only; they do not affect theming. */
+.swatch.bordeaux{background:linear-gradient(135deg, #4A0F22, #7A1B3C);}
+.swatch.emerald{background:linear-gradient(135deg, #063326, #0C5A42);}
+.swatch.royal{background:linear-gradient(135deg, #10184A, #232C7A);}
+.swatch.gold{background:linear-gradient(135deg, #4A3410, #8A6420);}
 
 @media (max-width: 460px){
   .swatch{width:1.05rem; height:1.05rem;}
