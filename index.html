@@ -1341,6 +1341,11 @@ audioEl.addEventListener('play', () => {
   if(!s || !s.audio || !s.id) return;
   playCounted = true;
   incrementPlay(s.id);
+  laivyTrack('song_play', {
+    song_id: s.id,
+    song_title: s.title || s.title_translit || '',
+    song_transliteration: s.title_translit || ''
+  });
 });
 audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(false); });
 audioEl.addEventListener('ended', () => {
@@ -1351,6 +1356,15 @@ audioEl.addEventListener('ended', () => {
 async function incrementPlay(songId){
   try{ await supabaseClient.rpc('increment_play_count', { song_id: songId }); }
   catch(_){ /* best effort, never disrupt playback */ }
+}
+
+/* Fire a GA4 event. Guarded so a missing or ad-blocked gtag can never break
+   playback or any other feature: if gtag is undefined it simply no-ops. Only
+   song ids/titles and action names are sent, never any personal data. */
+function laivyTrack(name, params){
+  try{
+    if(typeof gtag === 'function'){ gtag('event', name, params || {}); }
+  }catch(_){ /* analytics is best effort */ }
 }
 
 /* ============================================================
@@ -1393,6 +1407,10 @@ async function toggleLike(songId){
   else { likedSet.delete(songId); s.like_count = Math.max(0, (s.like_count || 0) - 1); }
   saveLikes();
   updateLikeUI(songId);
+  laivyTrack(liked ? 'song_like' : 'song_unlike', {
+    song_id: songId,
+    song_title: s.title || s.title_translit || ''
+  });
   try{
     const { data, error } = await supabaseClient.rpc('toggle_like', { song_id: songId, liked });
     if(!error && typeof data === 'number'){ s.like_count = data; updateLikeUI(songId); }
@@ -1570,6 +1588,7 @@ document.getElementById('cat-radio-select').addEventListener('change', (e) => {
   const cat = e.target.value;
   if(!cat) return;
   mode = 'catRadio';
+  laivyTrack('category_radio', { category: cat });
   document.getElementById('radio-btn').classList.remove('active');
   // Behave like clicking that category pill: filter the list + activate the
   // pill so the listener sees the exact set being played.
@@ -1629,6 +1648,7 @@ function createPlaylist(name){
   if(!name) return null;
   const pl = { id: newId(), name, songIds: [] };
   playlists.push(pl); savePlaylists();
+  laivyTrack('playlist_created', { playlist_name: name });
   return pl;
 }
 document.getElementById('pl-add').addEventListener('click', () => {
@@ -1733,9 +1753,13 @@ function openAddMenu(anchor, idx){
         if(!name){ closeAddMenu(); return; }
         const pl = createPlaylist(name);
         pl.songIds.push(song.id); savePlaylists();
+        laivyTrack('playlist_song_added', { song_id: song.id, playlist_name: pl.name });
       } else {
         const pl = playlists.find(p => p.id === b.dataset.pl);
-        if(pl && !pl.songIds.includes(song.id)){ pl.songIds.push(song.id); savePlaylists(); }
+        if(pl && !pl.songIds.includes(song.id)){
+          pl.songIds.push(song.id); savePlaylists();
+          laivyTrack('playlist_song_added', { song_id: song.id, playlist_name: pl.name });
+        }
       }
       anchor.classList.add('added');
       closeAddMenu();
@@ -1899,6 +1923,7 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
     if(!s) return;
     const url = songShareUrl(s);
     const title = s.title || s.title_translit || 'Laivy Hart';
+    laivyTrack('song_share', { song_id: s.id, song_title: title });
     const shareData = { title: title, text: 'Listen to ' + title + ' on Laivy Hart', url: url };
     if(navigator.share){
       navigator.share(shareData).catch(() => { /* user cancelled */ });
