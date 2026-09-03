@@ -1445,9 +1445,78 @@ audioEl.addEventListener('ended', () => {
   if(mode !== 'manual') advanceQueue();
 });
 
-async function incrementPlay(songId){
-  try{ await supabaseClient.rpc('increment_play_count', { song_id: songId }); }
-  catch(_){ /* best effort, never disrupt playback */ }
+/* ============================================================
+   Resilient event queue for Supabase tracking writes (play counts + likes).
+
+   Supabase may be briefly unavailable (network blips, or HTTP 402 if the
+   project is paused Sept 5-9). Every tracked write is recorded in localStorage
+   FIRST and removed only once Supabase confirms success, so nothing is lost.
+   Queued events are retried on page load, on a timer while the page is open,
+   when the tab regains focus, and when the browser reconnects. Each event has
+   a unique id and is dropped only after a confirmed success, so it can never
+   be counted twice (there is a single write path: enqueue -> flush).
+   ============================================================ */
+const EVENT_QUEUE_KEY = 'laivy-event-queue-v1';
+const EVENT_QUEUE_MAX = 1000; // cap so a long outage can't bloat localStorage
+let eventQueue = loadEventQueue();
+function loadEventQueue(){ try{ return JSON.parse(localStorage.getItem(EVENT_QUEUE_KEY)) || []; }catch(e){ return []; } }
+function saveEventQueue(){ try{ localStorage.setItem(EVENT_QUEUE_KEY, JSON.stringify(eventQueue)); }catch(e){} }
+function makeEventId(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+function enqueueEvent(ev){
+  ev.id = ev.id || makeEventId();
+  eventQueue.push(ev);
+  if(eventQueue.length > EVENT_QUEUE_MAX) eventQueue = eventQueue.slice(-EVENT_QUEUE_MAX);
+  saveEventQueue();
+}
+
+// Send one queued event. Returns true ONLY on a confirmed success (so it can be
+// dropped); false means "leave it queued and retry later".
+async function sendQueuedEvent(ev){
+  if(ev.type === 'play'){
+    const { error } = await supabaseClient.rpc('increment_play_count', { song_id: ev.song_id });
+    return !error;
+  }
+  if(ev.type === 'like'){
+    const { data, error } = await supabaseClient.rpc('toggle_like', { song_id: ev.song_id, liked: ev.liked });
+    if(error) return false;
+    // Reconcile the heart count with the authoritative value when possible.
+    const s = SONGS.find(x => x.id === ev.song_id);
+    if(s && typeof data === 'number'){ s.like_count = data; updateLikeUI(ev.song_id); }
+    return true;
+  }
+  return true; // unknown type: drop it so it can't wedge the queue
+}
+
+let flushingQueue = false;
+async function flushEventQueue(){
+  if(flushingQueue || !eventQueue.length) return;
+  flushingQueue = true;
+  try{
+    // Oldest first; stop at the first failure so ordering holds and we don't
+    // hammer a still-down Supabase. Remove each event only after it succeeds.
+    while(eventQueue.length){
+      const ev = eventQueue[0];
+      let ok = false;
+      try{ ok = await sendQueuedEvent(ev); }catch(_){ ok = false; }
+      if(!ok) break;
+      eventQueue = eventQueue.filter(e => e.id !== ev.id);
+      saveEventQueue();
+    }
+  } finally {
+    flushingQueue = false;
+  }
+}
+
+// Retry triggers (page-load flush is kicked from the boot sequence below).
+setInterval(flushEventQueue, 45000);
+window.addEventListener('online', flushEventQueue);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) flushEventQueue(); });
+
+function incrementPlay(songId){
+  // Record the play, then try to send right away; if Supabase is down it stays
+  // queued and is retried later. Never disrupts playback.
+  enqueueEvent({ type: 'play', song_id: songId });
+  flushEventQueue();
 }
 
 /* Fire a GA4 event. Guarded so a missing or ad-blocked gtag can never break
@@ -1503,10 +1572,11 @@ async function toggleLike(songId){
     song_id: songId,
     song_title: s.title || s.title_translit || ''
   });
-  try{
-    const { data, error } = await supabaseClient.rpc('toggle_like', { song_id: songId, liked });
-    if(!error && typeof data === 'number'){ s.like_count = data; updateLikeUI(songId); }
-  }catch(_){ /* best effort; local state already reflects the tap */ }
+  // Queue the tap so a Supabase outage can't drop it; the authoritative count
+  // is reconciled when the event is successfully sent. Local state already
+  // reflects the tap, so the heart stays instant either way.
+  enqueueEvent({ type: 'like', song_id: songId, liked });
+  flushEventQueue();
 }
 // One delegated handler covers rows (re-rendered) and the now-playing heart.
 document.addEventListener('click', (e) => {
@@ -2075,6 +2145,8 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
    Init
    ============================================================ */
 loadSongs();
+// Retry any play/like events queued during a previous outage.
+flushEventQueue();
 </script>
 </body>
 </html>
