@@ -983,14 +983,39 @@ function mapSong(r){
 }
 function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
 
+// Static outage fallback: the committed songs.json snapshot (regenerate with
+// scripts/snapshot-songs.mjs). Used when Supabase is unreachable or returns a
+// non-2xx status (e.g. HTTP 402 when the project is paused) so visitors still
+// get the full jukebox, with audio and covers served from R2.
+async function loadSongsSnapshot(){
+  try{
+    const res = await fetch('songs.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('songs.json HTTP ' + res.status);
+    const rows = await res.json();
+    return Array.isArray(rows) ? rows : null;
+  }catch(e){
+    console.error('[laivy] songs.json fallback failed', e);
+    return null;
+  }
+}
+
 async function loadSongs(){
-  const { data, error } = await supabaseClient.from('songs').select('*').order('title');
-  if(error){
-    console.error(error);
+  // Try Supabase first. supabase-js returns { error } for non-2xx and throws on
+  // network failure, so cover both: any failure falls back to songs.json.
+  let data = null;
+  try{
+    const res = await supabaseClient.from('songs').select('*').order('title');
+    if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no data'));
+    data = res.data;
+  }catch(err){
+    console.warn('[laivy] Supabase songs load failed; using songs.json snapshot.', err);
+    data = await loadSongsSnapshot();
+  }
+  if(!data){
     document.getElementById('rows').innerHTML = `<div class="muted">Couldn't load songs right now. Please refresh.</div>`;
     return;
   }
-  SONGS = (data || []).map(mapSong);
+  SONGS = data.map(mapSong);
   applySessionShuffle();
   await loadCategoryGroups();
   renderFilterPills();

@@ -59,7 +59,26 @@ export default async function middleware(request) {
       if (Array.isArray(rows) && rows.length) song = rows[0];
     }
   } catch (e) {
-    // fall through to default tags on any lookup failure
+    // fall through to the snapshot / default tags on any lookup failure
+  }
+
+  // Supabase unreachable or returned non-2xx (e.g. HTTP 402 when the project is
+  // paused): fall back to the committed songs.json snapshot so per-song link
+  // previews still work. Fetched from this same deployment; matcher '/' does not
+  // match '/songs.json', so this does not re-enter the middleware.
+  if (!song) {
+    try {
+      const snap = await fetch(new URL('/songs.json', request.url));
+      if (snap.ok) {
+        const rows = await snap.json();
+        if (Array.isArray(rows)) {
+          const found = rows.find((s) => s && s.id === id);
+          if (found) song = { title: found.title, title_translit: found.title_translit, cover_url: found.cover_url };
+        }
+      }
+    } catch (e) {
+      // fall through to default tags
+    }
   }
 
   // Unknown/invalid song id -> default tags.

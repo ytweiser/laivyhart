@@ -665,6 +665,8 @@ function renderForm(){
           ${s.cover_url ? 'Cover attached ✓' : 'No cover yet. Jukebox will use generative art.'}
         </div>
         <input type="file" id="f-cover-file" accept="image/*">
+        <label style="margin-top:0.6rem;">Cover URL (auto-filled on upload; paste an R2 URL here to set it by hand)</label>
+        <input type="text" id="f-cover-url" style="direction:ltr;" placeholder="https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/…" value="${escAttr(s.cover_url)}">
         <div class="focus-block" id="focus-block" style="${s.cover_url ? '' : 'display:none;'}">
           <div class="focus-col">
             <div class="status">Click the image to set the focal point</div>
@@ -867,30 +869,51 @@ async function saveSong(){
     payload.audio_url = data.url;
   }
 
-  // Upload cover image if a new one was chosen (writes to the covers bucket).
-  // Downscale + re-encode to JPEG first so covers stay small everywhere (page
-  // banner, lightbox, and social previews), instead of shipping multi-MB PNGs.
+  // Cover URL comes from the manual field (paste / existing value) unless a new
+  // file is uploaded below, in which case the Worker's returned URL wins.
+  payload.cover_url = document.getElementById('f-cover-url').value.trim() || null;
+
+  // Upload cover image to Cloudflare R2 (via the Worker, under covers/) if a new
+  // one was chosen. Downscale + re-encode to JPEG first so covers stay small
+  // everywhere (page banner, lightbox, and social previews).
   if(pendingCoverFile){
+    const token = getUploadToken();
+    if(!token){
+      msg.textContent = 'Enter the upload token before uploading a cover.';
+      msg.className = 'save-msg err';
+      return;
+    }
     const base = payload.title.toLowerCase()
       .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') || 'cover';
     let blob = pendingCoverFile;
     let ext = (pendingCoverFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
-    let ctype = pendingCoverFile.type || undefined;
+    let ctype = pendingCoverFile.type || 'application/octet-stream';
     try {
       const c = await compressImage(pendingCoverFile, 1600, 0.82);
       if(c){ blob = c; ext = 'jpg'; ctype = 'image/jpeg'; }
     } catch(e){ /* fall back to the original file if compression fails */ }
     const path = `${base}-${Date.now()}.${ext}`;
-    const { error: coverErr } = await supabaseClient.storage
-      .from('covers')
-      .upload(path, blob, { upsert: true, contentType: ctype });
-    if(coverErr){
-      msg.textContent = 'Cover upload failed: ' + coverErr.message;
+    let res;
+    try {
+      res = await fetch(`${R2_UPLOAD_URL}?folder=covers&filename=${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': ctype },
+        body: blob,
+      });
+    } catch(e){
+      msg.textContent = 'Cover upload failed: ' + e.message;
       msg.className = 'save-msg err';
       return;
     }
-    const { data: coverUrlData } = supabaseClient.storage.from('covers').getPublicUrl(path);
-    payload.cover_url = coverUrlData.publicUrl;
+    if(!res.ok){
+      let detail = res.status;
+      try { const j = await res.json(); if(j && j.error) detail = j.error; } catch(e){}
+      msg.textContent = 'Cover upload failed: ' + detail;
+      msg.className = 'save-msg err';
+      return;
+    }
+    const data = await res.json();
+    payload.cover_url = data.url;
   }
 
   let error;

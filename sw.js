@@ -14,13 +14,14 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v32';
+const CACHE_VERSION = 'v33';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
 const SHELL = [
   'index.html', 'about.html', 'admin.html',
   'theme.css', 'config.js', 'pwa.js',
+  'songs.json',
   'manifest.webmanifest',
   'favicon.svg', 'favicon-32.png', 'apple-touch-icon.png',
   'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png'

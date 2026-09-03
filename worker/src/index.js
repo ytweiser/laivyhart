@@ -86,26 +86,33 @@ export default {
     const url = new URL(request.url);
     let filename = (url.searchParams.get('filename') || request.headers.get('X-Filename') || '').trim();
     if (!filename) return json({ error: 'Missing filename' }, 400, origin);
-    // No path traversal or absolute keys.
-    if (filename.includes('..') || filename.startsWith('/')) {
+    // filename is a single name, never a path (folders go via ?folder=).
+    if (filename.includes('/') || filename.includes('..')) {
       return json({ error: 'Invalid filename' }, 400, origin);
     }
+
+    // --- Optional folder/prefix (e.g. "covers"); a single simple segment. ---
+    let folder = (url.searchParams.get('folder') || '').trim().replace(/^\/+|\/+$/g, '');
+    if (folder && !/^[a-zA-Z0-9_-]+$/.test(folder)) {
+      return json({ error: 'Invalid folder' }, 400, origin);
+    }
+    const key = folder ? folder + '/' + filename : filename;
 
     if (!request.body) return json({ error: 'Empty body' }, 400, origin);
 
     const contentType = request.headers.get('Content-Type') || 'audio/mpeg';
 
     try {
-      await env.AUDIO_BUCKET.put(filename, request.body, {
+      await env.AUDIO_BUCKET.put(key, request.body, {
         httpMetadata: { contentType },
       });
     } catch (e) {
       return json({ error: 'Upload failed: ' + (e && e.message) }, 500, origin);
     }
 
-    // The R2 key is the raw filename; the public URL percent-encodes it
+    // The R2 key is the raw path; the public URL percent-encodes the filename
     // (spaces -> %20, parentheses left literal), matching the existing files.
-    const publicUrl = PUBLIC_BASE + '/' + encodeURIComponent(filename);
-    return json({ url: publicUrl, filename }, 200, origin);
+    const publicUrl = PUBLIC_BASE + '/' + (folder ? folder + '/' : '') + encodeURIComponent(filename);
+    return json({ url: publicUrl, key }, 200, origin);
   },
 };
