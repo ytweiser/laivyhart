@@ -289,6 +289,15 @@
 <script>
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Cloudflare Worker that writes audio to the R2 bucket (see /worker). New song
+// audio is uploaded here instead of Supabase Storage. Filled in after deploy.
+const R2_UPLOAD_URL = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
+// The upload token is a shared secret (the Worker's UPLOAD_TOKEN). admin.html is
+// public, so it is NOT hardcoded: it is entered once and kept in localStorage.
+const UPLOAD_TOKEN_KEY = 'laivy-r2-upload-token';
+function getUploadToken(){ try{ return localStorage.getItem(UPLOAD_TOKEN_KEY) || ''; }catch(e){ return ''; } }
+function setUploadToken(v){ try{ localStorage.setItem(UPLOAD_TOKEN_KEY, v || ''); }catch(e){} }
+
 // Category vocabulary, loaded live from the `categories` table.
 let categories = []; // array of { id, name, sort_order }
 
@@ -639,8 +648,12 @@ function renderForm(){
         <div class="status" id="audio-status">
           ${s.audio_url ? 'Audio attached ✓' : 'No audio attached yet'}
         </div>
-        ${s.audio_url ? `<audio controls src="${s.audio_url}"></audio>` : ''}
+        ${s.audio_url ? `<audio controls src="${escAttr(s.audio_url)}"></audio>` : ''}
         <input type="file" id="f-audio-file" accept="audio/*">
+        <label style="margin-top:0.6rem;">Audio URL (auto-filled on upload; paste an R2 URL here to set it by hand)</label>
+        <input type="text" id="f-audio-url" style="direction:ltr;" placeholder="https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/…" value="${escAttr(s.audio_url)}">
+        <label style="margin-top:0.6rem;">Upload token (saved on this device only)</label>
+        <input type="password" id="f-upload-token" style="direction:ltr;" placeholder="Paste the R2 upload token once" value="${escAttr(getUploadToken())}">
       </div>
     </div>
 
@@ -701,6 +714,9 @@ function renderForm(){
     if(pendingAudioFile){
       document.getElementById('audio-status').textContent = 'New file selected: ' + pendingAudioFile.name + ' (click Save to upload)';
     }
+  });
+  document.getElementById('f-upload-token').addEventListener('input', (e) => {
+    setUploadToken(e.target.value.trim());
   });
   document.getElementById('f-cover-file').addEventListener('change', (e) => {
     pendingCoverFile = e.target.files[0] || null;
@@ -809,21 +825,46 @@ async function saveSong(){
     featured_category: document.getElementById('f-featured').value || null,
   };
 
-  // Upload audio first if a new file was chosen
+  // Audio URL comes from the manual field (paste / existing value) unless a new
+  // file is uploaded below, in which case the Worker's returned URL wins.
+  payload.audio_url = document.getElementById('f-audio-url').value.trim() || null;
+
+  // Upload audio to Cloudflare R2 (via the Worker) if a new file was chosen.
   if(pendingAudioFile){
-    const safeName = payload.title.toLowerCase()
-      .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') || 'untitled';
-    const path = `${safeName}-${Date.now()}.mp3`;
-    const { error: uploadErr } = await supabaseClient.storage
-      .from('Audio')
-      .upload(path, pendingAudioFile, { upsert: true });
-    if(uploadErr){
-      msg.textContent = 'Audio upload failed: ' + uploadErr.message;
+    const token = getUploadToken();
+    if(!token){
+      msg.textContent = 'Enter the upload token before uploading audio.';
       msg.className = 'save-msg err';
       return;
     }
-    const { data: urlData } = supabaseClient.storage.from('Audio').getPublicUrl(path);
-    payload.audio_url = urlData.publicUrl;
+    // Same sanitization as before: lowercase, strip punctuation, spaces -> dashes.
+    const safeName = payload.title.toLowerCase()
+      .replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') || 'untitled';
+    const path = `${safeName}-${Date.now()}.mp3`;
+    let res;
+    try {
+      res = await fetch(`${R2_UPLOAD_URL}?filename=${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': pendingAudioFile.type || 'audio/mpeg',
+        },
+        body: pendingAudioFile,
+      });
+    } catch(e){
+      msg.textContent = 'Audio upload failed: ' + e.message;
+      msg.className = 'save-msg err';
+      return;
+    }
+    if(!res.ok){
+      let detail = res.status;
+      try { const j = await res.json(); if(j && j.error) detail = j.error; } catch(e){}
+      msg.textContent = 'Audio upload failed: ' + detail;
+      msg.className = 'save-msg err';
+      return;
+    }
+    const data = await res.json();
+    payload.audio_url = data.url;
   }
 
   // Upload cover image if a new one was chosen (writes to the covers bucket).
