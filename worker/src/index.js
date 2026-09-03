@@ -75,15 +75,33 @@ export default {
       return json({ error: 'Method not allowed' }, 405, origin);
     }
 
-    // --- Auth ---
+    // --- Auth (shared by /publish and the upload route) ---
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
     if (!env.UPLOAD_TOKEN || !safeEqual(token, env.UPLOAD_TOKEN)) {
       return json({ error: 'Unauthorized' }, 401, origin);
     }
 
-    // --- Filename ---
     const url = new URL(request.url);
+
+    // --- Publish: trigger a Vercel redeploy via the stored deploy hook. ---
+    // The deploy rebuilds the site, which regenerates songs.json from the live
+    // database (see vercel.json buildCommand). The hook URL is a Worker secret.
+    if (url.pathname === '/publish') {
+      if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
+      if (!env.DEPLOY_HOOK_URL) return json({ error: 'Deploy hook not configured' }, 500, origin);
+      try {
+        const hookRes = await fetch(env.DEPLOY_HOOK_URL, { method: 'POST' });
+        if (!hookRes.ok) return json({ error: 'Deploy hook failed: HTTP ' + hookRes.status }, 502, origin);
+        let job = null;
+        try { const j = await hookRes.json(); job = (j && j.job && j.job.id) || null; } catch (e) { /* non-JSON is fine */ }
+        return json({ ok: true, job }, 200, origin);
+      } catch (e) {
+        return json({ error: 'Deploy hook error: ' + (e && e.message) }, 502, origin);
+      }
+    }
+
+    // --- Filename (upload route) ---
     let filename = (url.searchParams.get('filename') || request.headers.get('X-Filename') || '').trim();
     if (!filename) return json({ error: 'Missing filename' }, 400, origin);
     // filename is a single name, never a path (folders go via ?folder=).
