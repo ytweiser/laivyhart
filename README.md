@@ -21,7 +21,8 @@ a field end to end:
    record of schema changes applied in numerical order (`001` = tags/featured/
    comment_count; `002` = the `plays` history table, `plays_7d` column, the
    `increment_play_count` + `refresh_plays_7d` functions, and the hourly pg_cron
-   job); the live schema wins if they ever disagree.
+   job; `003` = the `like_*_count` facet columns + `set_like_facet`); the live
+   schema wins if they ever disagree.
 2. **`mapSong()` in `index.html`** (~line 964) — add the field to the mapped
    song object, with a sensible default. Fields not listed here are dropped on
    the public side, even though the load uses `select('*')`.
@@ -156,3 +157,28 @@ calls `navigate('listen')` then `playRail(idxs)`, which sets `manualQueue` and
 loads the first track; `manualStep` and end-of-track auto-advance follow it, and
 any non-rail selection clears it. No counts, badges, or "trending" language
 appear on the homepage — only the section names.
+
+## Likes
+
+Tapping the heart in the now-playing panel toggles a like: `songs.like_count`
+(global) via the `toggle_like(song_id, liked)` RPC, plus this browser's liked
+ids in `localStorage` (`laivy-likes-v1`). The heart is unchanged.
+
+When the heart goes from unliked to liked, a quiet **facet line** fades in under
+it — "What moved you?" with three chips: *the melody* / *the words* / *all of
+it*. Tapping one records it through the resilient event queue via
+`set_like_facet(song_id, facet, previous_facet)` (`sql/003`), which moves the
+three `songs.like_*_count` counters (`tune`/`lyrics`/`all`, clamped at 0) and
+**never touches `like_count`**. The choice is stored per song in `localStorage`
+(`laivy-like-facets-v1`); after ~1.5s the prompt fades, leaving the selected
+chip. Ignored, the line fades out after 8s and nothing is recorded (the like
+already counted). Tapping a different chip switches (previous decremented, new
+incremented). Unliking a faceted song calls `set_like_facet(..., null,
+previous)` to decrement it and clears the stored facet. Re-opening an
+already-faceted like shows the settled chip only; liked-without-a-facet shows
+nothing.
+
+**Facet counts are admin-only for now** — the split (`♥ N · melody · words ·
+all`) is shown read-only in `admin.html` (song list + form header) and never
+appears on the public site, and is never in the admin save payload. Analytics:
+`like_facet` with the song id and the chosen facet (or `"cleared"`).

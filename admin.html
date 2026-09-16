@@ -115,6 +115,8 @@
   .list-item .lt-audio{font-size:0.64rem; margin-top:0.2rem; font-family:var(--font-ui);}
   .lt-audio.has{color:var(--accent-2);} .lt-audio.missing{color:var(--text-faint);}
   .list-item .lt-plays{font-family:var(--font-ui); font-size:0.62rem; color:var(--text-faint); margin-top:0.15rem;}
+  .list-item .lt-likes{font-family:var(--font-ui); font-size:0.62rem; color:var(--text-faint); margin-top:0.1rem;}
+  .form-likes{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin:-0.3rem 0 0.8rem;}
 
   .form-area{padding:2rem 3vw; overflow-y:auto;}
   .form-area h2{font-family:var(--font-display); font-weight:600; font-size:1.4rem; margin-top:0;}
@@ -587,6 +589,14 @@ document.getElementById('new-global-cat').addEventListener('keydown', (e) => {
   if(e.key === 'Enter'){ e.preventDefault(); addCategory(); }
 });
 
+// Read-only like split for the admin (heart total + the three facet counters).
+// Never written back; these counters are not in the save payload.
+function likeSplit(s){
+  return '♥ ' + (s.like_count ?? 0) +
+    ' · melody ' + (s.like_tune_count ?? 0) +
+    ' · words ' + (s.like_lyrics_count ?? 0) +
+    ' · all ' + (s.like_all_count ?? 0);
+}
 function renderList(){
   const el = document.getElementById('list-items');
   el.innerHTML = songs.map(s => `
@@ -599,6 +609,7 @@ function renderList(){
       ${(s.tags && s.tags.length) ? `<div class="lt-tags" style="opacity:0.6; font-size:0.8rem;">${escHtml(s.tags.join(', '))}</div>` : ''}
       <div class="lt-audio ${s.audio_url ? 'has':'missing'}">${s.audio_url ? '♪ audio attached' : 'no audio yet'}</div>
       <div class="lt-plays">▶ ${s.play_count ?? 0} play${(s.play_count ?? 0) === 1 ? '' : 's'}</div>
+      <div class="lt-likes">${likeSplit(s)}</div>
     </div>
   `).join('');
   // Per-row featured toggle: flips songs.featured immediately, no form.
@@ -685,6 +696,7 @@ function renderForm(){
 
   area.innerHTML = `
     <h2>${s.id ? 'Edit song' : 'New song'}</h2>
+    ${s.id ? `<div class="form-likes">${likeSplit(s)}</div>` : ''}
 
     <div class="field two-col">
       <div>

@@ -369,6 +369,23 @@
   }
   .now-tag:hover{color:var(--text-dim); border-color:var(--accent-2);}
 
+  /* Optional like-facet line beneath the heart (same quiet chip look as tags). */
+  .facet-line{flex-basis:100%; display:flex; flex-wrap:wrap; align-items:center; gap:0.4rem 0.5rem; margin-top:0.1rem;}
+  .facet-line.hidden{display:none;}
+  .facet-line.fadein{animation:facetFadeIn 0.45s var(--ease);}
+  .facet-line.fading{opacity:0; transition:opacity 0.5s var(--ease);}
+  @keyframes facetFadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  .facet-prompt{font-family:var(--font-display); font-style:italic; font-size:0.85rem; color:var(--text-faint); margin-right:0.15rem;}
+  .facet-chip{
+    background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:999px;
+    padding:0.15rem 0.7rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint);
+    cursor:pointer; transition:color 0.18s var(--ease), border-color 0.18s var(--ease), background 0.18s var(--ease);
+  }
+  .facet-chip:hover{color:var(--text-dim); border-color:var(--accent-2);}
+  .facet-chip.selected{color:#fff; background:var(--accent-2); border-color:transparent;}
+  .facet-line.settling .facet-prompt, .facet-line.settling .facet-chip:not(.selected){opacity:0; transition:opacity 0.4s var(--ease);}
+  .facet-line.settled .facet-prompt, .facet-line.settled .facet-chip:not(.selected){display:none;}
+
   /* ---------- Homepage (idle panel / "home while playing") ---------- */
   .logo{cursor:pointer;}
   .homepage{margin-top:0.6rem;}
@@ -875,6 +892,13 @@
             <span class="nowlike-sub">Send it to someone who'd love it.</span>
           </span>
         </button>
+        <!-- Optional like facet: revealed when the heart is first tapped. -->
+        <div class="facet-line hidden" id="facet-line">
+          <span class="facet-prompt">What moved you?</span>
+          <button class="facet-chip" data-facet="tune" type="button">the melody</button>
+          <button class="facet-chip" data-facet="lyrics" type="button">the words</button>
+          <button class="facet-chip" data-facet="all" type="button">all of it</button>
+        </div>
       </div>
 
       <div class="comments-wrap hidden" id="comments-wrap">
@@ -1210,7 +1234,10 @@ function mapSong(r){
     created_at: r.created_at || null,
     play_count: r.play_count || 0,
     plays_7d: r.plays_7d || 0,
-    like_count: r.like_count || 0
+    like_count: r.like_count || 0,
+    like_tune_count: r.like_tune_count || 0,
+    like_lyrics_count: r.like_lyrics_count || 0,
+    like_all_count: r.like_all_count || 0
   };
 }
 function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
@@ -1977,6 +2004,7 @@ function loadSong(idx, keepRailQueue){
   langView = 'orig';
   playCounted = false;
   renderNow();
+  updateFacetLine();
   if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
   loadComments();
@@ -2101,6 +2129,14 @@ async function sendQueuedEvent(ev){
     if(s && typeof data === 'number'){ s.like_count = data; updateLikeUI(ev.song_id); }
     return true;
   }
+  if(ev.type === 'facet'){
+    // Move the facet counters; like_count is untouched. previous_facet carries
+    // the snapshot from enqueue time so ordered sends stay consistent.
+    const { error } = await supabaseClient.rpc('set_like_facet', {
+      song_id: ev.song_id, facet: ev.facet, previous_facet: ev.previous_facet
+    });
+    return !error;
+  }
   return true; // unknown type: drop it so it can't wedge the queue
 }
 
@@ -2194,6 +2230,13 @@ async function toggleLike(songId){
   // reflects the tap, so the heart stays instant either way.
   enqueueEvent({ type: 'like', song_id: songId, liked });
   flushEventQueue();
+  // Facet line: invite it when the now-playing song is newly liked; on unlike,
+  // decrement any recorded facet and hide the line.
+  if(liked){
+    if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) revealFacetPrompt();
+  } else {
+    clearFacetOnUnlike(songId);
+  }
 }
 // One delegated handler covers rows (re-rendered) and the now-playing heart.
 document.addEventListener('click', (e) => {
@@ -2202,6 +2245,101 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   toggleLike(btn.dataset.like);
+});
+
+/* ============================================================
+   Optional like facet: melody / words / all of it. Recorded via the resilient
+   event queue (set_like_facet); the chosen facet is stored per song in
+   localStorage. No facet numbers are ever shown on the public site.
+   ============================================================ */
+const LIKE_FACETS_KEY = 'laivy-like-facets-v1';
+let likeFacets = loadLikeFacets();
+function loadLikeFacets(){ try{ return JSON.parse(localStorage.getItem(LIKE_FACETS_KEY)) || {}; }catch(e){ return {}; } }
+function saveLikeFacets(){ try{ localStorage.setItem(LIKE_FACETS_KEY, JSON.stringify(likeFacets)); }catch(e){} }
+
+let facetIgnoreTimer = null, facetSettleTimer = null;
+function clearFacetTimers(){ clearTimeout(facetIgnoreTimer); clearTimeout(facetSettleTimer); facetIgnoreTimer = facetSettleTimer = null; }
+function facetLineEl(){ return document.getElementById('facet-line'); }
+function paintFacetChips(sel){
+  const el = facetLineEl(); if(!el) return;
+  el.querySelectorAll('.facet-chip').forEach(c => c.classList.toggle('selected', c.dataset.facet === sel));
+}
+function hideFacetLine(fade){
+  const el = facetLineEl(); if(!el) return;
+  clearFacetTimers();
+  if(fade && !el.classList.contains('hidden')){
+    el.classList.add('fading');
+    facetSettleTimer = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('fading', 'fadein', 'settling', 'settled'); }, 500);
+  } else {
+    el.classList.add('hidden');
+    el.classList.remove('fading', 'fadein', 'settling', 'settled');
+  }
+}
+// Reflect the current song's stored state (called on each song load).
+function updateFacetLine(){
+  const el = facetLineEl(); if(!el) return;
+  clearFacetTimers();
+  el.classList.remove('fading', 'fadein', 'settling');
+  if(currentIdx === null){ el.classList.add('hidden'); el.classList.remove('settled'); return; }
+  const s = SONGS[currentIdx];
+  const facet = likeFacets[s.id];
+  if(likedSet.has(s.id) && facet){
+    paintFacetChips(facet);
+    el.classList.remove('hidden');
+    el.classList.add('settled');            // settled state: selected chip only, no prompt
+  } else {
+    paintFacetChips(null);
+    el.classList.add('hidden');
+    el.classList.remove('settled');
+  }
+}
+// Heart just went unliked -> liked on the now-playing song: invite the facet.
+function revealFacetPrompt(){
+  const el = facetLineEl(); if(!el) return;
+  clearFacetTimers();
+  paintFacetChips(null);
+  el.classList.remove('hidden', 'settled', 'settling', 'fading');
+  el.classList.remove('fadein'); void el.offsetWidth; el.classList.add('fadein');   // restart fade-in
+  facetIgnoreTimer = setTimeout(() => hideFacetLine(true), 8000);   // ignored -> fade out, record nothing
+}
+function chooseFacet(facet){
+  if(currentIdx === null) return;
+  const s = SONGS[currentIdx];
+  if(!likedSet.has(s.id)) return;
+  const prev = likeFacets[s.id] || null;
+  if(prev === facet) return;
+  likeFacets[s.id] = facet;
+  saveLikeFacets();
+  enqueueEvent({ type: 'facet', song_id: s.id, facet, previous_facet: prev });
+  flushEventQueue();
+  laivyTrack('like_facet', { song_id: s.id, facet });
+  paintFacetChips(facet);
+  clearFacetTimers();
+  const el = facetLineEl();
+  el.classList.remove('fadein');
+  // After ~1.5s, fade the prompt + unchosen chips out, leaving the chosen chip.
+  facetSettleTimer = setTimeout(() => {
+    el.classList.add('settling');
+    facetSettleTimer = setTimeout(() => { el.classList.add('settled'); el.classList.remove('settling'); }, 450);
+  }, 1500);
+}
+function clearFacetOnUnlike(songId){
+  const prev = likeFacets[songId];
+  if(prev){
+    enqueueEvent({ type: 'facet', song_id: songId, facet: null, previous_facet: prev });
+    flushEventQueue();
+    laivyTrack('like_facet', { song_id: songId, facet: 'cleared' });
+    delete likeFacets[songId];
+    saveLikeFacets();
+  }
+  if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) hideFacetLine(false);
+}
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('.facet-chip');
+  if(!chip) return;
+  e.preventDefault();
+  e.stopPropagation();
+  chooseFacet(chip.dataset.facet);
 });
 
 /* ============================================================
