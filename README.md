@@ -33,3 +33,68 @@ a field end to end:
 `scripts/snapshot-songs.mjs` selects `*`, so the new column flows into
 `songs.json` automatically — no change needed there. RLS is column-agnostic: new
 columns inherit the table's existing policies unless you add column-level rules.
+
+## Search
+
+Client-side search lives entirely in `index.html`. Each song gets a normalized
+`searchIndex` built once after load (`buildSearchIndexes`); the query is
+normalized with the SAME `normalizeForSearch(str)` so both sides agree. A song
+matches when EVERY whitespace-separated term is a substring of its `searchIndex`
+(AND semantics); an empty query matches everything.
+
+`normalizeForSearch` applies these steps, in order — if you change one, change it
+here too so the index and the query stay in sync:
+
+1. Lowercase, Unicode NFD, then strip combining marks (removes Latin accents in
+   transliterations).
+2. Strip Hebrew nikkud + cantillation (U+0591–U+05C7).
+3. Fold Hebrew final letters to their base forms (ך→כ, ם→מ, ן→נ, ף→פ, ץ→צ).
+4. Remove geresh/gershayim (U+05F3, U+05F4) and ASCII apostrophes/quotes.
+5. Fold transliteration variants: `ch`→`kh`→`h` **only when followed by a vowel**
+   (a, e, i, o, u, y) — so "chesed"/"Chanukah" fold to an `h` form while "much"
+   and "teach" are left alone — and `ts`→`tz` (so "tsion" == "tzion"). Lossy on
+   purpose.
+6. Replace any remaining punctuation with a space and collapse whitespace.
+
+`searchIndex` = title + transliteration + categories + tags + about + lyrics.
+`metaIndex` (non-lyric fields) and `lyricsIndex` (lyrics only) are kept so a
+lyric-only hit shows a quiet snippet under the row. The snippet is sliced from
+the RAW `lyrics_original` at the index found in the normalized line — an
+approximation, since normalization removes/folds characters, but a 60-char
+window absorbs the drift.
+
+Sort is chosen in the control beside the search box, stored in `localStorage`
+(`laivy-sort-v1`): Shuffle (per-session order), Newest, Most listened to, Most
+loved, Most talked about, A to Z. `sortedSongs()` returns the ordered array and
+`renderList` renders `visibleOrder()` (sorted then filtered). Play counts and
+comment counts are never displayed — only the sort reveals ranking.
+
+## Homepage
+
+The left panel's idle state (and the view you get by tapping the LAIVYHART
+wordmark while a song plays) is a sectioned homepage, built entirely from the
+in-memory `SONGS` array — no extra Supabase queries — so it works from the
+`songs.json` snapshot during an outage. All ranking lives in one place,
+`homepageSections()`, which returns `{ hero, rails }`; `renderHomepage()` is a
+dumb render loop over that.
+
+- **Hero**: the first Editor's pick (lowest `featured_order`, ties by
+  `created_at` desc). Full-bleed cover banner; tapping it plays the song. No
+  "featured" label. Omitted when no song is marked `featured`.
+- **Rails** (horizontal, snap-scrolling, max 8 songs each). A rail renders only
+  when it has **at least 3** qualifying songs; otherwise it is omitted with no
+  empty state:
+  - *Editor's picks* — `featured` by `featured_order` then `created_at` desc,
+    excluding the hero.
+  - *Most listened to* — `play_count` desc.
+  - *Most loved* — `like_count` desc.
+  - *Most talked about* — `comment_count` desc, only songs with
+    `comment_count > 0`.
+  - *Newest* — `created_at` desc.
+- **Comments from listeners**: the existing `loadFeed` feed, at the bottom,
+  capped at 8 with a "More" expander.
+
+A rail's "Play all" starts the rail in order in manual mode via a small ordered
+`manualQueue` (manual mode otherwise has no queue); `manualStep` and end-of-track
+auto-advance follow it, and any non-rail selection clears it. No counts, badges,
+or "trending" language appear anywhere on the homepage — only the section names.

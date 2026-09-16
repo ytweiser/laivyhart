@@ -333,6 +333,113 @@
   }
   .search:focus{outline:none; border-color:var(--accent-2);}
   .search::placeholder{color:var(--text-faint);}
+  /* Search + sort share a row; the sort select wraps below on a narrow screen. */
+  .search-row{display:flex; gap:0.5rem; align-items:stretch; flex-wrap:wrap;}
+  .search-row .search{flex:1 1 12rem; width:auto; min-width:0;}
+  .sort-select{
+    flex:0 0 auto; background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:12px;
+    padding:0.6rem 2rem 0.6rem 0.8rem; font-family:var(--font-ui); font-size:0.86rem; color:var(--text-dim);
+    cursor:pointer; -webkit-appearance:none; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 0.6rem center; background-size:0.8rem;
+  }
+  .sort-select:focus{outline:none; border-color:var(--accent-2);}
+  /* Quiet lyric-match hint under a song row, matched to the muted category label. */
+  .row-lyrichit{
+    font-size:0.8rem; color:var(--text-faint); font-style:italic; margin-top:0.15rem;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  /* Small, quiet, clickable tag chips in the now-playing panel. */
+  .now-tags{display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.45rem;}
+  .now-tag{
+    background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:999px;
+    padding:0.15rem 0.6rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint);
+    cursor:pointer; transition:color 0.18s var(--ease), border-color 0.18s var(--ease);
+  }
+  .now-tag:hover{color:var(--text-dim); border-color:var(--accent-2);}
+
+  /* ---------- Homepage (idle panel / "home while playing") ---------- */
+  .logo{cursor:pointer;}
+  .homepage{margin-top:0.6rem;}
+  .homepage.hidden{display:none;}
+  /* Hero: full-bleed cover banner, same focal + max-height as the now-banner. */
+  .home-hero{
+    display:block; width:calc(100% + 3rem); margin:0.35rem -1.5rem 1.4rem;
+    position:relative; height:270px; overflow:hidden; cursor:pointer;
+    border:none; border-bottom:1px solid var(--glass-border); padding:0;
+    background:none; text-align:left;
+  }
+  .home-hero-img{width:100%; height:100%; object-fit:cover; display:block;}
+  .home-hero::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:
+      linear-gradient(to bottom, transparent 93%, var(--bg) 100%),
+      linear-gradient(to bottom, transparent 50%, rgba(8,4,8,0.76) 100%);
+  }
+  .home-hero-titles{position:absolute; left:1.5rem; right:1.5rem; bottom:1.4rem; z-index:1; color:#fff;}
+  .home-hero-cat{
+    font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:rgba(255,255,255,0.85); margin-bottom:0.35rem;
+  }
+  .home-hero-title{
+    font-weight:600; font-size:1.75rem; line-height:1.16;
+    text-shadow:0 2px 14px rgba(0,0,0,0.72), 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .home-hero-sub{
+    font-family:var(--font-display); font-style:italic; font-size:1.05rem; margin-top:0.12rem;
+    text-shadow:0 1px 10px rgba(0,0,0,0.7);
+  }
+  .home-hero-note{
+    font-family:var(--font-display); font-style:italic; font-size:0.92rem; line-height:1.45;
+    color:rgba(255,255,255,0.92); margin-top:0.5rem; max-width:34rem;
+    text-shadow:0 1px 8px rgba(0,0,0,0.72);
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .home-hero .heb{font-family:var(--font-heb); direction:rtl;}
+  .home-hero .disp{font-family:var(--font-display);}
+  /* Rails: serif header + a quiet "Play all", then a snap-scrolling thumb row. */
+  .rail{margin-bottom:1.7rem;}
+  .rail-head{display:flex; align-items:baseline; justify-content:space-between; gap:1rem; margin-bottom:0.75rem;}
+  .rail-title-h{
+    font-family:var(--font-display); font-style:italic; font-weight:500;
+    font-size:1.18rem; line-height:1.2; color:var(--text); margin:0;
+  }
+  .rail-playall{
+    flex-shrink:0; background:none; border:none; cursor:pointer; padding:0.2rem;
+    font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint);
+    transition:color 0.18s var(--ease);
+  }
+  .rail-playall:hover{color:var(--accent-2);}
+  .rail-scroll{
+    display:flex; gap:0.85rem; overflow-x:auto; padding-bottom:4px;
+    scroll-snap-type:x mandatory; scroll-padding-left:0;
+    scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
+  }
+  .rail-scroll::-webkit-scrollbar{display:none; height:0;}
+  .rail-item{
+    flex:0 0 auto; width:6rem; scroll-snap-align:start; cursor:pointer;
+    background:none; border:none; padding:0; text-align:center;
+  }
+  .rail-thumb{
+    width:6rem; height:6rem; border-radius:50%; object-fit:cover; display:block;
+    border:1px solid var(--glass-border); box-shadow:0 6px 18px rgba(0,0,0,0.28);
+    background-size:cover; background-position:center;
+  }
+  .rail-title{
+    margin-top:0.45rem; font-size:0.86rem; line-height:1.2; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .rail-title.heb{font-family:var(--font-heb); direction:rtl;}
+  .rail-sub{
+    font-family:var(--font-display); font-style:italic; font-size:0.72rem; color:var(--text-dim);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .feed-more{
+    background:none; border:none; cursor:pointer; margin-top:0.6rem; padding:0.3rem 0;
+    font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint);
+    transition:color 0.18s var(--ease);
+  }
+  .feed-more:hover{color:var(--accent-2);}
   /* Category pills grouped into labeled, horizontally-scrollable rows */
   .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
   .cat-allrow{display:flex;}
@@ -611,6 +718,10 @@
     /* Keep the single category from crowding the title on a narrow screen. */
     .row{gap:0.7rem;}
     .row-cat{max-width:5.5rem;}
+    /* Rails show ~3.5 thumbnails across a 390px screen so the cut-off fourth
+       one signals that the row scrolls. */
+    .rail-item, .rail-thumb{width:5.5rem; height:auto;}
+    .rail-thumb{height:5.5rem;}
   }
 </style>
 </head>
@@ -625,7 +736,7 @@
     </div>
 
     <div class="topbar">
-      <div class="logo"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+      <div class="logo" id="home-btn" role="button" tabindex="0" aria-label="Home"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
       <div class="topbar-right">
         <button class="pill-btn" id="share-btn" type="button">Share</button>
         <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
@@ -659,8 +770,14 @@
         </div>
       </div>
       <div class="now-chips" id="now-chips"></div>
+      <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
     </div>
+
+    <!-- Homepage (idle, or "home while playing"): hero + rails. Rendered by
+         renderHomepage(); the listener feed lives at the bottom of the engage
+         zone below. Hidden whenever a song's now-playing view is shown. -->
+    <div class="homepage hidden" id="homepage"></div>
 
     <div class="lyrics-wrap" id="lyrics-wrap">
       <div class="lyrics-head">
@@ -759,7 +876,17 @@
 
     <div id="songs-panel" style="flex:1; min-height:0; display:flex; flex-direction:column;">
       <div class="controls">
-        <input class="search" id="search" type="text" placeholder="Search a title, category, or word" aria-label="Search songs">
+        <div class="search-row">
+          <input class="search" id="search" type="text" placeholder="Search a title, category, or word" aria-label="Search songs">
+          <select class="sort-select" id="sort-select" aria-label="Sort songs">
+            <option value="shuffle">Shuffle</option>
+            <option value="newest">Newest</option>
+            <option value="plays">Most listened to</option>
+            <option value="loved">Most loved</option>
+            <option value="talked">Most talked about</option>
+            <option value="az">A to Z</option>
+          </select>
+        </div>
         <div class="filter-pills" id="filter-pills"></div>
       </div>
       <div class="rows" id="rows"></div>
@@ -1022,6 +1149,7 @@ async function loadSongs(){
     return;
   }
   SONGS = data.map(mapSong);
+  buildSearchIndexes();
   applySessionShuffle();
   await loadCategoryGroups();
   renderFilterPills();
@@ -1083,11 +1211,20 @@ function processDurQueue(){
    ============================================================ */
 let activeCat = 'all';
 let searchTerm = '';
+const SORT_KEY = 'laivy-sort-v1';
+function loadSort(){ try{ return localStorage.getItem(SORT_KEY) || 'shuffle'; }catch(e){ return 'shuffle'; } }
+let activeSort = loadSort();
 let currentIdx = null;
+let showHome = false;    // view the homepage while a song is playing (wordmark)
 let langView = 'orig';   // 'orig' | 'trans'
 let mode = 'manual';     // manual | radio | catRadio | playlist
 let queue = [];
 let queuePos = 0;
+// Small ordered queue for a homepage rail's "Play all" (manual mode has no
+// queue of its own; manualStep + auto-advance follow this when it is set).
+let manualQueue = null;  // array of SONGS indices, or null
+let manualPos = 0;
+const railScrolledThisSession = new Set(); // home_rail_scroll: once per rail
 let idleTimer = null;
 let playCounted = false;
 
@@ -1149,13 +1286,109 @@ function renderFilterPills(){
   // and this dropdown always show the same category (or "Category radio" for All).
   sel.value = (activeCat && activeCat !== 'all') ? activeCat : '';
 }
+/* Normalize text for search on BOTH the index and the query so the two agree.
+   Order matters and mirrors the "Search" section of README.md — keep them in
+   sync. This folding is lossy on purpose (fuzzy transliteration matching). */
+function normalizeForSearch(str){
+  let s = (str == null ? '' : String(str)).toLowerCase();
+  // NFD + strip combining marks (removes Latin accents in transliterations).
+  s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  // Strip Hebrew nikkud + cantillation.
+  s = s.replace(/[֑-ׇ]/g, '');
+  // Fold Hebrew final letters to their base forms.
+  s = s.replace(/ך/g, 'כ')   // ך -> כ
+       .replace(/ם/g, 'מ')   // ם -> מ
+       .replace(/ן/g, 'נ')   // ן -> נ
+       .replace(/ף/g, 'פ')   // ף -> פ
+       .replace(/ץ/g, 'צ');  // ץ -> צ
+  // Remove geresh/gershayim and ASCII apostrophes/quotes.
+  s = s.replace(/[׳״'"]/g, '');
+  // Fold transliteration variants (identically on both sides): chesed==hesed,
+  // tzion==tsion. ch->kh->h collapses both ch and kh to h, but ONLY before a
+  // vowel, so "chesed"/"Chanukah" fold while "much"/"teach" do not.
+  s = s.replace(/ch(?=[aeiouy])/g, 'kh').replace(/kh(?=[aeiouy])/g, 'h').replace(/ts/g, 'tz');
+  // Any remaining punctuation -> space; collapse whitespace.
+  s = s.replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+// Build the per-song normalized indexes once, after SONGS is populated.
+// metaIndex = the non-lyric fields (title, translit, categories, tags, about);
+// lyricsIndex = just the lyrics; searchIndex = both. metaIndex lets us tell a
+// lyric-only hit from a title/tag hit for the row hint.
+function buildSearchIndexes(){
+  SONGS.forEach(s => {
+    const meta = [s.title, s.title_translit, s.categories.join(' '), s.tags.join(' '), s.about].join(' ');
+    const lyrics = [s.lyrics_original, s.lyrics_translation].join(' ');
+    s.metaIndex = normalizeForSearch(meta);
+    s.lyricsIndex = normalizeForSearch(lyrics);
+    s.searchIndex = (s.metaIndex + ' ' + s.lyricsIndex).trim();
+  });
+}
+
+// The normalized query split into AND-terms (empty when the box is empty).
+function currentTerms(){
+  return normalizeForSearch(searchTerm).split(' ').filter(Boolean);
+}
+
 function songMatches(s){
   const inCat = activeCat === 'all' || s.categories.includes(activeCat);
   if(!inCat) return false;
-  const term = searchTerm.trim().toLowerCase();
-  if(!term) return true;
-  const hay = (s.title_translit + ' ' + s.title + ' ' + s.categories.join(' ') + ' ' + s.about).toLowerCase();
-  return hay.includes(term);
+  const terms = currentTerms();
+  if(terms.length === 0) return true;
+  return terms.every(t => s.searchIndex.includes(t));  // AND semantics
+}
+
+/* A ~60-char snippet from the RAW lyrics_original around the first matching term
+   (raw, so nikkud + final letters display correctly). We locate the term in the
+   normalized copy of each line, then slice the raw line at the same index.
+   ASSUMPTION: normalization mostly removes characters (nikkud, marks, geresh) or
+   folds one-for-one, so the normalized index is a CLOSE-BUT-APPROXIMATE index
+   into the raw line; a 60-char window absorbs the small drift. This is the
+   "first line containing the term" fallback the spec allows, which is robust. */
+function lyricHitSnippet(s, terms){
+  const raw = s.lyrics_original || '';
+  if(!raw) return '';
+  const lines = raw.split('\n');
+  for(const term of terms){
+    for(const line of lines){
+      if(!line.trim()) continue;
+      const pos = normalizeForSearch(line).indexOf(term);
+      if(pos < 0) continue;
+      const approx = Math.max(0, Math.min(line.length - 1, pos));
+      const start = Math.max(0, approx - 30);
+      const end = Math.min(line.length, approx + 30);
+      let snip = line.slice(start, end).replace(/\s+/g, ' ').trim();
+      if(!snip) continue;
+      if(start > 0) snip = '…' + snip;
+      if(end < line.length) snip = snip + '…';
+      return snip;
+    }
+  }
+  return '';
+}
+
+/* Return a new array of SONGS in the active sort order. 'shuffle' keeps the
+   per-session order already stored in SONGS by applySessionShuffle (Array.sort
+   is stable, so a copy preserves it). */
+function sortedSongs(){
+  const base = SONGS.slice();
+  const ts = s => s.created_at ? (Date.parse(s.created_at) || 0) : 0;
+  switch(activeSort){
+    case 'newest': return base.sort((a,b)=> ts(b) - ts(a));
+    case 'plays':  return base.sort((a,b)=> (b.play_count - a.play_count) || (ts(b) - ts(a)));
+    case 'loved':  return base.sort((a,b)=> (b.like_count - a.like_count) || (b.play_count - a.play_count));
+    case 'talked': return base.sort((a,b)=> (b.comment_count - a.comment_count) || (b.like_count - a.like_count));
+    case 'az':     return base.sort((a,b)=> (a.title || a.title_translit || '').localeCompare((b.title || b.title_translit || ''), ['he','en']));
+    default:       return base; // 'shuffle'
+  }
+}
+
+// The visible list: sorted, then filtered by the active category + search. Each
+// entry keeps its ORIGINAL SONGS index so playback/currentIdx stay valid.
+function visibleOrder(){
+  const idxOf = new Map(SONGS.map((s,i)=>[s.id, i]));
+  return sortedSongs().filter(songMatches).map(s => ({ s, idx: idxOf.get(s.id) }));
 }
 
 /* ============================================================
@@ -1176,24 +1409,27 @@ function pickRowCategory(s){
       || '';
 }
 
-// Round thumbnail markup for a row: the cover (anchored to its focal point)
-// when present, else a Bordeaux generative circle seeded from the title.
-function rowThumbHTML(s){
+// Round cover thumbnail (anchored to its focal point) when present, else a
+// Bordeaux generative circle seeded from the title. Shared by the song rows and
+// the homepage rails so focal-point handling stays in one place.
+function coverThumbHTML(s, cls, w){
   if(s.cover){
     const fx = s.cover_focus_x == null ? 50 : s.cover_focus_x;
     const fy = s.cover_focus_y == null ? 50 : s.cover_focus_y;
-    return `<img class="row-thumb" src="${escHtml(cdnImg(s.cover, 140))}" data-raw="${escHtml(s.cover)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
+    return `<img class="${cls}" src="${escHtml(cdnImg(s.cover, w))}" data-raw="${escHtml(s.cover)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
   }
-  return `<div class="row-thumb" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+  return `<div class="${cls}" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
 }
+function rowThumbHTML(s){ return coverThumbHTML(s, 'row-thumb', 140); }
 
 function renderList(){
   const rows = document.getElementById('rows');
-  const filtered = SONGS.map((s,i)=>({s, idx:i})).filter(o => songMatches(o.s));
+  const filtered = visibleOrder();
   if(filtered.length === 0){
     rows.innerHTML = `<div class="muted">Nothing matches. Try another word or clear the filter.</div>`;
     return;
   }
+  const terms = currentTerms();
   rows.innerHTML = filtered.map(({s, idx}) => {
     const playing = currentIdx === idx;
     const heb = isHebrew(s);
@@ -1201,6 +1437,13 @@ function renderList(){
     const primary = heb ? s.title : (s.title || s.title_translit);
     const secondary = heb ? s.title_translit : '';
     const cat = pickRowCategory(s);
+    // Lyric-hit hint: only when a term matched INSIDE the lyrics and nowhere in
+    // the title/translit/tags/categories/about (metaIndex).
+    let lyricHit = '';
+    if(terms.length){
+      const lyricsOnly = terms.filter(t => s.lyricsIndex.includes(t) && !s.metaIndex.includes(t));
+      if(lyricsOnly.length) lyricHit = lyricHitSnippet(s, lyricsOnly);
+    }
     return `
       <div class="row ${playing?'playing':''}" data-idx="${idx}">
         ${rowThumbHTML(s)}
@@ -1212,6 +1455,7 @@ function renderList(){
         <div class="row-titles">
           <div class="row-title-primary ${heb?'he':'en'}">${escHtml(primary)}</div>
           ${secondary ? `<div class="row-title-secondary">${escHtml(secondary)}</div>` : ''}
+          ${lyricHit ? `<div class="row-lyrichit">${escHtml(lyricHit)}</div>` : ''}
         </div>
         <button class="row-add" data-idx="${idx}" title="Add to playlist" aria-label="Add to playlist">+</button>
       </div>`;
@@ -1234,6 +1478,142 @@ function renderList(){
 }
 
 /* ============================================================
+   Homepage (idle panel / "home while playing")
+   All data comes from the in-memory SONGS array (so it works from the
+   songs.json snapshot during a Supabase outage) plus the existing loadFeed.
+   ============================================================ */
+function songCreatedTs(s){ return s.created_at ? (Date.parse(s.created_at) || 0) : 0; }
+
+// The first sentence (or ~160 chars) of the inspiration note.
+function firstSentenceOf(t){
+  if(!t) return '';
+  const m = String(t).match(/^\s*(.+?[.!?])(\s|$)/);
+  let out = (m ? m[1] : String(t)).trim();
+  if(out.length > 160) out = out.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+  return out;
+}
+
+// The single place the homepage ranking lives. Returns { hero, rails } where
+// rails is [{key, title, songs}] and only rails with >=3 songs are included.
+function homepageSections(){
+  const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
+  const featured = SONGS.filter(s => s.featured).sort((a, b) => {
+    const ao = a.featured_order == null ? Infinity : a.featured_order;
+    const bo = b.featured_order == null ? Infinity : b.featured_order;
+    return (ao - bo) || byNewest(a, b);
+  });
+  const hero = featured[0] || null;
+
+  const candidate = [
+    { key: 'editors_picks', title: "Editor's picks",
+      songs: featured.filter(s => !hero || s.id !== hero.id).slice(0, 8) },
+    { key: 'most_listened', title: 'Most listened to',
+      songs: SONGS.slice().sort((a, b) => (b.play_count - a.play_count) || byNewest(a, b)).slice(0, 8) },
+    { key: 'most_loved', title: 'Most loved',
+      songs: SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)).slice(0, 8) },
+    { key: 'most_talked', title: 'Most talked about',
+      songs: SONGS.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)).slice(0, 8) },
+    { key: 'newest', title: 'Newest',
+      songs: SONGS.slice().sort(byNewest).slice(0, 8) },
+  ];
+  return { hero, rails: candidate.filter(r => r.songs.length >= 3) };
+}
+
+function heroHTML(s, idx){
+  const heb = isHebrew(s);
+  const title = heb ? s.title : (s.title || s.title_translit);
+  const sub = (heb && s.title_translit) ? s.title_translit : '';
+  const cat = pickRowCategory(s);
+  const note = firstSentenceOf(s.about);
+  const bg = s.cover
+    ? coverThumbHTML(s, 'home-hero-img', 1000)
+    : `<div class="home-hero-img" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+  return `<button class="home-hero" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
+      ${bg}
+      <div class="home-hero-titles">
+        ${cat ? `<div class="home-hero-cat">${escHtml(cat)}</div>` : ''}
+        <div class="home-hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
+        ${sub ? `<div class="home-hero-sub disp">${escHtml(sub)}</div>` : ''}
+        ${note ? `<div class="home-hero-note">${escHtml(note)}</div>` : ''}
+      </div>
+    </button>`;
+}
+
+function railHTML(sec, idxOf){
+  const items = sec.songs.map(s => {
+    const heb = isHebrew(s);
+    const title = heb ? s.title : (s.title || s.title_translit);
+    const sub = heb ? s.title_translit : '';
+    return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${sec.key}">
+        ${coverThumbHTML(s, 'rail-thumb', 300)}
+        <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
+        ${sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : ''}
+      </button>`;
+  }).join('');
+  return `<section class="rail" data-rail="${sec.key}">
+      <div class="rail-head">
+        <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
+        <button class="rail-playall" type="button" data-rail="${sec.key}">Play all</button>
+      </div>
+      <div class="rail-scroll" data-rail="${sec.key}">${items}</div>
+    </section>`;
+}
+
+function renderHomepage(){
+  const el = document.getElementById('homepage');
+  const { hero, rails } = homepageSections();
+  const idxOf = new Map(SONGS.map((s, i) => [s.id, i]));
+
+  let html = '';
+  if(hero) html += heroHTML(hero, idxOf.get(hero.id));
+  html += rails.map(sec => railHTML(sec, idxOf)).join('');
+  el.innerHTML = html;
+
+  // Hero + individual rail thumbnails: play that one song.
+  el.querySelectorAll('.home-hero, .rail-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = SONGS[Number(btn.dataset.idx)];
+      if(!s) return;
+      laivyTrack('home_play', { rail: btn.dataset.rail, song_id: s.id });
+      playSongById(s.id);   // clears manualQueue, leaves home, plays
+    });
+  });
+
+  // Play all: build a small ordered manual queue from the rail.
+  el.querySelectorAll('.rail-playall').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sec = rails.find(r => r.key === btn.dataset.rail);
+      if(!sec || !sec.songs.length) return;
+      laivyTrack('home_play', { rail: sec.key, song_id: sec.songs[0].id });
+      playRail(sec.songs.map(s => idxOf.get(s.id)));
+    });
+  });
+
+  // Track the first scroll of each rail, once per session.
+  el.querySelectorAll('.rail-scroll').forEach(sc => {
+    sc.addEventListener('scroll', () => {
+      const key = sc.dataset.rail;
+      if(railScrolledThisSession.has(key)) return;
+      railScrolledThisSession.add(key);
+      laivyTrack('home_rail_scroll', { rail: key });
+    }, { passive: true });
+  });
+}
+
+// Start a rail playing in order (manual mode, not radio). manualStep and the
+// end-of-track auto-advance follow manualQueue while it is set.
+function playRail(idxs){
+  if(!idxs || !idxs.length) return;
+  mode = 'manual';
+  document.getElementById('radio-btn').classList.remove('active');
+  manualQueue = idxs.slice();
+  manualPos = 0;
+  loadSong(manualQueue[0], true);
+  try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }catch(e){ window.scrollTo(0, 0); }
+}
+
+/* ============================================================
    Left column: now playing
    ============================================================ */
 function renderNow(){
@@ -1249,6 +1629,7 @@ function renderNow(){
   const bannerTitle = document.getElementById('now-banner-title');
   const bannerSub = document.getElementById('now-banner-sub');
   const chips = document.getElementById('now-chips');
+  const nowTags = document.getElementById('now-tags');
   const about = document.getElementById('now-about');
   const langToggle = document.getElementById('lang-toggle');
   const nowLike = document.getElementById('now-like-wrap');
@@ -1256,21 +1637,31 @@ function renderNow(){
   const engage = document.getElementById('engage');
   const panelFeed = document.getElementById('panel-feed');
 
-  if(currentIdx === null){
-    // Idle / opening: fill the engage zone with the global listener feed.
-    empty.classList.remove('hidden');
-    orig.classList.add('hidden'); trans.classList.add('hidden');
-    primary.textContent = ''; secondary.textContent = '';
-    thumb.style.cssText = genArtStyle('laivy hart');
-    banner.classList.add('hidden'); bannerImg.removeAttribute('src');
-    topline.classList.remove('hidden');
-    chips.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
-    nowLike.innerHTML = ''; nowLikeBlock.classList.add('hidden');
+  const homepage = document.getElementById('homepage');
+  const nowContent = document.getElementById('now-content');
+  const lyricsWrap = document.getElementById('lyrics-wrap');
+  const commentsWrap = document.getElementById('comments-wrap');
+
+  // Home view: nothing playing, OR the wordmark was tapped while a song plays.
+  // The homepage replaces the now-playing content; the pinned dock (player
+  // controls) stays in place below it and keeps working, and the listener feed
+  // sits at the bottom of the engage zone.
+  if(currentIdx === null || showHome){
+    homepage.classList.remove('hidden');
+    nowContent.classList.add('hidden');
+    lyricsWrap.classList.add('hidden');
+    nowLikeBlock.classList.add('hidden');
+    if(commentsWrap) commentsWrap.classList.add('hidden');
     panelFeed.classList.remove('hidden');
     engage.classList.remove('hidden');
+    renderHomepage();
     return;
   }
-  // A song is playing: the engage zone shows this song's reflections.
+
+  // A song is playing and we are on its now-playing view.
+  homepage.classList.add('hidden');
+  nowContent.classList.remove('hidden');
+  lyricsWrap.classList.remove('hidden');
   panelFeed.classList.add('hidden');
   const s = SONGS[currentIdx];
   const heb = isHebrew(s);
@@ -1332,6 +1723,11 @@ function renderNow(){
 
   chips.innerHTML = s.categories.map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
 
+  // Tags: small, quiet, clickable chips under the categories. Only when present.
+  nowTags.innerHTML = (s.tags && s.tags.length)
+    ? s.tags.map(t => `<button type="button" class="now-tag" data-tag="${escHtml(t)}">${escHtml(t)}</button>`).join('')
+    : '';
+
   if(s.about){
     about.innerHTML = `<span class="lbl">The inspiration</span>${escHtml(s.about)}`;
     about.classList.remove('hidden');
@@ -1370,8 +1766,10 @@ function renderNow(){
    ============================================================ */
 function setAmbientPlaying(on){ ambient.classList.toggle('is-playing', !!on); }
 
-function loadSong(idx){
+function loadSong(idx, keepRailQueue){
   currentIdx = idx;
+  showHome = false;                    // selecting a song leaves the homepage
+  if(!keepRailQueue) manualQueue = null; // a non-rail pick ends any "Play all"
   langView = 'orig';
   playCounted = false;
   renderNow();
@@ -1398,8 +1796,9 @@ function playCurrent(){
     setPlayIcon(false);
     setAmbientPlaying(false);
     resetScrub();
-    // Keep radio and playlists moving even before audio is attached.
+    // Keep radio, playlists, and a rail "Play all" moving even before audio.
     if(mode !== 'manual') idleTimer = setTimeout(advanceQueue, 9000);
+    else if(manualQueue) idleTimer = setTimeout(railAdvance, 9000);
   }
 }
 
@@ -1449,6 +1848,7 @@ audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(
 audioEl.addEventListener('ended', () => {
   playCounted = false;
   if(mode !== 'manual') advanceQueue();
+  else railAdvance();
 });
 
 /* ============================================================
@@ -1703,6 +2103,12 @@ function playSongById(id){
   try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }
   catch(e){ window.scrollTo(0, 0); }
 }
+// Homepage listener feed: show the 8 most recent approved comments with a
+// "More" link that expands to the full feed. Fetch logic unchanged; only the
+// initial cap + expander are new.
+const FEED_CAP = 8;
+let feedData = [];
+let feedExpanded = false;
 async function loadFeed(){
   const listEl = document.getElementById('feed-list');
   if(!listEl) return;
@@ -1716,7 +2122,15 @@ async function loadFeed(){
     listEl.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share a reflection.</div>`;
     return;
   }
-  listEl.innerHTML = data.map(c => {
+  feedData = data;
+  feedExpanded = false;
+  renderFeed();
+}
+function renderFeed(){
+  const listEl = document.getElementById('feed-list');
+  if(!listEl) return;
+  const rows = feedExpanded ? feedData : feedData.slice(0, FEED_CAP);
+  const items = rows.map(c => {
     const s = SONGS.find(x => x.id === c.song_id);
     const heb = s ? isHebrew(s) : false;
     const name = s ? (heb ? s.title : (s.title || s.title_translit)) : 'A song';
@@ -1726,9 +2140,17 @@ async function loadFeed(){
     const sig = sigJoin(c.name, c.city);
     return `<div class="feed-item">${songEl}: ${escHtml(c.body)}${sig ? ` <span class="feed-sig">– ${escHtml(sig)}</span>` : ''}</div>`;
   }).join('');
+  const more = (!feedExpanded && feedData.length > FEED_CAP)
+    ? `<button class="feed-more" id="feed-more" type="button">More</button>` : '';
+  listEl.innerHTML = items + more;
   listEl.querySelectorAll('.feed-song[data-song]').forEach(b => {
-    b.addEventListener('click', () => playSongById(b.dataset.song));
+    b.addEventListener('click', () => {
+      laivyTrack('home_play', { rail: 'feed', song_id: b.dataset.song });
+      playSongById(b.dataset.song);
+    });
   });
+  const moreBtn = document.getElementById('feed-more');
+  if(moreBtn) moreBtn.addEventListener('click', () => { feedExpanded = true; renderFeed(); });
 }
 
 /* ============================================================
@@ -1743,6 +2165,18 @@ function advanceQueue(){
   if(queue.length === 0) return;
   queuePos = (queuePos + 1) % queue.length;
   loadSong(queue[queuePos]);
+}
+// Advance a homepage "Play all" rail queue by one; stop (no wrap) at the end.
+function railAdvance(){
+  if(!manualQueue || !manualQueue.length) return false;
+  const cur = manualQueue.indexOf(currentIdx);
+  const base = cur < 0 ? manualPos : cur;
+  if(base < manualQueue.length - 1){
+    manualPos = base + 1;
+    loadSong(manualQueue[manualPos], true);
+    return true;
+  }
+  return false;
 }
 function startRadio(){
   if(SONGS.length === 0) return;
@@ -1766,23 +2200,82 @@ document.getElementById('cat-radio-select').addEventListener('change', (e) => {
   queue = shuffledIndices(cat); queuePos = 0;
   if(queue.length) loadSong(queue[0]);
 });
+// Manual prev/next walk the VISIBLE (sorted + filtered) order so they match
+// what the listener sees. If the current song has been filtered out of view,
+// step in from the near end. Radio / category radio keep their own shuffled
+// queue and are unaffected by the sort control.
+function manualStep(delta){
+  if(currentIdx === null) return;
+  // A homepage "Play all" is active: step within that ordered rail queue.
+  if(manualQueue && manualQueue.length){
+    const cur = manualQueue.indexOf(currentIdx);
+    manualPos = ((cur < 0 ? 0 : cur) + delta + manualQueue.length) % manualQueue.length;
+    loadSong(manualQueue[manualPos], true);
+    return;
+  }
+  const vis = visibleOrder();
+  if(vis.length === 0){
+    loadSong((currentIdx + delta + SONGS.length) % SONGS.length);
+    return;
+  }
+  const pos = vis.findIndex(o => o.idx === currentIdx);
+  if(pos < 0){
+    loadSong(vis[delta > 0 ? 0 : vis.length - 1].idx);
+    return;
+  }
+  loadSong(vis[(pos + delta + vis.length) % vis.length].idx);
+}
 document.getElementById('prev-btn').addEventListener('click', () => {
   if(mode !== 'manual' && queue.length){
     queuePos = (queuePos - 1 + queue.length) % queue.length;
     loadSong(queue[queuePos]);
-  } else if(currentIdx !== null){
-    loadSong((currentIdx - 1 + SONGS.length) % SONGS.length);
+  } else {
+    manualStep(-1);
   }
 });
 document.getElementById('next-btn').addEventListener('click', () => {
   if(mode !== 'manual' && queue.length) advanceQueue();
-  else if(currentIdx !== null) loadSong((currentIdx + 1) % SONGS.length);
+  else manualStep(1);
 });
 
 /* ============================================================
    Search + tabs
    ============================================================ */
-document.getElementById('search').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
+const searchEl = document.getElementById('search');
+let searchTrackTimer = null;
+searchEl.addEventListener('input', (e) => {
+  searchTerm = e.target.value;
+  renderList();
+  // Analytics only: fire 600ms after typing stops, and only for a query of at
+  // least two (normalized) characters. Never affects the live search above.
+  clearTimeout(searchTrackTimer);
+  searchTrackTimer = setTimeout(() => {
+    const q = normalizeForSearch(searchTerm);
+    if(q.length >= 2) laivyTrack('search', { query: q, result_count: visibleOrder().length });
+  }, 600);
+});
+
+// Sort control: restore the saved choice, persist + track on change.
+const sortSelect = document.getElementById('sort-select');
+sortSelect.value = activeSort;
+sortSelect.addEventListener('change', (e) => {
+  activeSort = e.target.value;
+  try{ localStorage.setItem(SORT_KEY, activeSort); }catch(_){}
+  laivyTrack('sort_change', { sort: activeSort });
+  renderList();
+});
+
+// Clicking a tag chip in the now-playing panel searches that tag.
+document.getElementById('now-tags').addEventListener('click', (e) => {
+  const btn = e.target.closest('.now-tag');
+  if(!btn) return;
+  const tag = btn.dataset.tag || '';
+  searchEl.value = tag;
+  searchTerm = tag;
+  renderList();
+  switchTab('songs');
+  searchEl.scrollIntoView({ behavior:'smooth', block:'nearest' });
+});
 
 const tabSongs = document.getElementById('tab-songs');
 const tabPlaylists = document.getElementById('tab-playlists');
@@ -1796,6 +2289,20 @@ function switchTab(which){
 }
 tabSongs.addEventListener('click', () => switchTab('songs'));
 tabPlaylists.addEventListener('click', () => switchTab('playlists'));
+
+// The wordmark returns to the homepage, even while a song is playing (the
+// pinned player controls keep working). Selecting any song leaves it again.
+const homeBtn = document.getElementById('home-btn');
+function goHome(){
+  showHome = true;
+  renderNow();
+  const now = document.querySelector('.panel.now');
+  if(now){ try{ now.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} }
+}
+homeBtn.addEventListener('click', goHome);
+homeBtn.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); goHome(); }
+});
 
 /* ============================================================
    Local playlists (saved in the browser)
