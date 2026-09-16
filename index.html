@@ -2395,6 +2395,12 @@ async function sendQueuedEvent(ev){
 
 let flushingQueue = false;
 async function flushEventQueue(){
+  // Do-not-track kill-switch: when the flag is set, never send queued events —
+  // this covers anything enqueued during an EARLIER unguarded run (the enqueue
+  // paths are already guarded, so nothing new is added while the flag is on).
+  // The queue is left intact and flushes normally once the flag is removed, so
+  // no genuine listener data is lost.
+  if(noTrack()) return;
   if(flushingQueue || !eventQueue.length) return;
   flushingQueue = true;
   try{
@@ -3409,7 +3415,10 @@ homeSearchEl.addEventListener('keydown', (e) => {
    Init
    ============================================================ */
 loadSongs();
-// Retry any play/like events queued during a previous outage.
+// One-time visibility that the testing kill-switch is active this load.
+if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): no play/like/facet events will be enqueued or flushed this session.');
+// Retry any play/like events queued during a previous outage. Self-guarded: a
+// no-op while do-not-track is set, so a prior run's queue can't flush on reload.
 flushEventQueue();
 </script>
 </body>
