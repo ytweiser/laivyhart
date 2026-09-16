@@ -104,9 +104,12 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
   songs) → the listener feed (8 with "More") → About footer. Ranking lives in
   `homepageSections()` → `{ hero, rails }` (rails need **≥3** songs; Editor's
   picks / Most listened to / Most loved / Most talked about / Newest), rendered by
-  `renderHomepage()`. Built entirely from the in-memory `SONGS` array, so it works
-  from the `songs.json` snapshot during an outage. Tapping any song, or a
-  homepage search, navigates to `/listen`.
+  `renderHomepage()`. The hero and every song in the Editor's picks rail are
+  excluded from the four ranked rails (Most listened to / Most loved / Most talked
+  about / Newest), so no song appears twice; the ≥3 floor is applied *after* that
+  exclusion. Built entirely from the in-memory `SONGS` array, so it works from the
+  `songs.json` snapshot during an outage. Tapping any song, or a homepage search,
+  navigates to `/listen`.
 - **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
   lyrics + list). Its idle state is the simple "pick a song" line plus the
   listener feed. The wordmark navigates to `/`.

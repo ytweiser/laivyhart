@@ -104,7 +104,10 @@
     text-transform:uppercase; letter-spacing:0.05em; cursor:pointer;
   }
   .new-song-btn:hover{filter:brightness(1.08);}
-  .list-item{padding:0.7rem 0.6rem; border-bottom:1px solid var(--line); cursor:pointer; border-radius:10px;}
+  .list-item{position:relative; padding:0.7rem 2.2rem 0.7rem 0.6rem; border-bottom:1px solid var(--line); cursor:pointer; border-radius:10px;}
+  .fav-star{position:absolute; top:0.5rem; right:0.45rem; z-index:1; background:none; border:none; cursor:pointer; padding:0.15rem; line-height:1; font-size:1.15rem; color:var(--text-faint); transition:color 0.15s ease;}
+  .fav-star.on{color:var(--accent-2);}
+  .fav-star:hover{color:var(--accent-2);}
   .list-item:hover{background:var(--glass-hi);}
   .list-item.active{background:var(--glass-hi); border-left:3px solid var(--accent-2);}
   .list-item .lt-he{font-family:var(--font-heb); direction:rtl; font-size:1.05rem;}
@@ -396,6 +399,7 @@ async function publishSite(){
     }
     statusEl.textContent = 'Published, live in about a minute.';
     statusEl.className = 'publish-status ok';
+    featuredDirty = false;
   }catch(e){
     statusEl.textContent = 'Publish failed: ' + e.message;
     statusEl.className = 'publish-status err';
@@ -587,13 +591,59 @@ function renderList(){
   const el = document.getElementById('list-items');
   el.innerHTML = songs.map(s => `
     <div class="list-item ${currentSong && currentSong.id===s.id ? 'active':''}" onclick="window.selectSong('${s.id}')">
-      <div class="lt-he">${s.featured ? '★ ' : ''}${s.title || '(untitled)'}</div>
+      <button class="fav-star ${s.featured ? 'on' : ''}" data-fav="${escAttr(s.id)}" type="button"
+        title="${s.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}"
+        aria-label="Toggle featured on homepage">${s.featured ? '★' : '☆'}</button>
+      <div class="lt-he">${s.title || '(untitled)'}</div>
       <div class="lt-translit">${s.title_translit || ''}</div>
       ${(s.tags && s.tags.length) ? `<div class="lt-tags" style="opacity:0.6; font-size:0.8rem;">${escHtml(s.tags.join(', '))}</div>` : ''}
       <div class="lt-audio ${s.audio_url ? 'has':'missing'}">${s.audio_url ? '♪ audio attached' : 'no audio yet'}</div>
       <div class="lt-plays">▶ ${s.play_count ?? 0} play${(s.play_count ?? 0) === 1 ? '' : 's'}</div>
     </div>
   `).join('');
+  // Per-row featured toggle: flips songs.featured immediately, no form.
+  el.querySelectorAll('.fav-star').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();          // don't open the song form
+      toggleFeatured(btn.dataset.fav, btn);
+    });
+  });
+}
+
+// Quick featured toggle straight to the DB. Order stays form-only (unchanged
+// here). Flags the Publish hint so the owner knows to rebuild songs.json.
+async function toggleFeatured(id, btn){
+  const song = songs.find(s => s.id === id);
+  if(!song) return;
+  const next = !song.featured;
+  btn.disabled = true;
+  const { error } = await supabaseClient.from('songs').update({ featured: next }).eq('id', id);
+  btn.disabled = false;
+  if(error){
+    const el = document.getElementById('publish-status');
+    el.textContent = "Couldn't update featured: " + error.message;
+    el.className = 'publish-status err';
+    return;
+  }
+  song.featured = next;
+  btn.textContent = next ? '★' : '☆';
+  btn.classList.toggle('on', next);
+  btn.title = next ? 'Featured — click to unfeature' : 'Not featured — click to feature';
+  // Keep an open form's checkbox in sync if it's this song.
+  if(currentSong && currentSong.id === id){
+    currentSong.featured = next;
+    const cb = document.getElementById('f-featured-flag');
+    if(cb) cb.checked = next;
+  }
+  markFeaturedDirty();
+}
+
+let featuredDirty = false;
+function markFeaturedDirty(){
+  featuredDirty = true;
+  const el = document.getElementById('publish-status');
+  el.textContent = 'Featured changed — Publish to apply';
+  el.className = 'publish-status';
 }
 
 window.selectSong = function(id){

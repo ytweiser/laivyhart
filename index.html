@@ -1649,18 +1649,23 @@ function homepageSections(){
     return (ao - bo) || byNewest(a, b);
   });
   const hero = featured[0] || null;
+  const editors = featured.filter(s => !hero || s.id !== hero.id).slice(0, 8);
+
+  // The hero + Editor's picks are already surfaced at the top, so exclude them
+  // from the ranked rails; the 3-song floor is then applied to what remains.
+  const usedIds = new Set([...(hero ? [hero.id] : []), ...editors.map(s => s.id)]);
+  const rest = SONGS.filter(s => !usedIds.has(s.id));
 
   const candidate = [
-    { key: 'editors_picks', title: "Editor's picks",
-      songs: featured.filter(s => !hero || s.id !== hero.id).slice(0, 8) },
+    { key: 'editors_picks', title: "Editor's picks", songs: editors },
     { key: 'most_listened', title: 'Most listened to',
-      songs: SONGS.slice().sort((a, b) => (b.play_count - a.play_count) || byNewest(a, b)).slice(0, 8) },
+      songs: rest.slice().sort((a, b) => (b.play_count - a.play_count) || byNewest(a, b)).slice(0, 8) },
     { key: 'most_loved', title: 'Most loved',
-      songs: SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)).slice(0, 8) },
+      songs: rest.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)).slice(0, 8) },
     { key: 'most_talked', title: 'Most talked about',
-      songs: SONGS.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)).slice(0, 8) },
+      songs: rest.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)).slice(0, 8) },
     { key: 'newest', title: 'Newest',
-      songs: SONGS.slice().sort(byNewest).slice(0, 8) },
+      songs: rest.slice().sort(byNewest).slice(0, 8) },
   ];
   return { hero, rails: candidate.filter(r => r.songs.length >= 3) };
 }
