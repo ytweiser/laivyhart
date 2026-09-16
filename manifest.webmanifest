@@ -2,7 +2,7 @@
   "name": "Laivy Hart",
   "short_name": "Laivy Hart",
   "description": "Laivy Hart: songs, sometimes stories, sometimes prayers, always real. A living jukebox of original music.",
-  "start_url": "index.html",
+  "start_url": "/",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

@@ -87,32 +87,39 @@ loved, Most talked about, A to Z. `sortedSongs()` returns the ordered array and
 `renderList` renders `visibleOrder()` (sorted then filtered). Play counts and
 comment counts are never displayed — only the sort reveals ranking.
 
-## Homepage
+## Pages
 
-The left panel's idle state (and the view you get by tapping the LAIVYHART
-wordmark while a song plays) is a sectioned homepage, built entirely from the
-in-memory `SONGS` array — no extra Supabase queries — so it works from the
-`songs.json` snapshot during an outage. All ranking lives in one place,
-`homepageSections()`, which returns `{ hero, rails }`; `renderHomepage()` is a
-dumb render loop over that.
+`index.html` is a single-page app with two History-API routes (no hash routing).
+`vercel.json` rewrites `/listen` to `index.html`; the service worker precaches
+both `/` (via `index.html`) and `/listen` so each works offline. The audio
+element and all player state live at the app level, above both pages, so moving
+between routes never stops playback. `navigate(route)` pushes history + fires a
+manual `page_view` (GA4's automatic page view only fires on real loads);
+`popstate` moves between pages without reloading; `showPage(route)` toggles which
+`#page-home` / `#page-listen` is visible.
 
-- **Hero**: the first Editor's pick (lowest `featured_order`, ties by
-  `created_at` desc). Full-bleed cover banner; tapping it plays the song. No
-  "featured" label. Omitted when no song is marked `featured`.
-- **Rails** (horizontal, snap-scrolling, max 8 songs each). A rail renders only
-  when it has **at least 3** qualifying songs; otherwise it is omitted with no
-  empty state:
-  - *Editor's picks* — `featured` by `featured_order` then `created_at` desc,
-    excluding the hero.
-  - *Most listened to* — `play_count` desc.
-  - *Most loved* — `like_count` desc.
-  - *Most talked about* — `comment_count` desc, only songs with
-    `comment_count > 0`.
-  - *Newest* — `created_at` desc.
-- **Comments from listeners**: the existing `loadFeed` feed, at the bottom,
-  capped at 8 with a "More" expander.
+- **`/` — homepage** (`#page-home`): full-width, single column. Header (wordmark,
+  search box, Listen link) → hero (first Editor's pick, up to 420px on desktop /
+  270px on mobile) → rails → a "Listen to everything" band (Radio, Browse all
+  songs) → the listener feed (8 with "More") → About footer. Ranking lives in
+  `homepageSections()` → `{ hero, rails }` (rails need **≥3** songs; Editor's
+  picks / Most listened to / Most loved / Most talked about / Newest), rendered by
+  `renderHomepage()`. Built entirely from the in-memory `SONGS` array, so it works
+  from the `songs.json` snapshot during an outage. Tapping any song, or a
+  homepage search, navigates to `/listen`.
+- **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
+  lyrics + list). Its idle state is the simple "pick a song" line plus the
+  listener feed. The wordmark navigates to `/`.
+- **Deep link**: shared links stay `/?song=<id>` so the OG middleware (matcher
+  `/`) still rewrites previews. On load with `?song=` present, the app goes
+  straight to the song page, plays the song, and `replaceState`s the visible URL
+  to `/listen?song=<id>`.
+- **Mini-player**: while a song plays, the homepage shows a slim bottom bar
+  (cover, title, play/pause, next); tapping the cover/title returns to `/listen`.
+  The full dock is never shown on the homepage.
 
-A rail's "Play all" starts the rail in order in manual mode via a small ordered
-`manualQueue` (manual mode otherwise has no queue); `manualStep` and end-of-track
-auto-advance follow it, and any non-rail selection clears it. No counts, badges,
-or "trending" language appear anywhere on the homepage — only the section names.
+A rail's "Play all" hands the song page an ordered `manualQueue`: the homepage
+calls `navigate('listen')` then `playRail(idxs)`, which sets `manualQueue` and
+loads the first track; `manualStep` and end-of-track auto-advance follow it, and
+any non-rail selection clears it. No counts, badges, or "trending" language
+appear on the homepage — only the section names.

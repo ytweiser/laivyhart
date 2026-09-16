@@ -451,6 +451,52 @@
     transition:color 0.18s var(--ease);
   }
   .feed-more:hover{color:var(--accent-2);}
+
+  /* ---------- Dedicated homepage (route "/") ---------- */
+  #page-home{max-width:1100px; margin:0 auto; padding:1.4rem 1.5rem 6rem; min-width:0;}
+  #page-home.hidden{display:none;}
+  .home-header{display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.4rem;}
+  .home-wordmark{cursor:default;}
+  .home-header-right{display:flex; align-items:center; gap:0.9rem; flex:1 1 20rem; justify-content:flex-end; min-width:0;}
+  .home-search{flex:1 1 auto; max-width:26rem; min-width:0; width:auto;}
+  /* Hero: larger on the homepage (up to 420px); same 270px cap on mobile. */
+  #page-home .home-hero{height:420px; margin:0.2rem 0 1.6rem; width:100%; border-radius:16px; border-bottom:none;}
+  #page-home .home-hero-img{border-radius:16px;}
+  /* Rails: bigger thumbs; 6-8 across the wide container. */
+  #page-home .rail-item, #page-home .rail-thumb{width:7.5rem;}
+  #page-home .rail-thumb{height:7.5rem;}
+  #page-home .rail{margin-bottom:2rem;}
+  /* "Listen to everything" band */
+  .home-band{
+    display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+    padding:1.1rem 0; margin:0.4rem 0 1.8rem; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  .home-band-label{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim);}
+  .home-band-btns{display:flex; gap:1.4rem;}
+  .home-band-btn{
+    background:none; border:none; cursor:pointer; padding:0.2rem 0;
+    font-family:var(--font-ui); font-size:0.9rem; color:var(--text);
+    border-bottom:1px solid transparent; transition:border-color 0.18s var(--ease), color 0.18s var(--ease);
+  }
+  .home-band-btn:hover{color:var(--accent-2); border-bottom-color:var(--accent-2);}
+  .home-feed{margin-bottom:2rem;}
+  .home-footer{padding:1.4rem 0 0; border-top:1px solid var(--line); text-align:center;}
+  /* Mini-player: slim bar pinned to the bottom of the homepage while playing. */
+  .mini-player{
+    position:fixed; left:0; right:0; bottom:0; z-index:200;
+    display:flex; align-items:center; gap:0.8rem;
+    padding:0.55rem max(1rem, env(safe-area-inset-right)) calc(0.55rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    background:var(--glass-hi); border-top:1px solid var(--glass-border);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  }
+  .mini-player.hidden{display:none;}
+  .mini-cover{width:40px; height:40px; border-radius:50%; flex-shrink:0; cursor:pointer; background-size:cover; background-position:center; border:1px solid var(--glass-border);}
+  .mini-titles{flex:1; min-width:0; background:none; border:none; cursor:pointer; text-align:left; padding:0; display:flex; flex-direction:column; gap:0.05rem;}
+  .mini-title{font-size:0.95rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mini-title.heb{font-family:var(--font-heb); direction:rtl;}
+  .mini-sub{font-family:var(--font-display); font-style:italic; font-size:0.8rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mini-btn{background:none; border:none; cursor:pointer; color:var(--text); width:2.4rem; height:2.4rem; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .mini-btn svg{width:1.4rem; height:1.4rem; fill:currentColor;}
   /* Category pills grouped into labeled, horizontally-scrollable rows */
   .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
   .cat-allrow{display:flex;}
@@ -733,12 +779,18 @@
        one signals that the row scrolls. */
     .rail-item, .rail-thumb{width:5.5rem; height:auto;}
     .rail-thumb{height:5.5rem;}
+    /* Homepage on phones: tighter padding, hero back to the 270px cap. */
+    #page-home{padding:12px 12px 6rem;}
+    #page-home .home-hero{height:270px; border-radius:12px;}
+    #page-home .rail-item, #page-home .rail-thumb{width:5.5rem;}
+    #page-home .rail-thumb{height:5.5rem;}
+    .home-header-right{flex-basis:100%;}
   }
 </style>
 </head>
 <body>
 
-<div class="app">
+<div class="app hidden" id="page-listen">
 
   <!-- ================= LEFT: now playing ================= -->
   <section class="panel now glass">
@@ -784,11 +836,6 @@
       <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
     </div>
-
-    <!-- Homepage (idle, or "home while playing"): hero + rails. Rendered by
-         renderHomepage(); the listener feed lives at the bottom of the engage
-         zone below. Hidden whenever a song's now-playing view is shown. -->
-    <div class="homepage hidden" id="homepage"></div>
 
     <div class="lyrics-wrap" id="lyrics-wrap">
       <div class="lyrics-head">
@@ -912,6 +959,51 @@
     </div>
   </section>
 
+</div>
+
+<!-- ================= HOMEPAGE (route "/") ================= -->
+<div id="page-home" class="hidden">
+  <header class="home-header">
+    <div class="logo home-wordmark"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+    <div class="home-header-right">
+      <input class="search home-search" id="home-search" type="text" placeholder="Search songs, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
+      <a class="quiet-link" id="home-listen-link" href="/listen">Listen</a>
+    </div>
+  </header>
+
+  <!-- Hero + rails render here (renderHomepage) -->
+  <div class="homepage" id="homepage"></div>
+
+  <div class="home-band">
+    <span class="home-band-label">Listen to everything</span>
+    <div class="home-band-btns">
+      <button class="home-band-btn" id="home-radio" type="button">Radio</button>
+      <button class="home-band-btn" id="home-browse" type="button">Browse all songs</button>
+    </div>
+  </div>
+
+  <section class="home-feed">
+    <div class="feed-head">
+      <h2 class="feed-title">Comments from listeners</h2>
+      <div class="feed-sub">Tap a song name to hear it.</div>
+    </div>
+    <div class="feed-list" id="home-feed-list"></div>
+  </section>
+
+  <footer class="home-footer">
+    <a class="quiet-link" href="about.html">About</a>
+  </footer>
+</div>
+
+<!-- Slim mini-player: pinned to the bottom of the homepage while a song plays -->
+<div class="mini-player hidden" id="mini-player">
+  <div class="mini-cover" id="mini-cover" role="button" tabindex="0" aria-label="Back to the song"></div>
+  <button class="mini-titles" id="mini-titles" type="button" aria-label="Back to the song">
+    <span class="mini-title" id="mini-title"></span>
+    <span class="mini-sub" id="mini-sub"></span>
+  </button>
+  <button class="mini-btn" id="mini-play" type="button" aria-label="Play or pause">&#9654;</button>
+  <button class="mini-btn" id="mini-next" type="button" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
 </div>
 
 <div class="picker-overlay hidden" id="picker-overlay">
@@ -1169,19 +1261,7 @@ async function loadSongs(){
   renderPlaylists();
   loadFeed();
   fetchMissingDurations();
-  handleDeepLink();
-}
-
-// If the page was opened with ?song=ID, select, load, and play that song
-// (cued if autoplay is blocked) and bring the now-playing panel into view.
-function handleDeepLink(){
-  let id;
-  try{ id = new URLSearchParams(location.search).get('song'); }catch(e){ return; }
-  if(!id) return;
-  if(SONGS.findIndex(s => s.id === id) < 0) return;
-  playSongById(id);
-  const now = document.querySelector('.panel.now');
-  if(now){ try{ now.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} }
+  initRoute();   // choose homepage vs song page (+ handle a ?song deep-link)
 }
 
 /* ============================================================
@@ -1226,7 +1306,6 @@ const SORT_KEY = 'laivy-sort-v1';
 function loadSort(){ try{ return localStorage.getItem(SORT_KEY) || 'shuffle'; }catch(e){ return 'shuffle'; } }
 let activeSort = loadSort();
 let currentIdx = null;
-let showHome = false;    // view the homepage while a song is playing (wordmark)
 let langView = 'orig';   // 'orig' | 'trans'
 let mode = 'manual';     // manual | radio | catRadio | playlist
 let queue = [];
@@ -1636,24 +1715,26 @@ function renderHomepage(){
   html += rails.map(sec => railHTML(sec, idxOf)).join('');
   el.innerHTML = html;
 
-  // Hero + individual rail thumbnails: play that one song.
+  // Hero + individual rail thumbnails: go to the song page and play that song.
   el.querySelectorAll('.home-hero, .rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SONGS[Number(btn.dataset.idx)];
       if(!s) return;
       laivyTrack('home_play', { rail: btn.dataset.rail, song_id: s.id });
-      playSongById(s.id);   // clears manualQueue, leaves home, plays
+      navigate('listen');
+      playSongById(s.id);   // clears manualQueue, plays
     });
   });
 
-  // Play all: build a small ordered manual queue from the rail.
+  // Play all: go to the song page and hand it an ordered rail queue.
   el.querySelectorAll('.rail-playall').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const sec = rails.find(r => r.key === btn.dataset.rail);
       if(!sec || !sec.songs.length) return;
       laivyTrack('home_play', { rail: sec.key, song_id: sec.songs[0].id });
-      playRail(sec.songs.map(s => idxOf.get(s.id)));
+      navigate('listen');
+      playRail(sec.songs.map(s => idxOf.get(s.id)));  // builds manualQueue on arrival
     });
   });
 
@@ -1704,31 +1785,26 @@ function renderNow(){
   const engage = document.getElementById('engage');
   const panelFeed = document.getElementById('panel-feed');
 
-  const homepage = document.getElementById('homepage');
-  const nowContent = document.getElementById('now-content');
-  const lyricsWrap = document.getElementById('lyrics-wrap');
   const commentsWrap = document.getElementById('comments-wrap');
 
-  // Home view: nothing playing, OR the wordmark was tapped while a song plays.
-  // The homepage replaces the now-playing content; the pinned dock (player
-  // controls) stays in place below it and keeps working, and the listener feed
-  // sits at the bottom of the engage zone.
-  if(currentIdx === null || showHome){
-    homepage.classList.remove('hidden');
-    nowContent.classList.add('hidden');
-    lyricsWrap.classList.add('hidden');
-    nowLikeBlock.classList.add('hidden');
+  // Idle: the simple "pick a song" line + the listener feed (the homepage now
+  // lives at route "/", not in this panel).
+  if(currentIdx === null){
+    empty.classList.remove('hidden');
+    orig.classList.add('hidden'); trans.classList.add('hidden');
+    primary.textContent = ''; secondary.textContent = '';
+    thumb.style.cssText = genArtStyle('laivy hart');
+    banner.classList.add('hidden'); bannerImg.removeAttribute('src');
+    topline.classList.remove('hidden');
+    chips.innerHTML = ''; nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    nowLike.innerHTML = ''; nowLikeBlock.classList.add('hidden');
     if(commentsWrap) commentsWrap.classList.add('hidden');
     panelFeed.classList.remove('hidden');
     engage.classList.remove('hidden');
-    renderHomepage();
     return;
   }
 
-  // A song is playing and we are on its now-playing view.
-  homepage.classList.add('hidden');
-  nowContent.classList.remove('hidden');
-  lyricsWrap.classList.remove('hidden');
+  // A song is playing.
   panelFeed.classList.add('hidden');
   const s = SONGS[currentIdx];
   const heb = isHebrew(s);
@@ -1835,7 +1911,6 @@ function setAmbientPlaying(on){ ambient.classList.toggle('is-playing', !!on); }
 
 function loadSong(idx, keepRailQueue){
   currentIdx = idx;
-  showHome = false;                    // selecting a song leaves the homepage
   if(!keepRailQueue) manualQueue = null; // a non-rail pick ends any "Play all"
   langView = 'orig';
   playCounted = false;
@@ -1844,6 +1919,7 @@ function loadSong(idx, keepRailQueue){
   renderList();
   loadComments();
   playCurrent();
+  updateMiniPlayer();
 }
 
 function playCurrent(){
@@ -1870,20 +1946,26 @@ function playCurrent(){
 }
 
 function setPlayIcon(playing){
-  document.getElementById('play-btn').innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
+  const icon = playing ? '&#10074;&#10074;' : '&#9654;';
+  document.getElementById('play-btn').innerHTML = icon;
+  const mp = document.getElementById('mini-play');
+  if(mp) mp.innerHTML = icon;
 }
+// Shared play/pause + next so the dock and the mini-player behave identically.
+function togglePlay(){
+  if(currentIdx === null){ startRadio(); return; }
+  if(!SONGS[currentIdx].audio) return;
+  if(audioEl.paused){ audioEl.play().catch(()=>{}); setPlayIcon(true); setAmbientPlaying(true); }
+  else{ audioEl.pause(); setPlayIcon(false); setAmbientPlaying(false); }
+}
+function playNext(){ if(mode !== 'manual' && queue.length) advanceQueue(); else manualStep(1); }
 function resetScrub(){
   document.getElementById('scrub').value = 0;
   document.getElementById('t-elapsed').textContent = '0:00';
   document.getElementById('t-remaining').textContent = '0:00';
 }
 
-document.getElementById('play-btn').addEventListener('click', () => {
-  if(currentIdx === null){ startRadio(); return; }
-  if(!SONGS[currentIdx].audio) return;
-  if(audioEl.paused){ audioEl.play().catch(()=>{}); setPlayIcon(true); setAmbientPlaying(true); }
-  else{ audioEl.pause(); setPlayIcon(false); setAmbientPlaying(false); }
-});
+document.getElementById('play-btn').addEventListener('click', togglePlay);
 
 audioEl.addEventListener('timeupdate', () => {
   const dur = audioEl.duration;
@@ -2177,25 +2259,27 @@ const FEED_CAP = 8;
 let feedData = [];
 let feedExpanded = false;
 async function loadFeed(){
-  const listEl = document.getElementById('feed-list');
-  if(!listEl) return;
+  const lists = document.querySelectorAll('.feed-list');
+  if(!lists.length) return;
   const { data, error } = await supabaseClient
     .from('comments')
     .select('song_id, name, city, body, created_at')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
-  if(error){ listEl.innerHTML = `<div class="feed-empty">Couldn't load comments right now.</div>`; return; }
+  if(error){ lists.forEach(el => el.innerHTML = `<div class="feed-empty">Couldn't load comments right now.</div>`); return; }
   if(!data || data.length === 0){
-    listEl.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share a reflection.</div>`;
+    lists.forEach(el => el.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share a reflection.</div>`);
     return;
   }
   feedData = data;
   feedExpanded = false;
   renderFeed();
 }
+// Renders into every .feed-list on the page (the song page's idle feed AND the
+// homepage feed). Both expand together via "More".
 function renderFeed(){
-  const listEl = document.getElementById('feed-list');
-  if(!listEl) return;
+  const lists = document.querySelectorAll('.feed-list');
+  if(!lists.length) return;
   const rows = feedExpanded ? feedData : feedData.slice(0, FEED_CAP);
   const items = rows.map(c => {
     const s = SONGS.find(x => x.id === c.song_id);
@@ -2208,16 +2292,19 @@ function renderFeed(){
     return `<div class="feed-item">${songEl}: ${escHtml(c.body)}${sig ? ` <span class="feed-sig">– ${escHtml(sig)}</span>` : ''}</div>`;
   }).join('');
   const more = (!feedExpanded && feedData.length > FEED_CAP)
-    ? `<button class="feed-more" id="feed-more" type="button">More</button>` : '';
-  listEl.innerHTML = items + more;
-  listEl.querySelectorAll('.feed-song[data-song]').forEach(b => {
-    b.addEventListener('click', () => {
-      laivyTrack('home_play', { rail: 'feed', song_id: b.dataset.song });
-      playSongById(b.dataset.song);
+    ? `<button class="feed-more" type="button">More</button>` : '';
+  lists.forEach(listEl => {
+    listEl.innerHTML = items + more;
+    listEl.querySelectorAll('.feed-song[data-song]').forEach(b => {
+      b.addEventListener('click', () => {
+        laivyTrack('home_play', { rail: 'feed', song_id: b.dataset.song });
+        if(route === 'home') navigate('listen');   // feed tap on homepage -> song page
+        playSongById(b.dataset.song);
+      });
     });
+    const moreBtn = listEl.querySelector('.feed-more');
+    if(moreBtn) moreBtn.addEventListener('click', () => { feedExpanded = true; renderFeed(); });
   });
-  const moreBtn = document.getElementById('feed-more');
-  if(moreBtn) moreBtn.addEventListener('click', () => { feedExpanded = true; renderFeed(); });
 }
 
 /* ============================================================
@@ -2300,10 +2387,7 @@ document.getElementById('prev-btn').addEventListener('click', () => {
     manualStep(-1);
   }
 });
-document.getElementById('next-btn').addEventListener('click', () => {
-  if(mode !== 'manual' && queue.length) advanceQueue();
-  else manualStep(1);
-});
+document.getElementById('next-btn').addEventListener('click', playNext);
 
 /* ============================================================
    Search + tabs
@@ -2357,18 +2441,12 @@ function switchTab(which){
 tabSongs.addEventListener('click', () => switchTab('songs'));
 tabPlaylists.addEventListener('click', () => switchTab('playlists'));
 
-// The wordmark returns to the homepage, even while a song is playing (the
-// pinned player controls keep working). Selecting any song leaves it again.
+// The song-page wordmark navigates to the homepage (audio keeps playing; the
+// mini-player takes over there).
 const homeBtn = document.getElementById('home-btn');
-function goHome(){
-  showHome = true;
-  renderNow();
-  const now = document.querySelector('.panel.now');
-  if(now){ try{ now.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){} }
-}
-homeBtn.addEventListener('click', goHome);
+homeBtn.addEventListener('click', () => navigate('home'));
 homeBtn.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); goHome(); }
+  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); navigate('home'); }
 });
 
 /* ============================================================
@@ -2720,6 +2798,97 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
     if(e.key === 'Escape' && lb.classList.contains('open')) closeLightbox();
   });
 })();
+
+/* ============================================================
+   Routing: "/" homepage, "/listen" song page (History API)
+   The audio element + player state live at the app level, above both pages,
+   so navigating home never stops playback.
+   ============================================================ */
+let route = 'home';
+function routeFromPath(){ return location.pathname === '/listen' ? 'listen' : 'home'; }
+
+function showPage(next){
+  route = next;
+  document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
+  document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
+  if(next === 'home'){ renderHomepage(); renderFeed(); }
+  updateMiniPlayer();
+  try{ window.scrollTo({ top: 0 }); }catch(e){}
+}
+// User-initiated navigation: push history + fire a manual page_view (GA4's
+// automatic page_view only fires on real loads, not SPA transitions).
+function navigate(next){
+  history.pushState({ route: next }, '', next === 'listen' ? '/listen' : '/');
+  showPage(next);
+  laivyTrack('page_view', { route: next });
+}
+window.addEventListener('popstate', () => {
+  const r = routeFromPath();
+  showPage(r);
+  laivyTrack('page_view', { route: r });
+});
+
+// First load: a ?song deep-link goes straight to the song page (playing) and
+// rewrites the visible URL to /listen?song=<id>; otherwise render the route the
+// path names. The shared link stays "/?song=" so the OG middleware still fires.
+function initRoute(){
+  let songId = null;
+  try{ songId = new URLSearchParams(location.search).get('song'); }catch(e){}
+  if(songId && SONGS.findIndex(s => s.id === songId) >= 0){
+    history.replaceState({ route: 'listen' }, '', '/listen?song=' + encodeURIComponent(songId));
+    showPage('listen');
+    playSongById(songId);
+    return;
+  }
+  const r = routeFromPath();
+  history.replaceState({ route: r }, '', r === 'listen' ? '/listen' : '/');
+  showPage(r);
+}
+
+/* ============================================================
+   Mini-player (homepage, while a song plays)
+   ============================================================ */
+function updateMiniPlayer(){
+  const mp = document.getElementById('mini-player');
+  if(!mp) return;
+  const show = route === 'home' && currentIdx !== null && SONGS[currentIdx];
+  mp.classList.toggle('hidden', !show);
+  if(!show) return;
+  const s = SONGS[currentIdx];
+  const heb = isHebrew(s);
+  document.getElementById('mini-cover').style.cssText = s.cover
+    ? `background-image:url("${cdnImg(s.cover, 140)}");`
+    : genArtStyle(s.title || s.title_translit || s.id);
+  const title = document.getElementById('mini-title');
+  title.textContent = heb ? s.title : (s.title || s.title_translit);
+  title.className = 'mini-title' + (heb ? ' heb' : '');
+  document.getElementById('mini-sub').textContent = heb ? (s.title_translit || '') : '';
+  document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
+}
+document.getElementById('mini-play').addEventListener('click', togglePlay);
+document.getElementById('mini-next').addEventListener('click', playNext);
+document.getElementById('mini-titles').addEventListener('click', () => navigate('listen'));
+const miniCover = document.getElementById('mini-cover');
+miniCover.addEventListener('click', () => navigate('listen'));
+miniCover.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); navigate('listen'); } });
+
+/* ============================================================
+   Homepage header + "Listen to everything" band controls
+   ============================================================ */
+document.getElementById('home-listen-link').addEventListener('click', (e) => { e.preventDefault(); navigate('listen'); });
+document.getElementById('home-radio').addEventListener('click', () => { navigate('listen'); startRadio(); });
+document.getElementById('home-browse').addEventListener('click', () => { navigate('listen'); switchTab('songs'); });
+const homeSearchEl = document.getElementById('home-search');
+homeSearchEl.addEventListener('keydown', (e) => {
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = homeSearchEl.value;
+  navigate('listen');
+  const se = document.getElementById('search');
+  se.value = q; searchTerm = q;
+  switchTab('songs');
+  renderList();
+});
 
 /* ============================================================
    Init
