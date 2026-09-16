@@ -373,7 +373,10 @@
   /* Optional like-facet line beneath the heart: a prompt + three small hearts,
      each with a label. The prompt matches "Love this song?" (display serif, full
      opacity); labels match "Tap the heart…" (body font, full opacity). */
-  .facet-line{flex-basis:100%; display:flex; flex-direction:column; gap:0.55rem; margin-top:0.35rem;}
+  /* Indented so its left edge aligns with the nudge text (beneath the heart),
+     not the far-left of the dock. Matches the next->nudge offset:
+     prev+play+next (7.8rem) + two flex gaps (1.2rem) + the 28px cluster gap. */
+  .facet-line{display:flex; flex-direction:column; gap:0.55rem; margin-top:0.35rem; margin-left:calc(9rem + 28px);}
   .facet-line.hidden{display:none;}
   .facet-line.fadein{animation:facetFadeIn 0.45s var(--ease);}
   .facet-line.fading{opacity:0; transition:opacity 0.5s var(--ease);}
@@ -383,10 +386,10 @@
   .facet-options{display:flex; flex-wrap:wrap; gap:0.5rem 1.5rem;}
   .facet-option{display:inline-flex; align-items:center; gap:0.45rem; background:none; border:none; padding:0.1rem 0; cursor:pointer;}
   .facet-heart{
-    width:0.96rem; height:0.96rem; flex-shrink:0; fill:none; stroke:var(--text-dim); stroke-width:1.7; overflow:visible;
+    width:1.08rem; height:1.08rem; flex-shrink:0; fill:none; stroke:var(--text-dim); stroke-width:1.7; overflow:visible;
     transition:fill 0.18s var(--ease), stroke 0.18s var(--ease), transform 0.18s var(--ease);
   }
-  .facet-label{font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim); transition:color 0.18s var(--ease);}
+  .facet-label{font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); transition:color 0.18s var(--ease);}
   .facet-option:hover .facet-heart{stroke:var(--accent-2);}
   .facet-option:hover .facet-label{color:var(--text);}
   .facet-option.on .facet-heart{fill:var(--accent-2); stroke:var(--accent-2); animation:heart-pop 0.34s var(--ease);}
@@ -698,20 +701,17 @@
   .like-btn.liked .heart{fill:var(--accent-1); stroke:var(--accent-1); animation:heart-pop 0.34s var(--ease);}
   .like-btn .like-count{min-width:0.7em; text-align:left; font-variant-numeric:tabular-nums;}
   @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
-  /* ---------- Now-playing reaction pair (Love + Share) ----------
-     Lives on the player controls row, right of prev/play/next. Each is sized to
-     the play button with a small muted label beneath. */
-  .dock-react{margin-left:auto; display:flex; align-items:flex-start; gap:1rem;}
+  /* ---------- Now-playing Love cluster (nudge + heart + Share) ----------
+     Grouped just after the next button and left-aligned as one row (NOT pushed to
+     the far right). Order: [28px gap] nudge, heart, share. The next→nudge gap is
+     the flex gap (0.6rem) plus this margin, totalling ~28px. */
+  .dock-react{display:flex; align-items:center; gap:0.6rem; margin-left:calc(28px - 0.6rem);}
   .dock-react.hidden{display:none;}
-  .react-item{
-    display:flex; flex-direction:column; align-items:center; gap:0.28rem;
-    background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;
-  }
-  .react-label{
-    font-family:var(--font-ui); font-size:0.64rem; font-weight:600; letter-spacing:0.05em;
-    text-transform:uppercase; color:var(--text-dim); line-height:1; transition:color 0.18s var(--ease);
-  }
-  .react-item:hover .react-label{color:var(--text);}
+  /* The nudge: line 1 in the display serif italic at the "What moved you?" size,
+     line 2 in the muted body font. Text swaps to "Loved."/"Thank you." when liked. */
+  .like-nudge{display:flex; flex-direction:column; gap:0.05rem; text-align:left; white-space:nowrap;}
+  .nudge-title{font-family:var(--font-display); font-style:italic; font-weight:600; font-size:1rem; line-height:1.15; color:var(--text);}
+  .nudge-sub{font-family:var(--font-ui); font-size:0.82rem; line-height:1.15; color:var(--text-dim);}
   /* Love: heart at ~play-button size, count small + muted beside it, fills when liked. */
   .like-btn.now-like{
     height:3rem; min-width:3rem; padding:0 0.75rem; gap:0.38rem; border-radius:50px;
@@ -724,7 +724,8 @@
     background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.18), rgba(var(--accent-2-rgb),0.18));}
   .like-btn.now-like .heart{width:1.55rem; height:1.55rem; stroke-width:1.7;}
   .like-btn.now-like .like-count{font-size:0.78rem; font-weight:600; color:var(--text-dim); min-width:1ch;}
-  /* Share: share glyph in the accent-filled circle, matched to the play button. */
+  /* Share: share glyph in the accent-filled circle, immediately right of the heart. */
+  .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
     flex-shrink:0; width:3rem; height:3rem; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
@@ -828,11 +829,13 @@
     .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
     .tabs-radio .cat-radio-wrap{flex:1 1 0; min-width:0;}
     .tabs-radio .cat-radio{width:100%; max-width:none;}
-    /* Keep prev/play/next + Love/Share on one controls row. Trim dock spacing so
-       the labelled reaction pair doesn't grow the dock height on mobile. */
+    /* Keep prev/play/next + the Love cluster on one row. Trim dock spacing so the
+       nudge doesn't grow the dock height on mobile. The next->nudge gap is ~20px
+       here (0.5rem flex gap + this margin), with the facet line indented to match. */
     .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
     .transport{gap:0.5rem; flex-wrap:nowrap;}
-    .dock-react{gap:0.7rem;}
+    .dock-react{gap:0.5rem; margin-left:calc(20px - 0.5rem);}
+    .facet-line{margin-left:calc(8.8rem + 20px);}   /* prev+play+next (7.8rem) + 2 flex gaps (1rem) + 20px */
     /* On mobile the now-playing panel is NOT a fixed-height flex frame with
        pinned controls and a capped reflections zone. Sections just stack and
        flow so the PAGE scrolls to reveal the like heart, the reflection form,
@@ -884,6 +887,16 @@
     .hero-title{font-size:1.6rem;}
     /* Rails: ~1.5 landscape cards across a 390px viewport (240px ~= 62vw). */
     #page-home .rail-item{width:62vw; max-width:280px;}
+  }
+  /* Very narrow (≈390px): the nudge + five circles can't all fit at full size.
+     Drop the nudge's second line (keep "Loved it?") and shrink prev/next a touch
+     before anything else, then re-align the facet line to the narrower lead. */
+  @media (max-width:410px){
+    .nudge-sub{display:none;}
+    .transport .tbtn:not(.play){width:2rem; height:2rem;}
+    .dock-react{gap:0.4rem;}
+    .like-btn.now-like{padding:0 0.4rem; gap:0.3rem;}
+    .facet-line{margin-left:calc(8rem + 20px);}   /* prev+play+next (7rem) + 1rem gaps + 20px */
   }
 </style>
 </head>
@@ -963,14 +976,17 @@
         <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <!-- Love + Share: the reaction pair, sized to the play button, right of the transport -->
+        <!-- Love cluster: a nudge, the heart, then Share — grouped just after next -->
         <div class="dock-react hidden" id="dock-react">
-          <div class="react-item" id="now-like-wrap"></div>
-          <button class="share-invite react-item" id="now-share-btn" type="button" aria-label="Share this song">
+          <div class="like-nudge" id="like-nudge">
+            <span class="nudge-title">Loved it?</span>
+            <span class="nudge-sub">Give it a heart</span>
+          </div>
+          <div id="now-like-wrap"></div>
+          <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
             <span class="share-invite-ic" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
             </span>
-            <span class="react-label">Share</span>
           </button>
         </div>
       </div>
@@ -2185,7 +2201,8 @@ function renderNow(){
     topline.classList.remove('hidden');
   }
 
-  nowLike.innerHTML = likeBtnHTML(s, 'now-like') + `<span class="react-label">Love</span>`;
+  nowLike.innerHTML = likeBtnHTML(s, 'now-like');
+  setLikeNudge();
   dockReact.classList.remove('hidden');
   engage.classList.remove('hidden');
 
@@ -2443,6 +2460,14 @@ function likeBtnHTML(s, extraClass){
   return `<button class="like-btn ${liked?'liked':''} ${extraClass||''}" data-like="${s.id}" type="button"
     aria-pressed="${liked?'true':'false'}" aria-label="${liked?'Unlike this song':'Like this song'}" title="${liked?'Unlike':'Like'}">${heartSVG()}<span class="like-count">${s.like_count}</span></button>`;
 }
+// The nudge beside the now-playing heart: invites a like, then thanks for one.
+function setLikeNudge(){
+  const n = document.getElementById('like-nudge');
+  if(!n || currentIdx === null) return;
+  const liked = likedSet.has(SONGS[currentIdx].id);
+  n.querySelector('.nudge-title').textContent = liked ? 'Loved.' : 'Loved it?';
+  n.querySelector('.nudge-sub').textContent = liked ? 'Thank you.' : 'Give it a heart';
+}
 function updateLikeUI(songId){
   const s = SONGS.find(x => x.id === songId);
   if(!s) return;
@@ -2466,6 +2491,7 @@ async function toggleLike(songId){
   else { likedSet.delete(songId); s.like_count = Math.max(0, (s.like_count || 0) - 1); }
   saveLikes();
   updateLikeUI(songId);
+  setLikeNudge();
   laivyTrack(liked ? 'song_like' : 'song_unlike', {
     song_id: songId,
     song_title: s.title || s.title_translit || ''

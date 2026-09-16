@@ -174,9 +174,12 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 - **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
   lyrics + list). Its idle state is the simple "pick a song" line plus the
   listener feed. The wordmark navigates to `/`.
-  - **Dock layout**: the player controls row holds prev/play/next on the left and
-    the play-button-sized **Love** (heart + count) and **Share** actions on the
-    right, with the "What moved you?" facet-hearts line full-width beneath it;
+  - **Dock layout**: the player controls row is one left-aligned group —
+    prev/play/next, a fixed gap, a two-line **nudge** ("Loved it?/Give it a heart",
+    → "Loved./Thank you." once liked), the play-button-sized **Love** heart
+    (+ count), then **Share** — with the "What moved you?" facet-hearts line
+    directly beneath the heart (left edge aligned to the nudge). At ≈390px the
+    nudge drops to one line and prev/next shrink so the group stays on one row.
     **Radio** and **Category radio** live in the list-column header beside the
     Songs/Playlists tabs (wrapping two-across below the tabs on mobile).
 - **Deep link**: shared links stay `/?song=<id>` so the OG middleware (matcher
