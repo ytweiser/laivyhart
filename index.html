@@ -457,7 +457,9 @@
   .hero-left{flex:0 0 45%; min-width:0; display:flex; flex-direction:column; justify-content:center;}
   .hero-cover{flex:1 1 55%; min-width:0; aspect-ratio:3 / 2; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);}
   .hero-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
-  .hero-label{font-family:var(--font-display); font-size:1.5rem; line-height:1.15; color:var(--text-dim); margin-bottom:0.7rem;}
+  /* The weekly #1 label is the hero's dominant element: bold display serif in the
+     accent color, ~1.3x the title (1.9rem) on desktop, with space beneath. */
+  .hero-label{font-family:var(--font-display); font-weight:700; font-size:2.5rem; line-height:1.1; color:var(--accent-2); margin-bottom:1rem;}
   .hero-title{font-weight:600; font-size:1.9rem; line-height:1.16; color:var(--text);}
   .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
   .hero-title.disp{font-family:var(--font-display);}
@@ -482,6 +484,15 @@
   .rail-scroll::-webkit-scrollbar, .editors-scroll::-webkit-scrollbar{display:none; height:0;}
   .rail-item{flex:0 0 auto; width:290px; scroll-snap-align:start; cursor:pointer; background:none; border:none; padding:0; text-align:left;}
   .rail-thumb{width:100%; aspect-ratio:3 / 2; border-radius:14px; object-fit:cover; display:block; border:1px solid var(--glass-border); box-shadow:0 6px 18px rgba(0,0,0,0.28); background-size:cover; background-position:center;}
+  /* Chart rank badge (weekly rail only): accent circle, white numeral, top-left. */
+  .rail-thumb-wrap{position:relative;}
+  .rail-rank{
+    position:absolute; top:0.45rem; left:0.45rem; z-index:1;
+    min-width:1.55rem; height:1.55rem; padding:0 0.35rem; border-radius:999px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--accent-2); color:#fff; font-family:var(--font-ui); font-weight:700; font-size:0.82rem;
+    box-shadow:0 6px 18px rgba(0,0,0,0.28);
+  }
   .rail-title{margin-top:0.5rem; font-size:0.92rem; line-height:1.2; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .rail-title.heb{font-family:var(--font-heb); direction:rtl;}
   .rail-sub{font-family:var(--font-display); font-style:italic; font-size:0.76rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -810,7 +821,7 @@
        becomes transparent so its children reorder with the cover between. */
     .home-hero2{flex-direction:column; align-items:stretch; gap:0;}
     .hero-left{display:contents;}
-    .hero-label{order:1; font-size:1.35rem; margin-bottom:0.6rem;}
+    .hero-label{order:1; font-size:1.85rem; margin-bottom:0.7rem;}   /* ~1.15x the 1.6rem mobile title */
     .hero-cover{order:2; flex:0 0 auto; margin-bottom:0.8rem;}
     .hero-text{order:3;}
     .hero-title{font-size:1.6rem;}
@@ -1766,15 +1777,16 @@ function homepageSections(){
 
   const shown = new Set(hero ? [hero.id] : []);
   const rails = [];
-  function addRail(key, title, list){
-    const picked = list.filter(s => !shown.has(s.id)).slice(0, 8);
+  function addRail(key, title, list, cap){
+    const picked = list.filter(s => !shown.has(s.id)).slice(0, cap || 8);
     if(picked.length >= 3){
       picked.forEach(s => shown.add(s.id));
       rails.push({ key, title, songs: picked });
     }
   }
 
-  addRail('most_listened', 'Most listened this week', ranked);   // wording is always weekly
+  // Weekly rail caps at 9 so it shows #2–#10 (the hero is #1); wording is always weekly.
+  addRail('most_listened', 'Most listened this week', ranked, 9);
   addRail('most_loved', 'Most loved',
     SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)));
   addRail('newest', 'New releases', SONGS.slice().sort(byNewest));
@@ -1863,19 +1875,24 @@ function updateSiteBanner(){
 }
 
 // A single landscape rail card, shared by the ranked rails and the editor's band.
-function railCardHTML(s, idxOf, railKey){
+// rank (a number) draws a chart badge on the cover; null/undefined = no badge.
+function railCardHTML(s, idxOf, railKey, rank){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = heb ? s.title_translit : '';
+  const badge = (rank != null) ? `<span class="rail-rank">${rank}</span>` : '';
   return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}">
-      ${coverThumbHTML(s, 'rail-thumb', 500)}
+      <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
       ${sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : ''}
     </button>`;
 }
 
 function railHTML(sec, idxOf){
-  const items = sec.songs.map(s => railCardHTML(s, idxOf, sec.key)).join('');
+  // The weekly rail is the chart's #2–#10 (the hero is #1), so number its cards
+  // by position after dedupe. No other rail gets badges.
+  const badged = sec.key === 'most_listened';
+  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 2 : null)).join('');
   return `<section class="rail" data-rail="${sec.key}">
       <div class="rail-head">
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>

@@ -144,7 +144,11 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
   - **Rails**, in order — *Most listened this week* (weekly ranking minus hero),
     *Most loved*, *New releases*, *Most talked about* (`comment_count > 0`),
     *All-time favorites* (`play_count`). The *New releases* rail keeps the
-    analytics key `newest`. Each is **deduped against everything shown above it**
+    analytics key `newest`. The **weekly rail caps at 9** (not 8) so it shows the
+    chart's **#2–#10** — the hero is #1 — and each of its cards gets a **rank
+    badge** (accent circle, white numeral, top-left of the cover) numbered by
+    position after dedupe; **no other rail or the Editor's picks band gets
+    badges**. Each is **deduped against everything shown above it**
     (hero + earlier rails, top-to-bottom); the **≥3 floor is applied after dedupe**,
     and an omitted rail does not consume its songs. `homepageSections()` returns
     `{ hero, rails, editors, fallback }`.
