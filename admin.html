@@ -193,6 +193,16 @@
     letter-spacing:0.05em; cursor:pointer;
   }
   .delete-btn:hover{background:var(--accent-1); color:#fff;}
+  .publish-form-btn{
+    padding:0.8rem 1.4rem; border-radius:12px; border:1px solid var(--accent-2); background:transparent;
+    color:var(--accent-2); font-family:var(--font-ui); font-size:0.76rem; text-transform:uppercase;
+    letter-spacing:0.05em; cursor:pointer;
+  }
+  .publish-form-btn:hover{background:var(--accent-2); color:#fff;}
+  .save-row .publish-status{align-self:center;}
+  .publish-trigger:disabled{opacity:0.55; cursor:default;}
+  .link-btn{background:none; border:none; padding:0; font:inherit; color:var(--accent-2); text-decoration:underline; cursor:pointer;}
+  .link-btn:hover{filter:brightness(1.1);}
   .save-msg{font-family:var(--font-ui); font-size:0.78rem; margin-top:0.7rem;}
   .save-msg.ok{color:var(--accent-2);} .save-msg.err{color:var(--accent-1);}
   .empty-form{color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1rem; padding:2rem 0;}
@@ -270,7 +280,7 @@
   <div class="topbar-right">
     <a class="quiet-link" href="index.html">Jukebox</a>
     <span class="publish-status" id="publish-status"></span>
-    <button class="logout-btn" id="publish-btn" style="display:none;">Publish</button>
+    <button class="logout-btn publish-trigger" id="publish-btn" style="display:none;">Publish</button>
     <button class="logout-btn" id="comments-btn" style="display:none;">Comments</button>
     <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
@@ -389,18 +399,20 @@ async function checkSession(){
 
 // Publish: ask the Worker to trigger a Vercel redeploy, which rebuilds the site
 // and regenerates songs.json from the live database. Uses the same upload token.
+let publishing = false;
 async function publishSite(){
-  const statusEl = document.getElementById('publish-status');
-  const btn = document.getElementById('publish-btn');
+  if(publishing) return;                        // one publish at a time across all triggers
+  // Every '.publish-status' shows the same feedback; every '.publish-trigger'
+  // (top-bar button, the form button, the "Click Publish" link) shares the state.
+  const setStatus = (text, cls) => document.querySelectorAll('.publish-status').forEach(el => {
+    el.textContent = text; el.className = 'publish-status' + (cls ? ' ' + cls : '');
+  });
+  const triggers = document.querySelectorAll('.publish-trigger');
   const token = getUploadToken();
-  if(!token){
-    statusEl.textContent = 'Set the upload token (in a song’s Audio section) first.';
-    statusEl.className = 'publish-status err';
-    return;
-  }
-  btn.disabled = true;
-  statusEl.textContent = 'Publishing…';
-  statusEl.className = 'publish-status';
+  if(!token){ setStatus('Set the upload token (in a song’s Audio section) first.', 'err'); return; }
+  publishing = true;
+  triggers.forEach(b => b.disabled = true);
+  setStatus('Publishing…', '');
   try{
     const res = await fetch(`${R2_UPLOAD_URL}/publish`, {
       method: 'POST',
@@ -409,21 +421,23 @@ async function publishSite(){
     if(!res.ok){
       let detail = res.status;
       try{ const j = await res.json(); if(j && j.error) detail = j.error; }catch(e){}
-      statusEl.textContent = 'Publish failed: ' + detail;
-      statusEl.className = 'publish-status err';
+      setStatus('Publish failed: ' + detail, 'err');
       return;
     }
-    statusEl.textContent = 'Published, live in about a minute.';
-    statusEl.className = 'publish-status ok';
+    setStatus('Published, live in about a minute.', 'ok');
     featuredDirty = false;
   }catch(e){
-    statusEl.textContent = 'Publish failed: ' + e.message;
-    statusEl.className = 'publish-status err';
+    setStatus('Publish failed: ' + e.message, 'err');
   }finally{
-    btn.disabled = false;
+    publishing = false;
+    document.querySelectorAll('.publish-trigger').forEach(b => b.disabled = false);
   }
 }
-document.getElementById('publish-btn').addEventListener('click', publishSite);
+// One delegated handler covers every publish trigger, including the form button
+// and the "Click Publish" link that are re-rendered with the song form.
+document.addEventListener('click', (e) => {
+  if(e.target.closest('.publish-trigger')){ e.preventDefault(); publishSite(); }
+});
 
 supabaseClient.auth.onAuthStateChange(() => checkSession());
 checkSession();
@@ -832,6 +846,8 @@ function renderForm(){
     <div class="save-row">
       <button class="save-btn" id="save-btn">Save song</button>
       ${s.id ? `<button class="delete-btn" id="delete-btn">Delete song</button>` : ''}
+      <button class="publish-form-btn publish-trigger" type="button">Publish</button>
+      <span class="publish-status" id="form-publish-status"></span>
     </div>
     <div class="save-msg" id="save-msg"></div>
   `;
@@ -1085,7 +1101,7 @@ async function saveSong(){
     msg.textContent = 'Error: ' + error.message;
     msg.className = 'save-msg err';
   } else {
-    msg.textContent = 'Saved ✓  ·  Click Publish to update the backup snapshot.';
+    msg.innerHTML = 'Saved ✓  ·  <button type="button" class="link-btn publish-trigger">Click Publish</button> to update the backup snapshot.';
     msg.className = 'save-msg ok';
     pendingAudioFile = null;
     pendingCoverFile = null;
