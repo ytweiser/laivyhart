@@ -587,8 +587,9 @@ function renderList(){
   const el = document.getElementById('list-items');
   el.innerHTML = songs.map(s => `
     <div class="list-item ${currentSong && currentSong.id===s.id ? 'active':''}" onclick="window.selectSong('${s.id}')">
-      <div class="lt-he">${s.title || '(untitled)'}</div>
+      <div class="lt-he">${s.featured ? '★ ' : ''}${s.title || '(untitled)'}</div>
       <div class="lt-translit">${s.title_translit || ''}</div>
+      ${(s.tags && s.tags.length) ? `<div class="lt-tags" style="opacity:0.6; font-size:0.8rem;">${escHtml(s.tags.join(', '))}</div>` : ''}
       <div class="lt-audio ${s.audio_url ? 'has':'missing'}">${s.audio_url ? '♪ audio attached' : 'no audio yet'}</div>
       <div class="lt-plays">▶ ${s.play_count ?? 0} play${(s.play_count ?? 0) === 1 ? '' : 's'}</div>
     </div>
@@ -603,8 +604,9 @@ window.selectSong = function(id){
 
 document.getElementById('new-song-btn').addEventListener('click', () => {
   loadIntoForm({
-    title:'', title_translit:'', categories:[], language:'Hebrew',
-    lyrics_original:'', lyrics_translation:'', about:'', audio_url:null
+    title:'', title_translit:'', categories:[], tags:[], language:'Hebrew',
+    lyrics_original:'', lyrics_translation:'', about:'', audio_url:null,
+    featured:false, featured_order:null
   });
 });
 
@@ -665,9 +667,30 @@ function renderForm(){
     </div>
 
     <div class="field">
-      <label>Featured category (shown in the song list)</label>
+      <label>Tags (comma-separated)</label>
+      <input type="text" id="f-tags" style="direction:ltr;" placeholder="e.g. hebrew, prayer, upbeat" value="${escAttr((s.tags || []).join(', '))}">
+      <div class="cm-note">Free-form labels for search and grouping. Separated by commas; saved lowercased and de-duplicated.</div>
+    </div>
+
+    <div class="field">
+      <label>Displayed category (shown in the song list)</label>
       <select id="f-featured"></select>
       <div class="cm-note">The one category shown on this song's list row. Leave on "Automatic" to use the default order (occasion, then mood, then subject).</div>
+    </div>
+
+    <div class="field two-col">
+      <div>
+        <label>Featured on homepage</label>
+        <label style="display:flex; align-items:center; gap:0.5rem; font-weight:normal;">
+          <input type="checkbox" id="f-featured-flag" ${s.featured ? 'checked' : ''}>
+          Show this song in the featured section
+        </label>
+      </div>
+      <div>
+        <label>Featured order (optional)</label>
+        <input type="number" id="f-featured-order" step="1" style="direction:ltr;" placeholder="lower = first" value="${s.featured_order == null ? '' : Number(s.featured_order)}">
+        <div class="cm-note">Lower number shows first. Leave blank for unordered (those sort after numbered ones by newest).</div>
+      </div>
     </div>
 
     <div class="field">
@@ -857,17 +880,33 @@ async function saveSong(){
 
   const selectedCats = Array.from(document.querySelectorAll('.cat-check.on')).map(c => c.dataset.cat);
 
+  // Tags: split on commas, trim, lowercase, drop empties, dedupe.
+  const tags = Array.from(new Set(
+    document.getElementById('f-tags').value
+      .split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+  ));
+
+  // Featured order: an int, or null when the field is blank/invalid.
+  const foRaw = document.getElementById('f-featured-order').value.trim();
+  const foNum = foRaw === '' ? null : parseInt(foRaw, 10);
+  const featuredOrder = Number.isFinite(foNum) ? foNum : null;
+
   const payload = {
     title: document.getElementById('f-title').value.trim(),
     title_translit: document.getElementById('f-translit').value.trim() || null,
     language: document.getElementById('f-language').value,
     categories: selectedCats,
+    tags: tags,
     lyrics_original: document.getElementById('f-lyrics-original').value,
     lyrics_translation: document.getElementById('f-lyrics-translation').value || null,
     about: document.getElementById('f-about').value || null,
     cover_focus_x: Math.round(pendingFocusX),
     cover_focus_y: Math.round(pendingFocusY),
     featured_category: document.getElementById('f-featured').value || null,
+    featured: document.getElementById('f-featured-flag').checked,
+    featured_order: featuredOrder,
+    // NOTE: comment_count is intentionally NOT written here — it is maintained
+    // by the comments_refresh_count trigger in sql/001_phase_a_tags_featured_counts.sql.
   };
 
   // Audio URL comes from the manual field (paste / existing value) unless a new

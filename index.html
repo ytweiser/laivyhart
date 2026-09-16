@@ -968,7 +968,9 @@ function mapSong(r){
     title: r.title || '',
     title_translit: r.title_translit || '',
     categories: Array.isArray(r.categories) ? r.categories : [],
+    tags: Array.isArray(r.tags) ? r.tags : [],
     length: formatLength(r.length_seconds) || (durCache[r.id] ? formatLength(durCache[r.id]) : ''),
+    length_seconds: (r.length_seconds == null ? null : Number(r.length_seconds)),
     about: r.about || '',
     lyrics_original: r.lyrics_original || '',
     lyrics_translation: r.lyrics_translation || '',
@@ -977,6 +979,10 @@ function mapSong(r){
     cover_focus_x: (r.cover_focus_x == null ? null : Number(r.cover_focus_x)),
     cover_focus_y: (r.cover_focus_y == null ? null : Number(r.cover_focus_y)),
     featured_category: r.featured_category || null,
+    featured: r.featured === true,
+    featured_order: (r.featured_order == null ? null : Number(r.featured_order)),
+    comment_count: r.comment_count || 0,
+    created_at: r.created_at || null,
     play_count: r.play_count || 0,
     like_count: r.like_count || 0
   };
