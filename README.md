@@ -102,7 +102,11 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 `#page-home` / `#page-listen` is visible.
 
 - **`/` — homepage** (`#page-home`): full-width, single column. Header (wordmark,
-  search box, Listen link) → **site banner** → **primary buttons** (Radio, Browse
+  search box, Listen link, and the **theme controls** — the four-color picker +
+  light/dark toggle, the same `.swatch`/`.theme-toggle` markup and handlers as the
+  `/listen` topbar, so a change on either page applies to both; on mobile the four
+  colors collapse behind a single swatch button while light/dark stays visible)
+  → **site banner** → **primary buttons** (Radio, Browse
   all songs) → **Find a song** → **hero** → ranked **rails** → **Editor's picks
   band** → About footer. (The listener feed was removed from the homepage; it
   still lives on `/listen`'s idle state.)

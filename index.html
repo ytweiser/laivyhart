@@ -397,6 +397,15 @@
   .home-wordmark{cursor:default;}
   .home-header-right{display:flex; align-items:center; gap:0.9rem; flex:1 1 20rem; justify-content:flex-end; min-width:0;}
   .home-search{flex:1 1 auto; max-width:26rem; min-width:0; width:auto;}
+  /* Homepage header theme controls (reuse .palette/.swatch/.icon-btn). Desktop
+     shows the four swatches inline; mobile collapses them behind .palette-toggle. */
+  .home-theme{display:flex; align-items:center; gap:0.6rem; flex-shrink:0;}
+  .home-palette{position:relative; display:flex; align-items:center;}
+  .palette-toggle{
+    display:none; width:1.15rem; height:1.15rem; border-radius:50%; padding:0; cursor:pointer;
+    border:1px solid var(--glass-border); background:var(--accent-grad);
+  }
+  .palette-toggle:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
 
   /* Site banner: wordmark + tagline over a theme gradient (or SITE_BANNER_URL). */
   .site-banner{
@@ -785,6 +794,14 @@
     /* Homepage on phones. */
     #page-home{--page-pad:12px; padding:12px var(--page-pad) 6rem;}
     .home-header-right{flex-basis:100%;}
+    /* Collapse the four color swatches behind a single swatch button. */
+    .palette-toggle{display:block;}
+    .home-palette .palette{
+      position:absolute; top:calc(100% + 0.5rem); right:0; z-index:30; display:none;
+      padding:0.5rem 0.6rem; border-radius:12px; gap:0.5rem;
+      background:var(--glass-hi); border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    }
+    .home-palette.open .palette{display:flex;}
     /* Banner: roughly 2:1, capped at 200px. */
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
     /* Primary buttons: side by side, together spanning the row. */
@@ -824,7 +841,7 @@
           <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
           <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
         </div>
-        <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
+        <button class="icon-btn theme-toggle" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
       </div>
     </div>
 
@@ -989,6 +1006,20 @@
     <div class="home-header-right">
       <input class="search home-search" id="home-search" type="text" placeholder="Search songs, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
       <a class="quiet-link" id="home-listen-link" href="/listen">Listen</a>
+      <!-- Same theme controls as /listen (shared handlers + persistence). On
+           mobile the four colors collapse behind a single swatch button. -->
+      <div class="home-theme">
+        <div class="home-palette" id="home-palette">
+          <button class="palette-toggle" id="home-palette-toggle" type="button" aria-label="Color theme" aria-haspopup="true" aria-expanded="false"></button>
+          <div class="palette" role="group" aria-label="Color theme">
+            <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
+            <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
+            <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
+            <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
+          </div>
+        </div>
+        <button class="icon-btn theme-toggle" type="button" aria-label="Toggle light and dark">◐</button>
+      </div>
     </div>
   </header>
 
@@ -1132,12 +1163,31 @@ function cdnImg(url, w){
 /* ============================================================
    Theme toggle (persisted)
    ============================================================ */
-const themeToggle = document.getElementById('theme-toggle');
-themeToggle.addEventListener('click', () => {
+function toggleLightDark(){
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   try{ localStorage.setItem('laivy-theme', next); }catch(e){}
-});
+}
+// Wire every light/dark toggle (the /listen topbar one + the homepage header one)
+// to the same handler so either page controls both.
+document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggleLightDark));
+
+// Homepage header: on mobile the four color swatches collapse behind a single
+// swatch button. The swatches themselves are the same .swatch elements wired by
+// applyColor below; here we just open/close the popover.
+(function(){
+  const hp = document.getElementById('home-palette');
+  const toggle = document.getElementById('home-palette-toggle');
+  if(!hp || !toggle) return;
+  function close(){ hp.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); }
+  toggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = hp.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  hp.querySelectorAll('.swatch').forEach(sw => sw.addEventListener('click', close));
+  document.addEventListener('click', (e) => { if(!hp.contains(e.target)) close(); });
+})();
 
 /* ============================================================
    Color theme (persisted, separate from the light/dark key).
