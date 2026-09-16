@@ -135,8 +135,9 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     image. On mobile it stacks: label, cover, title, category, note. The whole
     block plays the song.
   - **Rails**, in order — *Most listened this week* (weekly ranking minus hero),
-    *Most loved*, *Newest*, *Most talked about* (`comment_count > 0`), *All-time
-    favorites* (`play_count`). Each is **deduped against everything shown above it**
+    *Most loved*, *New releases*, *Most talked about* (`comment_count > 0`),
+    *All-time favorites* (`play_count`). The *New releases* rail keeps the
+    analytics key `newest`. Each is **deduped against everything shown above it**
     (hero + earlier rails, top-to-bottom); the **≥3 floor is applied after dedupe**,
     and an omitted rail does not consume its songs. `homepageSections()` returns
     `{ hero, rails, editors, fallback }`.

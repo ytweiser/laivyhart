@@ -1727,7 +1727,7 @@ function homepageSections(){
   addRail('most_listened', fallback ? 'Most listened to' : 'Most listened this week', ranked);
   addRail('most_loved', 'Most loved',
     SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)));
-  addRail('newest', 'Newest', SONGS.slice().sort(byNewest));
+  addRail('newest', 'New releases', SONGS.slice().sort(byNewest));
   addRail('most_talked', 'Most talked about',
     SONGS.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)));
   // All-time favorites: skipped during the fallback week, since the weekly rail
