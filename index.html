@@ -480,8 +480,41 @@
     scroll-snap-type:x mandatory;
     scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
   }
-  .rail-scroll{padding:0 var(--page-pad) 4px; margin:0 calc(-1 * var(--page-pad)); scroll-padding-inline-start:var(--page-pad);}
+  .rail-scroll{padding:0 var(--page-pad) 4px; scroll-padding-inline-start:var(--page-pad);}
   .rail-scroll::-webkit-scrollbar, .editors-scroll::-webkit-scrollbar{display:none; height:0;}
+  /* Scroll wrapper hosts the edge fades + hover arrows. The ranked rails bleed
+     to the page edge; the editor's-band wrapper stays within the band padding. */
+  .rail-scroll-wrap{position:relative;}
+  .rail > .rail-scroll-wrap{margin:0 calc(-1 * var(--page-pad));}
+  /* Edge fades (all devices): transparent -> page background, ~48px, toggled by
+     can-left / can-right (updated on scroll + resize). */
+  .rail-fade{position:absolute; top:0; bottom:0; width:48px; pointer-events:none; z-index:1; opacity:0; transition:opacity 0.2s var(--ease);}
+  .rail-fade.left{left:0; background:linear-gradient(to left, transparent, var(--bg));}
+  .rail-fade.right{right:0; background:linear-gradient(to right, transparent, var(--bg));}
+  .rail-scroll-wrap.can-left .rail-fade.left{opacity:1;}
+  .rail-scroll-wrap.can-right .rail-fade.right{opacity:1;}
+  /* Arrows: pointer devices only (never rendered on touch). Quiet glass circle
+     with a chevron; appear on hover/focus, always keyboard focusable; the
+     direction that can't scroll is removed. */
+  .rail-arrow{display:none;}
+  @media (hover: hover) and (pointer: fine){
+    .rail-arrow{
+      display:flex; align-items:center; justify-content:center;
+      position:absolute; top:50%; transform:translateY(-50%); z-index:2;
+      width:2.4rem; height:2.4rem; border-radius:50%; cursor:pointer; opacity:0;
+      background:var(--glass-hi); border:1px solid var(--glass-border); color:var(--text);
+      -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+      box-shadow:0 6px 18px rgba(0,0,0,0.28);
+      transition:opacity 0.18s var(--ease), border-color 0.18s var(--ease), color 0.18s var(--ease);
+    }
+    .rail-arrow svg{width:1.2rem; height:1.2rem;}
+    .rail-arrow.left{left:0.5rem;}
+    .rail-arrow.right{right:0.5rem;}
+    .rail-arrow:hover{border-color:var(--accent-2); color:var(--accent-2);}
+    .rail-scroll-wrap:hover .rail-arrow, .rail-arrow:focus-visible{opacity:1;}
+    .rail-scroll-wrap:not(.can-left) .rail-arrow.left{display:none;}
+    .rail-scroll-wrap:not(.can-right) .rail-arrow.right{display:none;}
+  }
   .rail-item{flex:0 0 auto; width:290px; scroll-snap-align:start; cursor:pointer; background:none; border:none; padding:0; text-align:left;}
   .rail-thumb{width:100%; aspect-ratio:3 / 2; border-radius:14px; object-fit:cover; display:block; border:1px solid var(--glass-border); box-shadow:0 6px 18px rgba(0,0,0,0.28); background-size:cover; background-position:center;}
   /* Chart rank badge (weekly rail only): accent circle, white numeral, top-left. */
@@ -1888,6 +1921,18 @@ function railCardHTML(s, idxOf, railKey, rank){
     </button>`;
 }
 
+// Edge fades + hover arrows shared by every scroller. `scrollClass` is the inner
+// scroller's class (rail-scroll or editors-scroll).
+function railAffordancesHTML(scrollClass, key, items){
+  return `<div class="rail-scroll-wrap">
+      <div class="${scrollClass}" data-rail="${key}">${items}</div>
+      <span class="rail-fade left" aria-hidden="true"></span>
+      <span class="rail-fade right" aria-hidden="true"></span>
+      <button class="rail-arrow left" type="button" aria-label="Scroll left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button class="rail-arrow right" type="button" aria-label="Scroll right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>`;
+}
+
 function railHTML(sec, idxOf){
   // The weekly rail is the chart's #2–#10 (the hero is #1), so number its cards
   // by position after dedupe. No other rail gets badges.
@@ -1898,7 +1943,7 @@ function railHTML(sec, idxOf){
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
         <button class="rail-playall" type="button" data-rail="${sec.key}">Play all</button>
       </div>
-      <div class="rail-scroll" data-rail="${sec.key}">${items}</div>
+      ${railAffordancesHTML('rail-scroll', sec.key, items)}
     </section>`;
 }
 
@@ -1911,8 +1956,39 @@ function editorsBandHTML(list, idxOf){
         <h2 class="rail-title-h">Editor's picks</h2>
         <div class="editors-sub">Chosen by Laivy Hart</div>
       </div>
-      <div class="editors-scroll" data-rail="editors_picks">${items}</div>
+      ${railAffordancesHTML('editors-scroll', 'editors_picks', items)}
     </section>`;
+}
+
+// Wire the fades (all devices) + arrows (pointer devices) for every scroller in
+// the homepage, after each render. A single resize handler updates them all.
+function setupRailAffordances(){
+  document.querySelectorAll('#homepage .rail-scroll-wrap').forEach(wrap => {
+    const sc = wrap.querySelector('.rail-scroll, .editors-scroll');
+    if(!sc) return;
+    const update = () => {
+      const max = sc.scrollWidth - sc.clientWidth;
+      wrap.classList.toggle('can-left', sc.scrollLeft > 1);
+      wrap.classList.toggle('can-right', sc.scrollLeft < max - 1);
+    };
+    wrap._railUpdate = update;
+    sc.addEventListener('scroll', update, { passive: true });
+    const step = () => {
+      const card = sc.querySelector('.rail-item');
+      const gap = parseFloat(getComputedStyle(sc).columnGap) || 0;
+      return card ? card.getBoundingClientRect().width + gap : sc.clientWidth * 0.8;
+    };
+    const l = wrap.querySelector('.rail-arrow.left'), r = wrap.querySelector('.rail-arrow.right');
+    if(l) l.addEventListener('click', () => sc.scrollBy({ left: -step(), behavior: 'smooth' }));
+    if(r) r.addEventListener('click', () => sc.scrollBy({ left: step(), behavior: 'smooth' }));
+    update();
+  });
+  if(!window.__railResizeBound){
+    window.__railResizeBound = true;
+    window.addEventListener('resize', () => {
+      document.querySelectorAll('#homepage .rail-scroll-wrap').forEach(w => { if(w._railUpdate) w._railUpdate(); });
+    });
+  }
 }
 
 function renderHomepage(){
@@ -1964,6 +2040,8 @@ function renderHomepage(){
       laivyTrack('home_rail_scroll', { rail: key });
     }, { passive: true });
   });
+
+  setupRailAffordances();   // edge fades (all) + hover arrows (pointer devices)
 }
 
 // Start a rail playing in order (manual mode, not radio). manualStep and the

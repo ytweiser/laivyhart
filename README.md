@@ -162,6 +162,11 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     edge (`scroll-padding-inline-start` = page padding + `scroll-snap-align:start`).
     The song-page list keeps round `row-thumb`s (`coverThumbHTML`'s row variant
     unchanged; rails use the landscape `rail-thumb`).
+  - **Scroll affordance**: each rail and the Editor's picks band has a ~48px edge
+    fade (transparent → page background) shown on whichever side can still scroll
+    (`can-left`/`can-right`, updated on scroll + resize); on fine-pointer/hover
+    devices, quiet glass chevron arrows appear on hover and scroll by one card +
+    gap (hidden at the ends, keyboard-focusable). Touch devices get the fade only.
 
   Built entirely from the in-memory `SONGS` array, so it works from the
   `songs.json` snapshot during an outage. Tapping any song, or a homepage search,
