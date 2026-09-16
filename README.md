@@ -18,8 +18,10 @@ a field end to end:
 
 1. **`sql/`** — write the next numbered migration (e.g.
    `sql/00N_<name>.sql`, idempotent) and apply it to the database. `sql/` is the
-   record of schema changes applied in numerical order; the live schema wins if
-   they ever disagree.
+   record of schema changes applied in numerical order (`001` = tags/featured/
+   comment_count; `002` = the `plays` history table, `plays_7d` column, the
+   `increment_play_count` + `refresh_plays_7d` functions, and the hourly pg_cron
+   job); the live schema wins if they ever disagree.
 2. **`mapSong()` in `index.html`** (~line 964) — add the field to the mapped
    song object, with a sensible default. Fields not listed here are dropped on
    the public side, even though the load uses `select('*')`.
@@ -100,33 +102,44 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 
 - **`/` — homepage** (`#page-home`): full-width, single column. Header (wordmark,
   search box, Listen link) → **site banner** → **primary buttons** (Radio, Browse
-  all songs) → **featured card** → rails → the listener feed (8 with "More") →
-  About footer.
-  - **Site banner**: full-width (≈3:1 desktop capped at 320px, ≈2:1 mobile capped
-    at 200px) with the wordmark + tagline. Background is read from the
-    `SITE_BANNER_URL` constant at the top of the script: empty → a generative
-    theme gradient (`genArtStyle`, same as the coverless fallback, recolored on
-    color-theme change and legible in light + dark); set → that image behind a
-    dark scrim, sized through the cover image CDN.
-  - **Primary buttons**: Radio (filled accent) and Browse all songs (outlined),
-    both `navigate('listen')` (Radio also starts radio mode); full width on mobile.
-  - **Featured card**: the first Editor's pick as a card (rounded-square cover
-    left / full-width-above on mobile, with an "Editor's pick" label, title,
-    displayed category, and first sentence of the note). Tapping it plays the song.
-  - **Rails**: rounded-square covers (14px radius, focal-point square crop),
-    176px desktop / 148px tablet / 140px phone (~2.4 across a 390px viewport). The
-    scroll track bleeds to the page edge but the first card snaps flush to the
-    content edge via `scroll-padding-inline-start` = the page padding +
-    `scroll-snap-align:start`. The song-page list keeps round `row-thumb`s
-    (`coverThumbHTML`'s row variant is unchanged; rails use the `rail-thumb` class).
+  all songs) → **hero** → ranked **rails** → **Editor's picks band** → listener
+  feed (8 with "More") → About footer.
+  - **Site banner** + **primary buttons** are unchanged: banner is full-width
+    (≈3:1 desktop capped 320px, ≈2:1 mobile capped 200px) with the wordmark +
+    tagline over `SITE_BANNER_URL` (empty → generative theme gradient via
+    `genArtStyle`; set → image behind a scrim through the cover CDN); Radio
+    (filled) + Browse all songs (outlined) both `navigate('listen')`.
+  - **Ranking window** (`rankedByListens()`): `plays_7d` desc, then `play_count`
+    desc. `plays_7d` is a rolling 7-day listen count maintained by
+    `refresh_plays_7d()` (hourly pg_cron) off the `plays` history table (see
+    `sql/002`). **Fallback:** if fewer than 3 songs have any 7-day plays, ranking
+    falls back to `play_count` desc and sets `weeklyFallback`, which switches the
+    hero label ("This week's most played" → "Most played"), the weekly rail title
+    ("Most listened this week" → "Most listened to"), and **omits the All-time
+    rail** (so the same ranking is not shown twice). Numbers are never displayed.
+  - **Hero**: the #1 ranked song as a centered landscape (3:2) card (~2/3 width
+    desktop, full width mobile), with the label, title, displayed category, and
+    first sentence of the note. Tapping plays it.
+  - **Rails**, in order — *Most listened this week* (weekly ranking minus hero),
+    *Most loved*, *Newest*, *Most talked about* (`comment_count > 0`), *All-time
+    favorites* (`play_count`). Each is **deduped against everything shown above it**
+    (hero + earlier rails, top-to-bottom); the **≥3 floor is applied after dedupe**,
+    and an omitted rail does not consume its songs. `homepageSections()` returns
+    `{ hero, rails, editors, fallback }`.
+  - **Editor's picks band**: a visually distinct full-width band at the bottom
+    (theme accent at very low opacity, light + dark) with "Editor's picks" /
+    "Chosen by Laivy Hart" and all `featured` songs by `featured_order`, **NOT**
+    deduped against the rails above (curation may repeat).
+  - **Rail cards**: landscape 3:2, focal-point crop, 14px radius, stacked title —
+    ~3.5 across desktop content / ~2.5 tablet / ~1.5 on a 390px phone. The scroll
+    track bleeds to the page edge but the first card snaps flush to the content
+    edge (`scroll-padding-inline-start` = page padding + `scroll-snap-align:start`).
+    The song-page list keeps round `row-thumb`s (`coverThumbHTML`'s row variant
+    unchanged; rails use the landscape `rail-thumb`).
 
-  Ranking lives in `homepageSections()` → `{ hero, rails }` (rails need **≥3**
-  songs; Editor's picks / Most listened to / Most loved / Most talked about /
-  Newest), rendered by `renderHomepage()`. The featured song and every song in the
-  Editor's picks rail are excluded from the four ranked rails, so no song appears
-  twice; the ≥3 floor is applied *after* that exclusion. Built entirely from the
-  in-memory `SONGS` array, so it works from the `songs.json` snapshot during an
-  outage. Tapping any song, or a homepage search, navigates to `/listen`.
+  Built entirely from the in-memory `SONGS` array, so it works from the
+  `songs.json` snapshot during an outage. Tapping any song, or a homepage search,
+  navigates to `/listen`.
 - **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
   lyrics + list). Its idle state is the simple "pick a song" line plus the
   listener feed. The wordmark navigates to `/`.

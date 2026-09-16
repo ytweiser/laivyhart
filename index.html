@@ -409,43 +409,46 @@
   .home-primary-btn.outlined{background:none; border-color:var(--chip-border); color:var(--text);}
   .home-primary-btn.outlined:hover{border-color:var(--accent-2); color:var(--accent-2);}
 
-  /* Featured card (first editor's pick): cover left, text right. */
-  .featured-card{display:flex; gap:1.3rem; align-items:stretch; width:100%; margin:0 0 2rem; background:none; border:none; padding:0; cursor:pointer; text-align:left;}
-  .featured-cover{flex:0 0 40%; max-width:40%; aspect-ratio:1 / 1; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,0.3);}
-  .featured-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
-  .featured-body{flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center;}
-  .featured-label{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:0.4rem;}
-  .featured-title{font-weight:600; font-size:1.7rem; line-height:1.18; color:var(--text);}
-  .featured-title.heb{font-family:var(--font-heb); direction:rtl;}
-  .featured-title.disp{font-family:var(--font-display);}
-  .featured-sub{font-family:var(--font-display); font-style:italic; font-size:1rem; color:var(--text-dim); margin-top:0.1rem;}
-  .featured-cat{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-top:0.5rem;}
-  .featured-note{font-family:var(--font-display); font-style:italic; font-size:0.98rem; line-height:1.5; color:var(--text-dim); margin-top:0.5rem; max-width:38rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  /* Hero: the #1 ranked song as a centered landscape (3:2) card, ~2/3 width. */
+  .home-hero2{display:block; width:66%; max-width:720px; margin:0 auto 2.2rem; text-align:center; background:none; border:none; padding:0; cursor:pointer;}
+  .hero-cover{width:100%; aspect-ratio:3 / 2; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32); margin-bottom:0.9rem;}
+  .hero-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
+  .hero-label{font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:0.35rem;}
+  .hero-title{font-weight:600; font-size:1.9rem; line-height:1.16; color:var(--text);}
+  .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
+  .hero-title.disp{font-family:var(--font-display);}
+  .hero-sub{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim); margin-top:0.12rem;}
+  .hero-cat{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-top:0.5rem;}
+  .hero-note{font-family:var(--font-display); font-style:italic; font-size:1rem; line-height:1.5; color:var(--text-dim); margin:0.5rem auto 0; max-width:40rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
 
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
-     rounded-square covers. The scroll track bleeds to the page edge, but the
+     landscape (3:2) cards. The scroll track bleeds to the page edge, but the
      first card snaps flush to the content edge (scroll-padding = page padding). */
   .rail{margin-bottom:2rem;}
   .rail-head{display:flex; align-items:baseline; justify-content:space-between; gap:1rem; margin-bottom:0.8rem;}
   .rail-title-h{font-family:var(--font-display); font-style:italic; font-weight:500; font-size:1.2rem; line-height:1.2; color:var(--text); margin:0;}
   .rail-playall{flex-shrink:0; background:none; border:none; cursor:pointer; padding:0.2rem; font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint); transition:color 0.18s var(--ease);}
   .rail-playall:hover{color:var(--accent-2);}
-  .rail-scroll{
-    display:flex; gap:0.85rem; overflow-x:auto; padding:0 var(--page-pad) 4px; margin:0 calc(-1 * var(--page-pad));
-    scroll-snap-type:x mandatory; scroll-padding-inline-start:var(--page-pad);
+  .rail-scroll, .editors-scroll{
+    display:flex; gap:0.85rem; overflow-x:auto; padding-bottom:4px;
+    scroll-snap-type:x mandatory;
     scrollbar-width:none; -ms-overflow-style:none; -webkit-overflow-scrolling:touch;
   }
-  .rail-scroll::-webkit-scrollbar{display:none; height:0;}
-  .rail-item{flex:0 0 auto; width:176px; scroll-snap-align:start; cursor:pointer; background:none; border:none; padding:0; text-align:left;}
-  .rail-thumb{width:176px; height:176px; border-radius:14px; object-fit:cover; display:block; border:1px solid var(--glass-border); box-shadow:0 6px 18px rgba(0,0,0,0.28); background-size:cover; background-position:center;}
+  .rail-scroll{padding:0 var(--page-pad) 4px; margin:0 calc(-1 * var(--page-pad)); scroll-padding-inline-start:var(--page-pad);}
+  .rail-scroll::-webkit-scrollbar, .editors-scroll::-webkit-scrollbar{display:none; height:0;}
+  .rail-item{flex:0 0 auto; width:290px; scroll-snap-align:start; cursor:pointer; background:none; border:none; padding:0; text-align:left;}
+  .rail-thumb{width:100%; aspect-ratio:3 / 2; border-radius:14px; object-fit:cover; display:block; border:1px solid var(--glass-border); box-shadow:0 6px 18px rgba(0,0,0,0.28); background-size:cover; background-position:center;}
   .rail-title{margin-top:0.5rem; font-size:0.92rem; line-height:1.2; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .rail-title.heb{font-family:var(--font-heb); direction:rtl;}
   .rail-sub{font-family:var(--font-display); font-style:italic; font-size:0.76rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  /* Tablet: slightly smaller rail cards. */
-  @media (max-width:1100px){
-    #page-home .rail-item, #page-home .rail-thumb{width:148px;}
-    #page-home .rail-thumb{height:148px;}
-  }
+  /* Tablet: ~2.5 landscape cards across the content width. */
+  @media (max-width:1100px){ #page-home .rail-item{width:300px;} }
+
+  /* Editor's picks band: full-width, subtly tinted (accent at very low opacity,
+     works in light + dark), bled to the page edges. Cards are NOT deduped. */
+  .editors-band{margin:2.4rem calc(-1 * var(--page-pad)) 0.4rem; padding:1.6rem var(--page-pad) 1.4rem; background:rgba(var(--accent-1-rgb), 0.07); border-radius:16px;}
+  .editors-head{margin-bottom:0.85rem;}
+  .editors-sub{font-family:var(--font-display); font-style:italic; font-size:0.9rem; color:var(--text-dim); margin-top:0.1rem;}
   .feed-more{background:none; border:none; cursor:pointer; margin-top:0.6rem; padding:0.3rem 0; font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint); transition:color 0.18s var(--ease);}
   .feed-more:hover{color:var(--accent-2);}
   .home-feed{margin-bottom:2rem;}
@@ -751,12 +754,11 @@
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
     /* Primary buttons: side by side, together spanning the row. */
     .home-primary-btn{flex:1 1 0; padding:0.75rem 0.6rem;}
-    /* Featured card: cover stacks full width above the text. */
-    .featured-card{flex-direction:column; gap:0.9rem;}
-    .featured-cover{flex-basis:auto; max-width:none; width:100%;}
-    /* Rails: ~2.4 rounded-square cards across a 390px viewport. */
-    #page-home .rail-item, #page-home .rail-thumb{width:140px;}
-    #page-home .rail-thumb{height:140px;}
+    /* Hero: full content width on phones. */
+    .home-hero2{width:100%; max-width:none;}
+    .hero-title{font-size:1.6rem;}
+    /* Rails: ~1.5 landscape cards across a 390px viewport (240px ~= 62vw). */
+    #page-home .rail-item{width:62vw; max-width:280px;}
   }
 </style>
 </head>
@@ -1207,6 +1209,7 @@ function mapSong(r){
     comment_count: r.comment_count || 0,
     created_at: r.created_at || null,
     play_count: r.play_count || 0,
+    plays_7d: r.plays_7d || 0,
     like_count: r.like_count || 0
   };
 }
@@ -1634,55 +1637,78 @@ function firstSentenceOf(t){
 
 // The single place the homepage ranking lives. Returns { hero, rails } where
 // rails is [{key, title, songs}] and only rails with >=3 songs are included.
+// Weekly ranking: plays_7d desc, then play_count desc. If fewer than 3 songs
+// have any 7-day plays, fall back to all-time play_count desc and flag it so the
+// homepage titles + the all-time rail adjust. Numbers are never shown.
+let weeklyFallback = false;
+function rankedByListens(){
+  const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
+  weeklyFallback = SONGS.filter(s => (s.plays_7d || 0) > 0).length < 3;
+  return SONGS.slice().sort(weeklyFallback
+    ? (a, b) => (b.play_count - a.play_count) || byNewest(a, b)
+    : (a, b) => ((b.plays_7d || 0) - (a.plays_7d || 0)) || (b.play_count - a.play_count));
+}
+
+// Returns { hero, rails, editors, fallback }. Each rail is deduped against the
+// hero and every EARLIER rail (progressive, top to bottom); the 3-song floor is
+// applied AFTER dedupe, and an omitted rail does not consume its songs. The
+// Editor's picks band is separate and NOT deduped (curation may repeat).
 function homepageSections(){
   const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
-  const featured = SONGS.filter(s => s.featured).sort((a, b) => {
+  const ranked = rankedByListens();     // also sets weeklyFallback
+  const fallback = weeklyFallback;
+  const hero = ranked[0] || null;
+
+  const shown = new Set(hero ? [hero.id] : []);
+  const rails = [];
+  function addRail(key, title, list){
+    const picked = list.filter(s => !shown.has(s.id)).slice(0, 8);
+    if(picked.length >= 3){
+      picked.forEach(s => shown.add(s.id));
+      rails.push({ key, title, songs: picked });
+    }
+  }
+
+  addRail('most_listened', fallback ? 'Most listened to' : 'Most listened this week', ranked);
+  addRail('most_loved', 'Most loved',
+    SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)));
+  addRail('newest', 'Newest', SONGS.slice().sort(byNewest));
+  addRail('most_talked', 'Most talked about',
+    SONGS.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)));
+  // All-time favorites: skipped during the fallback week, since the weekly rail
+  // is already ranking on play_count then (don't show the same ranking twice).
+  if(!fallback){
+    addRail('all_time', 'All-time favorites',
+      SONGS.slice().sort((a, b) => (b.play_count - a.play_count) || byNewest(a, b)));
+  }
+
+  const editors = SONGS.filter(s => s.featured).sort((a, b) => {
     const ao = a.featured_order == null ? Infinity : a.featured_order;
     const bo = b.featured_order == null ? Infinity : b.featured_order;
     return (ao - bo) || byNewest(a, b);
   });
-  const hero = featured[0] || null;
-  const editors = featured.filter(s => !hero || s.id !== hero.id).slice(0, 8);
 
-  // The hero + Editor's picks are already surfaced at the top, so exclude them
-  // from the ranked rails; the 3-song floor is then applied to what remains.
-  const usedIds = new Set([...(hero ? [hero.id] : []), ...editors.map(s => s.id)]);
-  const rest = SONGS.filter(s => !usedIds.has(s.id));
-
-  const candidate = [
-    { key: 'editors_picks', title: "Editor's picks", songs: editors },
-    { key: 'most_listened', title: 'Most listened to',
-      songs: rest.slice().sort((a, b) => (b.play_count - a.play_count) || byNewest(a, b)).slice(0, 8) },
-    { key: 'most_loved', title: 'Most loved',
-      songs: rest.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)).slice(0, 8) },
-    { key: 'most_talked', title: 'Most talked about',
-      songs: rest.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)).slice(0, 8) },
-    { key: 'newest', title: 'Newest',
-      songs: rest.slice().sort(byNewest).slice(0, 8) },
-  ];
-  return { hero, rails: candidate.filter(r => r.songs.length >= 3) };
+  return { hero, rails, editors, fallback };
 }
 
-// The first editor's pick as a card (cover left, text right). Same dedupe rule
-// as before: homepageSections() keeps this song out of every rail.
-function featuredCardHTML(s, idx){
+// Hero: the #1 ranked song, a centered landscape (3:2) card with the label,
+// title, displayed category, and the first sentence of the note.
+function heroHTML(s, idx, label){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = (heb && s.title_translit) ? s.title_translit : '';
   const cat = pickRowCategory(s);
   const note = firstSentenceOf(s.about);
   const cover = s.cover
-    ? coverThumbHTML(s, 'featured-cover-img', 600)
-    : `<div class="featured-cover-img" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
-  return `<button class="featured-card" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
-      <div class="featured-cover">${cover}</div>
-      <div class="featured-body">
-        <div class="featured-label">Editor's pick</div>
-        <div class="featured-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
-        ${sub ? `<div class="featured-sub disp">${escHtml(sub)}</div>` : ''}
-        ${cat ? `<div class="featured-cat">${escHtml(cat)}</div>` : ''}
-        ${note ? `<div class="featured-note">${escHtml(note)}</div>` : ''}
-      </div>
+    ? coverThumbHTML(s, 'hero-cover-img', 900)
+    : `<div class="hero-cover-img" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+  return `<button class="home-hero2" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
+      <div class="hero-cover">${cover}</div>
+      <div class="hero-label">${escHtml(label)}</div>
+      <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
+      ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
+      ${cat ? `<div class="hero-cat">${escHtml(cat)}</div>` : ''}
+      ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
     </button>`;
 }
 
@@ -1703,17 +1729,20 @@ function updateSiteBanner(){
   }
 }
 
+// A single landscape rail card, shared by the ranked rails and the editor's band.
+function railCardHTML(s, idxOf, railKey){
+  const heb = isHebrew(s);
+  const title = heb ? s.title : (s.title || s.title_translit);
+  const sub = heb ? s.title_translit : '';
+  return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}">
+      ${coverThumbHTML(s, 'rail-thumb', 500)}
+      <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
+      ${sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : ''}
+    </button>`;
+}
+
 function railHTML(sec, idxOf){
-  const items = sec.songs.map(s => {
-    const heb = isHebrew(s);
-    const title = heb ? s.title : (s.title || s.title_translit);
-    const sub = heb ? s.title_translit : '';
-    return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${sec.key}">
-        ${coverThumbHTML(s, 'rail-thumb', 300)}
-        <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
-        ${sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : ''}
-      </button>`;
-  }).join('');
+  const items = sec.songs.map(s => railCardHTML(s, idxOf, sec.key)).join('');
   return `<section class="rail" data-rail="${sec.key}">
       <div class="rail-head">
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
@@ -1723,19 +1752,33 @@ function railHTML(sec, idxOf){
     </section>`;
 }
 
+// Editor's picks: a visually distinct full-width band at the bottom (not deduped
+// against the rails above). Same landscape cards.
+function editorsBandHTML(list, idxOf){
+  const items = list.map(s => railCardHTML(s, idxOf, 'editors_picks')).join('');
+  return `<section class="editors-band" aria-label="Editor's picks">
+      <div class="editors-head">
+        <h2 class="rail-title-h">Editor's picks</h2>
+        <div class="editors-sub">Chosen by Laivy Hart</div>
+      </div>
+      <div class="editors-scroll" data-rail="editors_picks">${items}</div>
+    </section>`;
+}
+
 function renderHomepage(){
   const el = document.getElementById('homepage');
   updateSiteBanner();
-  const { hero, rails } = homepageSections();
+  const { hero, rails, editors, fallback } = homepageSections();
   const idxOf = new Map(SONGS.map((s, i) => [s.id, i]));
 
   let html = '';
-  if(hero) html += featuredCardHTML(hero, idxOf.get(hero.id));
+  if(hero) html += heroHTML(hero, idxOf.get(hero.id), fallback ? 'Most played' : "This week's most played");
   html += rails.map(sec => railHTML(sec, idxOf)).join('');
+  if(editors.length) html += editorsBandHTML(editors, idxOf);
   el.innerHTML = html;
 
-  // Featured card + individual rail thumbnails: go to the song page and play.
-  el.querySelectorAll('.featured-card, .rail-item').forEach(btn => {
+  // Hero + rail/editor cards: go to the song page and play that song.
+  el.querySelectorAll('.home-hero2, .rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SONGS[Number(btn.dataset.idx)];
       if(!s) return;
@@ -1745,7 +1788,7 @@ function renderHomepage(){
     });
   });
 
-  // Play all: go to the song page and hand it an ordered rail queue.
+  // Play all (ranked rails only): hand the song page an ordered rail queue.
   el.querySelectorAll('.rail-playall').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1757,8 +1800,8 @@ function renderHomepage(){
     });
   });
 
-  // Track the first scroll of each rail, once per session.
-  el.querySelectorAll('.rail-scroll').forEach(sc => {
+  // Track the first scroll of each rail / band, once per session.
+  el.querySelectorAll('.rail-scroll, .editors-scroll').forEach(sc => {
     sc.addEventListener('scroll', () => {
       const key = sc.dataset.rail;
       if(railScrolledThisSession.has(key)) return;
