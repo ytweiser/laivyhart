@@ -174,6 +174,11 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 - **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
   lyrics + list). Its idle state is the simple "pick a song" line plus the
   listener feed. The wordmark navigates to `/`.
+  - **Dock layout**: the player controls row holds prev/play/next on the left and
+    the play-button-sized **Love** (heart + count) and **Share** actions on the
+    right, with the "What moved you?" facet-hearts line full-width beneath it;
+    **Radio** and **Category radio** live in the list-column header beside the
+    Songs/Playlists tabs (wrapping two-across below the tabs on mobile).
 - **Deep link**: shared links stay `/?song=<id>` so the OG middleware (matcher
   `/`) still rewrites previews. On load with `?song=` present, the app goes
   straight to the song page, plays the song, and `replaceState`s the visible URL
