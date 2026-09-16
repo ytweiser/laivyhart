@@ -239,6 +239,17 @@
   .mod-approve:hover{filter:brightness(1.08);}
   .mod-reject:hover{border-color:var(--accent-2); color:var(--text);}
   .mod-delete:hover{border-color:var(--accent-1); color:var(--accent-1);}
+  /* Chart history (read-only) */
+  .charts-summary{display:flex; flex-wrap:wrap; gap:0.5rem 2rem; margin-bottom:1.4rem; font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim);}
+  .charts-summary strong{color:var(--text);}
+  .charts-day{margin-bottom:1.3rem; max-width:44rem;}
+  .charts-date{font-family:var(--font-ui); font-size:0.85rem; color:var(--text); margin-bottom:0.4rem; display:flex; align-items:center; gap:0.6rem;}
+  .charts-weekend{font-size:0.62rem; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:var(--accent-grad); border-radius:999px; padding:0.1rem 0.55rem;}
+  .charts-table{width:100%; border-collapse:collapse;}
+  .charts-table td{padding:0.28rem 0.5rem; border-bottom:1px solid var(--line); font-family:var(--font-ui); font-size:0.85rem;}
+  .charts-table .c-rank{width:2rem; color:var(--text-faint); text-align:right;}
+  .charts-table .c-title{color:var(--text);}
+  .charts-table .c-plays{width:5rem; text-align:right; color:var(--text-dim);}
 </style>
 </head>
 <body>
@@ -261,6 +272,7 @@
     <span class="publish-status" id="publish-status"></span>
     <button class="logout-btn" id="publish-btn" style="display:none;">Publish</button>
     <button class="logout-btn" id="comments-btn" style="display:none;">Comments</button>
+    <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
   </div>
@@ -360,6 +372,7 @@ async function checkSession(){
     logoutBtn.style.display = 'inline-block';
     document.getElementById('comments-btn').style.display = 'inline-block';
     document.getElementById('publish-btn').style.display = 'inline-block';
+    document.getElementById('charts-btn').style.display = 'inline-block';
     await loadSongs();
     await loadCategories();
     renderCategoryManager();
@@ -370,6 +383,7 @@ async function checkSession(){
     logoutBtn.style.display = 'none';
     document.getElementById('comments-btn').style.display = 'none';
     document.getElementById('publish-btn').style.display = 'none';
+    document.getElementById('charts-btn').style.display = 'none';
   }
 }
 
@@ -1154,6 +1168,70 @@ async function moderateComment(act, id){
   if(error){ alert('Error: ' + error.message); return; }
   await refreshCommentCount();
   showComments();
+}
+
+/* ---------------------------------------------------------
+  Chart history (read-only): daily top-10 snapshots.
+--------------------------------------------------------- */
+document.getElementById('charts-btn').addEventListener('click', showCharts);
+
+async function showCharts(){
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Chart history</h2>
+      <button class="logout-btn" id="charts-refresh" type="button">Refresh</button>
+    </div>
+    <div id="charts-summary" class="charts-summary"></div>
+    <div id="charts-list"><div class="mod-empty">Loading…</div></div>`;
+  document.getElementById('charts-refresh').addEventListener('click', showCharts);
+
+  const { data, error } = await supabaseClient
+    .from('chart_snapshots')
+    .select('chart_date, rank, title, plays_7d, is_week_end, song_id')
+    .order('chart_date', { ascending: false })
+    .order('rank', { ascending: true });
+
+  const list = document.getElementById('charts-list');
+  const summaryEl = document.getElementById('charts-summary');
+  if(error){ list.innerHTML = `<div class="mod-empty">Error loading charts: ${escHtml(error.message)}</div>`; return; }
+  if(!data || data.length === 0){ list.innerHTML = `<div class="mod-empty">No chart snapshots yet.</div>`; return; }
+
+  // Summary computed here in the browser: most days at #1, and most weeks
+  // (Saturday / week-end snapshots) at #1.
+  const daysAt1 = new Map(), weeksAt1 = new Map();
+  data.forEach(r => {
+    if(r.rank !== 1) return;
+    const key = r.song_id || ('t:' + r.title);
+    const d = daysAt1.get(key) || { title: r.title, count: 0 };
+    d.count++; d.title = r.title; daysAt1.set(key, d);
+    if(r.is_week_end){
+      const w = weeksAt1.get(key) || { title: r.title, count: 0 };
+      w.count++; w.title = r.title; weeksAt1.set(key, w);
+    }
+  });
+  const topOf = m => [...m.values()].sort((a, b) => b.count - a.count)[0];
+  const td = topOf(daysAt1), tw = topOf(weeksAt1);
+  summaryEl.innerHTML =
+    `<div class="charts-stat">Most days at #1: ${td ? `<strong>${escHtml(td.title)}</strong> (${td.count} day${td.count === 1 ? '' : 's'})` : '—'}</div>` +
+    `<div class="charts-stat">Most weeks at #1: ${tw ? `<strong>${escHtml(tw.title)}</strong> (${tw.count} week${tw.count === 1 ? '' : 's'})` : '—'}</div>`;
+
+  // Group by date (already ordered date desc, rank asc).
+  const groups = [];
+  let cur = null;
+  data.forEach(r => {
+    if(!cur || cur.date !== r.chart_date){ cur = { date: r.chart_date, weekEnd: r.is_week_end, rows: [] }; groups.push(cur); }
+    cur.rows.push(r);
+  });
+  list.innerHTML = groups.map(g => `
+    <div class="charts-day">
+      <div class="charts-date">${escHtml(g.date)}${g.weekEnd ? ' <span class="charts-weekend">week end</span>' : ''}</div>
+      <table class="charts-table"><tbody>${g.rows.map(r =>
+        `<tr><td class="c-rank">${r.rank}</td><td class="c-title">${escHtml(r.title)}</td><td class="c-plays">${r.plays_7d}</td></tr>`
+      ).join('')}</tbody></table>
+    </div>`).join('');
 }
 
 async function deleteSong(){

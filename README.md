@@ -21,8 +21,9 @@ a field end to end:
    record of schema changes applied in numerical order (`001` = tags/featured/
    comment_count; `002` = the `plays` history table, `plays_7d` column, the
    `increment_play_count` + `refresh_plays_7d` functions, and the hourly pg_cron
-   job; `003` = the `like_*_count` facet columns + `set_like_facet`); the live
-   schema wins if they ever disagree.
+   job; `003` = the `like_*_count` facet columns + `set_like_facet`; `004` = the
+   `chart_snapshots` table + `take_chart_snapshot` + its daily pg_cron job); the
+   live schema wins if they ever disagree.
 2. **`mapSong()` in `index.html`** (~line 964) — add the field to the mapped
    song object, with a sensible default. Fields not listed here are dropped on
    the public side, even though the load uses `select('*')`.
@@ -107,15 +108,16 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
   `/listen` topbar, so a change on either page applies to both; on mobile the four
   colors collapse behind a single swatch button while light/dark stays visible)
   → **site banner** → **primary buttons** (Radio, Browse
-  all songs) → **Find a song** → **hero** → ranked **rails** → **Editor's picks
-  band** → About footer. (The listener feed was removed from the homepage; it
+  all songs) → **hero** → ranked **rails** → **Editor's picks band** → **Find a
+  song** → About footer. (The listener feed was removed from the homepage; it
   still lives on `/listen`'s idle state.)
   - **Site banner** + **primary buttons** are unchanged: banner is full-width
     (≈3:1 desktop capped 320px, ≈2:1 mobile capped 200px) with the wordmark +
     tagline over `SITE_BANNER_URL` (empty → generative theme gradient via
     `genArtStyle`; set → image behind a scrim through the cover CDN); Radio
     (filled) + Browse all songs (outlined) both `navigate('listen')`.
-  - **Find a song** (`findASongHTML`): a "Find a song" heading, then a row of
+  - **Find a song** (`findASongHTML`): at the **bottom** of the page (below the
+    Editor's picks band, above the footer). A "Find a song" heading, then a row of
     **mood pills** — the `categories` in the `mood` group, ordered by
     `sort_order` (nulls last → alphabetical), same pill look as the `/listen`
     filter pills — and a **tag cloud** ("Themes") of every tag in use, alphabetical,
@@ -128,16 +130,17 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     desc. `plays_7d` is a rolling 7-day listen count maintained by
     `refresh_plays_7d()` (hourly pg_cron) off the `plays` history table (see
     `sql/002`). **Fallback:** if fewer than 3 songs have any 7-day plays, ranking
-    falls back to `play_count` desc and sets `weeklyFallback`, which switches the
-    hero label ("This week's #1" → "Most played"), the weekly rail title ("Most
-    listened this week" → "Most listened to"), and **omits the All-time rail** (so
-    the same ranking is not shown twice). Numbers are never displayed.
+    falls back to `play_count` desc and sets `weeklyFallback`, which also **omits
+    the All-time rail** (so the same ranking is not shown twice). The **wording is
+    always weekly regardless of the fallback** — the hero always reads "This week's
+    #1 song" and the top rail always "Most listened this week". Numbers are never
+    displayed.
   - **Hero**: the #1 ranked song as a **two-column labeled block** — left column
-    (~45%) holds a large display-serif label ("This week's #1" / "Most played"),
-    the title, displayed category, and first sentence of the note; right column
-    holds the landscape 3:2 cover; the text is vertically centered against the
-    image. On mobile it stacks: label, cover, title, category, note. The whole
-    block plays the song.
+    (~45%) holds a large display-serif label ("This week's #1 song"), the title,
+    displayed category, and first sentence of the note; right column holds the
+    landscape 3:2 cover; the text is vertically centered against the image. On
+    mobile it stacks: label, cover, title, category, note. The whole block plays
+    the song.
   - **Rails**, in order — *Most listened this week* (weekly ranking minus hero),
     *Most loved*, *New releases*, *Most talked about* (`comment_count > 0`),
     *All-time favorites* (`play_count`). The *New releases* rail keeps the
@@ -200,3 +203,27 @@ nothing.
 all`) is shown read-only in `admin.html` (song list + form header) and never
 appears on the public site, and is never in the admin save payload. Analytics:
 `like_facet` with the song id and the chosen facet (or `"cleared"`).
+
+## Charts
+
+`chart_snapshots` (`sql/004`) holds a daily top-10, one row per (`chart_date`,
+`rank` 1–10) with `song_id` (nullable, `ON DELETE SET NULL`), `title` (kept so
+history stays readable if a song is deleted), `plays_7d`, `play_count`,
+`like_count`, and `is_week_end`. RLS: anon + authenticated may **SELECT** (it
+holds no personal data); no client writes — rows come only from the SECURITY
+DEFINER `take_chart_snapshot()`.
+
+`take_chart_snapshot()` closes the Jerusalem day that just ended
+(`(now() at time zone 'Asia/Jerusalem')::date - 1`), skips a date already
+recorded, and inserts the top 10 ordered by `plays_7d` desc, `play_count` desc,
+`like_count` desc, `title` (during the fallback period, with no `plays_7d` yet,
+that is effectively all-time order, so history still starts on day one). It sets
+`is_week_end = true` when that Jerusalem date is a **Saturday** (`dow = 6`).
+Scheduled via pg_cron **`take-chart-snapshot`** at `10 22 * * *` (22:10 UTC =
+01:10 Jerusalem summer / 00:10 winter, just after the hourly `plays_7d` refresh
+at `:05`).
+
+The admin **Charts** tab (`admin.html`, read-only) lists snapshots grouped by
+date, newest first — rank, title, `plays_7d` — with week-end dates badged, and a
+browser-computed summary above it: the songs with the most **days at #1** and the
+most **weeks at #1** (week-end snapshots at rank 1).
