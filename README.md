@@ -103,24 +103,37 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 
 - **`/` — homepage** (`#page-home`): full-width, single column. Header (wordmark,
   search box, Listen link) → **site banner** → **primary buttons** (Radio, Browse
-  all songs) → **hero** → ranked **rails** → **Editor's picks band** → listener
-  feed (8 with "More") → About footer.
+  all songs) → **Find a song** → **hero** → ranked **rails** → **Editor's picks
+  band** → About footer. (The listener feed was removed from the homepage; it
+  still lives on `/listen`'s idle state.)
   - **Site banner** + **primary buttons** are unchanged: banner is full-width
     (≈3:1 desktop capped 320px, ≈2:1 mobile capped 200px) with the wordmark +
     tagline over `SITE_BANNER_URL` (empty → generative theme gradient via
     `genArtStyle`; set → image behind a scrim through the cover CDN); Radio
     (filled) + Browse all songs (outlined) both `navigate('listen')`.
+  - **Find a song** (`findASongHTML`): a "Find a song" heading, then a row of
+    **mood pills** — the `categories` in the `mood` group, ordered by
+    `sort_order` (nulls last → alphabetical), same pill look as the `/listen`
+    filter pills — and a **tag cloud** ("Themes") of every tag in use, alphabetical,
+    in exactly two sizes (tags on ≥6 songs larger, the rest smaller). A mood pill
+    goes to `/listen?cat=<name>` (category active); a tag goes to `/listen?tag=<tag>`
+    (search applied). Both are applied on arrival **without playback**, and the
+    param is cleared with `replaceState` so back/forward behaves — see
+    `applyListenParams()` / `goListenWithParam()` and the `initRoute` branch.
   - **Ranking window** (`rankedByListens()`): `plays_7d` desc, then `play_count`
     desc. `plays_7d` is a rolling 7-day listen count maintained by
     `refresh_plays_7d()` (hourly pg_cron) off the `plays` history table (see
     `sql/002`). **Fallback:** if fewer than 3 songs have any 7-day plays, ranking
     falls back to `play_count` desc and sets `weeklyFallback`, which switches the
-    hero label ("This week's most played" → "Most played"), the weekly rail title
-    ("Most listened this week" → "Most listened to"), and **omits the All-time
-    rail** (so the same ranking is not shown twice). Numbers are never displayed.
-  - **Hero**: the #1 ranked song as a centered landscape (3:2) card (~2/3 width
-    desktop, full width mobile), with the label, title, displayed category, and
-    first sentence of the note. Tapping plays it.
+    hero label ("This week's #1" → "Most played"), the weekly rail title ("Most
+    listened this week" → "Most listened to"), and **omits the All-time rail** (so
+    the same ranking is not shown twice). Numbers are never displayed.
+  - **Hero**: the #1 ranked song as a **two-column labeled block** — left column
+    (~45%) holds a large display-serif label ("This week's #1" / "Most played"),
+    the title, displayed category, and first sentence of the note; right column
+    holds the landscape 3:2 cover; the text is vertically centered against the
+    image. On mobile it stacks: label, cover, title, category, note. The whole
+    block plays the song.
   - **Rails**, in order — *Most listened this week* (weekly ranking minus hero),
     *Most loved*, *Newest*, *Most talked about* (`comment_count > 0`), *All-time
     favorites* (`play_count`). Each is **deduped against everything shown above it**

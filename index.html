@@ -426,17 +426,35 @@
   .home-primary-btn.outlined{background:none; border-color:var(--chip-border); color:var(--text);}
   .home-primary-btn.outlined:hover{border-color:var(--accent-2); color:var(--accent-2);}
 
-  /* Hero: the #1 ranked song as a centered landscape (3:2) card, ~2/3 width. */
-  .home-hero2{display:block; width:66%; max-width:720px; margin:0 auto 2.2rem; text-align:center; background:none; border:none; padding:0; cursor:pointer;}
-  .hero-cover{width:100%; aspect-ratio:3 / 2; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32); margin-bottom:0.9rem;}
+  /* Find a song: mood pills + a two-size tag cloud. */
+  .find-song{margin:0 0 2.2rem;}
+  .find-song-h{font-family:var(--font-display); font-style:italic; font-weight:500; font-size:1.3rem; color:var(--text); margin:0 0 0.85rem;}
+  .mood-row{display:flex; flex-wrap:wrap; gap:0.45rem; margin-bottom:1.15rem;}
+  .mood-row .chip{flex:0 0 auto;}
+  .cloud-label{font-family:var(--font-ui); font-size:0.58rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:0.5rem;}
+  .tag-cloud{display:flex; flex-wrap:wrap; align-items:baseline; gap:0.4rem 0.5rem;}
+  .cloud-tag{
+    background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:999px;
+    color:var(--text-faint); font-family:var(--font-ui); cursor:pointer;
+    transition:color 0.18s var(--ease), border-color 0.18s var(--ease);
+  }
+  .cloud-tag:hover{color:var(--text-dim); border-color:var(--accent-2);}
+  .cloud-tag.small{font-size:0.72rem; padding:0.12rem 0.6rem;}
+  .cloud-tag.big{font-size:0.98rem; padding:0.22rem 0.85rem; color:var(--text-dim);}
+
+  /* Hero: two-column labeled block — large label + text left, 3:2 cover right,
+     text vertically centered against the cover. Whole block is tappable. */
+  .home-hero2{display:flex; align-items:center; gap:2.4rem; width:100%; margin:0 0 2.4rem; text-align:left; background:none; border:none; padding:0; cursor:pointer;}
+  .hero-left{flex:0 0 45%; min-width:0; display:flex; flex-direction:column; justify-content:center;}
+  .hero-cover{flex:1 1 55%; min-width:0; aspect-ratio:3 / 2; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);}
   .hero-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
-  .hero-label{font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.16em; text-transform:uppercase; color:var(--text-faint); margin-bottom:0.35rem;}
+  .hero-label{font-family:var(--font-display); font-size:1.5rem; line-height:1.15; color:var(--text-dim); margin-bottom:0.7rem;}
   .hero-title{font-weight:600; font-size:1.9rem; line-height:1.16; color:var(--text);}
   .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
   .hero-title.disp{font-family:var(--font-display);}
   .hero-sub{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim); margin-top:0.12rem;}
-  .hero-cat{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-top:0.5rem;}
-  .hero-note{font-family:var(--font-display); font-style:italic; font-size:1rem; line-height:1.5; color:var(--text-dim); margin:0.5rem auto 0; max-width:40rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
+  .hero-cat{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-top:0.55rem;}
+  .hero-note{font-family:var(--font-display); font-style:italic; font-size:1rem; line-height:1.5; color:var(--text-dim); margin:0.55rem 0 0; max-width:34rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
 
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
      landscape (3:2) cards. The scroll track bleeds to the page edge, but the
@@ -771,8 +789,13 @@
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
     /* Primary buttons: side by side, together spanning the row. */
     .home-primary-btn{flex:1 1 0; padding:0.75rem 0.6rem;}
-    /* Hero: full content width on phones. */
-    .home-hero2{width:100%; max-width:none;}
+    /* Hero: stack label, cover, then text (title/category/note). hero-left
+       becomes transparent so its children reorder with the cover between. */
+    .home-hero2{flex-direction:column; align-items:stretch; gap:0;}
+    .hero-left{display:contents;}
+    .hero-label{order:1; font-size:1.35rem; margin-bottom:0.6rem;}
+    .hero-cover{order:2; flex:0 0 auto; margin-bottom:0.8rem;}
+    .hero-text{order:3;}
     .hero-title{font-size:1.6rem;}
     /* Rails: ~1.5 landscape cards across a 390px viewport (240px ~= 62vw). */
     #page-home .rail-item{width:62vw; max-width:280px;}
@@ -989,16 +1012,8 @@
     </button>
   </div>
 
-  <!-- Featured card + rails render here (renderHomepage) -->
+  <!-- Find a song + hero + rails + editor's band render here (renderHomepage) -->
   <div class="homepage" id="homepage"></div>
-
-  <section class="home-feed">
-    <div class="feed-head">
-      <h2 class="feed-title">Comments from listeners</h2>
-      <div class="feed-sub">Tap a song name to hear it.</div>
-    </div>
-    <div class="feed-list" id="home-feed-list"></div>
-  </section>
 
   <footer class="home-footer">
     <a class="quiet-link" href="about.html">About</a>
@@ -1179,10 +1194,23 @@ let SONGS = [];
 
 // Category -> group ('mood'|'occasion'|'subject'), loaded from the categories table.
 let categoryGroup = new Map();
+// Mood categories for the homepage "Find a song" row, ordered by sort_order
+// (nulls last) then name. Empty during a Supabase outage (categories are only
+// in the table, not songs.json) — the mood row just hides then.
+let moodCategories = [];
 async function loadCategoryGroups(){
-  const { data, error } = await supabaseClient.from('categories').select('name, group_name');
+  const { data, error } = await supabaseClient.from('categories').select('name, group_name, sort_order');
   if(error){ console.error(error); return; }
-  categoryGroup = new Map((data || []).filter(c => c.group_name).map(c => [c.name, c.group_name]));
+  const rows = data || [];
+  categoryGroup = new Map(rows.filter(c => c.group_name).map(c => [c.name, c.group_name]));
+  moodCategories = rows
+    .filter(c => c.group_name === 'mood')
+    .sort((a, b) => {
+      const ao = a.sort_order == null ? Infinity : a.sort_order;
+      const bo = b.sort_order == null ? Infinity : b.sort_order;
+      return (ao - bo) || a.name.localeCompare(b.name);
+    })
+    .map(c => c.name);
 }
 
 /* Shuffle the song list ONCE per browser session so languages intersperse.
@@ -1718,8 +1746,10 @@ function homepageSections(){
   return { hero, rails, editors, fallback };
 }
 
-// Hero: the #1 ranked song, a centered landscape (3:2) card with the label,
-// title, displayed category, and the first sentence of the note.
+// Hero: the #1 ranked song as a two-column block — a large label + text on the
+// left, the landscape 3:2 cover on the right (stacked label/cover/text on
+// mobile). Whole block plays the song. label + cover are separate children (not
+// inside .hero-text) so the mobile order can slot the cover between them.
 function heroHTML(s, idx, label){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
@@ -1730,13 +1760,39 @@ function heroHTML(s, idx, label){
     ? coverThumbHTML(s, 'hero-cover-img', 900)
     : `<div class="hero-cover-img" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
   return `<button class="home-hero2" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
+      <div class="hero-left">
+        <div class="hero-label">${escHtml(label)}</div>
+        <div class="hero-text">
+          <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
+          ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
+          ${cat ? `<div class="hero-cat">${escHtml(cat)}</div>` : ''}
+          ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
+        </div>
+      </div>
       <div class="hero-cover">${cover}</div>
-      <div class="hero-label">${escHtml(label)}</div>
-      <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
-      ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
-      ${cat ? `<div class="hero-cat">${escHtml(cat)}</div>` : ''}
-      ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
     </button>`;
+}
+
+// "Find a song": mood pills (from the categories 'mood' group, ordered by
+// sort_order) + a two-size tag cloud built from the in-memory catalog.
+function tagCloud(){
+  const counts = new Map();
+  SONGS.forEach(s => (s.tags || []).forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
+  return [...counts.entries()]
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => a.tag.localeCompare(b.tag));   // alphabetical, not by weight
+}
+function findASongHTML(){
+  const moods = moodCategories;
+  const tags = tagCloud();
+  if(!moods.length && !tags.length) return '';
+  const moodPills = moods.map(c => `<button class="chip mood-pill" type="button" data-cat="${escHtml(c)}">${escHtml(c)}</button>`).join('');
+  const cloud = tags.map(t => `<button class="cloud-tag ${t.count >= 6 ? 'big' : 'small'}" type="button" data-tag="${escHtml(t.tag)}">${escHtml(t.tag)}</button>`).join('');
+  return `<section class="find-song">
+      <h2 class="find-song-h">Find a song</h2>
+      ${moods.length ? `<div class="mood-row">${moodPills}</div>` : ''}
+      ${tags.length ? `<div class="cloud-label">Themes</div><div class="tag-cloud">${cloud}</div>` : ''}
+    </section>`;
 }
 
 // Paint the site banner: the SITE_BANNER_URL image (with a scrim) when set,
@@ -1799,10 +1855,15 @@ function renderHomepage(){
   const idxOf = new Map(SONGS.map((s, i) => [s.id, i]));
 
   let html = '';
-  if(hero) html += heroHTML(hero, idxOf.get(hero.id), fallback ? 'Most played' : "This week's most played");
+  html += findASongHTML();     // "Find a song": under the buttons, before the hero
+  if(hero) html += heroHTML(hero, idxOf.get(hero.id), fallback ? 'Most played' : "This week's #1");
   html += rails.map(sec => railHTML(sec, idxOf)).join('');
   if(editors.length) html += editorsBandHTML(editors, idxOf);
   el.innerHTML = html;
+
+  // Find a song: mood pill -> /listen with that category; tag -> /listen search.
+  el.querySelectorAll('.mood-pill').forEach(b => b.addEventListener('click', () => goListenWithParam('cat', b.dataset.cat)));
+  el.querySelectorAll('.cloud-tag').forEach(b => b.addEventListener('click', () => goListenWithParam('tag', b.dataset.tag)));
 
   // Hero + rail/editor cards: go to the song page and play that song.
   el.querySelectorAll('.home-hero2, .rail-item').forEach(btn => {
@@ -3028,6 +3089,36 @@ window.addEventListener('popstate', () => {
   laivyTrack('page_view', { route: r });
 });
 
+// Homepage "Find a song": go to /listen with a category active (?cat) or a tag
+// searched (?tag), applied on arrival without playback.
+function goListenWithParam(kind, value){
+  if(!value) return;
+  history.pushState({ route: 'listen' }, '', '/listen?' + kind + '=' + encodeURIComponent(value));
+  showPage('listen');
+  laivyTrack('page_view', { route: 'listen' });
+  applyListenParams();
+}
+// Apply a ?cat=/?tag= param already in the URL (sets the category or the search
+// box + renders, no playback), then clear it with replaceState so back/forward
+// behaves. Returns true if it applied one.
+function applyListenParams(){
+  let cat = null, tag = null;
+  try{ const q = new URLSearchParams(location.search); cat = q.get('cat'); tag = q.get('tag'); }catch(e){}
+  if(!cat && !tag) return false;
+  if(cat){
+    activeCat = cat;
+    renderFilterPills();
+  } else {
+    const se = document.getElementById('search');
+    if(se) se.value = tag;
+    searchTerm = tag;
+  }
+  switchTab('songs');
+  renderList();
+  history.replaceState({ route: 'listen' }, '', '/listen');
+  return true;
+}
+
 // First load: a ?song deep-link goes straight to the song page (playing) and
 // rewrites the visible URL to /listen?song=<id>; otherwise render the route the
 // path names. The shared link stays "/?song=" so the OG middleware still fires.
@@ -3038,6 +3129,15 @@ function initRoute(){
     history.replaceState({ route: 'listen' }, '', '/listen?song=' + encodeURIComponent(songId));
     showPage('listen');
     playSongById(songId);
+    return;
+  }
+  // Direct /listen?cat= or /listen?tag= (or /?cat=…): show the song page, apply
+  // the filter, no playback.
+  let cat = null, tag = null;
+  try{ const q = new URLSearchParams(location.search); cat = q.get('cat'); tag = q.get('tag'); }catch(e){}
+  if(cat || tag){
+    showPage('listen');
+    applyListenParams();
     return;
   }
   const r = routeFromPath();
