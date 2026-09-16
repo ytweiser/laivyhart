@@ -37,13 +37,31 @@ columns inherit the table's existing policies unless you add column-level rules.
 ## Search
 
 Client-side search lives entirely in `index.html`. Each song gets a normalized
-`searchIndex` built once after load (`buildSearchIndexes`); the query is
-normalized with the SAME `normalizeForSearch(str)` so both sides agree. A song
-matches when EVERY whitespace-separated term is a substring of its `searchIndex`
-(AND semantics); an empty query matches everything.
+copy of every field (`buildSearchIndexes`): `nTitle`, `nTranslit`, `nTags`,
+`nCategories`, `nAbout`, `nLyricsOriginal`, `nLyricsTranslation`. The query is
+normalized with the SAME routine so both sides agree. A song matches when EVERY
+whitespace-separated query term is found in at least one field (AND semantics);
+an empty query matches everything. There is no typo tolerance — matching is
+exact substring after normalization.
 
-`normalizeForSearch` applies these steps, in order — if you change one, change it
-here too so the index and the query stay in sync:
+Each matching row shows a Google-style "why it matched" line: the field the
+**first** term matched in (priority: title, translit, tags, categories, about,
+lyrics, translation) with a ~60-char snippet from that field's RAW text and the
+term wrapped in `<mark>` (soft accent highlight). The snippet is skipped for
+title/translit matches, since those are already visible in the row. Snippet
+elements carry `dir="auto"` so Hebrew snippets render right-to-left.
+
+Snippets slice the RAW text (nikkud, final letters, original case intact). To
+place the `<mark>` correctly, `normalizeMapped(str)` returns both the normalized
+string and a `map` from each normalized-char index back to the raw-char index it
+came from. Normalization only deletes characters or replaces them one-for-one,
+except the `ch`/`kh`/`ts` digraph folds, whose output characters all map back to
+the digraph's first raw character. (A `SEARCH_DEBUG` block self-tests the map on
+a nikkud word, a final-letter word, and "chesed".)
+
+`normalizeForSearch` (= `normalizeMapped(str).norm`) applies these steps, in
+order — if you change one, change it here too so the index and the query stay in
+sync:
 
 1. Lowercase, Unicode NFD, then strip combining marks (removes Latin accents in
    transliterations).

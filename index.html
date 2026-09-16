@@ -344,10 +344,21 @@
     background-repeat:no-repeat; background-position:right 0.6rem center; background-size:0.8rem;
   }
   .sort-select:focus{outline:none; border-color:var(--accent-2);}
-  /* Quiet lyric-match hint under a song row, matched to the muted category label. */
+  /* Quiet "why it matched" hint under a song row, in the muted label voice. */
   .row-lyrichit{
     font-size:0.8rem; color:var(--text-faint); font-style:italic; margin-top:0.15rem;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    display:flex; gap:0.4rem; align-items:baseline;
+  }
+  .row-lyrichit .snip-label{
+    flex-shrink:0; font-family:var(--font-ui); font-style:normal;
+    font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint);
+  }
+  .row-lyrichit .snip-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* Soft accent highlight for the matched term (not yellow). */
+  .row-lyrichit mark{
+    background:rgba(var(--accent-1-rgb), 0.22); color:inherit;
+    border-radius:3px; padding:0 0.12em;
   }
   /* Small, quiet, clickable tag chips in the now-playing panel. */
   .now-tags{display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.45rem;}
@@ -1286,43 +1297,81 @@ function renderFilterPills(){
   // and this dropdown always show the same category (or "Category radio" for All).
   sel.value = (activeCat && activeCat !== 'all') ? activeCat : '';
 }
-/* Normalize text for search on BOTH the index and the query so the two agree.
-   Order matters and mirrors the "Search" section of README.md — keep them in
-   sync. This folding is lossy on purpose (fuzzy transliteration matching). */
-function normalizeForSearch(str){
-  let s = (str == null ? '' : String(str)).toLowerCase();
-  // NFD + strip combining marks (removes Latin accents in transliterations).
-  s = s.normalize('NFD').replace(/[̀-ͯ]/g, '');
-  // Strip Hebrew nikkud + cantillation.
-  s = s.replace(/[֑-ׇ]/g, '');
-  // Fold Hebrew final letters to their base forms.
-  s = s.replace(/ך/g, 'כ')   // ך -> כ
-       .replace(/ם/g, 'מ')   // ם -> מ
-       .replace(/ן/g, 'נ')   // ן -> נ
-       .replace(/ף/g, 'פ')   // ף -> פ
-       .replace(/ץ/g, 'צ');  // ץ -> צ
-  // Remove geresh/gershayim and ASCII apostrophes/quotes.
-  s = s.replace(/[׳״'"]/g, '');
-  // Fold transliteration variants (identically on both sides): chesed==hesed,
-  // tzion==tsion. ch->kh->h collapses both ch and kh to h, but ONLY before a
-  // vowel, so "chesed"/"Chanukah" fold while "much"/"teach" do not.
-  s = s.replace(/ch(?=[aeiouy])/g, 'kh').replace(/kh(?=[aeiouy])/g, 'h').replace(/ts/g, 'tz');
-  // Any remaining punctuation -> space; collapse whitespace.
-  s = s.replace(/[^\p{L}\p{N}]+/gu, ' ').replace(/\s+/g, ' ').trim();
-  return s;
+/* Normalize text for search on BOTH the index and the query so the two agree,
+   AND return a map from each normalized-char index back to the index of the raw
+   character it came from. Steps mirror the "Search" section of README.md — keep
+   them in sync. Folding is lossy on purpose (fuzzy transliteration matching).
+
+   The map exists so a snippet can be sliced from — and <mark> placed in — the
+   RAW text (nikkud, final letters, original case) at the position where the
+   normalized match was found. Normalization only deletes characters or replaces
+   them one-for-one, EXCEPT the ch/kh/ts digraph folds; for those every output
+   character maps back to the FIRST raw character of the digraph. */
+const HEB_FINALS = { 'ך':'כ', 'ם':'מ', 'ן':'נ', 'ף':'פ', 'ץ':'צ' };
+function isVowel(c){ return c==='a'||c==='e'||c==='i'||c==='o'||c==='u'||c==='y'; }
+function normalizeMapped(raw){
+  raw = (raw == null ? '' : String(raw));
+  // Phase 1: per-character (lowercase, NFD strip-marks, nikkud strip, final-
+  // letter fold, geresh/apostrophe removal, punctuation->space + collapse).
+  let mid = '', midMap = [], prevSpace = false;
+  for(let i = 0; i < raw.length; i++){
+    const dec = raw[i].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    for(const c of dec){
+      if(c >= '֑' && c <= 'ׇ') continue;                 // Hebrew nikkud/cantillation
+      if(c === '׳' || c === '״' || c === "'" || c === '"') continue; // geresh/apostrophes
+      if(HEB_FINALS[c]){ mid += HEB_FINALS[c]; midMap.push(i); prevSpace = false; continue; }
+      if(!/[\p{L}\p{N}]/u.test(c)){                                // punctuation/space -> single space
+        if(prevSpace) continue;
+        mid += ' '; midMap.push(i); prevSpace = true; continue;
+      }
+      mid += c; midMap.push(i); prevSpace = false;
+    }
+  }
+  while(mid.endsWith(' ')){ mid = mid.slice(0, -1); midMap.pop(); }        // trim end
+  let lead = 0; while(lead < mid.length && mid[lead] === ' ') lead++;
+  if(lead){ mid = mid.slice(lead); midMap = midMap.slice(lead); }          // trim start
+
+  // Phase 2: digraph folds. ch/kh + vowel -> h; ts -> tz. Every output char of a
+  // fold maps back to the digraph's first raw char.
+  let norm = '', map = [];
+  for(let j = 0; j < mid.length; ){
+    if((mid[j] === 'c' || mid[j] === 'k') && mid[j+1] === 'h' && isVowel(mid[j+2])){
+      norm += 'h'; map.push(midMap[j]); j += 2; continue;
+    }
+    if(mid[j] === 't' && mid[j+1] === 's'){
+      norm += 'tz'; map.push(midMap[j], midMap[j]); j += 2; continue;
+    }
+    norm += mid[j]; map.push(midMap[j]); j += 1;
+  }
+  return { norm, map };
+}
+// Query + field matching only need the normalized string.
+function normalizeForSearch(str){ return normalizeMapped(str).norm; }
+
+// DEBUG self-test for the normalized->raw index map. Flip on to verify.
+const SEARCH_DEBUG = false;
+if(SEARCH_DEBUG){
+  const t = (raw, wantNorm, wantMap) => {
+    const r = normalizeMapped(raw);
+    console.assert(r.norm === wantNorm, 'norm', JSON.stringify(raw), r.norm, '!=', wantNorm);
+    console.assert(JSON.stringify(r.map) === JSON.stringify(wantMap), 'map', JSON.stringify(raw), r.map, '!=', wantMap);
+  };
+  t('נֹעַם', 'נעמ', [0, 2, 4]);   // nikkud stripped, final mem folded
+  t('מלך', 'מלכ', [0, 1, 2]);      // final kaf folded (1:1)
+  t('chesed', 'hesed', [0, 2, 3, 4, 5]); // ch+vowel -> h maps to the 'c'
+  console.log('[search] map self-test ran');
 }
 
-// Build the per-song normalized indexes once, after SONGS is populated.
-// metaIndex = the non-lyric fields (title, translit, categories, tags, about);
-// lyricsIndex = just the lyrics; searchIndex = both. metaIndex lets us tell a
-// lyric-only hit from a title/tag hit for the row hint.
+// Build the per-song per-field normalized copies once, after SONGS is populated.
 function buildSearchIndexes(){
   SONGS.forEach(s => {
-    const meta = [s.title, s.title_translit, s.categories.join(' '), s.tags.join(' '), s.about].join(' ');
-    const lyrics = [s.lyrics_original, s.lyrics_translation].join(' ');
-    s.metaIndex = normalizeForSearch(meta);
-    s.lyricsIndex = normalizeForSearch(lyrics);
-    s.searchIndex = (s.metaIndex + ' ' + s.lyricsIndex).trim();
+    s.nTitle = normalizeForSearch(s.title);
+    s.nTranslit = normalizeForSearch(s.title_translit);
+    s.nTags = (s.tags || []).map(normalizeForSearch);
+    s.nCategories = (s.categories || []).map(normalizeForSearch);
+    s.nAbout = normalizeForSearch(s.about);
+    s.nLyricsOriginal = normalizeForSearch(s.lyrics_original);
+    s.nLyricsTranslation = normalizeForSearch(s.lyrics_translation);
   });
 }
 
@@ -1331,41 +1380,56 @@ function currentTerms(){
   return normalizeForSearch(searchTerm).split(' ').filter(Boolean);
 }
 
+// The highest-priority field a term appears in, or null. Priority: title,
+// translit, tags, categories, about, lyrics (original), translation.
+function termField(s, t){
+  if(s.nTitle.includes(t)) return { field: 'title' };
+  if(s.nTranslit.includes(t)) return { field: 'translit' };
+  const ti = s.nTags.findIndex(x => x.includes(t));
+  if(ti >= 0) return { field: 'tags', label: 'Tag', raw: s.tags[ti], term: t };
+  const ci = s.nCategories.findIndex(x => x.includes(t));
+  if(ci >= 0) return { field: 'categories', label: 'Category', raw: s.categories[ci], term: t };
+  if(s.nAbout.includes(t)) return { field: 'about', label: 'About', raw: s.about, term: t };
+  if(s.nLyricsOriginal.includes(t)) return { field: 'lyrics', label: 'Lyrics', raw: s.lyrics_original, term: t };
+  if(s.nLyricsTranslation.includes(t)) return { field: 'translation', label: 'Translation', raw: s.lyrics_translation, term: t };
+  return null;
+}
+
 function songMatches(s){
   const inCat = activeCat === 'all' || s.categories.includes(activeCat);
   if(!inCat) return false;
   const terms = currentTerms();
   if(terms.length === 0) return true;
-  return terms.every(t => s.searchIndex.includes(t));  // AND semantics
+  return terms.every(t => termField(s, t) !== null);  // every term in some field
 }
 
-/* A ~60-char snippet from the RAW lyrics_original around the first matching term
-   (raw, so nikkud + final letters display correctly). We locate the term in the
-   normalized copy of each line, then slice the raw line at the same index.
-   ASSUMPTION: normalization mostly removes characters (nikkud, marks, geresh) or
-   folds one-for-one, so the normalized index is a CLOSE-BUT-APPROXIMATE index
-   into the raw line; a 60-char window absorbs the small drift. This is the
-   "first line containing the term" fallback the spec allows, which is robust. */
-function lyricHitSnippet(s, terms){
-  const raw = s.lyrics_original || '';
-  if(!raw) return '';
-  const lines = raw.split('\n');
-  for(const term of terms){
-    for(const line of lines){
-      if(!line.trim()) continue;
-      const pos = normalizeForSearch(line).indexOf(term);
-      if(pos < 0) continue;
-      const approx = Math.max(0, Math.min(line.length - 1, pos));
-      const start = Math.max(0, approx - 30);
-      const end = Math.min(line.length, approx + 30);
-      let snip = line.slice(start, end).replace(/\s+/g, ' ').trim();
-      if(!snip) continue;
-      if(start > 0) snip = '…' + snip;
-      if(end < line.length) snip = snip + '…';
-      return snip;
-    }
-  }
-  return '';
+// Which field the FIRST query term matched in (for the row snippet), or null.
+function firstMatchField(s){
+  const terms = currentTerms();
+  return terms.length ? termField(s, terms[0]) : null;
+}
+
+/* One muted line of HTML: a snippet (~60 chars) from the RAW field text around
+   the first match, with the matched term wrapped in <mark>. Uses normalizeMapped
+   so the mark lands on the right raw characters (nikkud/case preserved). */
+function fieldSnippetHTML(raw, term){
+  raw = raw || '';
+  const { norm, map } = normalizeMapped(raw);
+  const pos = norm.indexOf(term);
+  if(pos < 0 || !map.length) return '';
+  const rawStart = map[pos];
+  const rawEnd = map[Math.min(pos + term.length - 1, map.length - 1)];
+  const pad = Math.max(0, Math.floor((60 - (rawEnd - rawStart + 1)) / 2));
+  const start = Math.max(0, rawStart - pad);
+  const end = Math.min(raw.length, rawEnd + 1 + pad);
+  let before = raw.slice(start, rawStart).replace(/\s+/g, ' ');
+  const matched = raw.slice(rawStart, rawEnd + 1).replace(/\s+/g, ' ');
+  let after = raw.slice(rawEnd + 1, end).replace(/\s+/g, ' ');
+  if(start > 0) before = before.replace(/^\s+/, '');
+  if(end < raw.length) after = after.replace(/\s+$/, '');
+  return (start > 0 ? '…' : '') + escHtml(before) +
+         '<mark>' + escHtml(matched) + '</mark>' +
+         escHtml(after) + (end < raw.length ? '…' : '');
 }
 
 /* Return a new array of SONGS in the active sort order. 'shuffle' keeps the
@@ -1437,12 +1501,15 @@ function renderList(){
     const primary = heb ? s.title : (s.title || s.title_translit);
     const secondary = heb ? s.title_translit : '';
     const cat = pickRowCategory(s);
-    // Lyric-hit hint: only when a term matched INSIDE the lyrics and nowhere in
-    // the title/translit/tags/categories/about (metaIndex).
-    let lyricHit = '';
+    // "Why it matched": a snippet from the field the first query term matched in,
+    // unless that field is the title/translit (already visible in the row).
+    let snipHTML = '';
     if(terms.length){
-      const lyricsOnly = terms.filter(t => s.lyricsIndex.includes(t) && !s.metaIndex.includes(t));
-      if(lyricsOnly.length) lyricHit = lyricHitSnippet(s, lyricsOnly);
+      const mf = firstMatchField(s);
+      if(mf && mf.label){
+        const snip = fieldSnippetHTML(mf.raw, mf.term);
+        if(snip) snipHTML = `<div class="row-lyrichit"><span class="snip-label">${mf.label}</span> <span class="snip-text" dir="auto">${snip}</span></div>`;
+      }
     }
     return `
       <div class="row ${playing?'playing':''}" data-idx="${idx}">
@@ -1455,7 +1522,7 @@ function renderList(){
         <div class="row-titles">
           <div class="row-title-primary ${heb?'he':'en'}">${escHtml(primary)}</div>
           ${secondary ? `<div class="row-title-secondary">${escHtml(secondary)}</div>` : ''}
-          ${lyricHit ? `<div class="row-lyrichit">${escHtml(lyricHit)}</div>` : ''}
+          ${snipHTML}
         </div>
         <button class="row-add" data-idx="${idx}" title="Add to playlist" aria-label="Add to playlist">+</button>
       </div>`;
