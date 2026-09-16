@@ -2276,7 +2276,14 @@ setInterval(flushEventQueue, 45000);
 window.addEventListener('online', flushEventQueue);
 document.addEventListener('visibilitychange', () => { if(!document.hidden) flushEventQueue(); });
 
+// Testing escape hatch: when localStorage 'laivy-no-track' === '1', every
+// tracking path — GA4 events and the increment_play_count / toggle_like /
+// set_like_facet RPCs — is a no-op, so browser verification never reaches the
+// database or analytics. See the README "Testing" section.
+function noTrack(){ try{ return localStorage.getItem('laivy-no-track') === '1'; }catch(e){ return false; } }
+
 function incrementPlay(songId){
+  if(noTrack()) return;
   // Record the play, then try to send right away; if Supabase is down it stays
   // queued and is retried later. Never disrupts playback.
   enqueueEvent({ type: 'play', song_id: songId });
@@ -2287,6 +2294,7 @@ function incrementPlay(songId){
    playback or any other feature: if gtag is undefined it simply no-ops. Only
    song ids/titles and action names are sent, never any personal data. */
 function laivyTrack(name, params){
+  if(noTrack()) return;
   try{
     if(typeof gtag === 'function'){ gtag('event', name, params || {}); }
   }catch(_){ /* analytics is best effort */ }
@@ -2324,6 +2332,7 @@ function updateLikeUI(songId){
   });
 }
 async function toggleLike(songId){
+  if(noTrack()) return;
   const s = SONGS.find(x => x.id === songId);
   if(!s) return;
   const liked = !likedSet.has(songId);
@@ -2414,6 +2423,7 @@ function revealFacetPrompt(){
   facetIgnoreTimer = setTimeout(() => hideFacetLine(true), 8000);   // ignored -> fade out, record nothing
 }
 function chooseFacet(facet){
+  if(noTrack()) return;
   if(currentIdx === null) return;
   const s = SONGS[currentIdx];
   if(!likedSet.has(s.id)) return;
@@ -2435,6 +2445,7 @@ function chooseFacet(facet){
   }, 1500);
 }
 function clearFacetOnUnlike(songId){
+  if(noTrack()) return;
   const prev = likeFacets[songId];
   if(prev){
     enqueueEvent({ type: 'facet', song_id: songId, facet: null, previous_facet: prev });

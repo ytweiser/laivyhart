@@ -227,3 +227,7 @@ The admin **Charts** tab (`admin.html`, read-only) lists snapshots grouped by
 date, newest first — rank, title, `plays_7d` — with week-end dates badged, and a
 browser-computed summary above it: the songs with the most **days at #1** and the
 most **weeks at #1** (week-end snapshots at rank 1).
+
+## Testing
+
+Set `localStorage` key `laivy-no-track` to `1` before any browser verification, so test plays and likes never reach the database or analytics (guards `laivyTrack` and the `increment_play_count` / `toggle_like` / `set_like_facet` paths in `index.html`).
