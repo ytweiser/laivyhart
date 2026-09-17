@@ -28,8 +28,11 @@
     }
   })();
 </script>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- The V-heart mark, cropped from brand/wordmark.png. No SVG favicon: it is
+     raster artwork, and an SVG link would win over these in most browsers. -->
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">
@@ -392,19 +395,36 @@
   }
   .palette-toggle:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
 
-  /* Site banner: wordmark + tagline over a theme gradient (or SITE_BANNER_URL). */
+  /* Site banner: the brand artwork from /brand. Desktop and tablet show the
+     full banner at 3:1 with NO scrim and no text overlay, since the wordmark is
+     part of the image and the art is already dark. Narrow screens crop that too
+     tightly, so they compose instead: the background-only plate at 2:1 with the
+     transparent wordmark laid over it, keeping the whole wordmark visible. */
   .site-banner{
     position:relative; width:100%; overflow:hidden; border-radius:16px;
     aspect-ratio:3 / 1; max-height:320px; min-height:170px;
-    display:flex; align-items:center; justify-content:center; text-align:center; margin-bottom:1.2rem;
+    display:block; margin-bottom:1.1rem;
   }
   .site-banner-bg{position:absolute; inset:0; z-index:0;}
   .site-banner-img{width:100%; height:100%; object-fit:cover; display:block;}
-  .site-banner.has-image .site-banner-bg::after{content:""; position:absolute; inset:0; background:rgba(8,4,8,0.5);}
-  .site-banner-inner{position:relative; z-index:1; padding:1rem 1.4rem; color:#fff;}
-  .site-banner-wordmark{font-family:var(--font-ui); font-weight:800; letter-spacing:0.02em; font-size:clamp(2rem, 6vw, 3.4rem); line-height:1; text-shadow:0 2px 18px rgba(0,0,0,0.6);}
-  .site-banner-wordmark .l2{opacity:0.9;}
-  .site-banner-tagline{font-family:var(--font-display); font-style:italic; font-size:clamp(0.9rem, 2.2vw, 1.15rem); margin-top:0.6rem; color:rgba(255,255,255,0.94); text-shadow:0 1px 10px rgba(0,0,0,0.6); max-width:44rem;}
+  /* The wordmark overlay is the narrow-screen composition only. Its position
+     puts the point of the V just above the horizon in the background plate:
+     at 80% width the wordmark box is 0.533 of the banner height, the V point
+     sits at 79% of that box, and the horizon is at ~66% of the banner. */
+  .site-banner-mark{display:none;}
+  .site-banner.is-fallback .site-banner-mark{display:none !important;}
+
+  /* Tagline under the banner: live text, never part of the artwork, so it stays
+     selectable, translatable, and follows the theme. */
+  .site-tagline{text-align:center; margin:0 0 1.7rem;}
+  .site-tagline-1{
+    font-family:var(--font-display); font-weight:600; line-height:1.15; color:var(--text);
+    font-size:clamp(1.3rem, 3.4vw, 2.05rem);
+  }
+  .site-tagline-2{
+    font-family:var(--font-display); color:var(--text-dim); margin-top:0.55rem;
+    font-size:clamp(0.68rem, 1.7vw, 0.84rem); letter-spacing:0.2em; text-transform:uppercase;
+  }
 
   /* Primary buttons under the banner. */
   .home-primary-btns{display:flex; gap:0.8rem; margin:0 0 1.9rem;}
@@ -865,6 +885,8 @@
     .home-palette.open .palette{display:flex;}
     /* Banner: roughly 2:1, capped at 200px. */
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
+    /* Compose: background plate (swapped in by the <picture> source) + wordmark. */
+    .site-banner-mark{display:block; position:absolute; z-index:1; left:10%; width:80%; top:24%;}
     /* Primary buttons: all three side by side, together spanning the row.
        Tighter gap and type, and the label may wrap to a second line rather
        than overflow its button on a narrow phone. */
@@ -1111,13 +1133,15 @@
     </div>
   </header>
 
-  <!-- Site banner: wordmark + tagline over a theme gradient (or SITE_BANNER_URL). -->
-  <div class="site-banner" id="site-banner">
+  <!-- Site banner: brand artwork, with the wordmark overlaid only on narrow
+       screens. The container carries the accessible name for both cases. -->
+  <div class="site-banner" id="site-banner" role="img" aria-label="Laivy Hart">
     <div class="site-banner-bg" id="site-banner-bg"></div>
-    <div class="site-banner-inner">
-      <div class="site-banner-wordmark"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
-      <div class="site-banner-tagline">Original songs, mostly Hebrew, with lyrics, translation, and the story behind each one.</div>
-    </div>
+    <img class="site-banner-mark" id="site-banner-mark" alt="" aria-hidden="true">
+  </div>
+  <div class="site-tagline">
+    <div class="site-tagline-1">Every soul has a song</div>
+    <div class="site-tagline-2">Create &middot; Share &middot; Listen &middot; Belong</div>
   </div>
 
   <div class="home-primary-btns">
@@ -1195,7 +1219,12 @@ const SHOW_PLAY_COUNTS = false;
 // Homepage banner image. Empty string => a generative theme gradient (drawn the
 // same way as the coverless fallback art). When set, the image is rendered
 // behind the banner text (through the cover image CDN) with a dark scrim.
-const SITE_BANNER_URL = '';
+// Brand artwork, committed as static files under /brand (see brand/README.md)
+// and precached by the service worker. The theme gradient below stays as the
+// fallback if any of these fail to load.
+const SITE_BANNER_URL    = 'brand/banner.png';      // full banner, wordmark included, 3:1
+const SITE_BANNER_BG_URL = 'brand/banner-bg.png';   // background plate, no text, for the narrow composition
+const SITE_WORDMARK_URL  = 'brand/wordmark.png';    // transparent wordmark
 
 /* ============================================================
    Small utilities
@@ -2000,16 +2029,36 @@ function findASongHTML(){
 function updateSiteBanner(){
   const banner = document.getElementById('site-banner');
   const bg = document.getElementById('site-banner-bg');
+  const mark = document.getElementById('site-banner-mark');
   if(!banner || !bg) return;
-  if(SITE_BANNER_URL){
-    bg.style.cssText = '';
-    bg.innerHTML = `<img class="site-banner-img" src="${escHtml(cdnImg(SITE_BANNER_URL, 1600))}" data-raw="${escHtml(SITE_BANNER_URL)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="">`;
-    banner.classList.add('has-image');
-  } else {
-    bg.innerHTML = '';
-    bg.style.cssText = genArtStyle('laivy hart');
-    banner.classList.remove('has-image');
+  if(!SITE_BANNER_URL){ siteBannerFallback(); return; }
+  bg.style.cssText = '';
+  // Local files, served straight from /brand: no image CDN in front of them.
+  // The <picture> source swaps in the background-only plate on narrow screens,
+  // where the wordmark is laid over it as its own element instead.
+  bg.innerHTML =
+    `<picture>` +
+      `<source media="(max-width:900px)" srcset="${escHtml(SITE_BANNER_BG_URL)}">` +
+      `<img class="site-banner-img" src="${escHtml(SITE_BANNER_URL)}" alt="" onerror="siteBannerFallback()">` +
+    `</picture>`;
+  if(mark){
+    mark.onerror = siteBannerFallback;
+    mark.src = SITE_WORDMARK_URL;
   }
+  banner.classList.add('has-image');
+  banner.classList.remove('is-fallback');
+}
+
+// If the artwork cannot be fetched, fall back to the generative theme gradient
+// the banner used before, so the homepage never shows an empty slab.
+function siteBannerFallback(){
+  const banner = document.getElementById('site-banner');
+  const bg = document.getElementById('site-banner-bg');
+  if(!banner || !bg) return;
+  bg.innerHTML = '';
+  bg.style.cssText = genArtStyle('laivy hart');
+  banner.classList.remove('has-image');
+  banner.classList.add('is-fallback');
 }
 
 // A single landscape rail card, shared by the ranked rails and the editor's band.

@@ -15,8 +15,11 @@
 <script>
   (function(){try{var t=localStorage.getItem('laivy-theme');if(!t){t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
 </script>
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- The V-heart mark, cropped from brand/wordmark.png. No SVG favicon: it is
+     raster artwork, and an SVG link would win over these in most browsers. -->
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">

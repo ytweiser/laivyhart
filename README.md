@@ -118,10 +118,18 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
   all songs) → **hero** → ranked **rails** → **Editor's picks band** → **Find a
   song** → About footer. (The listener feed was removed from the homepage; it
   still lives on `/listen`'s idle state.)
-  - **Site banner** + **primary buttons** are unchanged: banner is full-width
-    (≈3:1 desktop capped 320px, ≈2:1 mobile capped 200px) with the wordmark +
-    tagline over `SITE_BANNER_URL` (empty → generative theme gradient via
-    `genArtStyle`; set → image behind a scrim through the cover CDN); Radio
+  - **Site banner**: the brand artwork in `/brand`, served straight from the repo
+    (no image CDN). Desktop and tablet use `brand/banner.png` full width at 3:1
+    with **no scrim and no text overlay**, since the wordmark is part of the
+    image. Below 900px a `<picture>` source swaps in `brand/banner-bg.png` at 2:1
+    and `brand/wordmark.png` is laid over it (`left:10%; width:80%; top:24%`,
+    which puts the point of the V on the horizon at 66.6% of the banner height),
+    so the whole wordmark stays visible. If any of it fails to load,
+    `siteBannerFallback()` restores the generative theme gradient. Beneath the
+    banner the **tagline is live text** in the display serif, centered: "Every
+    soul has a song", then "Create · Share · Listen · Belong" in smaller muted
+    caps, both on theme tokens so they recolour with the theme. **Primary
+    buttons**: Radio
     (filled) + Browse all songs (outlined) both `navigate('listen')`, and
     **Share Laivy Hart** (outlined, share glyph) shares the site itself. It opens
     the native share sheet where one exists (`navigator.share` with the title,
@@ -131,6 +139,12 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     clipboard is blocked. Analytics: `site_share` with `method` (`native` or
     `copy`). All three buttons sit in one row on desktop and on mobile, where the
     type and gaps tighten and a label may wrap to a second line.
+  - **Icons and share image**: the favicon, apple-touch and manifest icons are
+    generated from the V-heart mark cropped out of `brand/wordmark.png`
+    (`scripts/make-icons.mjs`); there is no SVG favicon, since an SVG link would
+    outrank the PNGs. `og-image.png` is the full banner letterboxed into
+    1200x630 on the artwork's own black, used for the site card and as
+    `middleware.js`'s `DEFAULT_OG_IMAGE` for songs without a cover.
   - **Find a song** (`findASongHTML`): at the **bottom** of the page (below the
     Editor's picks band, above the footer). A "Find a song" heading, then a row of
     **mood pills** — the `categories` in the `mood` group, ordered by

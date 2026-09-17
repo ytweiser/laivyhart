@@ -23,6 +23,9 @@ export const config = {
 // safe to expose. They can be overridden with Vercel env vars if you prefer.
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://tshkrghrgokplakktvik.supabase.co';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_nvhaOpLWBxZxo7X7tRtCWw_QhQ82dV4';
+// The share card for the site itself: og-image.png is the brand banner
+// (brand/banner.png) letterboxed into 1200x630 on the artwork's own black, so
+// no part of the wordmark is cropped by a 1.91:1 card.
 const DEFAULT_OG_IMAGE = 'https://laivyhart.com/og-image.png';
 
 function escapeAttr(str) {
