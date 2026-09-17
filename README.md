@@ -116,7 +116,15 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     (≈3:1 desktop capped 320px, ≈2:1 mobile capped 200px) with the wordmark +
     tagline over `SITE_BANNER_URL` (empty → generative theme gradient via
     `genArtStyle`; set → image behind a scrim through the cover CDN); Radio
-    (filled) + Browse all songs (outlined) both `navigate('listen')`.
+    (filled) + Browse all songs (outlined) both `navigate('listen')`, and
+    **Share Laivy Hart** (outlined, share glyph) shares the site itself. It opens
+    the native share sheet where one exists (`navigator.share` with the title,
+    the one-line tagline and `https://laivyhart.com`, the bare domain, since
+    there is no per-song preview to preserve here), and otherwise copies the link
+    and shows the "Link copied" toast, falling back to a prompt where the
+    clipboard is blocked. Analytics: `site_share` with `method` (`native` or
+    `copy`). All three buttons sit in one row on desktop and on mobile, where the
+    type and gaps tighten and a label may wrap to a second line.
   - **Find a song** (`findASongHTML`): at the **bottom** of the page (below the
     Editor's picks band, above the footer). A "Find a song" heading, then a row of
     **mood pills** — the `categories` in the `mood` group, ordered by

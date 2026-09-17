@@ -412,9 +412,10 @@
     display:inline-flex; align-items:center; justify-content:center; gap:0.55rem;
     padding:0.75rem 1.4rem; border-radius:12px; cursor:pointer;
     font-family:var(--font-ui); font-size:0.95rem; border:1px solid transparent;
+    line-height:1.2; text-align:center;
     transition:filter 0.18s var(--ease), border-color 0.18s var(--ease), color 0.18s var(--ease);
   }
-  .home-primary-btn svg{width:1.15rem; height:1.15rem;}
+  .home-primary-btn svg{width:1.15rem; height:1.15rem; flex-shrink:0;}
   .home-primary-btn.filled{background:var(--accent-grad); color:#fff;}
   .home-primary-btn.filled:hover{filter:brightness(1.07);}
   .home-primary-btn.outlined{background:none; border-color:var(--chip-border); color:var(--text);}
@@ -864,8 +865,12 @@
     .home-palette.open .palette{display:flex;}
     /* Banner: roughly 2:1, capped at 200px. */
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
-    /* Primary buttons: side by side, together spanning the row. */
-    .home-primary-btn{flex:1 1 0; padding:0.75rem 0.6rem;}
+    /* Primary buttons: all three side by side, together spanning the row.
+       Tighter gap and type, and the label may wrap to a second line rather
+       than overflow its button on a narrow phone. */
+    .home-primary-btns{gap:0.5rem;}
+    .home-primary-btn{flex:1 1 0; min-width:0; padding:0.7rem 0.45rem; font-size:0.85rem; gap:0.35rem;}
+    .home-primary-btn svg{width:1rem; height:1rem;}
     /* Hero: stack label, cover, then text (title/category/note). hero-left
        becomes transparent so its children reorder with the cover between. */
     .home-hero2{flex-direction:column; align-items:stretch; gap:0;}
@@ -1115,6 +1120,10 @@
     <button class="home-primary-btn outlined" id="home-browse" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/></svg>
       Browse all songs
+    </button>
+    <button class="home-primary-btn outlined" id="home-share" type="button" aria-label="Share Laivy Hart">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+      Share Laivy Hart
     </button>
   </div>
 
@@ -3389,6 +3398,34 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
     } else {
       window.prompt('Copy this link:', url);
     }
+  });
+})();
+
+// Share the SITE. The bare domain on purpose: it is the link people read, say
+// and type. (Song links use the www form instead, so the edge middleware can
+// hand crawlers the per-song preview without a redirect hop.)
+const SITE_SHARE_URL = 'https://laivyhart.com';
+const SITE_SHARE_TITLE = 'Laivy Hart';
+const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
+(function(){
+  const btn = document.getElementById('home-share');
+  if(!btn) return;
+  btn.addEventListener('click', async () => {
+    const native = !!navigator.share;
+    laivyTrack('site_share', { method: native ? 'native' : 'copy' });
+    if(native){
+      try{ await navigator.share({ title: SITE_SHARE_TITLE, text: SITE_SHARE_TEXT, url: SITE_SHARE_URL }); }
+      catch(e){ /* the visitor dismissed the sheet */ }
+      return;
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      try{
+        await navigator.clipboard.writeText(SITE_SHARE_URL);
+        laivyToast('Link copied');
+        return;
+      }catch(e){ /* blocked or denied: fall through to the prompt */ }
+    }
+    window.prompt('Copy this link:', SITE_SHARE_URL);
   });
 })();
 
