@@ -58,7 +58,7 @@
   .page-ambient{position:fixed; inset:0; z-index:0;}
   .topbar{
     position:relative; z-index:2;
-    display:flex; align-items:center; justify-content:space-between;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;
     padding:1.2rem 6vw; border-bottom:1px solid var(--line);
   }
   .topbar-right{display:flex; align-items:center; gap:1rem;}
@@ -112,10 +112,14 @@
 
 <div class="topbar">
   <a class="logo" href="index.html"><span class="l1">LAIVY</span><span class="l2">HART</span></a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/listen">Songs</a>
+    <a href="/about.html" class="is-current" aria-current="page">About</a>
+  </nav>
   <div class="topbar-right">
     <button class="pill-btn" id="share-btn" type="button">Share</button>
     <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
-    <a class="quiet-link" href="index.html">Jukebox</a>
     <div class="palette" role="group" aria-label="Color theme">
       <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
       <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>

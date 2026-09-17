@@ -903,10 +903,14 @@
 
     <div class="topbar">
       <div class="logo" id="home-btn" role="button" tabindex="0" aria-label="Home"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+      <nav class="site-nav" aria-label="Site">
+        <a href="/" data-nav="home">Home</a>
+        <a href="/listen" data-nav="listen" class="is-current" aria-current="page">Songs</a>
+        <a href="/about.html">About</a>
+      </nav>
       <div class="topbar-right">
         <button class="pill-btn" id="share-btn" type="button">Share</button>
         <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
-        <a class="quiet-link" href="about.html">About</a>
         <div class="palette" role="group" aria-label="Color theme">
           <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
           <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
@@ -1083,9 +1087,13 @@
 <div id="page-home" class="hidden">
   <header class="home-header">
     <div class="logo home-wordmark"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+    <nav class="site-nav" aria-label="Site">
+      <a href="/" data-nav="home" class="is-current" aria-current="page">Home</a>
+      <a href="/listen" data-nav="listen">Songs</a>
+      <a href="/about.html">About</a>
+    </nav>
     <div class="home-header-right">
       <input class="search home-search" id="home-search" type="text" placeholder="Search songs, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
-      <a class="quiet-link" id="home-listen-link" href="/listen">Listen</a>
       <!-- Same theme controls as /listen (shared handlers + persistence). On
            mobile the four colors collapse behind a single swatch button. -->
       <div class="home-theme">
@@ -3588,7 +3596,16 @@ miniCover.addEventListener('keydown', (e) => { if(e.key === 'Enter' || e.key ===
 /* ============================================================
    Homepage header + "Listen to everything" band controls
    ============================================================ */
-document.getElementById('home-listen-link').addEventListener('click', (e) => { e.preventDefault(); navigate('listen'); });
+// Top nav: Home and Songs move inside the app so playback is never interrupted;
+// About is a normal link to its own page. Modified clicks and anything but the
+// primary button are left alone so open-in-new-tab still works.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('.site-nav a[data-nav]');
+  if(!a) return;
+  if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return;
+  e.preventDefault();
+  navigate(a.dataset.nav);
+});
 document.getElementById('home-radio').addEventListener('click', () => { navigate('listen'); startRadio(); });
 document.getElementById('home-browse').addEventListener('click', () => { navigate('listen'); switchTab('songs'); });
 const homeSearchEl = document.getElementById('home-search');

@@ -258,6 +258,26 @@ body{
   .palette{gap:0.32rem;}
 }
 
+/* ---------- Top navigation (every page) ----------
+   Three understated text links in the header: body font, small, muted, with no
+   background, border or icon. The current page sits in the normal text color
+   under a hairline rule. Below 900px the header stacks, so the nav drops to its
+   own line directly beneath the wordmark rather than squeezing the theme
+   controls. */
+.site-nav{display:flex; align-items:center; gap:1.1rem; flex-shrink:0; margin-right:auto;}
+.site-nav a{
+  font-family:var(--font-ui); font-size:0.82rem; letter-spacing:0.02em;
+  color:var(--text-faint); text-decoration:none; white-space:nowrap;
+  padding-bottom:2px; border-bottom:1px solid transparent;
+  transition:color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.site-nav a:hover{color:var(--text-dim);}
+.site-nav a.is-current{color:var(--text); border-bottom-color:currentColor;}
+.site-nav a:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:3px;}
+@media (max-width:900px){
+  .site-nav{flex-basis:100%; margin-right:0; gap:1.25rem;}
+}
+
 .quiet-link{
   font-family:var(--font-ui);
   font-size:0.82rem;

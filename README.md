@@ -103,6 +103,11 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 `popstate` moves between pages without reloading; `showPage(route)` toggles which
 `#page-home` / `#page-listen` is visible.
 
+- **Top nav** (`.site-nav`, styled in `theme.css`, present on `/`, `/listen` and
+  `about.html`): three understated text links, Home / Songs / About, muted in the
+  body font with the current page in the normal text color under a hairline rule;
+  Home and Songs route through `navigate()` so playback survives, About is a plain
+  link, and below 900px the nav drops to its own line under the wordmark.
 - **`/` — homepage** (`#page-home`): full-width, single column. Header (wordmark,
   search box, Listen link, and the **theme controls** — the four-color picker +
   light/dark toggle, the same `.swatch`/`.theme-toggle` markup and handlers as the
