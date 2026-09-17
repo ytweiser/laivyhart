@@ -1430,6 +1430,57 @@ async function loadSongsSnapshot(){
   }
 }
 
+// The homepage weekly ranking reads the latest daily chart snapshot, not the
+// live plays_7d, so the order holds steady for a whole day and only turns over
+// when take_chart_snapshot() closes the Jerusalem night (see sql/004). CHART is
+// [{rank, song_id}] for one chart_date, ranks 1-10 ascending; empty means no
+// chart yet, and rankedByListens() then falls back to play_count desc.
+let CHART = [];
+
+// ranks 1-10 belong to one date, so the 10 newest rows are the latest chart.
+// Keeping only the newest chart_date guards against a half-written date.
+function normalizeChart(rows){
+  if(!Array.isArray(rows) || !rows.length) return [];
+  const date = rows[0].chart_date;
+  return rows
+    .filter(r => r.song_id && r.rank >= 1 && r.rank <= 10 && (!r.chart_date || r.chart_date === date))
+    .sort((a, b) => a.rank - b.rank)
+    .map(r => ({ rank: r.rank, song_id: r.song_id }));
+}
+
+// Static fallback: the chart.json written at build time by
+// scripts/snapshot-songs.mjs (an object {chart_date, entries}).
+async function loadChartSnapshot(){
+  try{
+    const res = await fetch('chart.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('chart.json HTTP ' + res.status);
+    const body = await res.json();
+    return normalizeChart(Array.isArray(body) ? body : (body && body.entries));
+  }catch(e){
+    console.warn('[laivy] chart.json fallback failed; ranking by all-time plays.', e);
+    return [];
+  }
+}
+
+// Live first, so a fresh night's chart shows up without waiting for a deploy.
+async function loadChart(){
+  try{
+    const res = await supabaseClient
+      .from('chart_snapshots')
+      .select('chart_date, rank, song_id')
+      .order('chart_date', { ascending: false })
+      .order('rank', { ascending: true })
+      .limit(10);
+    if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no data'));
+    const live = normalizeChart(res.data);
+    if(live.length){ CHART = live; return; }
+    throw new Error('no chart rows');
+  }catch(err){
+    console.warn('[laivy] Supabase chart load failed; using chart.json snapshot.', err);
+    CHART = await loadChartSnapshot();
+  }
+}
+
 async function loadSongs(){
   // Try Supabase first. supabase-js returns { error } for non-2xx and throws on
   // network failure, so cover both: any failure falls back to songs.json.
@@ -1450,6 +1501,7 @@ async function loadSongs(){
   buildSearchIndexes();
   applySessionShuffle();
   await loadCategoryGroups();
+  await loadChart();          // before initRoute: the homepage ranks on it
   renderFilterPills();
   renderList();
   renderNow();
@@ -1836,16 +1888,22 @@ function firstSentenceOf(t){
 
 // The single place the homepage ranking lives. Returns { hero, rails } where
 // rails is [{key, title, songs}] and only rails with >=3 songs are included.
-// Weekly ranking: plays_7d desc, then play_count desc. If fewer than 3 songs
-// have any 7-day plays, fall back to all-time play_count desc and flag it so the
-// homepage titles + the all-time rail adjust. Numbers are never shown.
+// Weekly ranking: the latest daily chart snapshot (CHART, ranks 1-10) in chart
+// order, then every remaining song by play_count desc so dedupe and the 3-song
+// floor downstream still have material. If there is no chart at all, rank by
+// play_count desc and flag it so the all-time rail steps aside. Numbers other
+// than the weekly rail's rank badges are never shown.
 let weeklyFallback = false;
 function rankedByListens(){
   const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
-  weeklyFallback = SONGS.filter(s => (s.plays_7d || 0) > 0).length < 3;
-  return SONGS.slice().sort(weeklyFallback
-    ? (a, b) => (b.play_count - a.play_count) || byNewest(a, b)
-    : (a, b) => ((b.plays_7d || 0) - (a.plays_7d || 0)) || (b.play_count - a.play_count));
+  const byPlays = (a, b) => (b.play_count - a.play_count) || byNewest(a, b);
+  const rankOf = new Map(CHART.map(e => [e.song_id, e.rank]));
+  weeklyFallback = rankOf.size === 0;
+  if(weeklyFallback) return SONGS.slice().sort(byPlays);
+  const charted = SONGS.filter(s => rankOf.has(s.id))
+    .sort((a, b) => rankOf.get(a.id) - rankOf.get(b.id));
+  const rest = SONGS.filter(s => !rankOf.has(s.id)).sort(byPlays);
+  return charted.concat(rest);
 }
 
 // Returns { hero, rails, editors, fallback }. Each rail is deduped against the
@@ -1875,7 +1933,7 @@ function homepageSections(){
   addRail('newest', 'New releases', SONGS.slice().sort(byNewest));
   addRail('most_talked', 'Most talked about',
     SONGS.filter(s => s.comment_count > 0).sort((a, b) => (b.comment_count - a.comment_count) || (b.like_count - a.like_count)));
-  // All-time favorites: skipped during the fallback week, since the weekly rail
+  // All-time favorites: skipped when there is no chart yet, since the weekly rail
   // is already ranking on play_count then (don't show the same ranking twice).
   if(!fallback){
     addRail('all_time', 'All-time favorites',

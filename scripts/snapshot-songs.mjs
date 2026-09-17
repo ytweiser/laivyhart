@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* ============================================================
-   Regenerate songs.json — a static snapshot of the public songs list.
+   Regenerate songs.json (the public songs list) and chart.json (the latest
+   daily chart snapshot) — the static snapshots the site falls back to.
 
    songs.json is the outage/offline fallback: if Supabase is unavailable
    (network error, or HTTP 402 when the project is paused), index.html and
@@ -29,6 +30,7 @@ import { dirname, join } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outPath = join(root, 'songs.json');
+const chartPath = join(root, 'chart.json');
 
 // Keep the committed snapshot and let the build proceed, unless there is no
 // snapshot at all (then there is nothing to serve, so fail hard).
@@ -68,3 +70,57 @@ if (!Array.isArray(rows) || rows.length === 0) {
 
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');
 console.log(`[snapshot] Wrote songs.json with ${rows.length} songs.`);
+
+/* ------------------------------------------------------------
+   chart.json — the latest daily chart snapshot (top 10).
+
+   The homepage weekly ranking (hero + "Most listened this week" rail) reads
+   this instead of the live plays_7d, so the order only changes once a night
+   when take_chart_snapshot() closes the Jerusalem day. index.html prefers the
+   live chart_snapshots rows when Supabase is reachable (so a new night's chart
+   appears without a deploy) and falls back to this file otherwise.
+
+   Same build-safe rule as songs.json, and softer: any failure here keeps the
+   existing chart.json and never fails the build. With no chart.json at all the
+   homepage simply ranks by play_count, so there is nothing to fail hard over.
+   ------------------------------------------------------------ */
+function keepExistingChart(reason) {
+  console.warn(`[snapshot] ${reason} — keeping the existing chart.json.`);
+}
+
+async function writeChart() {
+  let cres;
+  try {
+    // ranks 1-10 of one date, so the 10 newest rows are the latest chart.
+    cres = await fetch(
+      `${url}/rest/v1/chart_snapshots?select=chart_date,rank,song_id&order=chart_date.desc,rank.asc&limit=10`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } },
+    );
+  } catch (e) {
+    return keepExistingChart(`Chart request failed (${e && e.message})`);
+  }
+  if (!cres.ok) return keepExistingChart(`Chart request returned HTTP ${cres.status}`);
+
+  let crows;
+  try {
+    crows = await cres.json();
+  } catch (e) {
+    return keepExistingChart('Chart response was not valid JSON');
+  }
+  if (!Array.isArray(crows) || crows.length === 0) {
+    return keepExistingChart('Chart response was empty or not an array');
+  }
+
+  // Guard against a half-written date: keep only the newest chart_date's rows.
+  const chartDate = crows[0].chart_date;
+  const entries = crows
+    .filter((r) => r.chart_date === chartDate && r.song_id && r.rank >= 1 && r.rank <= 10)
+    .sort((a, b) => a.rank - b.rank)
+    .map((r) => ({ rank: r.rank, song_id: r.song_id }));
+  if (entries.length === 0) return keepExistingChart('Chart rows had no usable entries');
+
+  writeFileSync(chartPath, JSON.stringify({ chart_date: chartDate, entries }, null, 2) + '\n');
+  console.log(`[snapshot] Wrote chart.json for ${chartDate} with ${entries.length} entries.`);
+}
+
+await writeChart();

@@ -2,9 +2,9 @@
 
 A static jukebox site (vanilla HTML/JS, no build step for the app) backed by a
 Supabase Postgres database, with audio and cover art served from Cloudflare R2.
-Deployed on Vercel; `songs.json` is a committed static snapshot used as the
-Supabase-outage fallback (regenerated on every deploy by
-`scripts/snapshot-songs.mjs`).
+Deployed on Vercel; `songs.json` (the songs list) and `chart.json` (the latest
+daily chart) are committed static snapshots used as the Supabase-outage fallback
+(both regenerated on every deploy by `scripts/snapshot-songs.mjs`).
 
 Key files: `index.html` (public jukebox), `admin.html` (owner editor),
 `config.js` (Supabase URL + publishable key), `middleware.js` (per-song OG
@@ -126,15 +126,21 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
     (search applied). Both are applied on arrival **without playback**, and the
     param is cleared with `replaceState` so back/forward behaves — see
     `applyListenParams()` / `goListenWithParam()` and the `initRoute` branch.
-  - **Ranking window** (`rankedByListens()`): `plays_7d` desc, then `play_count`
-    desc. `plays_7d` is a rolling 7-day listen count maintained by
-    `refresh_plays_7d()` (hourly pg_cron) off the `plays` history table (see
-    `sql/002`). **Fallback:** if fewer than 3 songs have any 7-day plays, ranking
-    falls back to `play_count` desc and sets `weeklyFallback`, which also **omits
-    the All-time rail** (so the same ranking is not shown twice). The **wording is
-    always weekly regardless of the fallback** — the hero always reads "This week's
-    #1 song" and the top rail always "Most listened this week". Numbers are never
-    displayed.
+  - **Ranking window** (`rankedByListens()`): the weekly ranking **is yesterday's
+    chart**, not the live `plays_7d`. It reads the latest daily snapshot in
+    `chart_snapshots` (ranks 1-10, by `song_id`) and puts those songs in chart
+    order, then appends every remaining song by `play_count` desc so the dedupe
+    and the 3-song floor below still have material. The order therefore **changes
+    once a night**, when `take_chart_snapshot()` closes the Jerusalem day (see
+    **Charts**), and not as plays land during the day. `loadChart()` reads the
+    chart **live from Supabase** when it is reachable, so a new night's chart
+    appears without a deploy, and falls back to the committed **`chart.json`**
+    (written at build time by `scripts/snapshot-songs.mjs`, precached by `sw.js`).
+    **Fallback:** if there is no chart at all, ranking is `play_count` desc and
+    `weeklyFallback` is set, which also **omits the All-time rail** (so the same
+    ranking is not shown twice). The **wording is always weekly** — the hero
+    always reads "This week's #1 song" and the top rail always "Most listened this
+    week". Numbers other than the weekly rail's rank badges are never displayed.
   - **Hero**: the #1 ranked song as a **two-column labeled block** — left column
     (~45%) holds a large display-serif label ("This week's #1 song"), the title,
     displayed category, and first sentence of the note; right column holds the
@@ -239,6 +245,12 @@ that is effectively all-time order, so history still starts on day one). It sets
 Scheduled via pg_cron **`take-chart-snapshot`** at `10 22 * * *` (22:10 UTC =
 01:10 Jerusalem summer / 00:10 winter, just after the hourly `plays_7d` refresh
 at `:05`).
+
+The homepage weekly ranking reads this table: the hero and the *Most listened
+this week* rail are **yesterday's chart, refreshed nightly**, so **"This week's
+#1" is exactly `rank` 1 of the latest `chart_date` in `chart_snapshots`** and the
+rail is its #2-#10. See **Pages** for the client side (`rankedByListens()`,
+`loadChart()`, and the `chart.json` fallback).
 
 The admin **Charts** tab (`admin.html`, read-only) lists snapshots grouped by
 date, newest first — rank, title, `plays_7d` — with week-end dates badged, and a

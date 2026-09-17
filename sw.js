@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v57';
+const CACHE_VERSION = 'v58';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -22,7 +22,7 @@ const SHELL = [
   'index.html', 'about.html', 'admin.html',
   '/listen',                 // song-page route (rewritten to index.html) — offline shell
   'theme.css', 'config.js', 'pwa.js',
-  'songs.json',
+  'songs.json', 'chart.json',
   'manifest.webmanifest',
   'favicon.svg', 'favicon-32.png', 'apple-touch-icon.png',
   'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png'

@@ -13,12 +13,25 @@
     "about": "Dovid HaMelech's tefila is dedicated to anyone who has ever looked at life and seen a thousand pieces that did not seem to belong together. One story behind the moments we understand and the moments we cannot. We may not need a different world; perhaps what we need is different eyes.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/asking-for-1-1787237228874.mp3",
     "id": "5647c338-0aee-4472-8e35-44dad08c5477",
-    "play_count": 94,
+    "play_count": 118,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/asking-for-1-1787237233673.jpg",
     "like_count": 3,
     "cover_focus_x": 50,
     "cover_focus_y": 29,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tehillim",
+      "tefilla",
+      "hashgacha",
+      "longing"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 2,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 1
   },
   {
     "title": "Bonds of Darkness",
@@ -36,12 +49,26 @@
     "about": "If our neshama was already so close to Hashem in Gan Eden, why did it need to leave that perfection and enter a world of struggle and uncertainty?\nWhile the neshama knew Hashem's greatness in Gan Eden, it can only experience the unique closeness that comes from choosing Him through life's challenges, holding His hand in the valleys, and walking with faith. Inspired by Tehilim 23 and Chazal, the song reminds us that our greatest connection to Hashem is often forged not in Gan Eden, but in the journey through the darkness.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/bonding-outside-the-palace-1785442584345.mp3",
     "id": "abf4ba76-070d-43ec-8160-ecdfe957c482",
-    "play_count": 26,
+    "play_count": 29,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/bonds-of-darkness-1785774346765.jpg",
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tehillim",
+      "chazal",
+      "perseverance",
+      "hashgacha",
+      "longing"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "Fires Still Burning",
@@ -57,12 +84,25 @@
     "about": "This song traces nearly 2,000 years of Jewish history, from the destruction of the Beis HaMikdash to the challenges facing the Jewish people today. It follows a painful pattern: empires fall, rulers change, and the faces of antisemitism evolve, but the hatred remains the same. Yet above every chapter of exile stands an unshakable truth. Hashem has never forgotten His people, and despite the long road of Galus, we continue to believe that the final redemption will come with the arrival of Mashiach.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/fires-still-burning-1785442893950.mp3",
     "id": "12d66820-a844-4679-8220-4985e97c54cd",
-    "play_count": 9,
+    "play_count": 10,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/fires-still-burning-1785656868152.png",
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "exile",
+      "redemption",
+      "perseverance",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "Holy Land Vacation",
@@ -76,12 +116,25 @@
     "about": "Every traveler thinks they came to Israel for something different. Somewhere between the Shuk and the Judean hills, the soul quietly remembers why it really came. It came to enjoy the warmth of Home.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/holy-land-1785442361234.mp3",
     "id": "17431641-c8e1-4d6c-ae7a-8ea371a677e5",
-    "play_count": 12,
+    "play_count": 16,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/holy-land-vacation-1785775430203.jpg",
-    "like_count": 0,
+    "like_count": 1,
     "cover_focus_x": 51,
     "cover_focus_y": 77,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "longing",
+      "exile",
+      "hashgacha",
+      "upbeat"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 3,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 1
   },
   {
     "title": "Jewish USA",
@@ -97,12 +150,56 @@
     "about": "In honor of the 250th Birthday of the United States, the Malchus Shel Chesed.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/250-jewish-years-1785442828188.mp3",
     "id": "79e6ae2f-db2b-406c-b031-bebae6bdb059",
-    "play_count": 8,
+    "play_count": 9,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/jewish-usa-1785655052333.png",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "exile",
+      "gratitude",
+      "perseverance",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
+  },
+  {
+    "title": "My Perfect World",
+    "created_at": "2026-09-15T10:01:00.303125+00:00",
+    "lyrics_original": "",
+    "title_translit": null,
+    "lyrics_translation": null,
+    "categories": [],
+    "language": "English",
+    "length_seconds": null,
+    "about": null,
+    "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/my-perfect-world-1789466456156.mp3",
+    "id": "62c8b530-2456-4fa2-bf52-c797bfedea65",
+    "play_count": 4,
+    "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/my-perfect-world-1789588556892.jpg",
+    "like_count": 0,
+    "cover_focus_x": 50,
+    "cover_focus_y": 50,
+    "featured_category": null,
+    "tags": [
+      "redemption",
+      "longing",
+      "hashgacha"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "Rising Like Lions",
@@ -124,7 +221,20 @@
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "redemption",
+      "perseverance",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "Segulos Galore",
@@ -138,12 +248,25 @@
     "about": "We've all been there. Looking for one more segulah, one more tefillah, one more trick to open the gates of parnasah. Then one day you realize... the gate was never the problem.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/hashem-chafetz-1785442502560.mp3",
     "id": "2cc83758-1e78-43a9-a459-fe7f676662ad",
-    "play_count": 23,
+    "play_count": 24,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/segulos-galore-1785674583829.png",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tefilla",
+      "humility",
+      "hashgacha",
+      "upbeat"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "She Carried Me",
@@ -160,12 +283,59 @@
     "about": "This song is dedicated to every mother, and to the day a child finally understands that the woman who carried them deserves to have her honor carried by them.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/she-carried-me-1787235515665.mp3",
     "id": "9e712dfb-8fe4-416e-a181-c1a1e9c63112",
-    "play_count": 9,
+    "play_count": 10,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/she-carried-me-1787235521638.jpg",
     "like_count": 1,
     "cover_focus_x": 6,
     "cover_focus_y": 2,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "motherhood",
+      "gratitude",
+      "humility",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
+  },
+  {
+    "title": "Standing Proud",
+    "created_at": "2026-09-04T22:04:11.382309+00:00",
+    "lyrics_original": "Who gets to stand when the בְּרִית is spoken?\nWho gets a place when the doors are opened?\nIs it the ones whose names we know?\nThe ones who lead, the ones who show?\n\nThe heads of שְׁבָטִים, the elders first\nThe ones we look to when things get worse\nThe people with the wisdom and the plan\nThe ones who carry the weight of the land\n\nBut then the תּוֹרָה keeps going down\nPast every title, past every crown\nAnd suddenly I hear something strange\nThe list gets longer, but the message won't change\n\n\nFrom the highest seat\nTo the lowest place\nNobody disappears\nNobody gets erased\n\n\nאַתֶּם נִצָּבִים הַיּוֹם כֻּלְּכֶם\nלִפְנֵי ה׳ אֱלֹקֵיכֶם\n\nרָאשֵׁיכֶם שִׁבְטֵיכֶם\nזִקְנֵיכֶם וְשֹׁטְרֵיכֶם\n\nכֹּל אִישׁ יִשְׂרָאֵל\n\nכֻּלְּכֶם\nכֻּלְּכֶם\n\nStanding proud\n\n\nThen come the children\nThe wives, the גֵּר\nThe one who chops the wood\nThe one who shleps the water\n\nNot the people you put on a stage\nNot the people who make the front page\nNot the ones who get the credit or fame\nBut they're standing there just the same\n\nBecause a nation isn't built from one\nIt isn't finished when the leaders are done\nEvery hand has a part to play\nEvery person carries the world in their way\n\n\nYou don't have to be the head\nTo hold your head up high\nYou don't have to lead the people\nTo have a reason why\n\n\nאַתֶּם נִצָּבִים הַיּוֹם כֻּלְּכֶם\nלִפְנֵי ה׳ אֱלֹקֵיכֶם\n\nטַפְּכֶם נְשֵׁיכֶם\nוְגֵרְךָ אֲשֶׁר בְּקֶרֶב מַחֲנֶיךָ\n\nמֵחֹטֵב עֵצֶיךָ\nעַד שֹׁאֵב מֵימֶיךָ\n\nכֻּלְּכֶם\nכֻּלְּכֶם\n\nStanding proud\n\n\nMaybe we confuse importance with position\nMaybe we measure people by their title and ambition\nBut the תּוֹרָה gives us something better\nA different way to measure every member\n\nThe leader needs the worker\nThe worker needs the leader\nThe scholar needs the builder\nThe builder needs the teacher\n\nThe one who brings the vision\nNeeds someone who can make it real\nAnd the one who carries water\nMay be carrying what the whole camp needs\n\n\nOne is a hand\nOne is a foot\nOne is a heart\nOne is a brain\n\nDifferent parts\nDifferent purpose\nDifferent gifts\nDifferent strength\n\nThe hand can't do the work of the foot\nThe foot can't do the work of the hand\nThe heart can't do the work of the brain\nAnd the brain can't do it all\n\nNone is the other\nNone can replace the other\n\nBut the בְּרִית brings them together\n\nNot one hand\nNot one foot\nNot one heart\nNot one brain\n\nOne גּוּף\n\nOne עַם\n\nMany parts\n\nOne\n\n\nI don't stand because I'm important\n\nI stand because I'm part of something\n\nI don't stand because my role is greater\n\nI stand because my role is needed\n\nWe stand together\n\n\nאַתֶּם נִצָּבִים הַיּוֹם כֻּלְּכֶם\nלִפְנֵי ה׳ אֱלֹקֵיכֶם\n\nרָאשֵׁיכֶם שִׁבְטֵיכֶם\nזִקְנֵיכֶם וְשֹׁטְרֵיכֶם\n\nכֹּל אִישׁ יִשְׂרָאֵל\n\nטַפְּכֶם נְשֵׁיכֶם\nוְגֵרְךָ אֲשֶׁר בְּקֶרֶב מַחֲנֶיךָ\n\nמֵחֹטֵב עֵצֶיךָ\nעַד שֹׁאֵב מֵימֶיךָ\n\nכֻּלְּכֶם\nכֻּלְּכֶם\n\nStanding proud as one\n\n\nאַתֶּם נִצָּבִים\n\nכֻּלְּכֶם\n\nStanding proud\n\nהַיּוֹם\n\nAnd forever\n\nAs one\n",
+    "title_translit": null,
+    "lyrics_translation": null,
+    "categories": [
+      "Unity"
+    ],
+    "language": "English",
+    "length_seconds": null,
+    "about": "This song is dedicated to every person who has ever wondered whether they matter.\nTo the people whose names are known, and to those whose names are never mentioned.\nEvery person has a place. Every person has a purpose. And when we stand before ה׳, no one stands alone.\n\nThis is “כולכם.”",
+    "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/standing-proud-1788559447756.mp3",
+    "id": "9ed307f8-a5dd-455e-a598-488fa108abcf",
+    "play_count": 10,
+    "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/standing-proud-1789581661158.jpg",
+    "like_count": 0,
+    "cover_focus_x": 48,
+    "cover_focus_y": 55,
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "hashgacha",
+      "humility",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "The Walls Fall First",
@@ -179,17 +349,30 @@
     "about": "Yerushalayim wasn't destroyed when the flames rose into the sky. It was destroyed the day the enemy found an opening. Every heart has walls. Every soul has gates. And every battle begins there.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/the-walls-fall-first-1785442245842.mp3",
     "id": "87970626-1750-4b75-b120-8d604b2e6b0d",
-    "play_count": 15,
+    "play_count": 21,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/the-walls-fall-first-1785675411355.png",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "exile",
+      "teshuva",
+      "struggle",
+      "hashgacha"
+    ],
+    "featured": true,
+    "featured_order": 1,
+    "comment_count": 1,
+    "plays_7d": 3,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "The Year Is Waiting",
     "created_at": "2026-08-25T12:12:36.815899+00:00",
-    "lyrics_original": "Another year is closing\n\nI can almost see it go\n\nTwelve months that I was given\n\nSome I used, some I let go\n\nThere were days I made a difference\n\nThere were days I missed the mark\n\nThere were doors I should have opened\n\nThere were chances left in the dark\n\nAnd now the year is ending\n\nAnd another one begins\n\nBefore I ask for anything\n\nI have to look at where I've been\n\nBecause Rosh Hashanah comes\n\nAnd suddenly I understand\n\n\nThis isn't just another date\n\nAnother number on the calendar\n\n\nI'm standing here\n\nWith everything I've done\n\nAnd everything I still can become\n\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nAnd the year is waiting\n\nFor what I'll do with it\n\nEvery year I make a plan\n\nEvery year I make a list\n\nHere is what I want to change\n\nHere is everything I missed\n\nHere is what I want to build\n\nHere is where I want to grow\n\nHere are all the things I need\n\nAnd all the things I hope will come\n\nI can tell You what I'm hoping\n\nI can tell You what I need\n\nI can make my case for tomorrow\n\nI can tell You what I want to achieve\n\n\nBut then I hear the words of Chazal\n\nAnd suddenly I understand\n\nI can make the plans\n\nI can make the case\n\nBut I don't decide\n\nWhat will be placed in my hands\n\n\nThere is a measure\n\nThere is a plan\n\nThere is a year\n\nI don't understand\n\nI can ask\n\nI can dream\n\nI can prepare\n\nFor what will be\n\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nSo what am I asking for?\n\n\nNot simply more\n\nNot simply less\n\n\nGive me what You know I need\n\nTo become what I can become\n\nIf You give me more\n\nLet me know what to do with more\n\n\nIf You give me less\n\nLet me not become less\n\nIf a door opens\n\nGive me courage to walk through\n\nIf something closes\n\nGive me strength to walk another road\n\n\nI don't control\n\nWhat comes into my life\n\nBut I can decide\n\nWhat I do with what arrives\n\nAnd then I remember\n\nהַיּוֹם הֲרַת עוֹלָם\n\nToday\n\nThe world begins again\n\n\nAnd maybe that's why\n\nI get another chance\n\nNot because yesterday didn't happen\n\nIt did\n\nI carry it with me\n\nBut it doesn't have to be\n\nThe final word\n\n\nA new year\n\n\nA new page\n\n\nA new chance\n\nNot to become somebody else\n\nBut to become\n\nMore of who I was meant to be\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nהַיּוֹם הֲרַת עוֹלָם\n\n\nA new year is opening\n\nA new year is mine to live\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nAnd I'm standing here\n\nWith another year\n\nAnother chance\n\nAnother beginning\n\n\nהַיּוֹם הֲרַת עוֹלָם\n\n\nA new year\n\nA new beginning\n\nA year I haven't lived yet\n\nAnd I'm ready",
+    "lyrics_original": "Another year is closing\n\nI can almost see it go\n\nTwelve months that I was given\n\nSome I used, some I let go\n\nThere were days I made a difference\n\nThere were days I missed the mark\n\nThere were doors I should have opened\n\nThere were chances left in the dark\n\nAnd now the year is ending\n\nAnd another one begins\n\nBefore I ask for anything\n\nI have to look at where I've been\n\nBecause Rosh Hashanah comes\n\nAnd suddenly I understand\n\n\nThis isn't just another date\n\nAnother number on the calendar\n\n\nI'm standing here\n\nWith everything I've done\n\nAnd everything I still can become\n\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nAnd the year is waiting\n\nFor what I'll do with it\n\nEvery year I make a plan\n\nEvery year I make a list\n\nHere is what I want to change\n\nHere is everything I missed\n\nHere is what I want to build\n\nHere is where I want to grow\n\nHere are all the things I need\n\nAnd all the things I hope will come\n\nI can tell You what I'm hoping\n\nI can tell You what I need\n\nI can make my case for tomorrow\n\nI can tell You what I want to achieve\n\n\nBut then I hear the words \n\nAnd suddenly I understand\n\nI can make the plans\n\nI can make the case\n\nBut I don't decide\n\nWhat will be placed in my hands\n\n\nThere is a measure\n\nThere is a plan\n\nThere is a year\n\nI don't understand\n\nI can ask\n\nI can dream\n\nI can prepare\n\nFor what will be\n\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nSo what am I asking for?\n\n\nNot simply more\n\nNot simply less\n\n\nGive me what You know I need\n\nTo become what I can become\n\nIf You give me more\n\nLet me know what to do with more\n\n\nIf You give me less\n\nLet me not become less\n\nIf a door opens\n\nGive me courage to walk through\n\nIf something closes\n\nGive me strength to walk another road\n\n\nI don't control\n\nWhat comes into my life\n\nBut I can decide\n\nWhat I do with what arrives\n\nAnd then I remember\n\nהַיּוֹם הֲרַת עוֹלָם\n\nToday\n\nThe world begins again\n\n\nAnd maybe that's why\n\nI get another chance\n\nNot because yesterday didn't happen\n\nIt did\n\nI carry it with me\n\nBut it doesn't have to be\n\nThe final word\n\n\nA new year\n\n\nA new page\n\n\nA new chance\n\nNot to become somebody else\n\nBut to become\n\nMore of who I was meant to be\n\n\nכָּל מְזוֹנוֹתָיו שֶׁל אָדָם\n\nקְצוּבִין לוֹ\n\nמֵרֹאשׁ הַשָּׁנָה\n\nוְעַד יוֹם הַכִּפּוּרִים\n\n\nהַיּוֹם הֲרַת עוֹלָם\n\n\nA new year is opening\n\nA new year is mine to live\n\n\nכָּל בָּאֵי עוֹלָם\n\nעוֹבְרִין לְפָנָיו\n\nכִּבְנֵי מָרוֹן\n\n\nAnd I'm standing here\n\nWith another year\n\nAnother chance\n\nAnother beginning\n\n\nהַיּוֹם הֲרַת עוֹלָם\n\n\nA new year\n\nA new beginning\n\nA year I haven't lived yet\n\nAnd I'm ready",
     "title_translit": "היום הרת עולם",
     "lyrics_translation": null,
     "categories": [
@@ -201,12 +384,25 @@
     "about": "This song is dedicated to the moment we stand between the year that was and the year that is about to begin. Rosh Hashanah is not only a time to ask for what we want, it is a time to recognize that every year is a gift, every person is judged, and every new beginning carries the possibility of becoming more of who we were meant to be.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/the-year-is-waiting-1787659950330.mp3",
     "id": "10a25793-5798-4a80-898d-446db4250787",
-    "play_count": 23,
+    "play_count": 51,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/the-year-is-waiting-1787659955407.jpg",
-    "like_count": 1,
+    "like_count": 2,
     "cover_focus_x": 50,
     "cover_focus_y": 73,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "teshuva",
+      "tefilla",
+      "gratitude",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "אַל תַּשְׁלִיכֵנִי",
@@ -223,12 +419,25 @@
     "about": "A candle burns brightest just before the night grows dark. The later years of life aren't meant to be an epilogue. They're where wisdom becomes someone else's future.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785266896645.mp3",
     "id": "b8dd8c24-efc2-45e5-ac52-b11a3d1f9aa8",
-    "play_count": 18,
+    "play_count": 19,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785676575763.png",
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "aging",
+      "tehillim",
+      "tefilla",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "אֱמֶת לַאֲמִתּוֹ",
@@ -250,7 +459,19 @@
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "perseverance",
+      "struggle",
+      "teshuva"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "ברכי נפשי",
@@ -273,7 +494,19 @@
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "hashgacha",
+      "gratitude",
+      "chazal"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "גֶּשֶׁם וְטַל",
@@ -290,12 +523,25 @@
     "about": "Why did Chazal say that when Bnei Yisrael asked Hashem for rain, He answered with something even better: dew?\n\nRain is essential, but it comes and goes. Dew descends quietly every single day. Perhaps the message is that while we naturally pray for Geshem, the physical blessings that sustain our lives, Hashem longs to give us something even greater: the everlasting Tal of Torah, Tal that sustains life. Physical blessings are the means; spiritual growth is the end. Rain nourishes the earth, but dew nourishes the soul. Today, tomorrow, and for eternity.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785313259159.mp3",
     "id": "f0e43564-e330-49ed-a69e-4767cbc8a323",
-    "play_count": 16,
+    "play_count": 22,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785680343028.png",
-    "like_count": 1,
+    "like_count": 2,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tefilla",
+      "chazal",
+      "hashgacha",
+      "longing"
+    ],
+    "featured": true,
+    "featured_order": 5,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 1,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "דוד מכרכר",
@@ -311,12 +557,25 @@
     "about": "This song is inspired by Dovid HaMelech's famous dance before the Aron. Though Michal criticized him for lowering his royal dignity, Dovid understood that before the Shechinah there is no room for ego. So too, the holiest wedding dance is not about the dancer, but about bringing joy to the chassan, the kallah, and the Shechinah that dwells between them.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785442756864.mp3",
     "id": "0d81a4bc-22ff-4bd9-8f24-1ab9340501c7",
-    "play_count": 11,
+    "play_count": 14,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785681153878.png",
     "like_count": 2,
     "cover_focus_x": 49,
     "cover_focus_y": 5,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "chuppah",
+      "humility",
+      "tanach",
+      "upbeat"
+    ],
+    "featured": true,
+    "featured_order": 4,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 1
   },
   {
     "title": "המלאכה לגמור",
@@ -335,7 +594,19 @@
     "like_count": 1,
     "cover_focus_x": 56,
     "cover_focus_y": 45,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "chazal",
+      "perseverance",
+      "humility"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "וְשָׂא נֵס",
@@ -349,12 +620,25 @@
     "about": "Every generation believed it had finally found a place to belong. We learned the language, built businesses, raised families, and called it home. Our neighbors smiled. The future looked secure. Then, almost without warning, the welcome faded. Doors closed. Friends turned silent. The same story unfolded again and again, across continents and centuries. The lesson never changed: exile can offer comfort, but it can never offer permanence.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785441936991.mp3",
     "id": "5a5ded57-dcde-463a-90f8-22e170d7538f",
-    "play_count": 25,
+    "play_count": 29,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785752194486.jpg",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 40,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "exile",
+      "longing",
+      "redemption",
+      "perseverance"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "יָבֹאוּ וְיָעִידוּ",
@@ -373,7 +657,20 @@
     "like_count": 0,
     "cover_focus_x": 54,
     "cover_focus_y": 12,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "midrash",
+      "chazal",
+      "perseverance",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "כְּאִלּוּ בָּנָה",
@@ -390,12 +687,25 @@
     "about": "Every faithful Jewish home is another stone returned to the walls of our nation, another place for the Shechinah to dwell. This song is a reminder that every wedding is not only the beginning of a marriage, it is another step in rebuilding Yerushalayim and truly a reason for all to rejoice.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785266795706.mp3",
     "id": "f1a18aad-35ee-4c86-b7fe-7a8bdb3a004a",
-    "play_count": 42,
+    "play_count": 44,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785684085348.png",
     "like_count": 0,
     "cover_focus_x": 45,
     "cover_focus_y": 71,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "chuppah",
+      "marriage",
+      "redemption",
+      "upbeat"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "לָגַעַת בְּנִשְׁמָתִי",
@@ -412,12 +722,25 @@
     "about": "We spend our lives searching for happiness, serenity, and a sense of peace, looking for them in places that can never truly satisfy. The soul longs to reconnect with the Divine spark Hashem placed within us, and until that longing is answered, we remain unsettled, no matter how much we achieve. This song is a prayer to quiet the noise, touch the neshamah, and discover the only place where lasting contentment can be found.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785441336019.mp3",
     "id": "37340b42-e6db-42d9-a331-43ac45497385",
-    "play_count": 24,
+    "play_count": 27,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785684773411.png",
     "like_count": 3,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "hashgacha",
+      "tefilla",
+      "teshuva",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 1
   },
   {
     "title": "מי יתן",
@@ -433,12 +756,25 @@
     "about": "Dedicated to all the great Rebbeim and Morahs who seek no honor other than the honor of Hashem and the well being of their students, whose greatest dream is to see every one of their students grow to become greater than they are.\n",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785441577975.mp3",
     "id": "c40b39c9-e4ab-4585-8b8a-d26dd0416094",
-    "play_count": 12,
+    "play_count": 13,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785776621025.jpg",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "tefilla",
+      "humility",
+      "gratitude"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "מָלְאָה הָאָרֶץ דֵּעָה",
@@ -455,12 +791,24 @@
     "about": "Every question we have about life begins with one limitation: we see the world through human eyes instead of through the prism of Hashem. The Navi promises that a day is coming when His presence will be so clear that faith will no longer require effort, and every doubt, every pain, and every mystery will find its place. This song is about that moment, when \"מָלְאָה הָאָרֶץ דֵּעָה אֶת הַשֵּׁם כַּמַּיִם לַיָּם מְכַסִּים,\" and there are no more questions because there is only clarity.\n",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785443545797.mp3",
     "id": "0670f698-7866-45b5-bdbf-5f02fbb52192",
-    "play_count": 11,
+    "play_count": 12,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785698430762.png",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "redemption",
+      "hashgacha"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "נִכְסְפָה",
@@ -474,12 +822,25 @@
     "about": "Long before we returned to Jerusalem, Jerusalem never left us. In every generation, our prayers, our tears, and our greatest joys carried one name.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785443170852.mp3",
     "id": "13e9a1bf-19cf-4087-ba7c-6f77676718d7",
-    "play_count": 20,
+    "play_count": 22,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785857859081.jpg",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tehillim",
+      "exile",
+      "longing",
+      "redemption"
+    ],
+    "featured": true,
+    "featured_order": 2,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "סֻלָּם יַעֲקֹב",
@@ -501,7 +862,19 @@
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "humility",
+      "perseverance"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "עוֹשֶׂה שָׁלוֹם",
@@ -518,12 +891,25 @@
     "about": "Everyone wants world peace, but the song's point is that it starts at your own table, the empty chair, the neighbor you stopped greeting.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785441279293.mp3",
     "id": "2a3e1636-f169-4fc4-a89f-428939b43533",
-    "play_count": 7,
+    "play_count": 9,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785822597363.jpg",
     "like_count": 0,
     "cover_focus_x": 45,
     "cover_focus_y": 54,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tefilla",
+      "unity",
+      "humility",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "עַל בְּלִימָה",
@@ -540,12 +926,25 @@
     "about": "Sometimes the greatest act of strength isn't finding the perfect words, it's having the wisdom to leave them unspoken.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1788225454306.mp3",
     "id": "3a59fa48-8598-47f4-b86e-fa9367d534ff",
-    "play_count": 24,
+    "play_count": 25,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785773918596.jpg",
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "silence",
+      "humility",
+      "perseverance",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "עָלֹה נַעֲלֶה",
@@ -566,7 +965,20 @@
     "like_count": 1,
     "cover_focus_x": 51,
     "cover_focus_y": 18,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tanach",
+      "perseverance",
+      "unity",
+      "anthem"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "פִּתְחִי לִי",
@@ -583,12 +995,25 @@
     "about": "Sometimes we stand outside the gates of holiness and wonder why Hashem feels so far away. But perhaps the door was never locked, perhaps He is standing on the other side, waiting for us to open even the smallest crack. We ask Him to open the gates for us, while He asks us to open our hearts to Him, promising that even an opening no wider than a needle can become a doorway as wide as the entrance to the Bais HaMikdash.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1786430583765.mp3",
     "id": "c6272ed4-8f13-4fa3-9715-34923d16ebb6",
-    "play_count": 26,
+    "play_count": 31,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1786430587063.jpg",
     "like_count": 1,
     "cover_focus_x": 53,
     "cover_focus_y": 62,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tehillim",
+      "tanach",
+      "tefilla",
+      "teshuva"
+    ],
+    "featured": true,
+    "featured_order": 3,
+    "comment_count": 0,
+    "plays_7d": 1,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "קָמוּ בָנֶיהָ",
@@ -610,7 +1035,20 @@
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "motherhood",
+      "marriage",
+      "tanach",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "רֹאשׁ חֹדֶשׁ",
@@ -632,7 +1070,19 @@
     "like_count": 0,
     "cover_focus_x": 87,
     "cover_focus_y": 6,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "rosh-chodesh",
+      "redemption",
+      "perseverance"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "רגע אחד",
@@ -651,7 +1101,20 @@
     "like_count": 0,
     "cover_focus_x": 41,
     "cover_focus_y": 34,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "teshuva",
+      "silence",
+      "struggle",
+      "perseverance"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "רְפָאֵנוּ",
@@ -668,12 +1131,25 @@
     "about": "Dedicated to everyone whose daily battle is unseen, whose strength is quiet, and whose hope never fades. May Hashem replace every pain with healing, every fear with peace, and every tear with joy.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/untitled-1785441208740.mp3",
     "id": "f4b26177-1af6-4875-ae8f-726a7633db72",
-    "play_count": 39,
+    "play_count": 41,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785815748107.jpg",
     "like_count": 1,
     "cover_focus_x": 50,
     "cover_focus_y": 50,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "tefilla",
+      "struggle",
+      "hashgacha",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "שְׁכִינָה בֵּינֵיהֶן",
@@ -694,7 +1170,20 @@
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 9,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "marriage",
+      "chuppah",
+      "chazal",
+      "hashgacha"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "שמם אדם",
@@ -713,7 +1202,20 @@
     "like_count": 0,
     "cover_focus_x": 49,
     "cover_focus_y": 21,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "marriage",
+      "chuppah",
+      "chazal",
+      "unity"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   },
   {
     "title": "תִּפְאֶרֶת בָּנִים",
@@ -730,11 +1232,24 @@
     "about": "Love begins in one direction, from parent to child. It reaches its fullness when the child matures and the relationship comes full circle. The children become the parents' crown, and the parents become the children's glory.",
     "audio_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/Tiferes%20Banim.mp3",
     "id": "7ee608a4-5082-48e6-bdfe-8f54135bc944",
-    "play_count": 8,
+    "play_count": 9,
     "cover_url": "https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/covers/cover-1785816582030.jpg",
     "like_count": 0,
     "cover_focus_x": 50,
     "cover_focus_y": 36,
-    "featured_category": null
+    "featured_category": null,
+    "tags": [
+      "parenthood",
+      "tanach",
+      "gratitude",
+      "ballad"
+    ],
+    "featured": false,
+    "featured_order": null,
+    "comment_count": 0,
+    "plays_7d": 0,
+    "like_tune_count": 0,
+    "like_lyrics_count": 0,
+    "like_all_count": 0
   }
 ]
