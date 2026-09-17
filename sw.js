@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v65';
+const CACHE_VERSION = 'v66';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -33,10 +33,16 @@ const SHELL = [
 // is atomic, so a single missing or renamed file there would fail the whole
 // install and strand every visitor on the previous service worker. These are
 // added one at a time and a miss is simply skipped.
+// Only the WebP derivatives are precached: they are what the homepage actually
+// renders, and they total ~148 KB against ~3.1 MB for the source PNGs. The PNGs
+// are still served as the fallback for a browser that cannot decode WebP, and
+// such a browser caches them through the normal stale-while-revalidate path on
+// first use, so precaching megabytes that almost nobody fetches would only make
+// the install heavier.
 const BRAND = [
-  'brand/banner.png',      // full banner, wordmark on the glow background, 3:1
-  'brand/banner-bg.png',   // background only, no text, for compositing
-  'brand/wordmark.png'     // transparent wordmark, logo alone
+  'brand/banner.webp',     // full banner, wordmark on the glow background, 3:1
+  'brand/banner-bg.webp',  // background only, no text, for compositing
+  'brand/wordmark.webp'    // transparent wordmark, logo alone
 ];
 
 const SUPABASE_HOST = 'tshkrghrgokplakktvik.supabase.co';

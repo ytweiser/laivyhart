@@ -1137,7 +1137,7 @@
        screens. The container carries the accessible name for both cases. -->
   <div class="site-banner" id="site-banner" role="img" aria-label="Laivy Hart">
     <div class="site-banner-bg" id="site-banner-bg"></div>
-    <img class="site-banner-mark" id="site-banner-mark" alt="" aria-hidden="true">
+    <div id="site-banner-mark-wrap"></div>
   </div>
   <div class="site-tagline">
     <div class="site-tagline-1">Every soul has a song</div>
@@ -1222,9 +1222,18 @@ const SHOW_PLAY_COUNTS = false;
 // Brand artwork, committed as static files under /brand (see brand/README.md)
 // and precached by the service worker. The theme gradient below stays as the
 // fallback if any of these fail to load.
-const SITE_BANNER_URL    = 'brand/banner.png';      // full banner, wordmark included, 3:1
-const SITE_BANNER_BG_URL = 'brand/banner-bg.png';   // background plate, no text, for the narrow composition
-const SITE_WORDMARK_URL  = 'brand/wordmark.png';    // transparent wordmark
+// Each asset ships twice: a WebP at display width, which is what almost every
+// visitor gets, and the original PNG as the fallback for a browser that cannot
+// decode WebP. The PNGs are the source files and stay untouched.
+const SITE_BANNER_URL     = 'brand/banner.png';      // full banner, wordmark included, 3:1
+const SITE_BANNER_WEBP    = 'brand/banner.webp';
+const SITE_BANNER_BG_URL  = 'brand/banner-bg.png';   // background plate, no text, for the narrow composition
+const SITE_BANNER_BG_WEBP = 'brand/banner-bg.webp';
+const SITE_WORDMARK_URL   = 'brand/wordmark.png';    // transparent wordmark
+const SITE_WORDMARK_WEBP  = 'brand/wordmark.webp';
+// The breakpoint where the banner switches to the composed 2:1 layout. It is
+// both a CSS media query and a matchMedia test, so it lives in one place.
+const BANNER_NARROW_MQ = '(max-width:900px)';
 
 /* ============================================================
    Small utilities
@@ -2029,25 +2038,59 @@ function findASongHTML(){
 function updateSiteBanner(){
   const banner = document.getElementById('site-banner');
   const bg = document.getElementById('site-banner-bg');
-  const mark = document.getElementById('site-banner-mark');
   if(!banner || !bg) return;
   if(!SITE_BANNER_URL){ siteBannerFallback(); return; }
   bg.style.cssText = '';
   // Local files, served straight from /brand: no image CDN in front of them.
-  // The <picture> source swaps in the background-only plate on narrow screens,
-  // where the wordmark is laid over it as its own element instead.
+  // Source order decides what a browser fetches, and it fetches exactly one:
+  // narrow WebP, narrow PNG, wide WebP, then the wide PNG on the img itself.
+  // The narrow pair is the background-only plate; the wordmark goes over it as
+  // its own element. width/height give the image its intrinsic ratio, and the
+  // banner box is already reserved by its CSS aspect-ratio, so nothing shifts.
   bg.innerHTML =
     `<picture>` +
-      `<source media="(max-width:900px)" srcset="${escHtml(SITE_BANNER_BG_URL)}">` +
-      `<img class="site-banner-img" src="${escHtml(SITE_BANNER_URL)}" alt="" onerror="siteBannerFallback()">` +
+      `<source media="${BANNER_NARROW_MQ}" type="image/webp" srcset="${escHtml(SITE_BANNER_BG_WEBP)}">` +
+      `<source media="${BANNER_NARROW_MQ}" srcset="${escHtml(SITE_BANNER_BG_URL)}">` +
+      `<source type="image/webp" srcset="${escHtml(SITE_BANNER_WEBP)}">` +
+      `<img class="site-banner-img" src="${escHtml(SITE_BANNER_URL)}" width="2171" height="724"` +
+      ` alt="" fetchpriority="high" loading="eager" decoding="async" onerror="siteBannerFallback()">` +
     `</picture>`;
-  if(mark){
-    mark.onerror = siteBannerFallback;
-    mark.src = SITE_WORDMARK_URL;
-  }
   banner.classList.add('has-image');
   banner.classList.remove('is-fallback');
+  renderBannerMark();
 }
+
+function bannerIsNarrow(){
+  try{ return !!(window.matchMedia && window.matchMedia(BANNER_NARROW_MQ).matches); }
+  catch(e){ return false; }
+}
+
+// The wordmark overlay belongs to the narrow composition only, and it is
+// injected rather than left in the markup so a desktop visitor never downloads
+// it: a display:none <img> is still fetched by most browsers.
+function renderBannerMark(){
+  const wrap = document.getElementById('site-banner-mark-wrap');
+  if(!wrap) return;
+  const banner = document.getElementById('site-banner');
+  if(!bannerIsNarrow() || (banner && banner.classList.contains('is-fallback'))){
+    wrap.innerHTML = '';
+    return;
+  }
+  if(wrap.querySelector('img')) return;
+  wrap.innerHTML =
+    `<picture>` +
+      `<source type="image/webp" srcset="${escHtml(SITE_WORDMARK_WEBP)}">` +
+      `<img class="site-banner-mark" src="${escHtml(SITE_WORDMARK_URL)}" width="2172" height="724"` +
+      ` alt="" aria-hidden="true" decoding="async" onerror="siteBannerFallback()">` +
+    `</picture>`;
+}
+
+// Crossing the breakpoint swaps the composition in or out.
+try{
+  const mq = window.matchMedia(BANNER_NARROW_MQ);
+  if(mq.addEventListener) mq.addEventListener('change', renderBannerMark);
+  else if(mq.addListener) mq.addListener(renderBannerMark);
+}catch(e){ /* no matchMedia: the desktop banner is used */ }
 
 // If the artwork cannot be fetched, fall back to the generative theme gradient
 // the banner used before, so the homepage never shows an empty slab.
@@ -2059,6 +2102,8 @@ function siteBannerFallback(){
   bg.style.cssText = genArtStyle('laivy hart');
   banner.classList.remove('has-image');
   banner.classList.add('is-fallback');
+  const wrap = document.getElementById('site-banner-mark-wrap');
+  if(wrap) wrap.innerHTML = '';
 }
 
 // A single landscape rail card, shared by the ranked rails and the editor's band.
