@@ -370,33 +370,6 @@
   }
   .now-tag:hover{color:var(--text-dim); border-color:var(--accent-2);}
 
-  /* Optional like-facet line beneath the heart: a prompt + three small hearts,
-     each with a label. The prompt matches "Love this song?" (display serif, full
-     opacity); labels match "Tap the heart…" (body font, full opacity). */
-  /* Indented so its left edge aligns with the nudge text (beneath the heart),
-     not the far-left of the dock. Matches the next->nudge offset:
-     prev+play+next (7.8rem) + two flex gaps (1.2rem) + the 28px cluster gap. */
-  .facet-line{display:flex; flex-direction:column; gap:0.55rem; margin-top:0.35rem; margin-left:calc(9rem + 28px);}
-  .facet-line.hidden{display:none;}
-  .facet-line.fadein{animation:facetFadeIn 0.45s var(--ease);}
-  .facet-line.fading{opacity:0; transition:opacity 0.5s var(--ease);}
-  @keyframes facetFadeIn{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
-  .facet-prompt{font-family:var(--font-display); font-weight:600; font-size:1rem; line-height:1.15; color:var(--text); transition:color 0.3s var(--ease);}
-  /* Row on desktop; wraps to two lines on narrow screens rather than shrinking. */
-  .facet-options{display:flex; flex-wrap:wrap; gap:0.5rem 1.5rem;}
-  .facet-option{display:inline-flex; align-items:center; gap:0.45rem; background:none; border:none; padding:0.1rem 0; cursor:pointer;}
-  .facet-heart{
-    width:1.08rem; height:1.08rem; flex-shrink:0; fill:none; stroke:var(--text-dim); stroke-width:1.7; overflow:visible;
-    transition:fill 0.18s var(--ease), stroke 0.18s var(--ease), transform 0.18s var(--ease);
-  }
-  .facet-label{font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); transition:color 0.18s var(--ease);}
-  .facet-option:hover .facet-heart{stroke:var(--accent-2);}
-  .facet-option:hover .facet-label{color:var(--text);}
-  .facet-option.on .facet-heart{fill:var(--accent-2); stroke:var(--accent-2); animation:heart-pop 0.34s var(--ease);}
-  .facet-option.on .facet-label{color:var(--text);}
-  /* Settled (a facet chosen): the question goes muted, all three hearts stay so
-     the visitor can still change their mind. */
-  .facet-line.settled .facet-prompt{color:var(--text-faint);}
 
   /* ---------- Homepage (idle panel / "home while playing") ---------- */
   .logo{cursor:pointer;}
@@ -685,46 +658,56 @@
   .pick-title.en{font-family:var(--font-display); direction:ltr; font-style:italic;}
   .picker-foot{display:flex; align-items:center; justify-content:space-between; margin-top:0.7rem; padding-top:0.7rem; border-top:1px solid var(--line); flex-shrink:0;}
 
-  /* ---------- Like (heart) ---------- */
-  .like-btn{
-    display:inline-flex; align-items:center; gap:0.32rem; flex-shrink:0;
-    background:none; border:none; cursor:pointer; padding:0.2rem 0.15rem;
-    color:var(--text-faint); font-family:var(--font-ui); font-size:0.72rem; line-height:1;
+  /* ---------- The three loves (dock row 3) ----------
+     "the words", "the music", "the song" — three INDEPENDENT toggles, each a
+     big circle (64px desktop / 56px mobile, larger than the 48px play button)
+     with its label beneath in the body font at 0.95rem. Off = muted glass
+     outline; on = accent fill with a white icon. The heart carries its count
+     small beside the label; the other two never show numbers. */
+  .loves{display:flex; flex-direction:column; align-items:center; gap:0.5rem; margin-top:0.1rem;}
+  .loves.hidden{display:none;}
+  /* The question: display serif italic, one step below .reflect-title (1.4rem). */
+  .loves-q{font-family:var(--font-display); font-style:italic; font-weight:600;
+    font-size:1.2rem; line-height:1.2; color:var(--text); text-align:center;}
+  .loves-row{display:flex; align-items:flex-start; justify-content:center; gap:2.4rem;}
+  .love-btn{
+    display:flex; flex-direction:column; align-items:center; gap:0.4rem;
+    background:none; border:none; padding:0; cursor:pointer; flex:0 0 auto;
+  }
+  .love-ic{
+    width:64px; height:64px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--glass-hi); border:1px solid var(--glass-border); color:var(--text-dim);
+    transition:transform 0.18s var(--ease), background 0.2s var(--ease),
+      border-color 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .love-ic svg{width:1.9rem; height:1.9rem; display:block; overflow:visible;}
+  .love-label{
+    font-family:var(--font-ui); font-size:0.95rem; line-height:1.2; color:var(--text-dim);
+    display:inline-flex; align-items:baseline; gap:0.35rem; white-space:nowrap;
     transition:color 0.18s var(--ease);
   }
-  .like-btn .heart{
-    width:1.05rem; height:1.05rem; fill:none; stroke:currentColor; stroke-width:1.7;
-    overflow:visible; transition:transform 0.18s var(--ease);
+  .love-count{font-size:0.78rem; font-weight:600; color:var(--text-faint); font-variant-numeric:tabular-nums;}
+  .love-btn:hover .love-ic{transform:translateY(-1px); border-color:var(--accent-2); color:var(--accent-2);}
+  .love-btn:hover .love-label{color:var(--text);}
+  .love-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:14px;}
+  /* On: filled in the theme accent, white glyph, label at full strength. */
+  .love-btn.on .love-ic{
+    background:var(--accent-grad); border-color:transparent; color:#fff;
+    box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.38);
   }
-  .like-btn:hover{color:var(--accent-2);}
-  .like-btn.liked{color:var(--accent-1);}
-  .like-btn.liked .heart{fill:var(--accent-1); stroke:var(--accent-1); animation:heart-pop 0.34s var(--ease);}
-  .like-btn .like-count{min-width:0.7em; text-align:left; font-variant-numeric:tabular-nums;}
+  .love-btn.on .love-label{color:var(--text);}
+  .love-btn.on .love-heart{fill:#fff;}
+  .love-btn.on .love-count{color:var(--accent-2);}
+  /* Soft pulse on tap (the old heart's pop, applied to whichever was tapped). */
+  .love-btn.pulse .love-ic{animation:heart-pop 0.34s var(--ease);}
   @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
-  /* ---------- Now-playing Love cluster (nudge + heart + Share) ----------
-     Grouped just after the next button and left-aligned as one row (NOT pushed to
-     the far right). Order: [28px gap] nudge, heart, share. The next→nudge gap is
-     the flex gap (0.6rem) plus this margin, totalling ~28px. */
-  .dock-react{display:flex; align-items:center; gap:0.6rem; margin-left:calc(28px - 0.6rem);}
+  /* ---------- Share, pinned to the far right of the transport row ----------
+     Row 2 holds prev/play/next on the left and Share on the right, nothing
+     else; the three loves are their own row beneath. */
+  .dock-react{display:flex; align-items:center; margin-left:auto;}
   .dock-react.hidden{display:none;}
-  /* The nudge: line 1 in the display serif italic at the "What moved you?" size,
-     line 2 in the muted body font. Text swaps to "Loved."/"Thank you." when liked. */
-  .like-nudge{display:flex; flex-direction:column; gap:0.05rem; text-align:left; white-space:nowrap;}
-  .nudge-title{font-family:var(--font-display); font-style:italic; font-weight:600; font-size:1rem; line-height:1.15; color:var(--text);}
-  .nudge-sub{font-family:var(--font-ui); font-size:0.82rem; line-height:1.15; color:var(--text-dim);}
-  /* Love: heart at ~play-button size, count small + muted beside it, fills when liked. */
-  .like-btn.now-like{
-    height:3rem; min-width:3rem; padding:0 0.75rem; gap:0.38rem; border-radius:50px;
-    color:var(--accent-1); justify-content:center;
-    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.10), rgba(var(--accent-2-rgb),0.10));
-    border:1px solid var(--chip-border);
-    transition:transform 0.18s var(--ease), background 0.2s var(--ease), border-color 0.2s var(--ease);
-  }
-  .like-btn.now-like:hover{transform:translateY(-1px); border-color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.18), rgba(var(--accent-2-rgb),0.18));}
-  .like-btn.now-like .heart{width:1.55rem; height:1.55rem; stroke-width:1.7;}
-  .like-btn.now-like .like-count{font-size:0.78rem; font-weight:600; color:var(--text-dim); min-width:1ch;}
-  /* Share: share glyph in the accent-filled circle, immediately right of the heart. */
+  /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
     flex-shrink:0; width:3rem; height:3rem; border-radius:50%;
@@ -829,13 +812,16 @@
     .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
     .tabs-radio .cat-radio-wrap{flex:1 1 0; min-width:0;}
     .tabs-radio .cat-radio{width:100%; max-width:none;}
-    /* Keep prev/play/next + the Love cluster on one row. Trim dock spacing so the
-       nudge doesn't grow the dock height on mobile. The next->nudge gap is ~20px
-       here (0.5rem flex gap + this margin), with the facet line indented to match. */
+    /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
+       all three loves on one line at 56px. Dock spacing is trimmed so the loves
+       row adds its own height plus the one 0.5rem row gap, nothing more. */
     .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
     .transport{gap:0.5rem; flex-wrap:nowrap;}
-    .dock-react{gap:0.5rem; margin-left:calc(20px - 0.5rem);}
-    .facet-line{margin-left:calc(8.8rem + 20px);}   /* prev+play+next (7.8rem) + 2 flex gaps (1rem) + 20px */
+    .loves{gap:0.4rem;}
+    .loves-q{font-size:1.1rem;}
+    .loves-row{gap:1.6rem;}
+    .love-ic{width:56px; height:56px;}
+    .love-ic svg{width:1.7rem; height:1.7rem;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame with
        pinned controls and a capped reflections zone. Sections just stack and
        flow so the PAGE scrolls to reveal the like heart, the reflection form,
@@ -888,15 +874,12 @@
     /* Rails: ~1.5 landscape cards across a 390px viewport (240px ~= 62vw). */
     #page-home .rail-item{width:62vw; max-width:280px;}
   }
-  /* Very narrow (≈390px): the nudge + five circles can't all fit at full size.
-     Drop the nudge's second line (keep "Loved it?") and shrink prev/next a touch
-     before anything else, then re-align the facet line to the narrower lead. */
+  /* Very narrow (≈390px): shrink prev/next a touch and close the gaps between
+     the three loves, so they stay on ONE row at 56px with readable labels.
+     Three 56px circles plus two 1.4rem gaps is ~213px of a ~366px content box. */
   @media (max-width:410px){
-    .nudge-sub{display:none;}
     .transport .tbtn:not(.play){width:2rem; height:2rem;}
-    .dock-react{gap:0.4rem;}
-    .like-btn.now-like{padding:0 0.4rem; gap:0.3rem;}
-    .facet-line{margin-left:calc(8rem + 20px);}   /* prev+play+next (7rem) + 1rem gaps + 20px */
+    .loves-row{gap:1.4rem;}
   }
 </style>
 </head>
@@ -976,13 +959,8 @@
         <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <!-- Love cluster: a nudge, the heart, then Share — grouped just after next -->
+        <!-- Share: alone on the right of the transport row -->
         <div class="dock-react hidden" id="dock-react">
-          <div class="like-nudge" id="like-nudge">
-            <span class="nudge-title">Loved it?</span>
-            <span class="nudge-sub">Give it a heart</span>
-          </div>
-          <div id="now-like-wrap"></div>
           <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
             <span class="share-invite-ic" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
@@ -990,22 +968,22 @@
           </button>
         </div>
       </div>
-      <!-- Optional like facet: revealed when the heart is first tapped. Sits full
-           width directly under the controls row, above the reflection section. -->
-      <div class="facet-line hidden" id="facet-line">
-        <span class="facet-prompt">What moved you?</span>
-        <div class="facet-options">
-          <button class="facet-option" data-facet="tune" type="button" aria-pressed="false">
-            <svg class="facet-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg>
-            <span class="facet-label">the melody</span>
+      <!-- The three loves: independent toggles for the words, the music, and the
+           song itself (the heart). Hidden until a song is playing. -->
+      <div class="loves hidden" id="loves">
+        <div class="loves-q">What did you love?</div>
+        <div class="loves-row">
+          <button class="love-btn" data-love="lyrics" type="button" aria-pressed="false" aria-label="Love the words">
+            <span class="love-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-5 2.2-9.3 5.9-12.1C12.6 5.8 16 4.7 20 4.4c-.2 4-1.3 7.4-3.4 10.1C13.7 18.1 9.3 20 4.4 20"/><path d="M4 20c1.9-2.6 4.3-4.8 7.1-6.4"/><path d="M14.5 10.2c-1.7.8-3.2 1.9-4.4 3.4"/></svg></span>
+            <span class="love-label">the words</span>
           </button>
-          <button class="facet-option" data-facet="lyrics" type="button" aria-pressed="false">
-            <svg class="facet-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg>
-            <span class="facet-label">the words</span>
+          <button class="love-btn" data-love="music" type="button" aria-pressed="false" aria-label="Love the music">
+            <span class="love-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="15.5" x2="6" y2="8.5"/><line x1="12" y1="19" x2="12" y2="5"/><line x1="18" y1="14" x2="18" y2="10"/></svg></span>
+            <span class="love-label">the music</span>
           </button>
-          <button class="facet-option" data-facet="all" type="button" aria-pressed="false">
-            <svg class="facet-heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg>
-            <span class="facet-label">all of it</span>
+          <button class="love-btn" data-love="song" type="button" aria-pressed="false" aria-label="Love this song">
+            <span class="love-ic"><svg class="love-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg></span>
+            <span class="love-label">the song <span class="love-count">0</span></span>
           </button>
         </div>
       </div>
@@ -1408,8 +1386,7 @@ function mapSong(r){
     plays_7d: r.plays_7d || 0,
     like_count: r.like_count || 0,
     like_tune_count: r.like_tune_count || 0,
-    like_lyrics_count: r.like_lyrics_count || 0,
-    like_all_count: r.like_all_count || 0
+    like_lyrics_count: r.like_lyrics_count || 0
   };
 }
 function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
@@ -2183,7 +2160,6 @@ function renderNow(){
   const nowTags = document.getElementById('now-tags');
   const about = document.getElementById('now-about');
   const langToggle = document.getElementById('lang-toggle');
-  const nowLike = document.getElementById('now-like-wrap');
   const dockReact = document.getElementById('dock-react');
   const engage = document.getElementById('engage');
   const panelFeed = document.getElementById('panel-feed');
@@ -2200,7 +2176,8 @@ function renderNow(){
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
     topline.classList.remove('hidden');
     chips.innerHTML = ''; nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
-    nowLike.innerHTML = ''; dockReact.classList.add('hidden');
+    dockReact.classList.add('hidden');
+    paintLoves();
     if(commentsWrap) commentsWrap.classList.add('hidden');
     panelFeed.classList.remove('hidden');
     engage.classList.remove('hidden');
@@ -2259,8 +2236,7 @@ function renderNow(){
     topline.classList.remove('hidden');
   }
 
-  nowLike.innerHTML = likeBtnHTML(s, 'now-like');
-  setLikeNudge();
+  paintLoves();
   dockReact.classList.remove('hidden');
   engage.classList.remove('hidden');
 
@@ -2315,7 +2291,6 @@ function loadSong(idx, keepRailQueue){
   langView = 'orig';
   playCounted = false;
   renderNow();
-  updateFacetLine();
   if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
   loadComments();
@@ -2440,13 +2415,19 @@ async function sendQueuedEvent(ev){
     if(s && typeof data === 'number'){ s.like_count = data; updateLikeUI(ev.song_id); }
     return true;
   }
-  if(ev.type === 'facet'){
-    // Move the facet counters; like_count is untouched. previous_facet carries
-    // the snapshot from enqueue time so ordered sends stay consistent.
-    const { error } = await supabaseClient.rpc('set_like_facet', {
-      song_id: ev.song_id, facet: ev.facet, previous_facet: ev.previous_facet
+  if(ev.type === 'love'){
+    // One of the two independent loves (the words / the music). like_count is
+    // untouched: the heart is its own event type above.
+    const { data, error } = await supabaseClient.rpc('toggle_love', {
+      song_id: ev.song_id, kind: ev.kind, on: ev.on
     });
-    return !error;
+    if(error) return false;
+    // Reconcile with the authoritative count the RPC returns.
+    const s = SONGS.find(x => x.id === ev.song_id);
+    if(s && typeof data === 'number'){
+      if(ev.kind === 'lyrics') s.like_lyrics_count = data; else s.like_tune_count = data;
+    }
+    return true;
   }
   return true; // unknown type: drop it so it can't wedge the queue
 }
@@ -2484,8 +2465,10 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) flush
 
 // Testing escape hatch: when localStorage 'laivy-no-track' === '1', every
 // tracking path — GA4 events and the increment_play_count / toggle_like /
-// set_like_facet RPCs — is a no-op, so browser verification never reaches the
-// database or analytics. See the README "Testing" section.
+// toggle_love RPCs — is a no-op, so browser verification never reaches the
+// database or analytics. NOTE: the guard sits at the top of each toggle, so
+// with the flag on the three loves do not visibly toggle either.
+// See the README "Testing" section.
 function noTrack(){ try{ return localStorage.getItem('laivy-no-track') === '1'; }catch(e){ return false; } }
 
 function incrementPlay(songId){
@@ -2516,34 +2499,11 @@ let likedSet = loadLikes();
 function loadLikes(){ try{ return new Set(JSON.parse(localStorage.getItem(LIKES_KEY)) || []); }catch(e){ return new Set(); } }
 function saveLikes(){ try{ localStorage.setItem(LIKES_KEY, JSON.stringify([...likedSet])); }catch(e){} }
 
-function heartSVG(){
-  return `<svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg>`;
-}
-function likeBtnHTML(s, extraClass){
-  const liked = likedSet.has(s.id);
-  return `<button class="like-btn ${liked?'liked':''} ${extraClass||''}" data-like="${s.id}" type="button"
-    aria-pressed="${liked?'true':'false'}" aria-label="${liked?'Unlike this song':'Like this song'}" title="${liked?'Unlike':'Like'}">${heartSVG()}<span class="like-count">${s.like_count}</span></button>`;
-}
-// The nudge beside the now-playing heart: invites a like, then thanks for one.
-function setLikeNudge(){
-  const n = document.getElementById('like-nudge');
-  if(!n || currentIdx === null) return;
-  const liked = likedSet.has(SONGS[currentIdx].id);
-  n.querySelector('.nudge-title').textContent = liked ? 'Loved.' : 'Loved it?';
-  n.querySelector('.nudge-sub').textContent = liked ? 'Thank you.' : 'Give it a heart';
-}
+// The heart is one of the three loves in the dock, so painting it is
+// paintLoves()'s job; this just repaints when the song in question is the one
+// on screen (e.g. the queue reconciling the count after a successful send).
 function updateLikeUI(songId){
-  const s = SONGS.find(x => x.id === songId);
-  if(!s) return;
-  const liked = likedSet.has(songId);
-  document.querySelectorAll(`[data-like="${songId}"]`).forEach(btn => {
-    btn.classList.toggle('liked', liked);
-    btn.setAttribute('aria-pressed', liked ? 'true' : 'false');
-    btn.setAttribute('aria-label', liked ? 'Unlike this song' : 'Like this song');
-    btn.title = liked ? 'Unlike' : 'Like';
-    const c = btn.querySelector('.like-count');
-    if(c) c.textContent = s.like_count;
-  });
+  if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) paintLoves();
 }
 async function toggleLike(songId){
   if(noTrack()) return;
@@ -2555,131 +2515,113 @@ async function toggleLike(songId){
   else { likedSet.delete(songId); s.like_count = Math.max(0, (s.like_count || 0) - 1); }
   saveLikes();
   updateLikeUI(songId);
-  setLikeNudge();
+  // Two events, deliberately: song_like / song_unlike are kept so the existing
+  // GA history stays continuous, and `love` with kind 'song' reports the heart
+  // alongside the other two loves under one name.
   laivyTrack(liked ? 'song_like' : 'song_unlike', {
     song_id: songId,
     song_title: s.title || s.title_translit || ''
+  });
+  laivyTrack('love', {
+    song_id: songId,
+    song_title: s.title || s.title_translit || '',
+    kind: 'song',
+    on: liked ? 'on' : 'off'
   });
   // Queue the tap so a Supabase outage can't drop it; the authoritative count
   // is reconciled when the event is successfully sent. Local state already
   // reflects the tap, so the heart stays instant either way.
   enqueueEvent({ type: 'like', song_id: songId, liked });
   flushEventQueue();
-  // Facet line: invite it when the now-playing song is newly liked; on unlike,
-  // decrement any recorded facet and hide the line.
-  if(liked){
-    if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) revealFacetPrompt();
-  } else {
-    clearFacetOnUnlike(songId);
-  }
 }
-// One delegated handler covers rows (re-rendered) and the now-playing heart.
-document.addEventListener('click', (e) => {
-  const btn = e.target.closest('.like-btn');
-  if(!btn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  toggleLike(btn.dataset.like);
-});
 
 /* ============================================================
-   Optional like facet: melody / words / all of it. Recorded via the resilient
-   event queue (set_like_facet); the chosen facet is stored per song in
-   localStorage. No facet numbers are ever shown on the public site.
+   The three loves (dock row 3): "the words", "the music", "the song".
+   Three INDEPENDENT toggles, not one exclusive facet. The words and the music
+   go through the resilient event queue to toggle_love(); the song is the heart
+   and keeps calling toggle_like(). Per-visitor state: the heart stays in the
+   existing likes key, the other two live in their own key here. The words and
+   music counts are never shown on the public site; the heart shows its own.
    ============================================================ */
-const LIKE_FACETS_KEY = 'laivy-like-facets-v1';
-let likeFacets = loadLikeFacets();
-function loadLikeFacets(){ try{ return JSON.parse(localStorage.getItem(LIKE_FACETS_KEY)) || {}; }catch(e){ return {}; } }
-function saveLikeFacets(){ try{ localStorage.setItem(LIKE_FACETS_KEY, JSON.stringify(likeFacets)); }catch(e){} }
+const LOVES_KEY = 'laivy-loves-v1';   // { [songId]: { lyrics:true, music:true } }
+let lovesState = loadLoves();
+function loadLoves(){ try{ return JSON.parse(localStorage.getItem(LOVES_KEY)) || {}; }catch(e){ return {}; } }
+function saveLoves(){ try{ localStorage.setItem(LOVES_KEY, JSON.stringify(lovesState)); }catch(e){} }
+function loveOn(songId, kind){ return !!(lovesState[songId] && lovesState[songId][kind]); }
+function setLoveState(songId, kind, on){
+  if(on){ (lovesState[songId] = lovesState[songId] || {})[kind] = true; }
+  else if(lovesState[songId]){
+    delete lovesState[songId][kind];
+    if(!Object.keys(lovesState[songId]).length) delete lovesState[songId];
+  }
+  saveLoves();
+}
 
-let facetIgnoreTimer = null, facetSettleTimer = null;
-function clearFacetTimers(){ clearTimeout(facetIgnoreTimer); clearTimeout(facetSettleTimer); facetIgnoreTimer = facetSettleTimer = null; }
-function facetLineEl(){ return document.getElementById('facet-line'); }
-function paintFacetHearts(sel){
-  const el = facetLineEl(); if(!el) return;
-  el.querySelectorAll('.facet-option').forEach(o => {
-    const on = o.dataset.facet === sel;
-    o.classList.toggle('on', on);
-    o.setAttribute('aria-pressed', on ? 'true' : 'false');
+const LOVE_LABELS = { lyrics: 'the words', music: 'the music', song: 'this song' };
+// Paint all three from state. Hidden entirely while nothing is playing.
+function paintLoves(){
+  const wrap = document.getElementById('loves');
+  if(!wrap) return;
+  if(currentIdx === null || !SONGS[currentIdx]){ wrap.classList.add('hidden'); return; }
+  const s = SONGS[currentIdx];
+  wrap.classList.remove('hidden');
+  wrap.querySelectorAll('.love-btn').forEach(btn => {
+    const kind = btn.dataset.love;
+    const on = kind === 'song' ? likedSet.has(s.id) : loveOn(s.id, kind);
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.setAttribute('aria-label', (on ? 'Remove your love for ' : 'Love ') + LOVE_LABELS[kind]);
+    if(kind === 'song'){
+      const c = btn.querySelector('.love-count');
+      if(c) c.textContent = s.like_count;
+    }
   });
 }
-function hideFacetLine(fade){
-  const el = facetLineEl(); if(!el) return;
-  clearFacetTimers();
-  if(fade && !el.classList.contains('hidden')){
-    el.classList.add('fading');
-    facetSettleTimer = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('fading', 'fadein', 'settled'); }, 500);
-  } else {
-    el.classList.add('hidden');
-    el.classList.remove('fading', 'fadein', 'settled');
-  }
+// The soft pulse on tap (the heart's old pop, on whichever circle was tapped).
+function pulseLove(kind){
+  const btn = document.querySelector(`.love-btn[data-love="${kind}"]`);
+  if(!btn) return;
+  btn.classList.remove('pulse'); void btn.offsetWidth; btn.classList.add('pulse');
+  setTimeout(() => btn.classList.remove('pulse'), 400);
 }
-// Reflect the current song's stored state (called on each song load).
-function updateFacetLine(){
-  const el = facetLineEl(); if(!el) return;
-  clearFacetTimers();
-  el.classList.remove('fading', 'fadein');
-  if(currentIdx === null){ el.classList.add('hidden'); el.classList.remove('settled'); return; }
-  const s = SONGS[currentIdx];
-  const facet = likeFacets[s.id];
-  if(likedSet.has(s.id) && facet){
-    // Settled: muted question + all three hearts, the chosen one filled.
-    paintFacetHearts(facet);
-    el.classList.remove('hidden');
-    el.classList.add('settled');
-  } else {
-    // Not liked, or liked without a facet -> show nothing.
-    paintFacetHearts(null);
-    el.classList.add('hidden');
-    el.classList.remove('settled');
-  }
-}
-// Heart just went unliked -> liked on the now-playing song: invite the facet at
-// full opacity; if nothing is chosen it fades out after 12 seconds.
-function revealFacetPrompt(){
-  const el = facetLineEl(); if(!el) return;
-  clearFacetTimers();
-  paintFacetHearts(null);
-  el.classList.remove('hidden', 'settled', 'fading');
-  el.classList.remove('fadein'); void el.offsetWidth; el.classList.add('fadein');   // restart fade-in
-  facetIgnoreTimer = setTimeout(() => hideFacetLine(true), 12000);   // ignored -> fade out, record nothing
-}
-function chooseFacet(facet){
+
+// The words / the music. Optimistic like the heart: flip locally, queue the
+// RPC, reconcile the count when the send is confirmed.
+function toggleLove(kind){
   if(noTrack()) return;
   if(currentIdx === null) return;
   const s = SONGS[currentIdx];
-  if(!likedSet.has(s.id)) return;
-  const prev = likeFacets[s.id] || null;
-  if(prev === facet) return;
-  likeFacets[s.id] = facet;
-  saveLikeFacets();
-  enqueueEvent({ type: 'facet', song_id: s.id, facet, previous_facet: prev });
+  const on = !loveOn(s.id, kind);
+  setLoveState(s.id, kind, on);
+  const col = kind === 'lyrics' ? 'like_lyrics_count' : 'like_tune_count';
+  s[col] = Math.max(0, (s[col] || 0) + (on ? 1 : -1));
+  paintLoves();
+  pulseLove(kind);
+  laivyTrack('love', {
+    song_id: s.id,
+    song_title: s.title || s.title_translit || '',
+    kind,
+    on: on ? 'on' : 'off'
+  });
+  enqueueEvent({ type: 'love', song_id: s.id, kind, on });
   flushEventQueue();
-  laivyTrack('like_facet', { song_id: s.id, facet });
-  clearFacetTimers();              // cancel the 12s auto-hide
-  paintFacetHearts(facet);         // fill the chosen heart; the other two stay outlined
-  const el = facetLineEl();
-  el.classList.remove('fadein');
-  el.classList.add('settled');     // question goes muted; all three hearts remain
 }
-function clearFacetOnUnlike(songId){
-  if(noTrack()) return;
-  const prev = likeFacets[songId];
-  if(prev){
-    enqueueEvent({ type: 'facet', song_id: songId, facet: null, previous_facet: prev });
-    flushEventQueue();
-    laivyTrack('like_facet', { song_id: songId, facet: 'cleared' });
-    delete likeFacets[songId];
-    saveLikeFacets();
-  }
-  if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) hideFacetLine(false);
-}
+
+// One delegated handler for all three circles. The song routes to the heart's
+// own path (toggle_like); the other two to toggle_love.
 document.addEventListener('click', (e) => {
-  const opt = e.target.closest('.facet-option');
-  if(!opt) return;
+  const btn = e.target.closest('.love-btn');
+  if(!btn) return;
   e.preventDefault();
   e.stopPropagation();
-  chooseFacet(opt.dataset.facet);
+  const kind = btn.dataset.love;
+  if(kind === 'song'){
+    if(currentIdx === null || !SONGS[currentIdx]) return;
+    if(!noTrack()) pulseLove('song');
+    toggleLike(SONGS[currentIdx].id);
+  } else {
+    toggleLove(kind);
+  }
 });
 
 /* ============================================================
@@ -3474,7 +3416,7 @@ homeSearchEl.addEventListener('keydown', (e) => {
    ============================================================ */
 loadSongs();
 // One-time visibility that the testing kill-switch is active this load.
-if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): no play/like/facet events will be enqueued or flushed this session.');
+if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): no play/like/love events will be enqueued or flushed this session, and the three loves will not toggle.');
 // Retry any play/like events queued during a previous outage. Self-guarded: a
 // no-op while do-not-track is set, so a prior run's queue can't flush on reload.
 flushEventQueue();

@@ -21,8 +21,9 @@ a field end to end:
    record of schema changes applied in numerical order (`001` = tags/featured/
    comment_count; `002` = the `plays` history table, `plays_7d` column, the
    `increment_play_count` + `refresh_plays_7d` functions, and the hourly pg_cron
-   job; `003` = the `like_*_count` facet columns + `set_like_facet`; `004` = the
-   `chart_snapshots` table + `take_chart_snapshot` + its daily pg_cron job); the
+   job; `003` = the `like_*_count` columns + the old `set_like_facet`; `004` = the
+   `chart_snapshots` table + `take_chart_snapshot` + its daily pg_cron job;
+   `005` = `toggle_love`, dropping `set_like_facet` and `like_all_count`); the
    live schema wins if they ever disagree.
 2. **`mapSong()` in `index.html`** (~line 964) — add the field to the mapped
    song object, with a sensible default. Fields not listed here are dropped on
@@ -180,12 +181,15 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 - **`/listen` — song page** (`#page-listen`): the two-column jukebox (player +
   lyrics + list). Its idle state is the simple "pick a song" line plus the
   listener feed. The wordmark navigates to `/`.
-  - **Dock layout**: the player controls row is one left-aligned group —
-    prev/play/next, a fixed gap, a two-line **nudge** ("Loved it?/Give it a heart",
-    → "Loved./Thank you." once liked), the play-button-sized **Love** heart
-    (+ count), then **Share** — with the "What moved you?" facet-hearts line
-    directly beneath the heart (left edge aligned to the nudge). At ≈390px the
-    nudge drops to one line and prev/next shrink so the group stays on one row.
+  - **Dock layout**, three rows: (1) the **scrubber**; (2) **prev/play/next** on
+    the left and **Share** (the accent-filled circle) pushed to the far right,
+    nothing else; (3) the **three loves** (see **Likes**) centered and evenly
+    spaced, each a circle of **64px desktop / 56px mobile** (deliberately larger
+    than the 48px play button) with its label beneath in the body font at
+    0.95rem, under one always-visible display-serif italic line, "What did you
+    love?". Off is the muted glass outline, on is the accent fill with a white
+    glyph and a soft pulse on tap. At ≈390px the three stay on one row: the
+    circles hold at 56px and the gaps close instead.
     **Radio** and **Category radio** live in the list-column header beside the
     Songs/Playlists tabs (wrapping two-across below the tabs on mobile).
 - **Deep link**: shared links stay `/?song=<id>` so the OG middleware (matcher
@@ -204,28 +208,36 @@ appear on the homepage — only the section names.
 
 ## Likes
 
-Tapping the heart in the now-playing panel toggles a like: `songs.like_count`
-(global) via the `toggle_like(song_id, liked)` RPC, plus this browser's liked
-ids in `localStorage` (`laivy-likes-v1`). The heart is unchanged.
+The dock's third row holds **three independent loves** for the playing song:
+**the words** (a quill), **the music** (a three-bar equalizer), and **the song**
+(the heart). They are independent toggles, not one exclusive choice: any
+combination can be on at once, each with its own counter.
 
-When the heart goes from unliked to liked, a quiet **facet line** fades in under
-it — "What moved you?" with three chips: *the melody* / *the words* / *all of
-it*. Tapping one records it through the resilient event queue via
-`set_like_facet(song_id, facet, previous_facet)` (`sql/003`), which moves the
-three `songs.like_*_count` counters (`tune`/`lyrics`/`all`, clamped at 0) and
-**never touches `like_count`**. The choice is stored per song in `localStorage`
-(`laivy-like-facets-v1`); after ~1.5s the prompt fades, leaving the selected
-chip. Ignored, the line fades out after 8s and nothing is recorded (the like
-already counted). Tapping a different chip switches (previous decremented, new
-incremented). Unliking a faceted song calls `set_like_facet(..., null,
-previous)` to decrement it and clears the stored facet. Re-opening an
-already-faceted like shows the settled chip only; liked-without-a-facet shows
-nothing.
+- **the song** is the heart, unchanged: `songs.like_count` via the
+  `toggle_like(song_id, liked)` RPC, with this browser's liked ids in
+  `localStorage` (`laivy-likes-v1`). It is the only one that shows its count on
+  the public site, small beside its label.
+- **the words** and **the music** go through `toggle_love(song_id, kind, on)`
+  (`sql/005`), where `kind` is `'lyrics'` or `'music'`. It increments or
+  decrements `like_lyrics_count` / `like_tune_count`, clamped at 0, **never
+  touches `like_count`**, and returns the new count so the client can reconcile.
+  This browser's state for these two lives in `localStorage`
+  (`laivy-loves-v1`, `{songId: {lyrics, music}}`). Their counts are never shown
+  on the public site.
 
-**Facet counts are admin-only for now** — the split (`♥ N · melody · words ·
-all`) is shown read-only in `admin.html` (song list + form header) and never
-appears on the public site, and is never in the admin save payload. Analytics:
-`like_facet` with the song id and the chosen facet (or `"cleared"`).
+All three are optimistic (the circle fills instantly), and all three are written
+through the resilient event queue, so a Supabase outage cannot drop a tap. The
+do-not-track flag guards all three: with it set, **none of them toggle at all**,
+since the guard sits at the top of each toggle.
+
+`sql/005` also retired the old exclusive facet: `set_like_facet` is dropped, and
+`like_all_count` is dropped after folding any nonzero value into `like_count`
+("all of it" is just the heart once the loves are independent).
+
+**The words and music counts are admin-only** — the split (`♥ N · words n ·
+music n`) is read-only in `admin.html` (song list + form header), never on the
+public site, and never in the admin save payload. Analytics: `love` with the
+song id, `kind` (`lyrics` / `music` / `song`) and `on` (`"on"` / `"off"`).
 
 ## Charts
 
@@ -259,4 +271,4 @@ most **weeks at #1** (week-end snapshots at rank 1).
 
 ## Testing
 
-Set `localStorage` key `laivy-no-track` to `1` before any browser verification, so test plays and likes never reach the database or analytics (guards `laivyTrack` and the `increment_play_count` / `toggle_like` / `set_like_facet` paths in `index.html`).
+Set `localStorage` key `laivy-no-track` to `1` before any browser verification, so test plays and likes never reach the database or analytics (guards `laivyTrack` and the `increment_play_count` / `toggle_like` / `toggle_love` paths in `index.html`). Note that the guard sits at the top of each toggle, so with the flag set the three loves do not visibly toggle either.

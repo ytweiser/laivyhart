@@ -617,13 +617,13 @@ document.getElementById('new-global-cat').addEventListener('keydown', (e) => {
   if(e.key === 'Enter'){ e.preventDefault(); addCategory(); }
 });
 
-// Read-only like split for the admin (heart total + the three facet counters).
-// Never written back; these counters are not in the save payload.
+// Read-only love split for the admin: the heart total, then the two
+// independent loves. Never written back; these counters are not in the save
+// payload.
 function likeSplit(s){
   return '♥ ' + (s.like_count ?? 0) +
-    ' · melody ' + (s.like_tune_count ?? 0) +
     ' · words ' + (s.like_lyrics_count ?? 0) +
-    ' · all ' + (s.like_all_count ?? 0);
+    ' · music ' + (s.like_tune_count ?? 0);
 }
 function renderList(){
   const el = document.getElementById('list-items');
