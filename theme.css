@@ -216,6 +216,26 @@ body{
   -webkit-text-fill-color:transparent; color:transparent;
 }
 
+/* ---------- Header wordmark (the brand artwork) ----------
+   Replaces the CSS text logo on the public pages; admin.html keeps the text
+   one. 34px tall, 3:1, so 102x34 with both dimensions set to reserve the box.
+
+   Light mode: the artwork's LAIVY letters are near-ivory and would all but
+   vanish on the pale header, so on the light theme only, the logo sits in a
+   tight pill of the artwork's own near-black. It is the smallest change that
+   keeps BOTH words legible without touching the artwork's colours. Dark themes
+   show the bare wordmark with no pill. */
+.logo-brand{
+  display:inline-flex; align-items:center; flex-shrink:0;
+  line-height:0; padding:0; border-radius:11px; text-decoration:none;
+}
+.logo-brand .logo-img{display:block; height:34px; width:102px;}
+.logo-brand:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px;}
+[data-theme="light"] .logo-brand{
+  background:#130A11; padding:5px 9px;
+  box-shadow:0 1px 5px rgba(42,16,24,0.16);
+}
+
 /* ---------- Small icon / ghost buttons ---------- */
 .icon-btn{
   width:2.2rem; height:2.2rem; border-radius:50%;

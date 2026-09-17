@@ -382,7 +382,6 @@
   #page-home{--page-pad:1.5rem; max-width:1100px; margin:0 auto; padding:1.4rem var(--page-pad) 6rem; min-width:0;}
   #page-home.hidden{display:none;}
   .home-header{display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:1.2rem;}
-  .home-wordmark{cursor:default;}
   .home-header-right{display:flex; align-items:center; gap:0.9rem; flex:1 1 20rem; justify-content:flex-end; min-width:0;}
   .home-search{flex:1 1 auto; max-width:26rem; min-width:0; width:auto;}
   /* Homepage header theme controls (reuse .palette/.swatch/.icon-btn). Desktop
@@ -924,7 +923,12 @@
     </div>
 
     <div class="topbar">
-      <div class="logo" id="home-btn" role="button" tabindex="0" aria-label="Home"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+      <a class="logo logo-brand" href="/" id="home-btn">
+        <picture>
+          <source type="image/webp" srcset="/brand/wordmark.webp">
+          <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+        </picture>
+      </a>
       <nav class="site-nav" aria-label="Site">
         <a href="/" data-nav="home">Home</a>
         <a href="/listen" data-nav="listen" class="is-current" aria-current="page">Songs</a>
@@ -1108,7 +1112,12 @@
 <!-- ================= HOMEPAGE (route "/") ================= -->
 <div id="page-home" class="hidden">
   <header class="home-header">
-    <div class="logo home-wordmark"><span class="l1">LAIVY</span><span class="l2">HART</span></div>
+    <a class="logo logo-brand" href="/" id="home-logo">
+      <picture>
+        <source type="image/webp" srcset="/brand/wordmark.webp">
+        <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+      </picture>
+    </a>
     <nav class="site-nav" aria-label="Site">
       <a href="/" data-nav="home" class="is-current" aria-current="page">Home</a>
       <a href="/listen" data-nav="listen">Songs</a>
@@ -3191,10 +3200,16 @@ tabPlaylists.addEventListener('click', () => switchTab('playlists'));
 
 // The song-page wordmark navigates to the homepage (audio keeps playing; the
 // mini-player takes over there).
-const homeBtn = document.getElementById('home-btn');
-homeBtn.addEventListener('click', () => navigate('home'));
-homeBtn.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); navigate('home'); }
+// Both header logos are real links to "/", so they open in a new tab and read
+// as links, but a plain click routes in-app and playback keeps going.
+['home-btn', 'home-logo'].forEach((id) => {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('click', (e) => {
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return;
+    e.preventDefault();
+    navigate('home');
+  });
 });
 
 /* ============================================================

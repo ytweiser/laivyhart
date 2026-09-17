@@ -104,6 +104,12 @@ manual `page_view` (GA4's automatic page view only fires on real loads);
 `popstate` moves between pages without reloading; `showPage(route)` toggles which
 `#page-home` / `#page-listen` is visible.
 
+- **Header logo** (`.logo-brand`, styled in `theme.css`): the brand wordmark
+  image at 102x34 (WebP with the PNG as fallback), on `/`, `/listen` and
+  `about.html`, linking to `/` through `navigate()` so playback survives;
+  `admin.html` keeps the CSS text logo. On the **light** theme only it sits in a
+  tight near-black pill, because the artwork's LAIVY letters are near-ivory and
+  vanish on the pale header; dark themes show it bare.
 - **Top nav** (`.site-nav`, styled in `theme.css`, present on `/`, `/listen` and
   `about.html`): three understated text links, Home / Songs / About, muted in the
   body font with the current page in the normal text color under a hairline rule;
