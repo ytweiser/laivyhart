@@ -227,8 +227,19 @@ combination can be on at once, each with its own counter.
 
 All three are optimistic (the circle fills instantly), and all three are written
 through the resilient event queue, so a Supabase outage cannot drop a tap. The
-do-not-track flag guards all three: with it set, **none of them toggle at all**,
-since the guard sits at the top of each toggle.
+do-not-track flag guards **only what leaves the browser**: with it set the
+circles still toggle and still remember their state in `localStorage`, and what
+is suppressed is analytics, the enqueue, and the send. The guard therefore sits
+*after* the visual toggle and the local write in `toggleLove()` and
+`toggleLike()`, never at the top. Putting it at the top is what made the loves
+look dead during testing.
+
+**`LOVES_DEBUG` self-test**: set `localStorage` key `laivy-debug` to `1` (or load
+with `?debug=1`) and play a song. `lovesSelfTest()` simulates one click on each
+love and asserts the `on` class flips, the stored state agrees with the button,
+and exactly one event is queued (zero with do-not-track on). It swaps out enqueue
+and flush while it runs, undoes each click, and restores the counters and both
+`localStorage` keys, so it sends nothing and leaves no trace.
 
 `sql/005` also retired the old exclusive facet: `set_like_facet` is dropped, and
 `like_all_count` is dropped after folding any nonzero value into `like_count`
@@ -271,4 +282,4 @@ most **weeks at #1** (week-end snapshots at rank 1).
 
 ## Testing
 
-Set `localStorage` key `laivy-no-track` to `1` before any browser verification, so test plays and likes never reach the database or analytics (guards `laivyTrack` and the `increment_play_count` / `toggle_like` / `toggle_love` paths in `index.html`). Note that the guard sits at the top of each toggle, so with the flag set the three loves do not visibly toggle either.
+Set `localStorage` key `laivy-no-track` to `1` before any browser verification, so test plays and likes never reach the database or analytics (guards `laivyTrack` and the `increment_play_count` / `toggle_like` / `toggle_love` paths in `index.html`). The guard covers only what leaves the browser, so with the flag set the three loves still toggle on screen and still remember their per-visitor state.

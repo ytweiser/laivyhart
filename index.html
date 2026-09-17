@@ -721,7 +721,10 @@
   .share-invite-ic svg{width:1.5rem; height:1.5rem;}
 
   /* ---------- Reflections (comments): a warm, prominent invitation ---------- */
-  .comments-wrap{margin:0; padding-top:1.3rem; border-top:1px solid var(--line);}
+  /* No border here: .engage already draws the single divider that separates
+     the dock from this zone. A second rule 1.3rem below it read as a doubled
+     line under the loves row. */
+  .comments-wrap{margin:0; padding-top:0.15rem;}
   .comments-wrap.hidden{display:none;}
   .reflect-invite{margin-bottom:0.9rem;}
   .reflect-title{font-family:var(--font-display); font-size:1.4rem; font-weight:600; color:var(--text); line-height:1.15;}
@@ -2506,7 +2509,6 @@ function updateLikeUI(songId){
   if(currentIdx !== null && SONGS[currentIdx] && SONGS[currentIdx].id === songId) paintLoves();
 }
 async function toggleLike(songId){
-  if(noTrack()) return;
   const s = SONGS.find(x => x.id === songId);
   if(!s) return;
   const liked = !likedSet.has(songId);
@@ -2515,6 +2517,11 @@ async function toggleLike(songId){
   else { likedSet.delete(songId); s.like_count = Math.max(0, (s.like_count || 0) - 1); }
   saveLikes();
   updateLikeUI(songId);
+  // Do-not-track stops here: the heart has already flipped on screen and in
+  // this browser's storage, which is what the visitor sees and what a test
+  // needs to be able to check. Only the parts that LEAVE the browser are
+  // suppressed — analytics, the queue, and the send.
+  if(noTrack()) return;
   // Two events, deliberately: song_like / song_unlike are kept so the existing
   // GA history stays continuous, and `love` with kind 'song' reports the heart
   // alongside the other two loves under one name.
@@ -2588,7 +2595,6 @@ function pulseLove(kind){
 // The words / the music. Optimistic like the heart: flip locally, queue the
 // RPC, reconcile the count when the send is confirmed.
 function toggleLove(kind){
-  if(noTrack()) return;
   if(currentIdx === null) return;
   const s = SONGS[currentIdx];
   const on = !loveOn(s.id, kind);
@@ -2597,6 +2603,9 @@ function toggleLove(kind){
   s[col] = Math.max(0, (s[col] || 0) + (on ? 1 : -1));
   paintLoves();
   pulseLove(kind);
+  // Same rule as the heart: the toggle and the local write always happen; only
+  // what leaves the browser is behind the flag.
+  if(noTrack()) return;
   laivyTrack('love', {
     song_id: s.id,
     song_title: s.title || s.title_translit || '',
@@ -2605,6 +2614,87 @@ function toggleLove(kind){
   });
   enqueueEvent({ type: 'love', song_id: s.id, kind, on });
   flushEventQueue();
+}
+
+// DEBUG self-test for the three loves. Off by default; turn it on WITHOUT
+// editing this file by setting localStorage 'laivy-debug' to '1' or loading
+// with ?debug=1, then play a song and read the console.
+//
+// It simulates one real click on each love and asserts three things: the on
+// class flips, this browser's stored state agrees with the button, and exactly
+// one event is queued (zero when do-not-track is on, which must suppress the
+// send and nothing else). It sends nothing and leaves no trace: enqueue and
+// flush are swapped out for the duration, each click is undone by a second
+// click, and every value it touched is restored at the end.
+const LOVES_DEBUG = (() => {
+  try{ return localStorage.getItem('laivy-debug') === '1' || /[?&]debug=1\b/.test(location.search); }
+  catch(e){ return false; }
+})();
+
+function lovesSelfTest(){
+  const lines = [];
+  const ok = (cond, what) => lines.push((cond ? 'PASS  ' : 'FAIL  ') + what);
+  if(currentIdx === null || !SONGS[currentIdx]){
+    console.warn('[laivy] loves self-test: play a song first.');
+    return lines;
+  }
+  const s = SONGS[currentIdx];
+  const guarded = noTrack();
+
+  // Snapshot everything the test is about to touch.
+  const snapLovesRaw = localStorage.getItem(LOVES_KEY);
+  const snapLikesRaw = localStorage.getItem(LIKES_KEY);
+  const snapLoves = JSON.parse(JSON.stringify(lovesState));
+  const snapLiked = new Set(likedSet);
+  const snapCounts = { lyrics: s.like_lyrics_count, music: s.like_tune_count, song: s.like_count };
+  const realEnqueue = enqueueEvent, realFlush = flushEventQueue;
+  let queued = [];
+  enqueueEvent = (ev) => { queued.push(ev); };      // captured, never stored or sent
+  flushEventQueue = async () => {};
+
+  try{
+    for(const kind of ['lyrics', 'music', 'song']){
+      queued = [];
+      const btn = document.querySelector(`.love-btn[data-love="${kind}"]`);
+      if(!btn){ ok(false, `${kind}: button is missing`); continue; }
+      const before = btn.classList.contains('on');
+      btn.click();
+      const after = btn.classList.contains('on');
+      const stored = kind === 'song' ? likedSet.has(s.id) : loveOn(s.id, kind);
+      ok(after === !before, `${kind}: one click flips the on class (${before} -> ${after})`);
+      ok(stored === after,  `${kind}: stored state matches the button (${stored})`);
+      ok(queued.length === (guarded ? 0 : 1),
+        `${kind}: queued ${queued.length} event(s), expected ${guarded ? 0 : 1}` +
+        (guarded ? ' with do-not-track on' : ''));
+      btn.click();   // put the button back the way it was
+    }
+  } finally {
+    enqueueEvent = realEnqueue;
+    flushEventQueue = realFlush;
+    lovesState = snapLoves;
+    likedSet = snapLiked;
+    s.like_lyrics_count = snapCounts.lyrics;
+    s.like_tune_count   = snapCounts.music;
+    s.like_count        = snapCounts.song;
+    try{
+      if(snapLovesRaw === null) localStorage.removeItem(LOVES_KEY); else localStorage.setItem(LOVES_KEY, snapLovesRaw);
+      if(snapLikesRaw === null) localStorage.removeItem(LIKES_KEY); else localStorage.setItem(LIKES_KEY, snapLikesRaw);
+    }catch(e){}
+    paintLoves();
+  }
+  const failed = lines.filter(l => l.startsWith('FAIL')).length;
+  console.log(`[laivy] loves self-test (do-not-track ${guarded ? 'ON' : 'off'}): ` +
+    `${lines.length - failed}/${lines.length} passed`);
+  lines.forEach(l => console.log('[laivy]   ' + l));
+  return lines;
+}
+
+if(LOVES_DEBUG){
+  // Run once a song is actually loaded, since the loves need one.
+  const kick = setInterval(() => {
+    if(currentIdx !== null && SONGS[currentIdx]){ clearInterval(kick); lovesSelfTest(); }
+  }, 500);
+  setTimeout(() => clearInterval(kick), 30000);
 }
 
 // One delegated handler for all three circles. The song routes to the heart's
@@ -2617,7 +2707,7 @@ document.addEventListener('click', (e) => {
   const kind = btn.dataset.love;
   if(kind === 'song'){
     if(currentIdx === null || !SONGS[currentIdx]) return;
-    if(!noTrack()) pulseLove('song');
+    pulseLove('song');
     toggleLike(SONGS[currentIdx].id);
   } else {
     toggleLove(kind);
@@ -3416,7 +3506,7 @@ homeSearchEl.addEventListener('keydown', (e) => {
    ============================================================ */
 loadSongs();
 // One-time visibility that the testing kill-switch is active this load.
-if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): no play/like/love events will be enqueued or flushed this session, and the three loves will not toggle.');
+if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): the loves still toggle and remember locally, but no play/like/love events are enqueued, flushed, or sent to analytics.');
 // Retry any play/like events queued during a previous outage. Self-guarded: a
 // no-op while do-not-track is set, so a prior run's queue can't flush on reload.
 flushEventQueue();
