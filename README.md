@@ -236,10 +236,23 @@ look dead during testing.
 
 **`LOVES_DEBUG` self-test**: set `localStorage` key `laivy-debug` to `1` (or load
 with `?debug=1`) and play a song. `lovesSelfTest()` simulates one click on each
-love and asserts the `on` class flips, the stored state agrees with the button,
-and exactly one event is queued (zero with do-not-track on). It swaps out enqueue
-and flush while it runs, undoes each click, and restores the counters and both
-`localStorage` keys, so it sends nothing and leaves no trace.
+love and asserts five things per button: the `on` class flips, the stored state
+agrees with the button, exactly one event is queued (zero with do-not-track on),
+**the stylesheet actually paints the circle filled** and **that fill changed on
+the click**. The last two read `getComputedStyle` on `.love-ic`, the element the
+CSS targets, rather than trusting the class the handler set, so a button that
+toggles but never lights is caught and named. Those two calibrate first against
+the Share circle, which the same stylesheet fills unconditionally: where that
+does not read as a gradient there is no cascade to query, and they report SKIP
+instead of a false alarm. The test swaps out enqueue and flush while it runs,
+undoes each click, and restores the counters and both `localStorage` keys, so it
+sends nothing and leaves no trace.
+
+**Stored shape is validated on read.** `loadLoves()` discards anything that is
+not a plain `{songId: {lyrics?, music?}}` object. A primitive under the loves key
+would otherwise swallow every write in silence, since assigning a property to a
+primitive is a no-op outside strict mode, leaving the words and music buttons
+permanently unlit with a clean console.
 
 `sql/005` also retired the old exclusive facet: `set_like_facet` is dropped, and
 `like_all_count` is dropped after folding any nonzero value into `like_count`

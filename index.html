@@ -2552,10 +2552,34 @@ async function toggleLike(songId){
    ============================================================ */
 const LOVES_KEY = 'laivy-loves-v1';   // { [songId]: { lyrics:true, music:true } }
 let lovesState = loadLoves();
-function loadLoves(){ try{ return JSON.parse(localStorage.getItem(LOVES_KEY)) || {}; }catch(e){ return {}; } }
+// Always returns a plain object of {songId: {lyrics?:true, music?:true}}.
+// Anything else in storage (a primitive, an array, null, a half-written value)
+// is discarded rather than trusted: assigning a property to a primitive is a
+// SILENT no-op outside strict mode, so a bad value here would leave the words
+// and music buttons permanently unlit with nothing logged.
+function loadLoves(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(LOVES_KEY));
+    if(!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+    const out = {};
+    for(const id of Object.keys(raw)){
+      const v = raw[id];
+      if(!v || typeof v !== 'object') continue;
+      const keep = {};
+      if(v.lyrics) keep.lyrics = true;
+      if(v.music)  keep.music  = true;
+      if(Object.keys(keep).length) out[id] = keep;
+    }
+    return out;
+  }catch(e){ return {}; }
+}
 function saveLoves(){ try{ localStorage.setItem(LOVES_KEY, JSON.stringify(lovesState)); }catch(e){} }
-function loveOn(songId, kind){ return !!(lovesState[songId] && lovesState[songId][kind]); }
+function loveOn(songId, kind){
+  return !!(lovesState && typeof lovesState === 'object' && lovesState[songId] && lovesState[songId][kind]);
+}
 function setLoveState(songId, kind, on){
+  // Never write through a value that cannot hold properties.
+  if(!lovesState || typeof lovesState !== 'object' || Array.isArray(lovesState)) lovesState = {};
   if(on){ (lovesState[songId] = lovesState[songId] || {})[kind] = true; }
   else if(lovesState[songId]){
     delete lovesState[songId][kind];
@@ -2631,7 +2655,31 @@ const LOVES_DEBUG = (() => {
   catch(e){ return false; }
 })();
 
-function lovesSelfTest(){
+// Read the state the STYLESHEET actually paints, not the class the handler
+// sets: the two are what diverge when a button toggles but never lights. The
+// stylesheet fills .love-btn.on .love-ic with var(--accent-grad), so an "on"
+// circle must compute to a gradient background. Returns null where there is no
+// CSS engine to ask (a headless DOM), so the check reports SKIP, not FAIL.
+function isGradientFilled(el){
+  if(!el || typeof getComputedStyle !== 'function') return false;
+  try{
+    const cs = getComputedStyle(el);
+    return /gradient/i.test([cs.backgroundImage, cs.background].filter(Boolean).join(' '));
+  }catch(e){ return false; }
+}
+// Can this environment answer a cascade question at all? Calibrate against the
+// Share circle, which the same stylesheet fills with var(--accent-grad)
+// unconditionally. If Share does not read as a gradient, nothing here can, and
+// the paint checks report SKIP rather than a false alarm (a headless DOM).
+function cssEngineAnswers(){
+  return isGradientFilled(document.querySelector('.share-invite-ic'));
+}
+function paintedOn(btn){
+  return isGradientFilled(btn && btn.querySelector('.love-ic'));
+}
+const settleForPaint = () => new Promise(r => setTimeout(r, 320));   // let the 0.2s transition land
+
+async function lovesSelfTest(){
   const lines = [];
   const ok = (cond, what) => lines.push((cond ? 'PASS  ' : 'FAIL  ') + what);
   if(currentIdx === null || !SONGS[currentIdx]){
@@ -2658,6 +2706,9 @@ function lovesSelfTest(){
       const btn = document.querySelector(`.love-btn[data-love="${kind}"]`);
       if(!btn){ ok(false, `${kind}: button is missing`); continue; }
       const before = btn.classList.contains('on');
+      const canAsk = cssEngineAnswers();
+      await settleForPaint();
+      const paintedBefore = canAsk ? paintedOn(btn) : null;
       btn.click();
       const after = btn.classList.contains('on');
       const stored = kind === 'song' ? likedSet.has(s.id) : loveOn(s.id, kind);
@@ -2666,6 +2717,18 @@ function lovesSelfTest(){
       ok(queued.length === (guarded ? 0 : 1),
         `${kind}: queued ${queued.length} event(s), expected ${guarded ? 0 : 1}` +
         (guarded ? ' with do-not-track on' : ''));
+      // The one that matters for "it toggles but never lights": what the
+      // stylesheet paints, read back from the same element the CSS targets.
+      await settleForPaint();
+      const paintedAfter = canAsk ? paintedOn(btn) : null;
+      if(!canAsk){
+        lines.push(`SKIP  ${kind}: this environment cannot resolve the cascade, painted state not checked`);
+      } else {
+        ok(paintedAfter === after,
+          `${kind}: the stylesheet paints it ${paintedAfter ? 'filled' : 'unfilled'}, matching the class`);
+        ok(paintedBefore !== paintedAfter,
+          `${kind}: the fill actually changed on click (${paintedBefore} -> ${paintedAfter})`);
+      }
       btn.click();   // put the button back the way it was
     }
   } finally {
@@ -2683,8 +2746,10 @@ function lovesSelfTest(){
     paintLoves();
   }
   const failed = lines.filter(l => l.startsWith('FAIL')).length;
+  const skipped = lines.filter(l => l.startsWith('SKIP')).length;
   console.log(`[laivy] loves self-test (do-not-track ${guarded ? 'ON' : 'off'}): ` +
-    `${lines.length - failed}/${lines.length} passed`);
+    `${lines.length - failed - skipped}/${lines.length - skipped} passed` +
+    (skipped ? `, ${skipped} skipped` : '') + (failed ? `, ${failed} FAILED` : ''));
   lines.forEach(l => console.log('[laivy]   ' + l));
   return lines;
 }
@@ -2692,7 +2757,7 @@ function lovesSelfTest(){
 if(LOVES_DEBUG){
   // Run once a song is actually loaded, since the loves need one.
   const kick = setInterval(() => {
-    if(currentIdx !== null && SONGS[currentIdx]){ clearInterval(kick); lovesSelfTest(); }
+    if(currentIdx !== null && SONGS[currentIdx]){ clearInterval(kick); lovesSelfTest(); }   // async; logs when done
   }, 500);
   setTimeout(() => clearInterval(kick), 30000);
 }
