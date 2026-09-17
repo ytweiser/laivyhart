@@ -9,6 +9,7 @@ daily chart) are committed static snapshots used as the Supabase-outage fallback
 Key files: `index.html` (public jukebox), `admin.html` (owner editor),
 `config.js` (Supabase URL + publishable key), `middleware.js` (per-song OG
 tags), `sw.js` (service worker), `worker/` (R2 upload + publish Worker),
+`brand/` (static brand images, served at `/brand/<name>`; see `brand/README.md`),
 `sql/` (record of schema changes).
 
 ## Adding a song field

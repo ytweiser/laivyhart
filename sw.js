@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v63';
+const CACHE_VERSION = 'v64';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -28,14 +28,32 @@ const SHELL = [
   'icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png'
 ];
 
+// Brand images served as static files from /brand (see brand/README.md).
+// Precached into the ASSET cache and kept OUT of SHELL on purpose: cache.addAll
+// is atomic, so a single missing or renamed file there would fail the whole
+// install and strand every visitor on the previous service worker. These are
+// added one at a time and a miss is simply skipped.
+const BRAND = [
+  'brand/banner.png',      // full banner, wordmark on the glow background, 3:1
+  'brand/banner-bg.png',   // background only, no text, for compositing
+  'brand/wordmark.png'     // transparent wordmark, logo alone
+];
+
 const SUPABASE_HOST = 'tshkrghrgokplakktvik.supabase.co';
 
+// Best effort, never fatal: one image per request, failures ignored.
+async function precacheBrand() {
+  const cache = await caches.open(ASSET_CACHE);
+  await Promise.allSettled(BRAND.map((u) => cache.add(u)));
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(SHELL_CACHE)
-      .then((cache) => cache.addAll(SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(SHELL_CACHE);
+    await cache.addAll(SHELL);     // atomic: the shell has to be complete
+    await precacheBrand();         // tolerant: cannot hold the install hostage
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
