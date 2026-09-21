@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v67';
+const CACHE_VERSION = 'v68';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -39,9 +39,11 @@ const SHELL = [
 // such a browser caches them through the normal stale-while-revalidate path on
 // first use, so precaching megabytes that almost nobody fetches would only make
 // the install heavier.
+// The homepage draws the banner plate in CSS now, so the only brand image it
+// actually renders is the wordmark. banner.webp and banner-bg.webp are still
+// served (their PNGs are the share-image source and the pre-CSS fallback) but
+// nothing fetches them, so precaching them would only make the install heavier.
 const BRAND = [
-  'brand/banner.webp',     // full banner, wordmark on the glow background, 3:1
-  'brand/banner-bg.webp',  // background only, no text, for compositing
   'brand/wordmark.webp'    // transparent wordmark, logo alone
 ];
 
