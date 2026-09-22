@@ -50,11 +50,10 @@ fine rays are the first thing a low quality smears.
 | plate-gold | 1669 KB | 82 KB |
 | total | 9.77 MB | 478 KB |
 
-`sw.js` precaches into the asset cache separately from the shell, and
-tolerantly: a file that is missing or renamed is skipped instead of failing the
-service worker install. For the original three only the **WebP** is precached,
-since almost nobody fetches their PNGs; those arrive on first use by the normal
-stale-while-revalidate path. The four plates are precached in **both** formats,
-which is a deliberate call and the reason the list is ~7.3 MB rather than
-~480 KB — every visitor pays for all four themes though only one is ever
-rendered. Deleting the four `.png` lines in `BRAND` reverts that.
+`sw.js` precaches the **WebP** files into the asset cache, separately from the
+shell and tolerantly: a file that is missing or renamed is skipped instead of
+failing the service worker install — all seven, ~478 KB. The PNGs are not
+precached, since almost nobody fetches them; they are cached on first use by the
+normal stale-while-revalidate path. That includes the four plate PNGs: at
+6.6 MB, and covering all four themes when a visitor only ever renders one, they
+are exactly the kind of weight this list exists to keep out of the install.
