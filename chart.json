@@ -1,21 +1,21 @@
 {
-  "chart_date": "2026-09-16",
+  "chart_date": "2026-09-21",
   "entries": [
     {
       "rank": 1,
-      "song_id": "87970626-1750-4b75-b120-8d604b2e6b0d"
-    },
-    {
-      "rank": 2,
-      "song_id": "17431641-c8e1-4d6c-ae7a-8ea371a677e5"
-    },
-    {
-      "rank": 3,
       "song_id": "5647c338-0aee-4472-8e35-44dad08c5477"
     },
     {
+      "rank": 2,
+      "song_id": "62c8b530-2456-4fa2-bf52-c797bfedea65"
+    },
+    {
+      "rank": 3,
+      "song_id": "87970626-1750-4b75-b120-8d604b2e6b0d"
+    },
+    {
       "rank": 4,
-      "song_id": "f1a18aad-35ee-4c86-b7fe-7a8bdb3a004a"
+      "song_id": "947dbe79-d564-4612-8afa-3750272402aa"
     },
     {
       "rank": 5,
@@ -23,23 +23,23 @@
     },
     {
       "rank": 6,
-      "song_id": "37340b42-e6db-42d9-a331-43ac45497385"
+      "song_id": "f1a18aad-35ee-4c86-b7fe-7a8bdb3a004a"
     },
     {
       "rank": 7,
-      "song_id": "f0e43564-e330-49ed-a69e-4767cbc8a323"
+      "song_id": "17431641-c8e1-4d6c-ae7a-8ea371a677e5"
     },
     {
       "rank": 8,
-      "song_id": "13e9a1bf-19cf-4087-ba7c-6f77676718d7"
+      "song_id": "37340b42-e6db-42d9-a331-43ac45497385"
     },
     {
       "rank": 9,
-      "song_id": "0d81a4bc-22ff-4bd9-8f24-1ab9340501c7"
+      "song_id": "2a3e1636-f169-4fc4-a89f-428939b43533"
     },
     {
       "rank": 10,
-      "song_id": "2a3e1636-f169-4fc4-a89f-428939b43533"
+      "song_id": "00d5043f-ce81-4170-866f-61ae8adf56b0"
     }
   ]
 }
