@@ -658,7 +658,18 @@ body{
   display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
   font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim);
 }
-.rating-label{ min-width:5.2rem; }
+/* Icon + label as one unit, so they wrap together. The min-width that used to
+   sit on the label lives here now, which is what keeps the two rows' stars
+   aligned with each other. */
+.rating-head{ display:inline-flex; align-items:center; gap:0.35rem; min-width:6.4rem; }
+.rating-label{ }
+/* Decorative, and made unclickable in three ways so it cannot be mistaken for
+   a control: no pointer events, no cursor change, and fainter than the label
+   so it stays secondary to the stars. currentColor is what themes it. */
+.rating-ic{
+  width:1.05rem; height:1.05rem; flex-shrink:0;
+  color:var(--text-faint); pointer-events:none; cursor:default;
+}
 .rating-stars{ display:inline-flex; gap:0; }
 /* The button is the touch target, the glyph inside it is what you see. 1.6rem
    of star plus 0.45rem of padding each side gives a 40px square hit area --
@@ -681,7 +692,8 @@ body{
    below, which is what keeps a 5x40px row from overflowing a narrow dock. */
 @media (max-width:560px){
   .rating-row{ gap:0.4rem; }
-  .rating-label{ min-width:4.4rem; }
+  .rating-head{ min-width:5.5rem; gap:0.3rem; }
+  .rating-ic{ width:0.95rem; height:0.95rem; }
   .rating-note, .rating-avg{ flex-basis:100%; margin-left:0.2rem; }
   .star{ padding:0.4rem; }
   .star-ic{ width:1.5rem; height:1.5rem; }

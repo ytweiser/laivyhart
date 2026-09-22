@@ -3060,6 +3060,32 @@ const RATING_FACETS = [
   { facet: 'words', en: 'The words' },
   { facet: 'music', en: 'The music' },
 ];
+
+/* Facet icons. DECORATIVE ONLY: aria-hidden so a screen reader skips them (the
+   text label already carries the meaning), no wrapper, no handler, and
+   pointer-events:none in the stylesheet. Freestanding glyphs with no circle,
+   badge or ring -- a circle sitting next to a row of tappable stars reads as a
+   button, which is exactly the confusion to avoid.
+
+   The quill is the original one, lifted unchanged from the love button this row
+   replaced in 1A-6. The music facet used to be an equalizer; this is a new
+   eighth note drawn to match the quill -- same 24x24 box, fill:none,
+   stroke:currentColor, 1.7 width, round caps and joins -- so the pair reads as
+   one set. The note HEAD is the single filled element: an outlined head at this
+   size reads as a ring, not a note. currentColor throughout, so both follow the
+   palette in all four themes and both lightings. */
+const FACET_ICONS = {
+  words: '<svg class="rating-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
+       + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+       + '<path d="M4 20c0-5 2.2-9.3 5.9-12.1C12.6 5.8 16 4.7 20 4.4c-.2 4-1.3 7.4-3.4 10.1C13.7 18.1 9.3 20 4.4 20"/>'
+       + '<path d="M4 20c1.9-2.6 4.3-4.8 7.1-6.4"/>'
+       + '<path d="M14.5 10.2c-1.7.8-3.2 1.9-4.4 3.4"/></svg>',
+  music: '<svg class="rating-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
+       + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+       + '<path d="M11.4 17.2V4.6c3.4.8 5 2.6 4.7 5.4"/>'
+       + '<ellipse cx="8.2" cy="17.4" rx="3.3" ry="2.6" transform="rotate(-22 8.2 17.4)"'
+       + ' fill="currentColor" stroke="none"/></svg>',
+};
 let MIN_RATINGS = 5;              // refreshed from site_settings on load
 let myRatings = {};               // { '<songId>:<facet>': score } for this account
 
@@ -3109,8 +3135,10 @@ function ratingRowHTML(s, cfg){
   const note = avg
     ? `<span class="rating-avg">${avg} / 5</span>`
     : `<span class="rating-note">Rated by a few listeners so far</span>`;
+  // Icon and label travel together as one flex item, so a narrow dock can wrap
+  // the row without ever stranding a glyph from the words it labels.
   return `<div class="rating-row${signedIn ? '' : ' is-locked'}" data-facet="${cfg.facet}">
-      <span class="rating-label">${escHtml(cfg.en)}</span>
+      <span class="rating-head">${FACET_ICONS[cfg.facet] || ''}<span class="rating-label">${escHtml(cfg.en)}</span></span>
       <span class="rating-stars">${stars}</span>
       ${signedIn ? note : `<span class="rating-note">Sign in to rate</span>`}
     </div>`;
