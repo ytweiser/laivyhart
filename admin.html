@@ -46,6 +46,7 @@
 <link href="theme.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="js/supabase-client.js"></script>
 <style>
   /* Old variable names remapped to shared theme tokens so any inline
      references still resolve, on top of the fresh admin stylesheet below. */
@@ -288,6 +289,7 @@
     <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
+    <div id="account-slot"></div>
   </div>
 </div>
 
@@ -298,6 +300,15 @@
   <input type="password" id="password-input" placeholder="Password" autocomplete="current-password">
   <button id="send-link-btn">Log in</button>
   <div class="login-status" id="login-status"></div>
+  <p style="margin-top:1.4rem; color:var(--text-dim); font-size:0.85rem;">
+    Or sign in the way the rest of the site does:
+  </p>
+  <button id="admin-magic-btn" class="logout-btn" style="display:inline-block;">Email me a link / Google</button>
+  <div id="not-authorized" style="display:none; margin-top:1.5rem;">
+    <h2 style="font-family:var(--font-display);">Not authorized</h2>
+    <p>This account is signed in but is not an administrator.</p>
+    <p><a class="quiet-link" href="/">Go to the jukebox</a></p>
+  </div>
 </div>
 
 <div id="admin-view" class="admin-layout" style="display:none;">
@@ -321,7 +332,8 @@
 </div>
 
 <script>
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// The one client for this document (js/supabase-client.js, loaded above).
+const supabaseClient = window.laivy.supabase;
 
 // Cloudflare Worker that writes audio to the R2 bucket (see /worker). New song
 // audio is uploaded here instead of Supabase Storage. Filled in after deploy.
@@ -374,12 +386,30 @@ document.getElementById('send-link-btn').addEventListener('click', async () => {
 
 logoutBtn.addEventListener('click', async () => {
   await supabaseClient.auth.signOut();
-  window.location.reload();
+  window.location.href = '/';
 });
 
+/* The gate is the DATABASE's answer, not "is there a session". Every admin
+   policy calls public.is_admin(); asking the same function here means the UI
+   and the data layer can never disagree. A signed-in non-admin gets told so
+   rather than being offered a second sign-in form. */
 async function checkSession(){
   const { data: { session } } = await supabaseClient.auth.getSession();
+  const notAuth = document.getElementById('not-authorized');
+  let admin = false;
   if(session){
+    try{
+      const { data, error } = await supabaseClient.rpc('is_admin');
+      admin = !error && data === true;
+    }catch(e){ admin = false; }
+  }
+  if(notAuth) notAuth.style.display = (session && !admin) ? 'block' : 'none';
+  // Signed in but not an admin: hide the sign-in form, show the notice only.
+  ['email-input','password-input','send-link-btn','admin-magic-btn'].forEach(id => {
+    const n = document.getElementById(id);
+    if(n) n.style.display = (session && !admin) ? 'none' : '';
+  });
+  if(admin){
     loginView.style.display = 'none';
     adminView.style.display = 'grid';
     logoutBtn.style.display = 'inline-block';
@@ -440,6 +470,10 @@ async function publishSite(){
 // and the "Click Publish" link that are re-rendered with the song form.
 document.addEventListener('click', (e) => {
   if(e.target.closest('.publish-trigger')){ e.preventDefault(); publishSite(); }
+});
+
+document.getElementById('admin-magic-btn').addEventListener('click', () => {
+  if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
 });
 
 supabaseClient.auth.onAuthStateChange(() => checkSession());
@@ -1263,5 +1297,8 @@ async function deleteSong(){
   renderForm();
 }
 </script>
+
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/account-ui.js"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v76';
+const CACHE_VERSION = 'v77';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -86,6 +86,16 @@ self.addEventListener('fetch', (event) => {
 
   let url;
   try { url = new URL(req.url); } catch (e) { return; }
+
+  // AUTH BYPASS, checked before anything else can claim the request.
+  // /auth/* carries a one-time code in the URL and must never be cached or
+  // replayed; /settings is per-account and must never be served from another
+  // visitor's cache; every *.supabase.co host (auth, REST, storage) stays live.
+  // These are `return`s with no respondWith, so the browser handles them
+  // normally over the network.
+  if (url.origin === self.location.origin &&
+      (url.pathname.startsWith('/auth/') || url.pathname === '/settings')) return;
+  if (/(^|\.)supabase\.co$/.test(url.hostname)) return;
 
   // Supabase REST + Storage (audio): stay live, never cache.
   if (url.hostname === SUPABASE_HOST) return;

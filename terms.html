@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-S2RJQEGV45"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-S2RJQEGV45');
+</script>
+<title>Terms and Privacy &middot; Laivy Hart</title>
+<meta name="description" content="Terms of use and privacy for laivyhart.com.">
+<script>
+  /* Same pre-paint theme bootstrap as every other page. */
+  (function(){
+    try{
+      var t = localStorage.getItem('laivy-theme');
+      if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+      document.documentElement.setAttribute('data-theme', t);
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
+      document.documentElement.setAttribute('data-color', c);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme','dark');
+      document.documentElement.setAttribute('data-color','bordeaux');
+    }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F5ECEE" media="(prefers-color-scheme: light)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Frank+Ruhl+Libre:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="theme.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/supabase-client.js"></script>
+<style>
+  /* Matches about.html's reading column. The prose is intentionally narrow:
+     terms are read, not scanned. */
+  body{ background:var(--bg); color:var(--text); }
+  .terms-wrap{ max-width:44rem; margin:0 auto; padding:1.4rem 1.5rem 6rem; }
+  .terms-wrap h1{ font-family:var(--font-display); font-weight:600; font-size:2rem; margin:1.2rem 0 0.3rem; }
+  .terms-wrap h2{ font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin:2rem 0 0.4rem; }
+  .terms-wrap p, .terms-wrap li{ font-family:var(--font-ui); font-size:1rem; line-height:1.72; color:var(--text); }
+  .terms-wrap p.updated{ color:var(--text-dim); font-size:0.88rem; margin-top:0; }
+  .terms-he{ color:var(--text-dim); font-family:var(--font-heb); }
+  .terms-note{ margin-top:2.4rem; padding-top:1.2rem; border-top:1px solid var(--chip-border);
+               color:var(--text-faint); font-size:0.88rem; }
+  .terms-foot{ margin-top:2.5rem; color:var(--text-faint); font-size:0.85rem; }
+  .terms-foot a{ color:var(--accent-3); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo-link" href="/">
+    <picture>
+      <source type="image/webp" srcset="/brand/wordmark.webp">
+      <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+    </picture>
+  </a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/listen">Songs</a>
+    <a href="/about.html">About</a>
+    <div id="account-slot"></div>
+  </nav>
+</div>
+
+<main class="terms-wrap">
+  <h1>Terms of Use and Privacy</h1>
+  <p class="terms-he" dir="rtl" lang="he">תנאי שימוש ופרטיות</p>
+  <p class="updated">Laivy Hart. Last updated [DATE].</p>
+
+  <p>Laivy Hart is a music site at laivyhart.com. These terms are a short first
+  version and will be expanded before the site accepts songs from people other
+  than its owner.</p>
+
+  <h2>Your account <span class="terms-he" dir="rtl" lang="he">החשבון שלך</span></h2>
+  <p>You may create an account with your email or a Google sign-in. You must be
+  at least 13 years old to hold an account. You are responsible for what you do
+  with your account. We may remove any account or content, at any time, for any
+  reason, including inactivity or misuse.</p>
+
+  <h2>What you post <span class="terms-he" dir="rtl" lang="he">מה שאתם מעלים</span></h2>
+  <p>Posting songs is not yet open. When it opens, you will need to be at least
+  18, you will keep ownership of what you create, and you will grant Laivy Hart
+  a non-exclusive, worldwide, royalty-free license to host, display, stream, and
+  share it on the site and in links to the site. You may not post work that is
+  not yours to post, and you may not imitate or impersonate a named artist,
+  living or dead, including in anything made with AI tools.</p>
+
+  <h2>Privacy <span class="terms-he" dir="rtl" lang="he">פרטיות</span></h2>
+  <p>We store your email and sign-in identity to run your account, and basic
+  usage analytics to understand how the site is used. We do not sell your
+  personal information. You can delete your account from your settings, which
+  removes your profile and takes your songs off the site.</p>
+
+  <h2>Contact <span class="terms-he" dir="rtl" lang="he">יצירת קשר</span></h2>
+  <p><a href="mailto:hello@laivyhart.com">hello@laivyhart.com</a>.</p>
+
+  <p class="terms-note">This is not legal advice and not a contract drafted for
+  any jurisdiction; it is a plain-language placeholder the owner will replace
+  with fuller terms before uploads open.</p>
+
+  <p class="terms-foot">
+    The source of this page is <code>docs/legal/terms-v1.md</code> in the site
+    repository &mdash; edit there, then mirror the change here.
+    &middot; <a href="/">Back to Laivy Hart</a>
+  </p>
+</main>
+
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/account-ui.js"></script>
+</body>
+</html>

@@ -70,6 +70,7 @@
 <link href="theme.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="js/supabase-client.js"></script>
 <style>
   body{min-height:100vh; overflow-x:hidden;}
   .app{
@@ -1074,6 +1075,7 @@
         <a href="/" data-nav="home">Home</a>
         <a href="/listen" data-nav="listen" class="is-current" aria-current="page">Songs</a>
         <a href="/about.html">About</a>
+        <div id="account-slot"></div>
       </nav>
       <div class="topbar-right">
         <button class="pill-btn" id="share-btn" type="button">Share</button>
@@ -1263,6 +1265,7 @@
       <a href="/" data-nav="home" class="is-current" aria-current="page">Home</a>
       <a href="/listen" data-nav="listen">Songs</a>
       <a href="/about.html">About</a>
+      <div id="account-slot"></div>
     </nav>
     <div class="home-header-right">
       <input class="search home-search" id="home-search" type="text" placeholder="Search songs, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
@@ -1315,6 +1318,7 @@
 
   <footer class="home-footer">
     <a class="quiet-link" href="about.html">About</a>
+    <a class="quiet-link" href="/terms">Terms and Privacy</a>
   </footer>
 </div>
 
@@ -1362,7 +1366,10 @@
    Config, client, flags
    ============================================================ */
 const { SUPABASE_URL, SUPABASE_ANON_KEY } = window.LAIVY_CONFIG;
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// The one client for this document, created in js/supabase-client.js before
+// this script runs. Two clients on a page share the auth storage key and
+// race on refresh, so there is deliberately only ever one createClient call.
+const supabaseClient = window.laivy.supabase;
 
 // Play counts are tracked silently. Flip to true to reveal them publicly.
 const SHOW_PLAY_COUNTS = false;
@@ -3772,20 +3779,44 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
    so navigating home never stops playback.
    ============================================================ */
 let route = 'home';
-function routeFromPath(){ return location.pathname === '/listen' ? 'listen' : 'home'; }
+function routeFromPath(){
+  const p = location.pathname;
+  if(p === '/listen') return 'listen';
+  if(p === '/settings') return 'settings';
+  if(p === '/auth/callback') return 'callback';
+  return 'home';
+}
+
+/* `next` comes back from the auth provider in the URL, so it is untrusted.
+   Only same-origin paths are allowed: it must start with a single '/' (a
+   leading '//' is a protocol-relative URL and would leave the site). */
+function safeNext(raw){
+  if(typeof raw !== 'string' || raw[0] !== '/' || raw[1] === '/') return '/';
+  return raw;
+}
 
 function showPage(next){
   route = next;
+  const settings = document.getElementById('settings-root');
+  // /settings and /auth/callback are their own views, layered over the same
+  // document: both hide the two song pages rather than navigating away, so the
+  // player and all app state survive a trip through sign-in.
   document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
   document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
-  if(next === 'home'){ renderHomepage(); renderFeed(); }
+  if(settings) settings.classList.toggle('hidden', next !== 'settings' && next !== 'callback');
+  if(next === 'settings'){
+    if(settings && window.laivy && window.laivy.accountUI) window.laivy.accountUI.renderSettings(settings);
+  } else if(next === 'callback'){
+    if(settings) settings.innerHTML = '<div class="lv-auth-wait">Signing you in&hellip;</div>';
+  } else if(next === 'home'){ renderHomepage(); renderFeed(); }
   updateMiniPlayer();
   try{ window.scrollTo({ top: 0 }); }catch(e){}
 }
 // User-initiated navigation: push history + fire a manual page_view (GA4's
 // automatic page_view only fires on real loads, not SPA transitions).
+function routePath(r){ return r === 'listen' ? '/listen' : r === 'settings' ? '/settings' : '/'; }
 function navigate(next){
-  history.pushState({ route: next }, '', next === 'listen' ? '/listen' : '/');
+  history.pushState({ route: next }, '', routePath(next));
   showPage(next);
   laivyTrack('page_view', { route: next });
 }
@@ -3829,6 +3860,31 @@ function applyListenParams(){
 // rewrites the visible URL to /listen?song=<id>; otherwise render the route the
 // path names. The shared link stays "/?song=" so the OG middleware still fires.
 function initRoute(){
+  // /auth/callback: the client is already exchanging the code (detectSessionInUrl).
+  // Show a waiting state, then hand over to `next` once auth has settled. The
+  // code never stays in the address bar: replaceState rewrites it either way.
+  if(location.pathname === '/auth/callback'){
+    showPage('callback');
+    let done = false;
+    const go = () => {
+      if(done) return; done = true;
+      let next = '/';
+      try{ next = safeNext(new URLSearchParams(location.search).get('next') || '/'); }catch(e){}
+      history.replaceState({}, '', next);
+      const r = routeFromPath();
+      showPage(r);
+      if(r === 'home' || r === 'listen') applyListenParams();
+      laivyTrack('page_view', { route: r });
+    };
+    // Whichever comes first: auth settling, or a timeout so a failed exchange
+    // still lands the visitor somewhere sensible instead of hanging.
+    window.addEventListener('laivy:auth', go, { once: true });
+    if(window.laivy && window.laivy.auth && window.laivy.auth.ready) go();
+    setTimeout(go, 6000);
+    return;
+  }
+  if(location.pathname === '/settings'){ showPage('settings'); return; }
+
   let songId = null;
   try{ songId = new URLSearchParams(location.search).get('song'); }catch(e){}
   if(songId && SONGS.findIndex(s => s.id === songId) >= 0){
@@ -3915,5 +3971,14 @@ if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): the l
 // no-op while do-not-track is set, so a prior run's queue can't flush on reload.
 flushEventQueue();
 </script>
+
+<!-- Host for the /settings and /auth/callback views: a sibling of #page-home
+     and #page-listen, so showPage() can hide those two without hiding this. -->
+<div id="settings-root" class="hidden"></div>
+
+<!-- Auth + account UI. Modules, so they run after the app script above; both
+     reuse the single client from js/supabase-client.js. -->
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/account-ui.js"></script>
 </body>
 </html>

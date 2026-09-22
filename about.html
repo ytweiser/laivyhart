@@ -56,6 +56,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="theme.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="js/supabase-client.js"></script>
 <style>
   body{min-height:100vh; position:relative; overflow-x:hidden;}
   .page-ambient{position:fixed; inset:0; z-index:0;}
@@ -124,6 +127,7 @@
     <a href="/">Home</a>
     <a href="/listen">Songs</a>
     <a href="/about.html" class="is-current" aria-current="page">About</a>
+    <div id="account-slot"></div>
   </nav>
   <div class="topbar-right">
     <button class="pill-btn" id="share-btn" type="button">Share</button>
@@ -221,5 +225,8 @@
     mark(COLORS.indexOf(cur) === -1 ? 'bordeaux' : cur);
   })();
 </script>
+
+<script type="module" src="js/auth.js"></script>
+<script type="module" src="js/account-ui.js"></script>
 </body>
 </html>

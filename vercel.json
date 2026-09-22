@@ -3,6 +3,21 @@
   "buildCommand": "node scripts/snapshot-songs.mjs",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/listen", "destination": "/index.html" }
+    {
+      "source": "/listen",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/auth/callback",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    }
   ]
 }
