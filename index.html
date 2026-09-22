@@ -2048,12 +2048,20 @@ function homepageSections(){
   const fallback = weeklyFallback;
   const hero = ranked[0] || null;
 
-  const shown = new Set(hero ? [hero.id] : []);
+  // Rails dedupe against the HERO ONLY -- deliberately not against each other.
+  // They used to share an accumulating `shown` set, so every rail permanently
+  // claimed its picks and the later ones drew from whatever was left. With 37
+  // songs and four rails ahead of it, that pushed All-time favorites down to a
+  // top play_count of 27 against a true top of 126, and dropped the newest song
+  // in the catalog out of New releases entirely (the weekly rail had already
+  // taken it), leaving "New releases" showing songs six weeks older than ones
+  // it was hiding. A song being both new and most-loved is information, not
+  // repetition, so rails may now overlap and each shows its genuine top N.
+  const heroId = hero ? hero.id : null;
   const rails = [];
   function addRail(key, title, list, cap){
-    const picked = list.filter(s => !shown.has(s.id)).slice(0, cap || 8);
+    const picked = list.filter(s => s.id !== heroId).slice(0, cap || 8);
     if(picked.length >= 3){
-      picked.forEach(s => shown.add(s.id));
       rails.push({ key, title, songs: picked });
     }
   }
