@@ -1593,6 +1593,11 @@ function mapSong(r){
     featured_order: (r.featured_order == null ? null : Number(r.featured_order)),
     comment_count: r.comment_count || 0,
     created_at: r.created_at || null,
+    // Ownership travels with the song from 1A-3 so /artist/<handle> can
+    // filter SONGS without a second query. Nothing renders it yet --
+    // attribution on rows, hero and now-playing is 1A-4.
+    artist_id: r.artist_id || null,
+    artist: r.artist || null,
     play_count: r.play_count || 0,
     plays_7d: r.plays_7d || 0,
     like_count: r.like_count || 0,
@@ -3779,11 +3784,18 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
    so navigating home never stops playback.
    ============================================================ */
 let route = 'home';
+const ARTIST_PATH_RE = /^\/artist\/([^\/]+)\/?$/;
+function artistHandleFromPath(){
+  const m = ARTIST_PATH_RE.exec(location.pathname);
+  if(!m) return null;
+  try{ return decodeURIComponent(m[1]).toLowerCase(); }catch(e){ return m[1].toLowerCase(); }
+}
 function routeFromPath(){
   const p = location.pathname;
   if(p === '/listen') return 'listen';
   if(p === '/settings') return 'settings';
   if(p === '/auth/callback') return 'callback';
+  if(ARTIST_PATH_RE.test(p)) return 'artist';
   return 'home';
 }
 
@@ -3801,10 +3813,14 @@ function showPage(next){
   // /settings and /auth/callback are their own views, layered over the same
   // document: both hide the two song pages rather than navigating away, so the
   // player and all app state survive a trip through sign-in.
+  const artistRoot = document.getElementById('artist-root');
   document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
   document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
   if(settings) settings.classList.toggle('hidden', next !== 'settings' && next !== 'callback');
-  if(next === 'settings'){
+  if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
+  if(next === 'artist'){
+    renderArtistPage(artistHandleFromPath());
+  } else if(next === 'settings'){
     if(settings && window.laivy && window.laivy.accountUI) window.laivy.accountUI.renderSettings(settings);
   } else if(next === 'callback'){
     if(settings) settings.innerHTML = '<div class="lv-auth-wait">Signing you in&hellip;</div>';
@@ -3815,6 +3831,9 @@ function showPage(next){
 // User-initiated navigation: push history + fire a manual page_view (GA4's
 // automatic page_view only fires on real loads, not SPA transitions).
 function routePath(r){ return r === 'listen' ? '/listen' : r === 'settings' ? '/settings' : '/'; }
+// The artist route is the only one with a parameter, so it navigates by href
+// rather than through navigate(); showPage() below handles rendering it.
+
 function navigate(next){
   history.pushState({ route: next }, '', routePath(next));
   showPage(next);
@@ -3884,6 +3903,7 @@ function initRoute(){
     return;
   }
   if(location.pathname === '/settings'){ showPage('settings'); return; }
+  if(ARTIST_PATH_RE.test(location.pathname)){ showPage('artist'); return; }
 
   let songId = null;
   try{ songId = new URLSearchParams(location.search).get('song'); }catch(e){}
@@ -3905,6 +3925,190 @@ function initRoute(){
   const r = routeFromPath();
   history.replaceState({ route: r }, '', r === 'listen' ? '/listen' : '/');
   showPage(r);
+}
+
+/* ============================================================
+   Public artist page: /artist/<handle>
+
+   Reuses the Phase C rail card (railCardHTML) and the rail queue (playRail)
+   rather than reimplementing either, so a card on an artist page behaves
+   exactly like a card in a homepage rail.
+
+   HOUSE RULE: play counts are never shown. The stat line is song count and
+   summed loves only.
+   ============================================================ */
+let artistPageToken = 0;     // guards against a slow fetch landing after a newer one
+
+// Handles are citext in the database, so the lookup is case-insensitive there.
+// artists_public excludes suspended and deleted artists, which is how those
+// pages 404 without any extra logic.
+async function resolveArtist(handle){
+  if(!handle) return null;
+  try{
+    const { data, error } = await supabaseClient
+      .from('artists_public')
+      .select('id, handle, display_name, display_name_he, bio, avatar_url, created_at')
+      .ilike('handle', handle)
+      .maybeSingle();
+    if(error) throw error;
+    if(data) return data;
+    return null;                       // a clean miss: do NOT fall back
+  }catch(e){
+    // Network/outage only: fall back to the committed artists.json snapshot.
+    try{
+      const res = await fetch('artists.json', { cache: 'no-cache' });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+      const hit = (rows || []).find(a => String(a.handle).toLowerCase() === handle);
+      if(!hit) return null;
+      return { id: hit.id, handle: hit.handle, display_name: hit.name,
+               display_name_he: hit.name_he, bio: null, avatar_url: hit.avatar, created_at: null };
+    }catch(e2){ return null; }
+  }
+}
+
+function artistAvatarHTML(a, px){
+  if(a && a.avatar_url){
+    return `<img class="artist-avatar" src="${escHtml(cdnImg(a.avatar_url, px))}" data-raw="${escHtml(a.avatar_url)}"
+      onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="${px}" height="${px}">`;
+  }
+  const initial = ((a && (a.display_name || a.handle) || '?').trim()[0] || '?').toUpperCase();
+  return `<div class="artist-avatar is-initial" aria-hidden="true">${escHtml(initial)}</div>`;
+}
+
+const STATUS_LABEL = { draft:'Draft', submitted:'In review', rejected:'Not accepted', removed:'Removed' };
+
+async function renderArtistPage(handle){
+  const root = document.getElementById('artist-root');
+  if(!root) return;
+  const token = ++artistPageToken;
+  root.innerHTML = `<div class="artist-wrap"><p class="artist-loading">Loading&hellip;</p></div>`;
+
+  const a = await resolveArtist(handle);
+  if(token !== artistPageToken) return;
+
+  if(!a){
+    root.innerHTML = `<div class="artist-wrap artist-missing">
+        <h1>Artist not found</h1>
+        <p class="artist-he" dir="rtl" lang="he">האמן לא נמצא</p>
+        <p><a class="quiet-link" href="/">Back to Laivy Hart</a></p>
+      </div>`;
+    return;
+  }
+
+  // SONGS is already whichever source loadSongs() used -- live Supabase when
+  // reachable, the songs.json snapshot otherwise -- and holds approved songs
+  // only. Filtering it is therefore "live, falling back to the snapshot" for
+  // free, and it keeps every card's index aligned with the player's queue.
+  const mine = SONGS.filter(s => s.artist_id === a.id || (s.artist && s.artist.handle === a.handle));
+  mine.sort((x, y) => songCreatedTs(y) - songCreatedTs(x));
+  const idxOf = new Map(SONGS.map((s, i) => [s.id, i]));
+  const loves = mine.reduce((n, s) => n + (s.like_count || 0), 0);
+
+  const me = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
+  const isOwner = !!(me && me.id === a.id);
+
+  const cards = mine.map((s, i) => railCardHTML(s, idxOf, 'artist', i)).join('');
+  const bioHTML = a.bio ? escHtml(a.bio).replace(/\n/g, '<br>') : '';
+
+  root.innerHTML = `
+    <div class="artist-wrap">
+      <header class="artist-head">
+        ${artistAvatarHTML(a, 160)}
+        <div class="artist-head-text">
+          <h1 class="artist-name">${escHtml(a.display_name || a.handle)}</h1>
+          ${a.display_name_he ? `<div class="artist-name-he" dir="rtl" lang="he">${escHtml(a.display_name_he)}</div>` : ''}
+          <div class="artist-handle">/artist/${escHtml(a.handle)}</div>
+          ${bioHTML ? `<p class="artist-bio">${bioHTML}</p>` : ''}
+          <div class="artist-stats">
+            <span>${mine.length} ${mine.length === 1 ? 'song' : 'songs'}</span>
+            <span aria-hidden="true">&middot;</span>
+            <span>${loves} ${loves === 1 ? 'love' : 'loves'}</span>
+          </div>
+          <div class="artist-actions">
+            ${mine.length ? `<button class="home-primary-btn filled" type="button" id="artist-playall">Play all</button>` : ''}
+            <button class="home-primary-btn outlined" type="button" id="artist-share">Share</button>
+            ${isOwner ? `<a class="home-primary-btn outlined" href="/settings">Edit page</a>` : ''}
+          </div>
+        </div>
+      </header>
+
+      ${mine.length
+        ? `<section class="rail" data-rail="artist">
+             <div class="rail-head"><h2 class="rail-title-h">Songs <span class="artist-he" dir="rtl" lang="he">שירים</span></h2></div>
+             ${railAffordancesHTML('rail-scroll', 'artist', cards)}
+           </section>`
+        : `<p class="artist-empty">No songs yet.<br><span class="artist-he" dir="rtl" lang="he">אין שירים עדיין.</span></p>`}
+
+      ${isOwner ? `<section class="artist-private" id="artist-private" hidden>
+           <h2 class="rail-title-h">Not yet public <span class="artist-he" dir="rtl" lang="he">עדיין לא פורסם</span></h2>
+           <p class="artist-private-note">Only you can see this.</p>
+           <div class="artist-private-list" id="artist-private-list"></div>
+         </section>` : ''}
+    </div>`;
+
+  // Cards behave exactly as they do in a homepage rail: open /listen with that
+  // song loaded. loadSong(idx, false) does not autoplay.
+  root.querySelectorAll('.rail-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      if(!SONGS[idx]) return;
+      laivyTrack('artist_song_open', { handle: a.handle, song_id: SONGS[idx].id });
+      history.pushState({ route: 'listen' }, '', '/listen');
+      showPage('listen');
+      loadSong(idx, false);
+    });
+  });
+
+  const playAll = document.getElementById('artist-playall');
+  if(playAll) playAll.addEventListener('click', () => {
+    laivyTrack('artist_play_all', { handle: a.handle, count: mine.length });
+    history.pushState({ route: 'listen' }, '', '/listen');
+    showPage('listen');
+    playRail(mine.map(s => idxOf.get(s.id)));
+  });
+
+  const shareBtn = document.getElementById('artist-share');
+  if(shareBtn) shareBtn.addEventListener('click', async () => {
+    const url = `${location.origin}/artist/${encodeURIComponent(a.handle)}`;
+    const title = a.display_name || a.handle;
+    laivyTrack('artist_share', { handle: a.handle });
+    try{
+      if(navigator.share){ await navigator.share({ title, url }); return; }
+      await navigator.clipboard.writeText(url);
+      shareBtn.textContent = 'Link copied';
+      setTimeout(() => { shareBtn.textContent = 'Share'; }, 1800);
+    }catch(e){ /* the visitor cancelled the sheet */ }
+  });
+
+  setupRailAffordances();
+  if(isOwner) renderArtistPrivate(a);
+}
+
+/* The owner's own unpublished songs. Live only: RLS songs_read_own returns
+   them to their owner and nothing else, and they are never in songs.json. */
+async function renderArtistPrivate(a){
+  const host = document.getElementById('artist-private-list');
+  const section = document.getElementById('artist-private');
+  if(!host || !section) return;
+  let rows = [];
+  try{
+    const { data, error } = await supabaseClient
+      .from('songs')
+      .select('id, title, title_translit, status, created_at')
+      .eq('artist_id', a.id)
+      .neq('status', 'approved')
+      .order('created_at', { ascending: false });
+    if(error) throw error;
+    rows = data || [];
+  }catch(e){ return; }
+  if(!rows.length) return;                      // nothing to show: stay hidden
+  section.hidden = false;
+  host.innerHTML = rows.map(r => `
+    <div class="artist-private-row">
+      <span class="artist-private-title">${escHtml(r.title || r.title_translit || 'Untitled')}</span>
+      <span class="artist-private-pill" data-status="${escHtml(r.status)}">${escHtml(STATUS_LABEL[r.status] || r.status)}</span>
+    </div>`).join('');
 }
 
 /* ============================================================
@@ -3975,6 +4179,8 @@ flushEventQueue();
 <!-- Host for the /settings and /auth/callback views: a sibling of #page-home
      and #page-listen, so showPage() can hide those two without hiding this. -->
 <div id="settings-root" class="hidden"></div>
+<!-- Public artist page, /artist/<handle>. Another sibling view. -->
+<div id="artist-root" class="hidden"></div>
 
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->

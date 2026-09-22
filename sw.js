@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v77';
+const CACHE_VERSION = 'v78';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -42,7 +42,13 @@ const SHELL = [
 // PNG that almost nobody fetches, and that covers all four themes when a
 // visitor only ever renders the one matching their data-color, would make every
 // install pay for it.
+// artists.json rides in this tolerant list rather than the atomic SHELL: like
+// the brand images it is generated at build time, and a build where it is
+// briefly absent must not strand every visitor on the previous worker. The
+// artist page's offline fallback reads it. (songs.json/chart.json stay in
+// SHELL, where they have always been.)
 const BRAND = [
+  'artists.json',          // artist directory, read by the /artist fallback
   'brand/banner.webp',     // full banner, wordmark on the glow background, 3:1
   'brand/banner-bg.webp',  // background only, no text, for compositing
   'brand/wordmark.webp',   // transparent wordmark, logo alone

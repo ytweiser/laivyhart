@@ -166,10 +166,11 @@ function renderSlot(slot) {
   const menu = el('div', 'lv-menu');
   menu.setAttribute('role', 'menu');
   menu.hidden = true;
-  // "My page" lands on the artist page in 1A-3; until that route exists it goes
-  // to /settings rather than a 404.
+  // The provisional handle from handle_new_user() resolves too, so this works
+  // before onboarding is finished. Only a missing handle falls back.
+  const myPage = (artist && artist.handle) ? `/artist/${encodeURIComponent(artist.handle)}` : '/settings';
   menu.innerHTML =
-    `<a role="menuitem" href="/settings">My page</a>` +
+    `<a role="menuitem" href="${esc(myPage)}">My page</a>` +
     `<a role="menuitem" href="/settings">Settings</a>` +
     (isAdmin() ? `<a role="menuitem" href="/admin.html">Admin</a>` : '') +
     `<button role="menuitem" type="button" data-act="signout">Sign out</button>`;
@@ -331,6 +332,106 @@ function showOnboarding() {
   });
 }
 
+/* ---------------- avatar ---------------- */
+
+const WORKER_BASE = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
+const AVATAR_PX = 512;
+
+/* Same shape as admin.html's compressImage, with one difference that matters:
+   an avatar is round, so this CENTER-CROPS to a square first and then scales,
+   rather than fitting the long side and leaving a non-square image that CSS
+   would crop unpredictably. Canvas-based, so it only runs in a browser. */
+export function compressAvatar(file, px = AVATAR_PX, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type || '')) { reject(new Error('That is not an image.')); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const w = img.naturalWidth, h = img.naturalHeight;
+      if (!w || !h) { reject(new Error('Could not read that image.')); return; }
+      const side = Math.min(w, h);                 // the square we take from the source
+      const sx = Math.round((w - side) / 2);
+      const sy = Math.round((h - side) / 2);
+      const canvas = document.createElement('canvas');
+      canvas.width = px; canvas.height = px;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, px, px);   // JPEG has no alpha
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, px, px);
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not encode that image.')), 'image/jpeg', quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not open that image.')); };
+    img.src = url;
+  });
+}
+
+/* The access token is read at click time, never from a render path, so it is
+   never a stale one captured when the page drew. A 401 means it expired
+   between read and send: refresh once and retry, then give up plainly. */
+async function postAvatar(blob) {
+  async function send(token) {
+    return fetch(`${WORKER_BASE}/upload/avatar`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'image/jpeg' },
+      body: blob,
+    });
+  }
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Please sign in again.');
+  let res = await send(session.access_token);
+  if (res.status === 401) {
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data || !data.session) throw new Error('Your session expired. Please sign in again.');
+    res = await send(data.session.access_token);
+  }
+  if (!res.ok) {
+    let detail = 'HTTP ' + res.status;
+    try { const j = await res.json(); if (j && j.error) detail = j.error; } catch (e) {}
+    throw new Error('Upload failed: ' + detail);
+  }
+  const body = await res.json();
+  if (!body || !body.url) throw new Error('Upload returned no URL.');
+  return body.url;
+}
+
+function avatarPreviewHTML(artist) {
+  if (artist && artist.avatar_url) {
+    const src = 'https://wsrv.nl/?url=' + encodeURIComponent(artist.avatar_url) + '&w=144&output=jpg&q=80';
+    return `<img class="lv-avatar-prev" data-prev src="${esc(src)}" alt="">`;
+  }
+  return `<div class="lv-avatar-prev" data-prev>${esc(initialOf(artist))}</div>`;
+}
+
+function wireAvatar(root, artist) {
+  const btn = root.querySelector('[data-act="avatar"]');
+  const input = root.querySelector('[data-avatar-file]');
+  const err = root.querySelector('[data-avatar-err]');
+  if (!btn || !input) return;
+  btn.addEventListener('click', () => input.click());
+  input.addEventListener('change', async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    err.hidden = true; btn.disabled = true; btn.textContent = 'Uploading...';
+    try {
+      const blob = await compressAvatar(file);
+      const url = await postAvatar(blob);
+      const { error } = await supabase.from('artists').update({ avatar_url: url }).eq('id', artist.id);
+      if (error) throw new Error(error.message);
+      await refreshArtist();
+      track('avatar_uploaded', {});
+      const prev = root.querySelector('[data-prev]');
+      if (prev) prev.outerHTML = avatarPreviewHTML(authState().artist);
+      renderAccountSlots();
+    } catch (e) {
+      err.textContent = (e && e.message) || 'Could not set that photo.';
+      err.hidden = false;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Change photo';
+      input.value = '';
+    }
+  });
+}
+
 /* ---------------- /settings ---------------- */
 
 export function renderSettings(container) {
@@ -344,7 +445,16 @@ export function renderSettings(container) {
     <div class="lv-settings">
       <h1>Settings <span dir="rtl" lang="he">הגדרות</span></h1>
       <div class="lv-form">${profileFields(artist)}</div>
-      <p class="lv-hint">Profile picture: coming soon.</p>
+      <label class="lv-label">Profile photo <span dir="rtl" lang="he">תמונת פרופיל</span></label>
+      <div class="lv-avatar-row">
+        ${avatarPreviewHTML(artist)}
+        <div>
+          <button class="lv-btn outlined" type="button" data-act="avatar" style="width:auto;margin-top:0;">Change photo</button>
+          <p class="lv-hint">A square photo works best. It is resized to ${AVATAR_PX}px.</p>
+        </div>
+      </div>
+      <input type="file" accept="image/*" data-avatar-file hidden>
+      <p class="lv-err" data-avatar-err hidden></p>
       <p class="lv-err" data-err hidden></p>
       <p class="lv-ok" data-ok hidden>Saved.</p>
       <div class="lv-onboard-actions">
@@ -362,6 +472,7 @@ export function renderSettings(container) {
   const errEl = container.querySelector('[data-err]');
   const okEl = container.querySelector('[data-ok]');
   wireProfileFields(container, artist);
+  wireAvatar(container, artist);
 
   container.querySelector('[data-act="save"]').addEventListener('click', async (e) => {
     const btn = e.currentTarget;

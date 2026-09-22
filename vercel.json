@@ -18,6 +18,14 @@
     {
       "source": "/terms",
       "destination": "/terms.html"
+    },
+    {
+      "source": "/artist/:handle",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/artist/:handle/",
+      "destination": "/index.html"
     }
   ]
 }
