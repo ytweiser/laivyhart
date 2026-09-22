@@ -2009,6 +2009,18 @@ function renderList(){
    ============================================================ */
 function songCreatedTs(s){ return s.created_at ? (Date.parse(s.created_at) || 0) : 0; }
 
+// Newest first, with a DETERMINISTIC tie-break. This matters more than it looks:
+// 15 of the 37 songs carry the exact same created_at (2026-07-28T15:01:36.147176,
+// the original bulk import), and applySessionShuffle randomises SONGS once per
+// session. Array.prototype.sort is stable, so on a pure date comparison those 15
+// keep whatever order the shuffle gave them -- a different order for every
+// visitor, and a different order again on the next visit. Falling back to title
+// makes same-instant songs sort alphabetically and identically for everyone.
+function byNewestThenTitle(a, b){
+  return (songCreatedTs(b) - songCreatedTs(a))
+      || String(a.title || '').localeCompare(String(b.title || ''));
+}
+
 // The first sentence (or ~160 chars) of the inspiration note.
 function firstSentenceOf(t){
   if(!t) return '';
@@ -2027,7 +2039,7 @@ function firstSentenceOf(t){
 // than the weekly rail's rank badges are never shown.
 let weeklyFallback = false;
 function rankedByListens(){
-  const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
+  const byNewest = byNewestThenTitle;
   const byPlays = (a, b) => (b.play_count - a.play_count) || byNewest(a, b);
   const rankOf = new Map(CHART.map(e => [e.song_id, e.rank]));
   weeklyFallback = rankOf.size === 0;
@@ -2043,31 +2055,33 @@ function rankedByListens(){
 // applied AFTER dedupe, and an omitted rail does not consume its songs. The
 // Editor's picks band is separate and NOT deduped (curation may repeat).
 function homepageSections(){
-  const byNewest = (a, b) => songCreatedTs(b) - songCreatedTs(a);
+  const byNewest = byNewestThenTitle;
   const ranked = rankedByListens();     // also sets weeklyFallback
   const fallback = weeklyFallback;
   const hero = ranked[0] || null;
 
-  // Rails dedupe against the HERO ONLY -- deliberately not against each other.
-  // They used to share an accumulating `shown` set, so every rail permanently
-  // claimed its picks and the later ones drew from whatever was left. With 37
-  // songs and four rails ahead of it, that pushed All-time favorites down to a
-  // top play_count of 27 against a true top of 126, and dropped the newest song
-  // in the catalog out of New releases entirely (the weekly rail had already
-  // taken it), leaving "New releases" showing songs six weeks older than ones
-  // it was hiding. A song being both new and most-loved is information, not
-  // repetition, so rails may now overlap and each shows its genuine top N.
-  const heroId = hero ? hero.id : null;
+  // Rails exclude NOTHING -- not each other's picks, and not the hero. Each one
+  // is simply the true top N of its own sort, so what a rail claims to rank is
+  // what it actually ranks. Two earlier versions filtered: first an
+  // accumulating `shown` set (which left All-time favorites topping out at 27
+  // plays against a catalog top of 126, and pushed the newest song in the
+  // catalog out of New releases altogether), then a hero-only exclusion (which
+  // still silently dropped the hero from the middle of New releases and cost
+  // All-time its real #1). Both traded honesty for non-repetition. A song being
+  // the hero AND the most played AND the newest is a fact about the catalog;
+  // showing it three times states that fact, hiding it misstates the ranking.
   const rails = [];
   function addRail(key, title, list, cap){
-    const picked = list.filter(s => s.id !== heroId).slice(0, cap || 8);
+    const picked = list.slice(0, cap || 8);
     if(picked.length >= 3){
       rails.push({ key, title, songs: picked });
     }
   }
 
-  // Weekly rail caps at 9 so it shows #2–#10 (the hero is #1); wording is always weekly.
-  addRail('most_listened', 'Most listened this week', ranked, 9);
+  // Weekly rail caps at 10 and now starts at the chart's #1 -- the hero itself.
+  // It used to cap at 9 and start at #2 to avoid repeating the hero card, which
+  // meant its badges had to be offset by one. Badges are now the true chart rank.
+  addRail('most_listened', 'Most listened this week', ranked, 10);
   addRail('most_loved', 'Most loved',
     SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)));
   addRail('newest', 'New releases', SONGS.slice().sort(byNewest));
@@ -2203,10 +2217,13 @@ function railAffordancesHTML(scrollClass, key, items){
 }
 
 function railHTML(sec, idxOf){
-  // The weekly rail is the chart's #2–#10 (the hero is #1), so number its cards
-  // by position after dedupe. No other rail gets badges.
+  // The weekly rail is the chart's #1-#10 in order, hero included, so a card's
+  // position IS its chart rank -- no offset. (When there is no chart at all,
+  // rankedByListens falls back to all-time plays and the badge reads as rank by
+  // plays, which is still the honest number for that ordering.) No other rail
+  // gets badges.
   const badged = sec.key === 'most_listened';
-  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 2 : null)).join('');
+  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 1 : null)).join('');
   return `<section class="rail" data-rail="${sec.key}">
       <div class="rail-head">
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
