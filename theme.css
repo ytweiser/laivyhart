@@ -591,3 +591,52 @@ body{
   align-items:center; justify-content:center; border:1px solid var(--glass-border);
   background:var(--accent-grad); color:#fff; font-family:var(--font-display); font-weight:600; font-size:1.8rem;
 }
+
+/* ============================================================
+   Artist attribution (1A-4). Present on song rows, the hero, rail cards, the
+   now-playing panel and the mini-player. Muted by design: attribution is
+   information, not a heading.
+   ============================================================ */
+.artist-link{
+  color:var(--text-dim); text-decoration:none; cursor:pointer;
+  border-bottom:1px solid transparent;
+}
+.artist-link:hover{ color:var(--accent-2); border-bottom-color:var(--accent-2); }
+.artist-link:focus-visible{ outline:2px solid var(--accent-2); outline-offset:2px; border-radius:3px; }
+.attr-he{ font-family:var(--font-heb); color:var(--text-faint); font-size:0.94em; }
+
+/* Song row: shares the muted meta line with the category, ahead of it. */
+.row-artist{
+  font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.05em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:8.5rem;
+}
+.row-meta-dot{ color:var(--text-faint); font-size:0.62rem; }
+
+/* Hero: a "by" line straight under the title, above the category. */
+.hero-by{
+  font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim); margin-top:0.35rem;
+}
+
+/* Rail card line 2. The card keeps exactly one caption line under the title, so
+   adding the artist costs no height. */
+.rail-sub .artist-link{ color:var(--text-dim); }
+
+/* Now-playing: avatar + name, the whole row is the link. */
+.now-artist{ margin-top:0.5rem; }
+.now-artist-row{ display:inline-flex; align-items:center; gap:0.5rem; border-bottom:0; }
+.now-artist-av{
+  width:28px; height:28px; border-radius:50%; object-fit:cover; flex-shrink:0; display:block;
+  border:1px solid var(--glass-border);
+}
+.now-artist-av.is-initial{
+  display:inline-flex; align-items:center; justify-content:center;
+  background:var(--accent-grad); color:#fff;
+  font-family:var(--font-display); font-weight:600; font-size:0.8rem;
+  text-shadow:0 1px 2px rgba(0,0,0,0.45);
+}
+.now-artist-name{ font-family:var(--font-ui); font-size:0.88rem; }
+.now-artist-row:hover .now-artist-name{ color:var(--accent-2); }
+
+@media (max-width:900px){
+  .row-artist{ max-width:5.5rem; }
+}

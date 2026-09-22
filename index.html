@@ -1108,6 +1108,7 @@
           <div class="now-title-secondary" id="now-title-secondary"></div>
         </div>
       </div>
+      <div class="now-artist" id="now-artist"></div>
       <div class="now-chips" id="now-chips"></div>
       <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
@@ -1392,6 +1393,69 @@ const SITE_BANNER_BG_URL  = 'brand/banner-bg.png';   // background plate, no tex
    Small utilities
    ============================================================ */
 function escHtml(str){ return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============================================================
+   Attribution (1A-4)
+
+   The artist rides on the song itself (mapSong has carried
+   artist { id, handle, name, name_he, avatar } since 1A-3), so none of this
+   queries anything -- it works identically from the live rows and from the
+   songs.json snapshot.
+
+   Two link shapes, because HTML forbids an <a> inside a <button>: rows and the
+   now-playing panel sit in divs and get a real anchor (right-click, open in a
+   new tab, a visible target in the status bar); the hero, rail cards and the
+   mini-player are buttons, so there the name is a span[role=link] carrying
+   data-href. One delegated handler serves both.
+   ============================================================ */
+function artistOf(s){ return (s && s.artist && s.artist.handle) ? s.artist : null; }
+function artistHref(a){ return '/artist/' + encodeURIComponent(a.handle); }
+
+// Latin name, with the Hebrew name following in the muted bilingual style.
+function artistNameHTML(a){
+  return escHtml(a.name || a.handle) +
+    (a.name_he ? ` <span class="attr-he" dir="rtl" lang="he">${escHtml(a.name_he)}</span>` : '');
+}
+
+// inButton: true when the caller's container is a <button>.
+function artistLinkHTML(s, cls, inButton){
+  const a = artistOf(s);
+  if(!a) return '';
+  const inner = artistNameHTML(a);
+  const klass = 'artist-link' + (cls ? ' ' + cls : '');
+  const href = escHtml(artistHref(a));
+  return inButton
+    ? `<span class="${klass}" role="link" tabindex="0" data-href="${href}">${inner}</span>`
+    : `<a class="${klass}" href="${href}">${inner}</a>`;
+}
+
+/* Capture phase on purpose: a row or a card has its own click handler that
+   plays the song, and an artist tap must navigate INSTEAD of playing. Stopping
+   propagation here, before the event ever reaches those handlers, is what makes
+   that true on touch as well as with a mouse. */
+function artistLinkTarget(e){
+  const el = e.target.closest('a.artist-link, .artist-link[role="link"]');
+  if(!el) return null;
+  return el.getAttribute('href') || el.getAttribute('data-href') || null;
+}
+document.addEventListener('click', (e) => {
+  const href = artistLinkTarget(e);
+  if(!href) return;
+  if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return;
+  e.preventDefault();
+  e.stopPropagation();
+  laivyTrack('artist_link', { href });
+  history.pushState({ route: 'artist' }, '', href);
+  showPage('artist');
+}, true);
+document.addEventListener('keydown', (e) => {
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  const el = e.target && e.target.closest && e.target.closest('.artist-link[role="link"]');
+  if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  history.pushState({ route: 'artist' }, '', el.getAttribute('data-href'));
+  showPage('artist');
+}, true);
 
 function formatLength(secs){
   if(secs === null || secs === undefined || secs === '') return '';
@@ -1891,6 +1955,10 @@ function buildSearchIndexes(){
     s.nAbout = normalizeForSearch(s.about);
     s.nLyricsOriginal = normalizeForSearch(s.lyrics_original);
     s.nLyricsTranslation = normalizeForSearch(s.lyrics_translation);
+    // Artist names go through the same normalizer as everything else, so the
+    // nikkud and ch/kh/ts folding applies to a Hebrew artist name too.
+    s.nArtist = normalizeForSearch(s.artist ? (s.artist.name || '') : '');
+    s.nArtistHe = normalizeForSearch(s.artist ? (s.artist.name_he || '') : '');
   });
 }
 
@@ -1900,10 +1968,16 @@ function currentTerms(){
 }
 
 // The highest-priority field a term appears in, or null. Priority: title,
-// translit, tags, categories, about, lyrics (original), translation.
+// translit, artist, tags, categories, about, lyrics (original), translation.
 function termField(s, t){
   if(s.nTitle.includes(t)) return { field: 'title' };
   if(s.nTranslit.includes(t)) return { field: 'translit' };
+  // Artist ranks just under the titles: a name match is a strong signal and
+  // should be labelled "Artist" rather than falling through to About.
+  if(s.nArtist && s.nArtist.includes(t))
+    return { field: 'artist', label: 'Artist', raw: s.artist.name, term: t };
+  if(s.nArtistHe && s.nArtistHe.includes(t))
+    return { field: 'artist', label: 'Artist', raw: s.artist.name_he, term: t };
   const ti = s.nTags.findIndex(x => x.includes(t));
   if(ti >= 0) return { field: 'tags', label: 'Tag', raw: s.tags[ti], term: t };
   const ci = s.nCategories.findIndex(x => x.includes(t));
@@ -2035,6 +2109,8 @@ function renderList(){
         ${rowThumbHTML(s)}
         <div class="row-mid">
           ${playing ? eqHTML() : ''}
+          ${artistLinkHTML(s, 'row-artist', false)}
+          ${(artistOf(s) && cat) ? `<span class="row-meta-dot" aria-hidden="true">&middot;</span>` : ''}
           ${cat ? `<div class="row-cat">${escHtml(cat)}</div>` : ''}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
@@ -2188,6 +2264,7 @@ function heroHTML(s, idx, label){
         <div class="hero-text">
           <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
           ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
+          ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '', true)} <span class="attr-he" dir="rtl" lang="he">מאת</span></div>` : ''}
           ${cat ? `<div class="hero-cat">${escHtml(cat)}</div>` : ''}
           ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
         </div>
@@ -2308,10 +2385,16 @@ function railCardHTML(s, idxOf, railKey, i){
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = heb ? s.title_translit : '';
   const badge = railBadgeHTML(railKey, i);
-  return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}">
+  const a = artistOf(s);
+  // Line 2 is the artist now. The transliteration and the category move into
+  // the card's title attribute -- a hover detail on pointer devices, absent on
+  // touch -- so the card gains attribution without gaining height.
+  const hover = [sub, pickRowCategory(s)].filter(Boolean).join(' \u00b7 ');
+  return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}"${hover ? ` title="${escHtml(hover)}"` : ''}>
       <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
-      ${sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : ''}
+      ${a ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
+          : (sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : '')}
     </button>`;
 }
 
@@ -2487,6 +2570,7 @@ function renderNow(){
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
     topline.classList.remove('hidden');
     chips.innerHTML = ''; nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
     dockReact.classList.add('hidden');
     paintLoves();
     if(commentsWrap) commentsWrap.classList.add('hidden');
@@ -2502,6 +2586,21 @@ function renderNow(){
   empty.classList.add('hidden');
 
   thumb.style.cssText = thumbStyle(s);
+
+  /* Attribution row: a 28px avatar (or the initial on the theme gradient) and
+     the artist's name, the whole row linking to their page. It sits under the
+     titles and above the chips, which are unchanged. */
+  const nowArtist = document.getElementById('now-artist');
+  if(nowArtist){
+    const a = artistOf(s);
+    if(!a){ nowArtist.innerHTML = ''; }
+    else {
+      const av = a.avatar
+        ? `<img class="now-artist-av" src="${escHtml(cdnImg(a.avatar, 56))}" data-raw="${escHtml(a.avatar)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="28" height="28">`
+        : `<span class="now-artist-av is-initial" aria-hidden="true">${escHtml(((a.name || a.handle || '?').trim()[0] || '?').toUpperCase())}</span>`;
+      nowArtist.innerHTML = `<a class="artist-link now-artist-row" href="${escHtml(artistHref(a))}">${av}<span class="now-artist-name">${artistNameHTML(a)}</span></a>`;
+    }
+  }
 
   // Titles: primary in the original script, secondary transliteration.
   primary.textContent = heb ? s.title : (s.title || s.title_translit);
@@ -3695,7 +3794,14 @@ function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s
     const url = songShareUrl(s);
     const title = s.title || s.title_translit || 'Laivy Hart';
     laivyTrack('song_share', { song_id: s.id, song_title: title });
-    const shareData = { title: title, text: 'Listen to ' + title + ' on Laivy Hart', url: url };
+    /* "Title, by Artist, on Laivy Hart". Not special-cased for the owner: it
+       reads oddly today only because the artist IS the site. The matching OG
+       title is injected by the middleware in 1A-5; this is the client text. */
+    const sa = artistOf(s);
+    const shareText = sa
+      ? `${title}, by ${sa.name || sa.handle}, on Laivy Hart`
+      : `Listen to ${title} on Laivy Hart`;
+    const shareData = { title: title, text: shareText, url: url };
     if(navigator.share){
       navigator.share(shareData).catch(() => { /* user cancelled */ });
     } else if(navigator.clipboard && navigator.clipboard.writeText){
@@ -4128,7 +4234,14 @@ function updateMiniPlayer(){
   const title = document.getElementById('mini-title');
   title.textContent = heb ? s.title : (s.title || s.title_translit);
   title.className = 'mini-title' + (heb ? ' heb' : '');
-  document.getElementById('mini-sub').textContent = heb ? (s.title_translit || '') : '';
+  /* The sub line carries the artist. It stays plain text rather than a link:
+     the whole bar is one tap target back to the song, and a link inside it
+     would fight that. The transliteration keeps its place ahead of the name
+     when there is one. */
+  const mini = artistOf(s);
+  const miniTranslit = heb ? (s.title_translit || '') : '';
+  document.getElementById('mini-sub').textContent =
+    [miniTranslit, mini ? (mini.name || mini.handle) : ''].filter(Boolean).join(' \u00b7 ');
   document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
 }
 document.getElementById('mini-play').addEventListener('click', togglePlay);

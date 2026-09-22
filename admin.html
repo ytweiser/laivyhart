@@ -120,6 +120,31 @@
   .lt-audio.has{color:var(--accent-2);} .lt-audio.missing{color:var(--text-faint);}
   .list-item .lt-plays{font-family:var(--font-ui); font-size:0.62rem; color:var(--text-faint); margin-top:0.15rem;}
   .list-item .lt-likes{font-family:var(--font-ui); font-size:0.62rem; color:var(--text-faint); margin-top:0.1rem;}
+  /* Status pills + filter (1A-4). */
+  .st-pill{display:inline-block; padding:0.12rem 0.5rem; border-radius:999px; font-family:var(--font-ui);
+    font-size:0.6rem; letter-spacing:0.06em; text-transform:uppercase; border:1px solid transparent;}
+  .st-approved{background:rgba(34,140,90,0.18); color:#6ddba0; border-color:rgba(34,140,90,0.4);}
+  .st-submitted{background:rgba(214,169,62,0.20); color:#e8c979; border-color:rgba(214,169,62,0.45);}
+  .st-draft{background:rgba(255,255,255,0.08); color:var(--text-dim); border-color:var(--line);}
+  .st-rejected{background:rgba(180,50,70,0.20); color:#ff9aa9; border-color:rgba(180,50,70,0.45);}
+  .st-removed{background:rgba(0,0,0,0.28); color:var(--text-faint); border-color:var(--line);}
+  .status-filter{display:flex; flex-wrap:wrap; gap:0.35rem; margin:0 0 0.8rem;}
+  .status-filter button{background:none; border:1px solid var(--line); color:var(--text-dim); cursor:pointer;
+    border-radius:999px; padding:0.25rem 0.6rem; font-family:var(--font-ui); font-size:0.7rem;}
+  .status-filter button.on{background:var(--accent-2); color:#fff; border-color:transparent;}
+  .status-filter .count{display:inline-block; margin-left:0.3rem; background:var(--accent-2); color:#fff;
+    border-radius:999px; padding:0 0.35rem; font-size:0.62rem;}
+  .status-box{border:1px solid var(--line); border-radius:12px; padding:1rem; margin:1.2rem 0;}
+  .status-box h3{margin:0 0 0.5rem; font-family:var(--font-display); font-size:1rem;}
+  .status-actions{display:flex; gap:0.5rem; flex-wrap:wrap; margin:0.8rem 0 0;}
+  .status-actions button{cursor:pointer; border-radius:9px; padding:0.45rem 0.9rem; font-family:var(--font-ui);
+    font-size:0.85rem; border:1px solid var(--line); background:none; color:var(--text);}
+  .status-actions button:hover{border-color:var(--accent-2); color:var(--accent-2);}
+  .review-hist{margin-top:0.9rem; border-top:1px solid var(--line); padding-top:0.7rem;}
+  .review-row{font-family:var(--font-ui); font-size:0.76rem; color:var(--text-dim); padding:0.35rem 0;
+    border-bottom:1px dotted var(--line);}
+  .review-row b{color:var(--text);}
+  .review-reason{color:var(--text-faint); font-style:italic;}
   .form-likes{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin:-0.3rem 0 0.8rem;}
 
   .form-area{padding:2rem 3vw; overflow-y:auto;}
@@ -314,6 +339,7 @@
 <div id="admin-view" class="admin-layout" style="display:none;">
   <div class="song-list">
     <button class="new-song-btn" id="new-song-btn">+ New song</button>
+    <div class="status-filter" id="status-filter"></div>
     <div id="list-items"></div>
 
     <div class="cat-manager">
@@ -417,6 +443,7 @@ async function checkSession(){
     document.getElementById('publish-btn').style.display = 'inline-block';
     document.getElementById('charts-btn').style.display = 'inline-block';
     await loadSongs();
+    await loadArtists();
     await loadCategories();
     renderCategoryManager();
     refreshCommentCount();
@@ -482,6 +509,15 @@ checkSession();
 /* ---------------------------------------------------------
   Load + render song list
 --------------------------------------------------------- */
+/* Artists for the picker. artists_admin_all lets an admin read every row, so
+   this is the full list, not artists_public. */
+let artists = [];
+async function loadArtists(){
+  const { data, error } = await supabaseClient
+    .from('artists').select('id, handle, display_name, role, status').order('handle');
+  artists = error ? [] : (data || []);
+}
+
 async function loadSongs(){
   const { data, error } = await supabaseClient.from('songs').select('*').order('title');
   if(error){ console.error(error); return; }
@@ -662,13 +698,47 @@ function likeSplit(s){
     ' · words ' + (s.like_lyrics_count ?? 0) +
     ' · music ' + (s.like_tune_count ?? 0);
 }
+/* Status filter (1A-4). All 37 songs are approved today, so this is mostly
+   scaffolding -- but it has to work the moment a submission arrives. */
+const STATUS_ORDER = ['all','submitted','approved','rejected','removed','draft'];
+const STATUS_TEXT = { all:'All', submitted:'Submitted', approved:'Approved',
+                      rejected:'Rejected', removed:'Removed', draft:'Draft' };
+let statusFilter = 'all';
+
+function statusPill(st){
+  const v = st || 'draft';
+  return `<span class="st-pill st-${escAttr(v)}">${escHtml(STATUS_TEXT[v] || v)}</span>`;
+}
+function songsForFilter(){
+  return statusFilter === 'all' ? songs : songs.filter(s => (s.status || 'draft') === statusFilter);
+}
+function renderStatusFilter(){
+  const el = document.getElementById('status-filter');
+  if(!el) return;
+  const submitted = songs.filter(s => s.status === 'submitted').length;
+  el.innerHTML = STATUS_ORDER.map(k => {
+    const badge = (k === 'submitted' && submitted) ? `<span class="count">${submitted}</span>` : '';
+    return `<button type="button" data-st="${k}" class="${statusFilter===k?'on':''}">${STATUS_TEXT[k]}${badge}</button>`;
+  }).join('');
+  el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    statusFilter = b.dataset.st; renderStatusFilter(); renderList();
+  }));
+}
+
 function renderList(){
   const el = document.getElementById('list-items');
-  el.innerHTML = songs.map(s => `
+  renderStatusFilter();
+  const list = songsForFilter();
+  if(!list.length){
+    el.innerHTML = `<div style="color:var(--text-dim);font-size:0.85rem;padding:0.8rem 0;">No songs with that status.</div>`;
+    return;
+  }
+  el.innerHTML = list.map(s => `
     <div class="list-item ${currentSong && currentSong.id===s.id ? 'active':''}" onclick="window.selectSong('${s.id}')">
       <button class="fav-star ${s.featured ? 'on' : ''}" data-fav="${escAttr(s.id)}" type="button"
         title="${s.featured ? 'Featured — click to unfeature' : 'Not featured — click to feature'}"
         aria-label="Toggle featured on homepage">${s.featured ? '★' : '☆'}</button>
+      <div style="margin-bottom:0.25rem;">${statusPill(s.status)}</div>
       <div class="lt-he">${s.title || '(untitled)'}</div>
       <div class="lt-translit">${s.title_translit || ''}</div>
       ${(s.tags && s.tags.length) ? `<div class="lt-tags" style="opacity:0.6; font-size:0.8rem;">${escHtml(s.tags.join(', '))}</div>` : ''}
@@ -749,6 +819,133 @@ function loadIntoForm(song){
   renderForm();
 }
 
+/* ============================================================
+   Status box (1A-4)
+
+   EVERY status change goes through review_song(). That function writes the
+   reviews row and stamps songs.status + reviewed_at in ONE transaction, so a
+   plain `update songs set status=...` here would skip the audit trail and
+   leave reviewed_at stale. The admin never writes status directly.
+   Reassigning artist_id IS a plain update through the normal save, and that is
+   fine -- it is not a status change and has no review to record.
+   ============================================================ */
+const REVIEW_BUTTONS = [
+  { decision:'approve', text:'Approve', needsReason:false },
+  { decision:'reject',  text:'Reject',  needsReason:true  },
+  { decision:'remove',  text:'Remove',  needsReason:false },
+  { decision:'restore', text:'Restore', needsReason:false },
+];
+
+function statusBoxHTML(s){
+  return `
+    <div class="status-box" id="status-box">
+      <h3>Status</h3>
+      <div id="status-current">${statusPill(s.status)}</div>
+      <div class="status-actions">
+        ${REVIEW_BUTTONS.map(b => `<button type="button" data-dec="${b.decision}">${b.text}</button>`).join('')}
+      </div>
+      <div id="review-reason-wrap" style="display:none; margin-top:0.7rem;">
+        <label id="review-reason-label">Reason</label>
+        <input type="text" id="review-reason" placeholder="Why?">
+        <div style="margin-top:0.5rem; display:flex; gap:0.5rem;">
+          <button type="button" id="review-confirm" class="save-btn" style="padding:0.4rem 0.9rem;">Confirm</button>
+          <button type="button" id="review-cancel" style="background:none;border:1px solid var(--line);color:var(--text-dim);border-radius:9px;padding:0.4rem 0.9rem;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+      <div class="save-msg" id="review-msg"></div>
+      <div class="review-hist" id="review-hist"><div style="color:var(--text-faint);font-size:0.76rem;">Loading history&hellip;</div></div>
+    </div>`;
+}
+
+function artistPickerHTML(s){
+  const opts = artists.map(a =>
+    `<option value="${escAttr(a.id)}"${a.id === s.artist_id ? ' selected' : ''}>${escHtml(a.handle)} &mdash; ${escHtml(a.display_name || '')}</option>`
+  ).join('');
+  return `
+    <div class="field">
+      <label>Artist</label>
+      <select id="f-artist">${opts || '<option value="">(no artists loaded)</option>'}</select>
+      <div style="color:var(--text-faint);font-size:0.72rem;margin-top:0.25rem;">
+        Saved with the song. Changing this reassigns it.
+      </div>
+    </div>`;
+}
+
+function reviewRowHTML(r){
+  const who = r.reviewer_kind === 'ai' ? ('AI' + (r.model ? ' (' + escHtml(r.model) + ')' : '')) : 'Human';
+  const when = r.created_at ? new Date(r.created_at).toLocaleString() : '';
+  return `<div class="review-row"><b>${escHtml(r.decision)}</b> &mdash; ${who} &mdash; ${escHtml(when)}
+    ${r.reason ? `<div class="review-reason">${escHtml(r.reason)}</div>` : ''}</div>`;
+}
+
+async function loadReviewHistory(songId){
+  const host = document.getElementById('review-hist');
+  if(!host) return;
+  const { data, error } = await supabaseClient
+    .from('reviews').select('decision, reviewer_kind, model, reason, created_at')
+    .eq('song_id', songId).order('created_at', { ascending: false });
+  if(error){ host.innerHTML = '<div style="color:var(--text-faint);font-size:0.76rem;">Could not load history.</div>'; return; }
+  host.innerHTML = (data && data.length)
+    ? data.map(reviewRowHTML).join('')
+    : '<div style="color:var(--text-faint);font-size:0.76rem;">No reviews yet.</div>';
+}
+
+function wireStatusBox(s){
+  const box = document.getElementById('status-box');
+  if(!box) return;
+  const wrap = document.getElementById('review-reason-wrap');
+  const input = document.getElementById('review-reason');
+  const label = document.getElementById('review-reason-label');
+  const msg = document.getElementById('review-msg');
+  let pending = null;
+
+  box.querySelectorAll('.status-actions button').forEach(b => {
+    b.addEventListener('click', () => {
+      pending = REVIEW_BUTTONS.find(x => x.decision === b.dataset.dec);
+      msg.textContent = '';
+      label.textContent = pending.needsReason ? 'Reason (required)' : 'Reason (optional)';
+      input.value = '';
+      wrap.style.display = 'block';
+      input.focus();
+    });
+  });
+  document.getElementById('review-cancel').addEventListener('click', () => {
+    wrap.style.display = 'none'; pending = null;
+  });
+
+  document.getElementById('review-confirm').addEventListener('click', async () => {
+    if(!pending) return;
+    const reason = input.value.trim();
+    // A human rejection should always say why; the others may be silent.
+    if(pending.needsReason && !reason){
+      msg.textContent = 'A reason is required to reject.';
+      msg.className = 'save-msg err';
+      input.focus();
+      return;
+    }
+    msg.textContent = 'Saving...'; msg.className = 'save-msg';
+    const { data, error } = await supabaseClient.rpc('review_song', {
+      p_song: s.id, p_decision: pending.decision, p_reason: reason || null,
+    });
+    if(error){ msg.textContent = 'Error: ' + error.message; msg.className = 'save-msg err'; return; }
+
+    s.status = data;
+    const inList = songs.find(x => x.id === s.id);
+    if(inList) inList.status = data;
+    document.getElementById('status-current').innerHTML = statusPill(data);
+    const hist = document.getElementById('review-hist');
+    if(hist){
+      const row = reviewRowHTML({ decision: pending.decision, reviewer_kind: 'human',
+                                  reason: reason || null, created_at: new Date().toISOString() });
+      hist.innerHTML = row + (/No reviews yet|Loading history/.test(hist.innerHTML) ? '' : hist.innerHTML);
+    }
+    msg.textContent = 'Status is now ' + data + '. Publish to update the public site.';
+    msg.className = 'save-msg ok';
+    wrap.style.display = 'none'; pending = null;
+    renderList();
+  });
+}
+
 function renderForm(){
   const area = document.getElementById('form-area');
   if(!currentSong){
@@ -762,6 +959,8 @@ function renderForm(){
   area.innerHTML = `
     <h2>${s.id ? 'Edit song' : 'New song'}</h2>
     ${s.id ? `<div class="form-likes">${likeSplit(s)}</div>` : ''}
+    ${s.id ? statusBoxHTML(s) : ''}
+    ${s.id ? artistPickerHTML(s) : ''}
 
     <div class="field two-col">
       <div>
@@ -941,6 +1140,8 @@ function renderForm(){
   document.getElementById('save-btn').addEventListener('click', saveSong);
   if(s.id){
     document.getElementById('delete-btn').addEventListener('click', deleteSong);
+    wireStatusBox(s);
+    loadReviewHistory(s.id);
   }
 }
 
@@ -1034,6 +1235,11 @@ async function saveSong(){
     featured_category: document.getElementById('f-featured').value || null,
     featured: document.getElementById('f-featured-flag').checked,
     featured_order: featuredOrder,
+    // Reassigning the artist is a plain column write, unlike status, which must
+    // always go through review_song(). Absent when creating a new song, in
+    // which case the DB default / guard applies.
+    ...(document.getElementById('f-artist') && document.getElementById('f-artist').value
+        ? { artist_id: document.getElementById('f-artist').value } : {}),
     // NOTE: comment_count is intentionally NOT written here — it is maintained
     // by the comments_refresh_count trigger in sql/001_phase_a_tags_featured_counts.sql.
   };
