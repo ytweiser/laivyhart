@@ -138,8 +138,15 @@ function initialOf(a) {
   return (n.trim()[0] || '?').toUpperCase();
 }
 
+// The close() of whichever chip menu is currently open, so opening one shuts
+// the other. index.html renders two account slots (listen topbar + homepage).
+let openChipMenu = null;
+
 function renderSlot(slot) {
   const { user, artist } = authState();
+  // Re-rendering throws the old chip away; close its menu first so its
+  // listeners are removed rather than left pointing at a detached node.
+  if (openChipMenu) openChipMenu();
   slot.innerHTML = '';
 
   if (!user) {
@@ -180,14 +187,66 @@ function renderSlot(slot) {
     (isAdmin() ? `<a role="menuitem" href="/admin.html">Admin</a>` : '') +
     `<button role="menuitem" type="button" data-act="signout">Sign out</button>`;
 
+  /* Dismissal. What was here before was a single document click listener added
+     inside renderSlot -- which meant one more listener every time the chip
+     re-rendered, none of them ever removed, all of them pointing at menus that
+     had already been thrown away. There was no Escape handler at all, and
+     nothing closed the menu when an item was chosen.
+
+     The outside-click listener is registered in the CAPTURE phase so that no
+     handler in between can suppress it with stopPropagation -- index.html has
+     several delegated click handlers that do exactly that for their own
+     targets, and this must not depend on none of them ever matching. Rather
+     than deferring the attach by a tick, the chip and the menu are simply
+     excluded from the target test, which is the same guarantee without a
+     timer. Both listeners go on at open and come off at close, so nothing
+     leaks. */
+  let onDocClick = null, onKeydown = null;
+
+  function closeMenu() {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    chip.setAttribute('aria-expanded', 'false');
+    if (onDocClick) { document.removeEventListener('click', onDocClick, true); onDocClick = null; }
+    if (onKeydown) { document.removeEventListener('keydown', onKeydown, true); onKeydown = null; }
+    if (openChipMenu === closeMenu) openChipMenu = null;
+  }
+
+  function openMenu() {
+    if (!menu.hidden) return;
+    // Only one chip menu at a time: index.html has two account slots.
+    if (openChipMenu) openChipMenu();
+    menu.hidden = false;
+    chip.setAttribute('aria-expanded', 'true');
+    openChipMenu = closeMenu;
+
+    onDocClick = (e) => {
+      // The opening click itself lands on the chip, so excluding the chip (and
+      // the menu, so choosing an item is handled by its own listener) is what
+      // stops this from closing the menu the instant it opens.
+      if (chip.contains(e.target) || menu.contains(e.target)) return;
+      closeMenu();
+    };
+    onKeydown = (e) => {
+      if (e.key === 'Escape') { closeMenu(); try { chip.focus(); } catch (err) {} }
+    };
+    document.addEventListener('click', onDocClick, true);
+    document.addEventListener('keydown', onKeydown, true);
+  }
+
   chip.addEventListener('click', (e) => {
     e.stopPropagation();
-    const open = menu.hidden;
-    menu.hidden = !open;
-    chip.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (menu.hidden) openMenu(); else closeMenu();   // re-click toggles shut
   });
-  document.addEventListener('click', () => { menu.hidden = true; chip.setAttribute('aria-expanded', 'false'); });
+
+  // Any item closes it: the three links navigate, and on a client-side route
+  // (My page / Settings are pushState routes) there is no reload to do it.
+  menu.querySelectorAll('[role="menuitem"]').forEach((item) => {
+    item.addEventListener('click', () => closeMenu());
+  });
+
   menu.querySelector('[data-act="signout"]').addEventListener('click', async () => {
+    closeMenu();
     track('sign_out', {});
     await signOut();
     if (location.pathname === '/settings') location.href = '/';
