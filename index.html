@@ -612,12 +612,52 @@
   /* Chart rank badge (weekly rail only): accent rounded square, white bold
      "#N" (#2–#10), top-left, same shadow. Wider than tall to fit two chars. */
   .rail-thumb-wrap{position:relative;}
-  .rail-rank{
+  /* Rail badges: ONE family, five variants. Same corner, same height, same
+     accent fill, same shadow, same white bold UI type -- only the glyph behind
+     the content changes, so five badged rails still read as one calm system.
+     Two kinds. RANKED badges carry a number and appear only on rails that are
+     genuinely in rank order (weekly by chart rank, Most loved by like_count,
+     All-time by play_count). LABEL badges carry a word and appear on the two
+     rails that have no meaningful order (New releases, Editor's picks) -- a
+     number there would assert a ranking that does not exist.
+     Everything is CSS + inline SVG filled with currentColor off var(--accent-2),
+     never an image, so all five recolor with the palette in the same frame as
+     the rest of the UI and work identically in light and dark. */
+  .rail-badge{
     position:absolute; top:0.45rem; left:0.45rem; z-index:1;
-    min-width:2rem; height:1.55rem; padding:0 0.4rem; border-radius:6px;
     display:inline-flex; align-items:center; justify-content:center;
-    background:var(--accent-2); color:#fff; font-family:var(--font-ui); font-weight:700; font-size:0.82rem;
+    color:#fff; font-family:var(--font-ui); font-weight:700;
+    font-size:0.8rem; line-height:1; pointer-events:none;
+    /* A hairline dark edge under the white glyph. On the lighter accents (gold
+       especially) white alone sits at barely 2:1 against the fill; this lifts it
+       without darkening the badge or changing its colour. */
+    text-shadow:0 1px 2px rgba(0,0,0,0.45);
+  }
+  /* Pill variants -- the weekly #-badge and the two label tags -- paint their
+     own rounded-rect background. */
+  .rail-badge.is-pill{
+    height:1.55rem; min-width:1.55rem; padding:0 0.4rem; border-radius:6px;
+    background:var(--accent-2);
     box-shadow:0 6px 18px rgba(0,0,0,0.28);
+  }
+  /* Shape variants get their fill from the SVG underneath instead, so the
+     shadow has to follow the drawn outline rather than a box. Slightly larger
+     box than the pills: a heart or rosette outline reads smaller than a solid
+     pill at the same height, so this matches them optically. */
+  .rail-badge.is-shape{
+    width:1.72rem; height:1.72rem; padding:0;
+    filter:drop-shadow(0 5px 14px rgba(0,0,0,0.32));
+  }
+  .rail-badge-shape{
+    position:absolute; inset:0; width:100%; height:100%;
+    color:var(--accent-2); fill:currentColor;
+  }
+  .rail-badge-val{position:relative; z-index:1; font-size:0.72rem;}
+  /* A heart's optical centre sits above its geometric one -- centred text lands
+     in the point. Nudge the number up into the lobes. */
+  .rail-badge.shape-heart .rail-badge-val{transform:translateY(-0.06rem);}
+  .rail-badge.is-label{
+    text-transform:uppercase; letter-spacing:0.06em; font-size:0.66rem;
   }
   .rail-title{margin-top:0.5rem; font-size:0.92rem; line-height:1.2; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .rail-title.heb{font-family:var(--font-heb); direction:rtl;}
@@ -2195,13 +2235,58 @@ function siteBannerFallback(){
   if(banner) banner.classList.add('is-markless');
 }
 
+// Which rails get a badge, and which kind. A rail absent from this map gets
+// none -- Most talked about deliberately has no badge, since comment_count
+// ordering is not something to advertise as a rank.
+//   shape + from : RANKED. The number is `from + position`, so the weekly rail
+//                  starts at 2 (its #1 is the hero card above it) and the other
+//                  two start at 1. Only ever put a rail here if its list really
+//                  is in rank order -- the number is a claim about the sort.
+//   label        : UNRANKED. A word, no number.
+const RAIL_BADGES = {
+  most_listened: { shape: 'square',  from: 2 },   // chart_snapshots.rank 2..10
+  most_loved:    { shape: 'heart',   from: 1 },   // like_count desc
+  all_time:      { shape: 'rosette', from: 1 },   // play_count desc
+  newest:        { label: 'New'  },
+  editors_picks: { label: 'Pick' }
+};
+
+// 24x24 glyphs, filled with currentColor so they inherit the accent. The
+// rosette is an 11-lobe scalloped circle; at badge size the lobes are what make
+// it read as a medal rather than a plain dot.
+const BADGE_SHAPES = {
+  heart: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3'
+       + 'c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5'
+       + 'c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  rosette: 'M12.00 0.60Q14.54 3.36 18.16 2.41Q18.80 6.11 22.37 7.26Q20.91 10.72 23.28 13.62'
+         + 'Q20.19 15.74 20.62 19.47Q16.87 19.57 15.21 22.94Q12.00 21.00 8.79 22.94'
+         + 'Q7.13 19.57 3.38 19.47Q3.81 15.74 0.72 13.62Q3.09 10.72 1.63 7.26'
+         + 'Q5.20 6.11 5.84 2.41Q9.46 3.36 12.00 0.60Z'
+};
+
+// i is the card's zero-based position in its rail.
+function railBadgeHTML(railKey, i){
+  const cfg = RAIL_BADGES[railKey];
+  if(!cfg) return '';
+  if(cfg.label) return `<span class="rail-badge is-pill is-label">${escHtml(cfg.label)}</span>`;
+  const n = cfg.from + (i || 0);
+  if(cfg.shape === 'square') return `<span class="rail-badge is-pill">#${n}</span>`;
+  return `<span class="rail-badge is-shape shape-${cfg.shape}">` +
+      `<svg class="rail-badge-shape" viewBox="0 0 24 24" aria-hidden="true">` +
+        `<path d="${BADGE_SHAPES[cfg.shape]}"/>` +
+      `</svg>` +
+      `<span class="rail-badge-val">${n}</span>` +
+    `</span>`;
+}
+
 // A single landscape rail card, shared by the ranked rails and the editor's band.
-// rank (a number) draws a chart badge on the cover; null/undefined = no badge.
-function railCardHTML(s, idxOf, railKey, rank){
+// i is the card's position in its rail; the badge (if the rail gets one) is
+// derived from it.
+function railCardHTML(s, idxOf, railKey, i){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = heb ? s.title_translit : '';
-  const badge = (rank != null) ? `<span class="rail-rank">#${rank}</span>` : '';
+  const badge = railBadgeHTML(railKey, i);
   return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}">
       <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
@@ -2227,8 +2312,7 @@ function railHTML(sec, idxOf){
   // all, rankedByListens falls back to all-time plays and the badge reads as
   // rank by plays, which is still the honest number for that ordering.) No
   // other rail gets badges.
-  const badged = sec.key === 'most_listened';
-  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 2 : null)).join('');
+  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, i)).join('');
   return `<section class="rail" data-rail="${sec.key}">
       <div class="rail-head">
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
@@ -2241,7 +2325,7 @@ function railHTML(sec, idxOf){
 // Editor's picks: a visually distinct full-width band at the bottom (not deduped
 // against the rails above). Same landscape cards.
 function editorsBandHTML(list, idxOf){
-  const items = list.map(s => railCardHTML(s, idxOf, 'editors_picks')).join('');
+  const items = list.map((s, i) => railCardHTML(s, idxOf, 'editors_picks', i)).join('');
   return `<section class="editors-band" aria-label="Editor's picks">
       <div class="editors-head">
         <h2 class="rail-title-h">Editor's picks</h2>
