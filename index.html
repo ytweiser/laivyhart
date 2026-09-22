@@ -2060,16 +2060,15 @@ function homepageSections(){
   const fallback = weeklyFallback;
   const hero = ranked[0] || null;
 
-  // Rails exclude NOTHING -- not each other's picks, and not the hero. Each one
-  // is simply the true top N of its own sort, so what a rail claims to rank is
-  // what it actually ranks. Two earlier versions filtered: first an
-  // accumulating `shown` set (which left All-time favorites topping out at 27
-  // plays against a catalog top of 126, and pushed the newest song in the
-  // catalog out of New releases altogether), then a hero-only exclusion (which
-  // still silently dropped the hero from the middle of New releases and cost
-  // All-time its real #1). Both traded honesty for non-repetition. A song being
-  // the hero AND the most played AND the newest is a fact about the catalog;
-  // showing it three times states that fact, hiding it misstates the ranking.
+  // addRail itself excludes NOTHING. Each rail is the true top N of its own
+  // sort, so what a rail claims to rank is what it actually ranks. An earlier
+  // version filtered every rail against an accumulating `shown` set, which left
+  // All-time favorites topping out at 27 plays against a catalog top of 126 and
+  // pushed the newest song in the catalog out of New releases altogether; a
+  // later one excluded the hero everywhere, which still dropped the hero from
+  // the middle of New releases and cost All-time its real #1. A song being both
+  // the newest and the most loved is a fact about the catalog, and rails are
+  // free to repeat it.
   const rails = [];
   function addRail(key, title, list, cap){
     const picked = list.slice(0, cap || 8);
@@ -2078,10 +2077,16 @@ function homepageSections(){
     }
   }
 
-  // Weekly rail caps at 10 and now starts at the chart's #1 -- the hero itself.
-  // It used to cap at 9 and start at #2 to avoid repeating the hero card, which
-  // meant its badges had to be offset by one. Badges are now the true chart rank.
-  addRail('most_listened', 'Most listened this week', ranked, 10);
+  // The weekly rail is the ONE exception, and it is a presentation one rather
+  // than a ranking one: the chart's #1 is already on screen as the hero card,
+  // rendered large directly above, so repeating it as the first small card adds
+  // nothing. It is dropped HERE, at the call site, rather than inside addRail,
+  // so no other rail inherits the exclusion. hero is ranked[0], which is chart
+  // #1 whenever a chart exists, so what is left is exactly ranks 2..10 in order
+  // and railHTML can badge them i+2. Cap 9 = those nine cards.
+  const heroId = hero ? hero.id : null;
+  addRail('most_listened', 'Most listened this week',
+    ranked.filter(s => s.id !== heroId), 9);
   addRail('most_loved', 'Most loved',
     SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count)));
   addRail('newest', 'New releases', SONGS.slice().sort(byNewest));
@@ -2217,13 +2222,13 @@ function railAffordancesHTML(scrollClass, key, items){
 }
 
 function railHTML(sec, idxOf){
-  // The weekly rail is the chart's #1-#10 in order, hero included, so a card's
-  // position IS its chart rank -- no offset. (When there is no chart at all,
-  // rankedByListens falls back to all-time plays and the badge reads as rank by
-  // plays, which is still the honest number for that ordering.) No other rail
-  // gets badges.
+  // The weekly rail is the chart's #2-#10 in order -- #1 is the hero card above
+  // it -- so a card at index i is chart rank i+2. (When there is no chart at
+  // all, rankedByListens falls back to all-time plays and the badge reads as
+  // rank by plays, which is still the honest number for that ordering.) No
+  // other rail gets badges.
   const badged = sec.key === 'most_listened';
-  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 1 : null)).join('');
+  const items = sec.songs.map((s, i) => railCardHTML(s, idxOf, sec.key, badged ? i + 2 : null)).join('');
   return `<section class="rail" data-rail="${sec.key}">
       <div class="rail-head">
         <h2 class="rail-title-h">${escHtml(sec.title)}</h2>
