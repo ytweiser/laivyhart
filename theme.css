@@ -92,6 +92,12 @@
   /* Accent-tinted hairline: accent-2 in dark, accent-1 in light. */
   --accent-stroke:rgba(var(--accent-2-rgb), var(--stroke-alpha));
 
+  /* The rating stars, same rule as the hairline above and for the same reason:
+     accent-2 is the bright shade and reads on a dark ground, accent-1 is the
+     deep one and is what stays legible on ivory. A star is a control, not
+     decoration, so it has to hold up in both lightings. */
+  --star-accent:var(--accent-2);
+
   --ambient-opacity:0.55;
   --ambient-blur:72px;
 
@@ -111,6 +117,7 @@
   --play-fg:#ffffff;
 
   --accent-stroke:rgba(var(--accent-1-rgb), var(--stroke-alpha));
+  --star-accent:var(--accent-1);
 
   --ambient-opacity:0.16;
   --ambient-blur:84px;
@@ -153,6 +160,12 @@
   --bg:#F5F0E4; --bg-2:#EDE6D3;
   --text:#2A2110; --text-dim:#7C6E52; --text-faint:#A89A76;
 }
+
+/* Gold is the one accent that will not clear 3:1 against its own ivory ground
+   even at accent-1: #B08423 on #F5F0E4 measures 2.99:1. An outline star is a
+   control, not decoration, so gold-light takes one step deeper (3.74:1). Every
+   other colour x lighting uses its accent untouched. */
+[data-color="gold"][data-theme="light"]{ --star-accent:#9C7420; }
 
 *{box-sizing:border-box;}
 html,body{margin:0; padding:0;}
@@ -653,48 +666,90 @@ body{
    The heart keeps its own .love-btn styling, untouched.
    The number of raters is never rendered anywhere here.
    ============================================================ */
-.rating-rows{ display:flex; flex-direction:column; gap:0.15rem; margin:0 0 0.5rem; }
+/* The block is meant to read as an invitation to rate, not as a disabled
+   footnote. Everything here is lit: bright labels, bright icons, and empty
+   stars drawn as ACCENT OUTLINES rather than grey. The one place that stays
+   deliberately dim is the signed-out state, because there it is true. */
+.rating-rows{ display:flex; flex-direction:column; gap:0.5rem; margin:0.2rem 0 0.8rem; }
 .rating-row{
-  display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;
-  font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim);
+  display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap;
+  font-family:var(--font-ui); font-size:0.95rem; color:var(--text);
 }
 /* Icon + label as one unit, so they wrap together. The min-width that used to
    sit on the label lives here now, which is what keeps the two rows' stars
    aligned with each other. */
-.rating-head{ display:inline-flex; align-items:center; gap:0.35rem; min-width:6.4rem; }
-.rating-label{ }
-/* Decorative, and made unclickable in three ways so it cannot be mistaken for
-   a control: no pointer events, no cursor change, and fainter than the label
-   so it stays secondary to the stars. currentColor is what themes it. */
+.rating-head{ display:inline-flex; align-items:center; gap:0.45rem; min-width:7.4rem; }
+.rating-label{ color:var(--text); }
+/* Still decorative and still unclickable three ways over -- no pointer events,
+   no cursor change, no handler -- but no longer faint.
+   COLOUR CHOICE: the bright foreground, NOT the accent. The accent now belongs
+   to the stars alone, and that is what makes the stars read as the interactive
+   thing in the row. An accent-coloured icon sitting beside accent stars would
+   look like a second tappable control, which is the confusion this icon was
+   restored without. currentColor is what themes it. */
 .rating-ic{
-  width:1.05rem; height:1.05rem; flex-shrink:0;
-  color:var(--text-faint); pointer-events:none; cursor:default;
+  width:1.35rem; height:1.35rem; flex-shrink:0;
+  color:var(--text); pointer-events:none; cursor:default;
 }
 .rating-stars{ display:inline-flex; gap:0; }
-/* The button is the touch target, the glyph inside it is what you see. 1.6rem
-   of star plus 0.45rem of padding each side gives a 40px square hit area --
-   comfortably tappable -- while the star itself still reads as a star and not
-   a slab. The padding also spaces the row, so the flex gap goes to zero. */
+/* The button is the touch target, the glyph inside is what you see: 2rem of
+   star plus 0.375rem of padding each side gives a 44px square hit area. The
+   padding also spaces the row, so the flex gap stays zero. */
 .star{
-  background:none; border:0; padding:0.45rem; cursor:pointer; line-height:0;
-  border-radius:8px; -webkit-tap-highlight-color:transparent;
+  background:none; border:0; padding:0.375rem; cursor:pointer; line-height:0;
+  border-radius:9px; -webkit-tap-highlight-color:transparent;
 }
-.star:focus-visible{ outline:2px solid var(--accent-2); outline-offset:-2px; }
-.star-ic{ width:1.6rem; height:1.6rem; fill:none; stroke:var(--text-faint); stroke-width:1.5; }
-.star-ic.is-on{ fill:var(--accent-2); stroke:var(--accent-2); }
-.rating-row:not(.is-locked) .star:hover .star-ic{ stroke:var(--accent-2); }
-.rating-row.is-locked .star-ic{ opacity:0.45; }
-.rating-avg{ color:var(--text); font-variant-numeric:tabular-nums; font-size:0.88rem; }
-.rating-note{ color:var(--text-faint); font-size:0.75rem; }
+.star:focus-visible{ outline:2px solid var(--star-accent); outline-offset:-2px; }
+
+/* EMPTY: a crisp accent outline. Never pre-filled -- an unrated song must not
+   look scored -- but never grey either. var(--accent-2) means gold, emerald,
+   royal or bordeaux follows the active theme in both lightings. */
+.star-ic{
+  width:2rem; height:2rem; fill:none;
+  stroke:var(--star-accent); stroke-width:1.6;
+  stroke-linejoin:round; transition:fill 0.12s var(--ease), stroke 0.12s var(--ease);
+}
+/* SUBMITTED: the rater's own score, filled solid and persistent. */
+.star-ic.is-on{ fill:var(--star-accent); stroke:var(--star-accent); }
+
+/* HOVER PREVIEW, pointer devices only: the star under the pointer and every
+   star before it fill solid, which is the behaviour every star rating has. The
+   position comes from data-preview on the row, set in JS -- the pure-CSS
+   version of this needs the DOM reversed with row-reverse, which would put the
+   keyboard tab order at 5,4,3,2,1. */
+@media (hover:hover){
+  .rating-row:not(.is-locked) .rating-stars[data-preview="1"] .star:nth-child(-n+1) .star-ic,
+  .rating-row:not(.is-locked) .rating-stars[data-preview="2"] .star:nth-child(-n+2) .star-ic,
+  .rating-row:not(.is-locked) .rating-stars[data-preview="3"] .star:nth-child(-n+3) .star-ic,
+  .rating-row:not(.is-locked) .rating-stars[data-preview="4"] .star:nth-child(-n+4) .star-ic,
+  .rating-row:not(.is-locked) .rating-stars[data-preview="5"] .star:nth-child(-n+5) .star-ic{
+    fill:var(--star-accent); stroke:var(--star-accent);
+  }
+  /* and the ones after the pointer drop back to an outline, even if submitted,
+     so the preview reads as "this is what you would give". */
+  .rating-row:not(.is-locked) .rating-stars[data-preview] .star .star-ic{ fill:none; }
+}
+
+/* SIGNED OUT: the one state that should read as not-yet-available, and it has
+   to be obviously different from the lit eligible row above. Grey, not accent,
+   and dimmed -- while the whole row stays tappable so it can open the modal. */
+.rating-row.is-locked .star-ic{ stroke:var(--text-faint); fill:none; opacity:0.55; }
+.rating-row.is-locked .rating-label,
+.rating-row.is-locked .rating-ic{ color:var(--text-dim); }
+
+.rating-avg{ color:var(--text); font-variant-numeric:tabular-nums; font-size:1.05rem; font-weight:600; }
+/* Quieter than the labels, but legible -- it was a ghost at --text-faint. */
+.rating-note{ color:var(--text-dim); font-size:0.82rem; }
 .rating-msg{ font-size:0.74rem; color:var(--accent-3); margin-top:0.2rem; }
 .rating-msg.is-bad{ color:#ff8497; }
 /* On a phone the label and the stars hold one line and the average/hint drops
    below, which is what keeps a 5x40px row from overflowing a narrow dock. */
 @media (max-width:560px){
-  .rating-row{ gap:0.4rem; }
-  .rating-head{ min-width:5.5rem; gap:0.3rem; }
-  .rating-ic{ width:0.95rem; height:0.95rem; }
-  .rating-note, .rating-avg{ flex-basis:100%; margin-left:0.2rem; }
-  .star{ padding:0.4rem; }
-  .star-ic{ width:1.5rem; height:1.5rem; }
+  .rating-row{ gap:0.45rem; font-size:0.9rem; }
+  .rating-head{ min-width:6.2rem; gap:0.4rem; }
+  .rating-ic{ width:1.2rem; height:1.2rem; }
+  .rating-note, .rating-avg{ flex-basis:100%; margin-left:0.15rem; }
+  /* Still a 44px target on a phone: 1.85rem of glyph + 0.33rem each side. */
+  .star{ padding:0.45rem; }
+  .star-ic{ width:1.85rem; height:1.85rem; }
 }

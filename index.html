@@ -3208,6 +3208,34 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+/* HOVER PREVIEW, delegated the same way the click is. The star under the
+   pointer and every star before it fill solid while the pointer is over them,
+   which is what every star rating in the world does and is the clearest way to
+   say "these are tappable". data-preview on the container carries the
+   position; the CSS does the filling, and only inside @media (hover:hover) so
+   a touch device never gets a stuck preview from a tap.
+
+   Not done in pure CSS because the CSS-only version of "this one and the ones
+   before it" needs the stars laid out in reverse DOM order with row-reverse,
+   which would make the keyboard tab order run 5,4,3,2,1. */
+document.addEventListener('mouseover', (e) => {
+  const star = e.target.closest && e.target.closest('.star');
+  if(!star) return;
+  const row = star.closest('.rating-row');
+  if(row && row.classList.contains('is-locked')) return;   // signed out: no preview
+  const wrap = star.closest('.rating-stars');
+  if(wrap) wrap.dataset.preview = star.dataset.score;
+});
+
+document.addEventListener('mouseout', (e) => {
+  const wrap = e.target.closest && e.target.closest('.rating-stars');
+  if(!wrap) return;
+  // Moving between two stars inside the same row is not a leave.
+  const to = e.relatedTarget;
+  if(to && wrap.contains(to)) return;
+  delete wrap.dataset.preview;
+});
+
 // The rater's stars follow them between songs and across a sign-in.
 window.addEventListener('laivy:auth', () => {
   myRatings = {};
