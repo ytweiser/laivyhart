@@ -4,7 +4,12 @@
    ============================================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('sw.js').catch(function (err) {
+      /* Root-absolute, with an explicit scope. Registered from a subpath like
+       /song/<slug> a relative 'sw.js' resolves to /song/sw.js -- which does
+       not exist, and which the subpath rewrite used to answer with
+       index.html, so the worker either failed to register or registered with
+       a /song/ scope that never controlled the site. */
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function (err) {
       console.warn('Service worker registration failed:', err);
     });
   });

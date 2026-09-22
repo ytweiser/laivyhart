@@ -24,19 +24,19 @@
       "destination": "/about.html"
     },
     {
-      "source": "/artist/:handle",
+      "source": "/artist/:handle([^/.]+)",
       "destination": "/index.html"
     },
     {
-      "source": "/artist/:handle/",
+      "source": "/artist/:handle([^/.]+)/",
       "destination": "/index.html"
     },
     {
-      "source": "/song/:slug",
+      "source": "/song/:slug([^/.]+)",
       "destination": "/index.html"
     },
     {
-      "source": "/song/:slug/",
+      "source": "/song/:slug([^/.]+)/",
       "destination": "/index.html"
     }
   ]

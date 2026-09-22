@@ -41,11 +41,11 @@
 </script>
 <!-- The V-heart mark, cropped from brand/wordmark.png. No SVG favicon: it is
      raster artwork, and an SVG link would win over these in most browsers. -->
-<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#F5ECEE" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -63,14 +63,14 @@
 <meta name="twitter:title" content="Laivy Hart">
 <meta name="twitter:description" content="Original songs. Sometimes stories, sometimes prayers.">
 <meta name="twitter:image" content="https://laivyhart.com/og-image.png">
-<script src="pwa.js" defer></script>
+<script src="/pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="theme.css" rel="stylesheet">
+<link href="/theme.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
-<script src="js/supabase-client.js"></script>
+<script src="/config.js"></script>
+<script src="/js/supabase-client.js"></script>
 <style>
   body{min-height:100vh; overflow-x:hidden;}
   .app{
@@ -1312,7 +1312,7 @@
   <div class="homepage" id="homepage"></div>
 
   <footer class="home-footer">
-    <a class="quiet-link" href="about.html">About</a>
+    <a class="quiet-link" href="/about.html">About</a>
     <a class="quiet-link" href="/terms">Terms and Privacy</a>
   </footer>
 </div>
@@ -1375,13 +1375,13 @@ const SHOW_PLAY_COUNTS = false;
 // wordmark. It ships twice: a WebP at display width, which is what almost every
 // visitor gets, and the original PNG as the fallback for a browser that cannot
 // decode WebP. The PNG is the source file and stays untouched.
-const SITE_WORDMARK_URL   = 'brand/wordmark.png';    // transparent wordmark
-const SITE_WORDMARK_WEBP  = 'brand/wordmark.webp';
+const SITE_WORDMARK_URL   = '/brand/wordmark.png';    // transparent wordmark
+const SITE_WORDMARK_WEBP  = '/brand/wordmark.webp';
 // Deliberately unused, and kept that way: brand/banner.png is the source of the
 // share image (og-image.png) and brand/banner-bg.png is the pre-plate
 // background, held as a fallback. Neither is fetched by the page any more.
-const SITE_BANNER_URL     = 'brand/banner.png';      // full banner, wordmark included, 3:1
-const SITE_BANNER_BG_URL  = 'brand/banner-bg.png';   // background plate, no text
+const SITE_BANNER_URL     = '/brand/banner.png';      // full banner, wordmark included, 3:1
+const SITE_BANNER_BG_URL  = '/brand/banner-bg.png';   // background plate, no text
 
 /* ============================================================
    Small utilities
@@ -1676,7 +1676,7 @@ function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
 // get the full jukebox, with audio and covers served from R2.
 async function loadSongsSnapshot(){
   try{
-    const res = await fetch('songs.json', { cache: 'no-cache' });
+    const res = await fetch('/songs.json', { cache: 'no-cache' });
     if(!res.ok) throw new Error('songs.json HTTP ' + res.status);
     const rows = await res.json();
     return Array.isArray(rows) ? rows : null;
@@ -1708,7 +1708,7 @@ function normalizeChart(rows){
 // scripts/snapshot-songs.mjs (an object {chart_date, entries}).
 async function loadChartSnapshot(){
   try{
-    const res = await fetch('chart.json', { cache: 'no-cache' });
+    const res = await fetch('/chart.json', { cache: 'no-cache' });
     if(!res.ok) throw new Error('chart.json HTTP ' + res.status);
     const body = await res.json();
     return normalizeChart(Array.isArray(body) ? body : (body && body.entries));
@@ -4288,7 +4288,7 @@ async function resolveArtist(handle){
   }catch(e){
     // Network/outage only: fall back to the committed artists.json snapshot.
     try{
-      const res = await fetch('artists.json', { cache: 'no-cache' });
+      const res = await fetch('/artists.json', { cache: 'no-cache' });
       if(!res.ok) throw new Error('HTTP ' + res.status);
       const rows = await res.json();
       const hit = (rows || []).find(a => String(a.handle).toLowerCase() === handle);
@@ -4528,7 +4528,7 @@ flushEventQueue();
 
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->
-<script type="module" src="js/auth.js"></script>
-<script type="module" src="js/account-ui.js"></script>
+<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/account-ui.js"></script>
 </body>
 </html>
