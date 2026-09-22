@@ -1489,6 +1489,9 @@ async function showCharts(){
   const { data, error } = await supabaseClient
     .from('chart_snapshots')
     .select('chart_date, rank, title, plays_7d, is_week_end, song_id')
+    // The Charts tab is the PLAYS chart. The nightly best-words / best-music
+    // lists share this table from 1A-6 and have no UI until Stage 2.
+    .eq('kind', 'plays')
     .order('chart_date', { ascending: false })
     .order('rank', { ascending: true });
 

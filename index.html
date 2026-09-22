@@ -1150,19 +1150,13 @@
           </button>
         </div>
       </div>
-      <!-- The three loves: independent toggles for the words, the music, and the
-           song itself (the heart). Hidden until a song is playing. -->
+      <!-- The heart (one tap, anonymous, public count) and, since 1A-6, the
+           words and the music as 1-to-5 ratings that require an account.
+           Hidden until a song is playing. -->
       <div class="loves hidden" id="loves">
-        <div class="loves-q">What did you love?</div>
+        <div class="loves-q">What did you think?</div>
+        <div class="rating-rows" id="rating-rows"></div>
         <div class="loves-row">
-          <button class="love-btn" data-love="lyrics" type="button" aria-pressed="false" aria-label="Love the words">
-            <span class="love-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-5 2.2-9.3 5.9-12.1C12.6 5.8 16 4.7 20 4.4c-.2 4-1.3 7.4-3.4 10.1C13.7 18.1 9.3 20 4.4 20"/><path d="M4 20c1.9-2.6 4.3-4.8 7.1-6.4"/><path d="M14.5 10.2c-1.7.8-3.2 1.9-4.4 3.4"/></svg></span>
-            <span class="love-label">the words</span>
-          </button>
-          <button class="love-btn" data-love="music" type="button" aria-pressed="false" aria-label="Love the music">
-            <span class="love-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><line x1="6" y1="15.5" x2="6" y2="8.5"/><line x1="12" y1="19" x2="12" y2="5"/><line x1="18" y1="14" x2="18" y2="10"/></svg></span>
-            <span class="love-label">the music</span>
-          </button>
           <button class="love-btn" data-love="song" type="button" aria-pressed="false" aria-label="Love this song">
             <span class="love-ic"><svg class="love-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg></span>
             <span class="love-label">the song <span class="love-count">0</span></span>
@@ -1730,6 +1724,10 @@ async function loadChart(){
     const res = await supabaseClient
       .from('chart_snapshots')
       .select('chart_date, rank, song_id')
+      // kind='plays' explicitly: since 1A-6 the nightly job also writes
+      // kind='words' and kind='music' for the same date, and without this
+      // filter those rows would interleave into the weekly ranking.
+      .eq('kind', 'plays')
       .order('chart_date', { ascending: false })
       .order('rank', { ascending: true })
       .limit(10);
@@ -1763,6 +1761,7 @@ async function loadSongs(){
   buildSearchIndexes();
   applySessionShuffle();
   await loadCategoryGroups();
+  loadRatingSettings();
   await loadChart();          // before initRoute: the homepage ranks on it
   renderFilterPills();
   renderList();
@@ -2578,6 +2577,7 @@ function renderNow(){
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
     dockReact.classList.add('hidden');
     paintLoves();
+    paintRatings();
     if(commentsWrap) commentsWrap.classList.add('hidden');
     panelFeed.classList.remove('hidden');
     engage.classList.remove('hidden');
@@ -2724,6 +2724,8 @@ function loadSong(idx, keepRailQueue){
   if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
   loadComments();
+  paintRatings();
+  loadMyRatings(SONGS[idx] && SONGS[idx].id).then(paintRatings);
   playCurrent();
   updateMiniPlayer();
   if(route === 'listen') syncSongUrl(SONGS[idx]);
@@ -2847,8 +2849,11 @@ async function sendQueuedEvent(ev){
     return true;
   }
   if(ev.type === 'love'){
-    // One of the two independent loves (the words / the music). like_count is
-    // untouched: the heart is its own event type above.
+    // RETAINED ON PURPOSE, even though nothing enqueues a 'love' event any
+    // more: since 1A-6 the words and the music are star ratings, but a visitor
+    // may still have love events sitting in their localStorage queue from
+    // before that deploy. Dropping this handler would silently discard them.
+    // like_count is untouched here; the heart is its own event type above.
     const { data, error } = await supabaseClient.rpc('toggle_love', {
       song_id: ev.song_id, kind: ev.kind, on: ev.on
     });
@@ -3036,36 +3041,159 @@ function paintLoves(){
     }
   });
 }
+/* ============================================================
+   Ratings: the words and the music, 1 to 5, signed-in only (1A-6)
+
+   The heart above is unchanged -- anonymous, one tap, public count. These two
+   are different on purpose: a rating is an opinion worth attributing, so it
+   needs an account, one row per person per song per facet, changeable.
+
+   HOUSE RULE: the number of raters is never shown. Below min_ratings the
+   average is withheld entirely, because an average of two is not an average.
+   ============================================================ */
+const RATING_FACETS = [
+  { facet: 'words', en: 'The words',  he: 'המילים' },
+  { facet: 'music', en: 'The music',  he: 'המנגינה' },
+];
+let MIN_RATINGS = 5;              // refreshed from site_settings on load
+let myRatings = {};               // { '<songId>:<facet>': score } for this account
+
+async function loadRatingSettings(){
+  try{
+    const { data } = await supabaseClient
+      .from('site_settings').select('value').eq('key','min_ratings').maybeSingle();
+    const n = data && Number(data.value);
+    if(isFinite(n) && n > 0) MIN_RATINGS = n;
+  }catch(e){ /* the default of 5 stands */ }
+}
+
+/* The rater's own scores. RLS (ratings_read_own) means this returns only their
+   own rows, so no separate "my ratings" function is needed. */
+async function loadMyRatings(songId){
+  const me = window.laivy && window.laivy.auth && window.laivy.auth.user;
+  if(!me || !songId) return;
+  try{
+    const { data, error } = await supabaseClient
+      .from('ratings').select('facet, score').eq('song_id', songId);
+    if(error) throw error;
+    (data || []).forEach(r => { myRatings[songId + ':' + r.facet] = r.score; });
+  }catch(e){ /* leave the stars empty rather than guessing */ }
+}
+
+function facetAverage(s, facet){
+  const n = s['rating_' + facet + '_n'] || 0;
+  const sum = s['rating_' + facet + '_sum'] || 0;
+  if(n < MIN_RATINGS || !n) return null;       // withheld below the threshold
+  return (sum / n).toFixed(1);
+}
+
+function starSvg(filled){
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" class="star-ic${filled ? ' is-on' : ''}">`
+       + `<path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.4 6.2 20.4l1.1-6.4L2.6 9.4l6.5-.9z"/></svg>`;
+}
+
+function ratingRowHTML(s, cfg){
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  const mine = myRatings[s.id + ':' + cfg.facet] || 0;
+  const avg = facetAverage(s, cfg.facet);
+  const stars = [1,2,3,4,5].map(i =>
+    `<button class="star" type="button" data-facet="${cfg.facet}" data-score="${i}"
+       aria-label="${i} of 5 for ${escHtml(cfg.en.toLowerCase())}">${starSvg(i <= mine)}</button>`
+  ).join('');
+  // Never the count: either the average, or a line that says "not yet".
+  const note = avg
+    ? `<span class="rating-avg">${avg} / 5</span>`
+    : `<span class="rating-note">Rated by a few listeners so far
+         <span class="attr-he" dir="rtl" lang="he">דורג על ידי מעטים עד כה</span></span>`;
+  return `<div class="rating-row${signedIn ? '' : ' is-locked'}" data-facet="${cfg.facet}">
+      <span class="rating-label">${escHtml(cfg.en)}
+        <span class="attr-he" dir="rtl" lang="he">${escHtml(cfg.he)}</span></span>
+      <span class="rating-stars">${stars}</span>
+      ${signedIn ? note : `<span class="rating-note">Sign in to rate
+         <span class="attr-he" dir="rtl" lang="he">התחבר/י כדי לדרג</span></span>`}
+    </div>`;
+}
+
+function paintRatings(){
+  const host = document.getElementById('rating-rows');
+  if(!host) return;
+  if(currentIdx === null || !SONGS[currentIdx]){ host.innerHTML = ''; return; }
+  const s = SONGS[currentIdx];
+  host.innerHTML = RATING_FACETS.map(cfg => ratingRowHTML(s, cfg)).join('');
+  const msg = document.createElement('div');
+  msg.className = 'rating-msg'; msg.id = 'rating-msg'; msg.hidden = true;
+  host.appendChild(msg);
+}
+
+function ratingMessage(text, bad){
+  const el = document.getElementById('rating-msg');
+  if(!el) return;
+  el.textContent = text;
+  el.className = 'rating-msg' + (bad ? ' is-bad' : '');
+  el.hidden = !text;
+}
+
+/* One delegated handler for every star. Signed out opens the sign-in modal;
+   otherwise rate_song() is called and ITS message is what the visitor sees --
+   "You cannot rate your own song", the age gate, and so on. The stars are
+   deliberately not pre-disabled for those two cases: a disabled control that
+   does not say why is worse than a tap that explains. */
+document.addEventListener('click', async (e) => {
+  const star = e.target.closest && e.target.closest('.star');
+  if(!star) return;
+  e.preventDefault(); e.stopPropagation();
+  if(currentIdx === null || !SONGS[currentIdx]) return;
+  const s = SONGS[currentIdx];
+  const facet = star.dataset.facet;
+  const score = Number(star.dataset.score);
+
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  if(!signedIn){
+    if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
+    return;
+  }
+  if(noTrack()) return;
+
+  ratingMessage('');
+  const prev = myRatings[s.id + ':' + facet] || 0;
+  myRatings[s.id + ':' + facet] = score;     // optimistic, like the heart
+  paintRatings();
+  try{
+    const { error } = await supabaseClient.rpc('rate_song', {
+      p_song: s.id, p_facet: facet, p_score: score,
+    });
+    if(error) throw error;
+    laivyTrack('rate', { song_id: s.id, facet, score });
+    // Fold the new score into the local aggregate so the average can appear
+    // without a reload once the threshold is crossed.
+    const nKey = 'rating_' + facet + '_n', sKey = 'rating_' + facet + '_sum';
+    if(prev){ s[sKey] = (s[sKey] || 0) - prev + score; }
+    else { s[nKey] = (s[nKey] || 0) + 1; s[sKey] = (s[sKey] || 0) + score; }
+    paintRatings();
+  }catch(err){
+    if(prev) myRatings[s.id + ':' + facet] = prev;
+    else delete myRatings[s.id + ':' + facet];
+    paintRatings();
+    ratingMessage((err && err.message) || 'Could not save that rating.', true);
+  }
+});
+
+// The rater's stars follow them between songs and across a sign-in.
+window.addEventListener('laivy:auth', () => {
+  myRatings = {};
+  if(currentIdx !== null && SONGS[currentIdx]){
+    loadMyRatings(SONGS[currentIdx].id).then(paintRatings);
+  } else {
+    paintRatings();
+  }
+});
+
 // The soft pulse on tap (the heart's old pop, on whichever circle was tapped).
 function pulseLove(kind){
   const btn = document.querySelector(`.love-btn[data-love="${kind}"]`);
   if(!btn) return;
   btn.classList.remove('pulse'); void btn.offsetWidth; btn.classList.add('pulse');
   setTimeout(() => btn.classList.remove('pulse'), 400);
-}
-
-// The words / the music. Optimistic like the heart: flip locally, queue the
-// RPC, reconcile the count when the send is confirmed.
-function toggleLove(kind){
-  if(currentIdx === null) return;
-  const s = SONGS[currentIdx];
-  const on = !loveOn(s.id, kind);
-  setLoveState(s.id, kind, on);
-  const col = kind === 'lyrics' ? 'like_lyrics_count' : 'like_tune_count';
-  s[col] = Math.max(0, (s[col] || 0) + (on ? 1 : -1));
-  paintLoves();
-  pulseLove(kind);
-  // Same rule as the heart: the toggle and the local write always happen; only
-  // what leaves the browser is behind the flag.
-  if(noTrack()) return;
-  laivyTrack('love', {
-    song_id: s.id,
-    song_title: s.title || s.title_translit || '',
-    kind,
-    on: on ? 'on' : 'off'
-  });
-  enqueueEvent({ type: 'love', song_id: s.id, kind, on });
-  flushEventQueue();
 }
 
 // DEBUG self-test for the three loves. Off by default; turn it on WITHOUT
@@ -3129,7 +3257,9 @@ async function lovesSelfTest(){
   flushEventQueue = async () => {};
 
   try{
-    for(const kind of ['lyrics', 'music', 'song']){
+    // The words and the music are star ratings since 1A-6; the heart is the
+    // only remaining one-tap love, so it is the only one this test drives.
+    for(const kind of ['song']){
       queued = [];
       const btn = document.querySelector(`.love-btn[data-love="${kind}"]`);
       if(!btn){ ok(false, `${kind}: button is missing`); continue; }
@@ -3197,14 +3327,15 @@ document.addEventListener('click', (e) => {
   if(!btn) return;
   e.preventDefault();
   e.stopPropagation();
-  const kind = btn.dataset.love;
-  if(kind === 'song'){
-    if(currentIdx === null || !SONGS[currentIdx]) return;
-    pulseLove('song');
-    toggleLike(SONGS[currentIdx].id);
-  } else {
-    toggleLove(kind);
-  }
+  // Since 1A-6 the heart is the only one-tap love left in the dock: the words
+  // and the music are star ratings, rendered separately below. toggle_love()
+  // is no longer called from the client for either facet. The RPC and the
+  // like_lyrics_count / like_tune_count columns stay for history and for the
+  // admin's read-only split.
+  if(btn.dataset.love !== 'song') return;
+  if(currentIdx === null || !SONGS[currentIdx]) return;
+  pulseLove('song');
+  toggleLike(SONGS[currentIdx].id);
 });
 
 /* ============================================================

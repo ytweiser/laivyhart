@@ -151,8 +151,9 @@ async function writeChart() {
   let cres;
   try {
     // ranks 1-10 of one date, so the 10 newest rows are the latest chart.
+    // kind=plays: the nightly words/music lists live in this table too (1A-6).
     cres = await fetch(
-      `${url}/rest/v1/chart_snapshots?select=chart_date,rank,song_id&order=chart_date.desc,rank.asc&limit=10`,
+      `${url}/rest/v1/chart_snapshots?select=chart_date,rank,song_id&kind=eq.plays&order=chart_date.desc,rank.asc&limit=10`,
       { headers },
     );
   } catch (e) {

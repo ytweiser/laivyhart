@@ -640,3 +640,33 @@ body{
 @media (max-width:900px){
   .row-artist{ max-width:5.5rem; }
 }
+
+/* ============================================================
+   Ratings (1A-6): the words and the music, 1 to 5, in the dock.
+   The heart keeps its own .love-btn styling, untouched.
+   The number of raters is never rendered anywhere here.
+   ============================================================ */
+.rating-rows{ display:flex; flex-direction:column; gap:0.35rem; margin:0 0 0.6rem; }
+.rating-row{
+  display:flex; align-items:center; gap:0.55rem; flex-wrap:wrap;
+  font-family:var(--font-ui); font-size:0.78rem; color:var(--text-dim);
+}
+.rating-label{ min-width:5.5rem; }
+.rating-stars{ display:inline-flex; gap:0.1rem; }
+.star{
+  background:none; border:0; padding:0.1rem; cursor:pointer; line-height:0;
+  border-radius:4px;
+}
+.star:focus-visible{ outline:2px solid var(--accent-2); outline-offset:1px; }
+.star-ic{ width:1.05rem; height:1.05rem; fill:none; stroke:var(--text-faint); stroke-width:1.6; }
+.star-ic.is-on{ fill:var(--accent-2); stroke:var(--accent-2); }
+.rating-row:not(.is-locked) .star:hover .star-ic{ stroke:var(--accent-2); }
+.rating-row.is-locked .star-ic{ opacity:0.45; }
+.rating-avg{ color:var(--text); font-variant-numeric:tabular-nums; }
+.rating-note{ color:var(--text-faint); font-size:0.72rem; }
+.rating-msg{ font-size:0.74rem; color:var(--accent-3); margin-top:0.2rem; }
+.rating-msg.is-bad{ color:#ff8497; }
+@media (max-width:560px){
+  .rating-label{ min-width:4.6rem; }
+  .rating-note{ flex-basis:100%; }
+}
