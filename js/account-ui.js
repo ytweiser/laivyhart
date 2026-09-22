@@ -166,9 +166,14 @@ function renderSlot(slot) {
   const menu = el('div', 'lv-menu');
   menu.setAttribute('role', 'menu');
   menu.hidden = true;
-  // The provisional handle from handle_new_user() resolves too, so this works
-  // before onboarding is finished. Only a missing handle falls back.
-  const myPage = (artist && artist.handle) ? `/artist/${encodeURIComponent(artist.handle)}` : '/settings';
+  /* "My page" only points at a public page when there IS one. Since 1A-7 a
+     listener (is_artist false) is absent from artists_public, so their handle
+     would resolve to "Artist not found" -- linking a signed-in person to a dead
+     page from their own menu is the worst version of that. They get /settings
+     instead, which is the page that is actually theirs. */
+  const myPage = (artist && artist.is_artist && artist.handle)
+    ? `/artist/${encodeURIComponent(artist.handle)}`
+    : '/settings';
   menu.innerHTML =
     `<a role="menuitem" href="${esc(myPage)}">My page</a>` +
     `<a role="menuitem" href="/settings">Settings</a>` +
@@ -455,6 +460,10 @@ export function renderSettings(container) {
       </div>
       <input type="file" accept="image/*" data-avatar-file hidden>
       <p class="lv-err" data-avatar-err hidden></p>
+      ${artist && artist.is_artist === false ? `<p class="lv-hint lv-notyet">
+        Your page goes live when your first song is approved.
+        <span dir="rtl" lang="he">העמוד שלך יעלה לאוויר כשהשיר הראשון שלך יאושר.</span>
+      </p>` : ''}
       <p class="lv-err" data-err hidden></p>
       <p class="lv-ok" data-ok hidden>Saved.</p>
       <div class="lv-onboard-actions">

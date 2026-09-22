@@ -46,22 +46,39 @@ async function loadArtist(userId) {
   }
 }
 
-/* artists_public deliberately does not expose role or onboarded, so those two
-   come from the artists table itself, which RLS scopes to the caller's own row
-   (artists_read_self). Failure here is not fatal: role falls back to 'artist'
-   and onboarded to true, i.e. the quiet, non-nagging default. */
+/* artists_public deliberately does not expose role, onboarded or is_artist, so
+   those come from the artists table itself, which RLS scopes to the caller's
+   own row (artists_read_self).
+
+   is_artist matters more here than it looks: since 1A-7 artists_public only
+   returns PUBLIC artists, so a listener's own row is absent from it entirely.
+   This self-scoped read is the only way they learn anything about themselves.
+   Failure is not fatal: role falls back to 'artist', onboarded to true (the
+   quiet, non-nagging default) and is_artist to false (no public page claimed
+   that might not exist). */
 async function loadSelfFlags(userId) {
-  if (!supabase || !userId) return { role: 'artist', onboarded: true };
+  const fallback = { role: 'artist', onboarded: true, is_artist: false };
+  if (!supabase || !userId) return fallback;
   try {
     const { data, error } = await supabase
       .from('artists')
-      .select('role, onboarded')
+      .select('role, onboarded, is_artist, handle, display_name, display_name_he, bio, avatar_url')
       .eq('id', userId)
       .maybeSingle();
     if (error) throw error;
-    return { role: (data && data.role) || 'artist', onboarded: data ? !!data.onboarded : true };
+    if (!data) return fallback;
+    return {
+      role: data.role || 'artist',
+      onboarded: !!data.onboarded,
+      is_artist: !!data.is_artist,
+      handle: data.handle,
+      display_name: data.display_name,
+      display_name_he: data.display_name_he,
+      bio: data.bio,
+      avatar_url: data.avatar_url,
+    };
   } catch (e) {
-    return { role: 'artist', onboarded: true };
+    return fallback;
   }
 }
 
@@ -69,7 +86,10 @@ async function apply(user) {
   state.user = user || null;
   if (user) {
     const [artist, flags] = await Promise.all([loadArtist(user.id), loadSelfFlags(user.id)]);
-    state.artist = artist ? { ...artist, ...flags } : { id: user.id, ...flags, handle: null, display_name: null };
+    // A listener is not in artists_public at all, so `artist` is null for them
+    // and the self-scoped flags carry the profile. Spreading flags last means
+    // they always win, which also keeps is_artist authoritative.
+    state.artist = { id: user.id, ...(artist || {}), ...flags };
   } else {
     state.artist = null;
   }

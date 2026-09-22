@@ -263,6 +263,32 @@
   .mod-head{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap; margin-bottom:1.3rem;}
   .mod-head h2{margin:0;}
   .mod-empty{color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1rem; padding:1.5rem 0;}
+  /* Artists tab (1A-7) */
+  .since-visit{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin-left:0.5rem;}
+  .art-filter{display:flex; gap:0.35rem; flex-wrap:wrap; margin:0 0 0.9rem;}
+  .art-filter button{background:none; border:1px solid var(--line); color:var(--text-dim); cursor:pointer;
+    border-radius:999px; padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.72rem;}
+  .art-filter button.on{background:var(--accent-2); color:#fff; border-color:transparent;}
+  .art-row{display:flex; align-items:center; gap:0.8rem; padding:0.7rem 0.6rem;
+    border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .art-av{width:34px; height:34px; border-radius:50%; flex-shrink:0; object-fit:cover;
+    display:flex; align-items:center; justify-content:center; background:var(--accent-grad);
+    color:#fff; font-family:var(--font-display); font-weight:600; font-size:0.9rem;}
+  .art-main{flex:1 1 13rem; min-width:0;}
+  .art-name{font-family:var(--font-ui); font-size:0.92rem; color:var(--text);}
+  .art-sub{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .art-pill{display:inline-block; padding:0.12rem 0.5rem; border-radius:999px; font-size:0.6rem;
+    font-family:var(--font-ui); letter-spacing:0.05em; text-transform:uppercase; border:1px solid var(--line);}
+  .art-pill.is-artist{background:rgba(34,140,90,0.18); color:#6ddba0; border-color:rgba(34,140,90,0.4);}
+  .art-pill.is-listener{background:rgba(255,255,255,0.07); color:var(--text-dim);}
+  .art-pill.is-admin{background:rgba(214,169,62,0.20); color:#e8c979;}
+  .art-pill.is-suspended{background:rgba(180,50,70,0.20); color:#ff9aa9;}
+  .art-acts{display:flex; gap:0.35rem; flex-wrap:wrap;}
+  .art-acts button{background:none; border:1px solid var(--line); color:var(--text-dim); cursor:pointer;
+    border-radius:8px; padding:0.25rem 0.55rem; font-family:var(--font-ui); font-size:0.7rem;}
+  .art-acts button:hover{border-color:var(--accent-2); color:var(--accent-2);}
+  .art-acts button.danger:hover{border-color:#ff9aa9; color:#ff9aa9;}
   .mod-item{border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.9rem; max-width:44rem;}
   .mod-song{font-family:var(--font-display); font-style:italic; color:var(--accent-2); font-size:0.95rem; margin-bottom:0.4rem;}
   .mod-body{font-size:0.98rem; line-height:1.55; color:var(--text); white-space:pre-line; margin-bottom:0.55rem;}
@@ -312,6 +338,8 @@
     <button class="logout-btn publish-trigger" id="publish-btn" style="display:none;">Publish</button>
     <button class="logout-btn" id="comments-btn" style="display:none;">Comments</button>
     <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
+    <button class="logout-btn" id="artists-btn" style="display:none;">Artists</button>
+    <span class="since-visit" id="since-visit"></span>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
     <div id="account-slot"></div>
@@ -442,8 +470,10 @@ async function checkSession(){
     document.getElementById('comments-btn').style.display = 'inline-block';
     document.getElementById('publish-btn').style.display = 'inline-block';
     document.getElementById('charts-btn').style.display = 'inline-block';
+    document.getElementById('artists-btn').style.display = 'inline-block';
     await loadSongs();
     await loadArtists();
+    paintSinceVisit();
     await loadCategories();
     renderCategoryManager();
     refreshCommentCount();
@@ -454,6 +484,7 @@ async function checkSession(){
     document.getElementById('comments-btn').style.display = 'none';
     document.getElementById('publish-btn').style.display = 'none';
     document.getElementById('charts-btn').style.display = 'none';
+    document.getElementById('artists-btn').style.display = 'none';
   }
 }
 
@@ -1406,6 +1437,155 @@ async function refreshCommentCount(){
   if(error){ btn.textContent = 'Comments'; return; }
   btn.textContent = 'Comments' + (count ? ` (${count})` : '');
 }
+
+/* ============================================================
+   Artists tab (1A-7)
+
+   Every read and every write here goes through a SECURITY DEFINER function --
+   admin_list_artists, promote_to_artist, demote_to_listener,
+   admin_delete_artist. The browser never touches auth.users or a privileged
+   column directly, so an admin session that leaked would still be limited to
+   what those four functions allow, and each of them re-checks is_admin() in
+   the database rather than trusting this UI.
+   ============================================================ */
+const ART_FILTERS = ['all','artists','listeners','suspended'];
+const ART_FILTER_TEXT = { all:'All', artists:'Artists', listeners:'Listeners', suspended:'Suspended' };
+let artFilter = 'all';
+let artRows = [];
+
+const LAST_VISIT_KEY = 'laivy-admin-last-visit';
+
+/* "Since last visit" is a lightweight stand-in until 1B's daily email report.
+   The timestamp lives in THIS browser; the database only ever answers the
+   count. First load has no timestamp, so it reports the total. */
+async function paintSinceVisit(){
+  const el = document.getElementById('since-visit');
+  if(!el) return;
+  let prev = null;
+  try{ prev = localStorage.getItem(LAST_VISIT_KEY); }catch(e){}
+  try{
+    const { data, error } = await supabaseClient.rpc('admin_new_signups_since', { p_ts: prev || null });
+    if(error) throw error;
+    const n = Number(data) || 0;
+    el.textContent = prev
+      ? `Since last visit: ${n} new sign-up${n === 1 ? '' : 's'}`
+      : `${n} account${n === 1 ? '' : 's'} in total`;
+  }catch(e){ el.textContent = ''; }
+  try{ localStorage.setItem(LAST_VISIT_KEY, new Date().toISOString()); }catch(e){}
+}
+
+function artMatches(a){
+  if(artFilter === 'artists')   return a.is_artist;
+  if(artFilter === 'listeners') return !a.is_artist;
+  if(artFilter === 'suspended') return a.status !== 'active';
+  return true;
+}
+
+function artRowHTML(a){
+  const initial = ((a.display_name || a.handle || '?').trim()[0] || '?').toUpperCase();
+  const when = a.created_at ? new Date(a.created_at).toLocaleDateString() : '';
+  const seen = a.last_sign_in_at ? new Date(a.last_sign_in_at).toLocaleDateString() : 'never';
+  return `<div class="art-row" data-uid="${escAttr(a.id)}">
+      <div class="art-av">${escHtml(initial)}</div>
+      <div class="art-main">
+        <div class="art-name">${escHtml(a.display_name || '(no name)')}
+          <span class="art-pill ${a.is_artist ? 'is-artist' : 'is-listener'}">${a.is_artist ? 'Artist' : 'Listener'}</span>
+          ${a.role === 'admin' ? '<span class="art-pill is-admin">Admin</span>' : ''}
+          ${a.status !== 'active' ? `<span class="art-pill is-suspended">${escHtml(a.status)}</span>` : ''}
+          ${a.is_banned ? '<span class="art-pill is-suspended">Banned</span>' : ''}
+        </div>
+        <div class="art-sub">${escHtml(a.handle || '')} &middot; ${escHtml(a.email || 'no email')}
+          &middot; ${a.approved_song_count}/${a.total_songs} songs
+          &middot; joined ${escHtml(when)} &middot; last seen ${escHtml(seen)}</div>
+      </div>
+      <div class="art-acts">
+        ${a.is_artist
+          ? '<button type="button" data-act="demote">Demote</button>'
+          : '<button type="button" data-act="promote">Promote</button>'}
+        ${a.status === 'active'
+          ? '<button type="button" data-act="suspend">Suspend</button>'
+          : '<button type="button" data-act="restore">Restore</button>'}
+        <button type="button" class="danger" data-act="delete">Delete</button>
+      </div>
+    </div>`;
+}
+
+function renderArtistsList(){
+  const host = document.getElementById('art-list');
+  if(!host) return;
+  const rows = artRows.filter(artMatches);
+  host.innerHTML = rows.length
+    ? rows.map(artRowHTML).join('')
+    : '<div class="mod-empty">No accounts match that filter.</div>';
+  const f = document.getElementById('art-filter');
+  if(f){
+    f.innerHTML = ART_FILTERS.map(k =>
+      `<button type="button" data-f="${k}" class="${artFilter===k?'on':''}">${ART_FILTER_TEXT[k]}</button>`).join('');
+    f.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      artFilter = b.dataset.f; renderArtistsList();
+    }));
+  }
+  host.querySelectorAll('.art-acts button').forEach(b => {
+    b.addEventListener('click', () => artistAction(b.closest('.art-row').dataset.uid, b.dataset.act, b));
+  });
+}
+
+async function artistAction(uid, act, btn){
+  const a = artRows.find(x => x.id === uid);
+  if(!a) return;
+  const who = a.display_name || a.handle || uid;
+  const msg = {
+    promote: `Make ${who} a public artist? Their /artist page goes live.`,
+    demote:  `Demote ${who} to a listener? Their public page stops resolving.`,
+    suspend: `Suspend ${who}? They disappear from the public site.`,
+    restore: `Restore ${who} to active?`,
+    delete:  `Delete ${who}? Their profile is scrubbed, their songs are set to removed, and they can no longer sign in. This cannot be undone.`,
+  }[act];
+  if(!window.confirm(msg)) return;
+  btn.disabled = true;
+  try{
+    let error = null;
+    if(act === 'promote')      ({ error } = await supabaseClient.rpc('promote_to_artist',  { p_uid: uid }));
+    else if(act === 'demote')  ({ error } = await supabaseClient.rpc('demote_to_listener', { p_uid: uid }));
+    else if(act === 'delete')  ({ error } = await supabaseClient.rpc('admin_delete_artist',{ p_uid: uid }));
+    else {
+      // Suspend / restore is the one plain column write, and it is an admin
+      // write on someone else's row, which artists_admin_all permits.
+      ({ error } = await supabaseClient.from('artists')
+        .update({ status: act === 'suspend' ? 'suspended' : 'active' }).eq('id', uid));
+    }
+    if(error) throw error;
+    await showArtists();
+  }catch(e){
+    window.alert('Could not do that: ' + ((e && e.message) || 'unknown error'));
+    btn.disabled = false;
+  }
+}
+
+async function showArtists(){
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Artists &amp; listeners</h2>
+      <button class="logout-btn" id="art-refresh" type="button">Refresh</button>
+    </div>
+    <div class="art-filter" id="art-filter"></div>
+    <div id="art-list"><div class="mod-empty">Loading&hellip;</div></div>`;
+  document.getElementById('art-refresh').addEventListener('click', showArtists);
+
+  const { data, error } = await supabaseClient.rpc('admin_list_artists');
+  if(error){
+    document.getElementById('art-list').innerHTML =
+      `<div class="mod-empty">Error loading accounts: ${escHtml(error.message)}</div>`;
+    return;
+  }
+  artRows = data || [];
+  renderArtistsList();
+}
+
+document.getElementById('artists-btn').addEventListener('click', showArtists);
 
 async function showComments(){
   // Leave the song form: deselect any open song.
