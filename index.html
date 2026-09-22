@@ -3051,9 +3051,14 @@ function paintLoves(){
    HOUSE RULE: the number of raters is never shown. Below min_ratings the
    average is withheld entirely, because an average of two is not an average.
    ============================================================ */
+/* English only in THIS row. The doubled text was cramped once the stars grew,
+   and the audience is primarily English-speaking. This is a targeted copy
+   change to the rating row, NOT a site-wide language decision: song titles,
+   categories, the sign-in modal, settings, terms and every other chrome string
+   stay bilingual exactly as they were. */
 const RATING_FACETS = [
-  { facet: 'words', en: 'The words',  he: 'המילים' },
-  { facet: 'music', en: 'The music',  he: 'המנגינה' },
+  { facet: 'words', en: 'The words' },
+  { facet: 'music', en: 'The music' },
 ];
 let MIN_RATINGS = 5;              // refreshed from site_settings on load
 let myRatings = {};               // { '<songId>:<facet>': score } for this account
@@ -3103,14 +3108,11 @@ function ratingRowHTML(s, cfg){
   // Never the count: either the average, or a line that says "not yet".
   const note = avg
     ? `<span class="rating-avg">${avg} / 5</span>`
-    : `<span class="rating-note">Rated by a few listeners so far
-         <span class="attr-he" dir="rtl" lang="he">דורג על ידי מעטים עד כה</span></span>`;
+    : `<span class="rating-note">Rated by a few listeners so far</span>`;
   return `<div class="rating-row${signedIn ? '' : ' is-locked'}" data-facet="${cfg.facet}">
-      <span class="rating-label">${escHtml(cfg.en)}
-        <span class="attr-he" dir="rtl" lang="he">${escHtml(cfg.he)}</span></span>
+      <span class="rating-label">${escHtml(cfg.en)}</span>
       <span class="rating-stars">${stars}</span>
-      ${signedIn ? note : `<span class="rating-note">Sign in to rate
-         <span class="attr-he" dir="rtl" lang="he">התחבר/י כדי לדרג</span></span>`}
+      ${signedIn ? note : `<span class="rating-note">Sign in to rate</span>`}
     </div>`;
 }
 
