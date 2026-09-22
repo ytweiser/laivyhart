@@ -20,11 +20,23 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
       "source": "/artist/:handle",
       "destination": "/index.html"
     },
     {
       "source": "/artist/:handle/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/song/:slug",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/song/:slug/",
       "destination": "/index.html"
     }
   ]

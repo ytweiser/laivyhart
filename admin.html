@@ -1170,6 +1170,35 @@ function applyFocusUI(){
 
 // Downscale an image file to at most maxDim on its longest side and re-encode
 // as JPEG. Returns a Blob, or rejects if the image cannot be decoded.
+/* Read a media file's duration without playing it: a detached <audio>, and
+   the loadedmetadata event, which fires after only the header has arrived.
+   Resolves null rather than rejecting -- a missing duration must never block a
+   save, it only leaves the JSON-LD without a duration field. */
+function readAudioDuration(src){
+  return new Promise((resolve) => {
+    let url = null, el = null, done = false;
+    const finish = (v) => {
+      if(done) return; done = true;
+      try{ if(url) URL.revokeObjectURL(url); }catch(e){}
+      try{ if(el){ el.removeAttribute('src'); el.load(); } }catch(e){}
+      resolve(v);
+    };
+    try{
+      el = document.createElement('audio');
+      el.preload = 'metadata';
+      el.addEventListener('loadedmetadata', () => {
+        const d = Number(el.duration);
+        finish(isFinite(d) && d > 0 ? Math.round(d) : null);
+      });
+      el.addEventListener('error', () => finish(null));
+      if(src instanceof Blob){ url = URL.createObjectURL(src); el.src = url; }
+      else if(typeof src === 'string' && src){ el.crossOrigin = 'anonymous'; el.src = src; }
+      else { finish(null); return; }
+      setTimeout(() => finish(null), 15000);   // never hang a save
+    }catch(e){ finish(null); }
+  });
+}
+
 function compressImage(file, maxDim, quality){
   return new Promise((resolve, reject) => {
     if(!file || !/^image\//.test(file.type || '')){ reject(new Error('not an image')); return; }
@@ -1247,6 +1276,16 @@ async function saveSong(){
   // Audio URL comes from the manual field (paste / existing value) unless a new
   // file is uploaded below, in which case the Worker's returned URL wins.
   payload.audio_url = document.getElementById('f-audio-url').value.trim() || null;
+
+  /* Duration for the MusicRecording JSON-LD (1A-5). Read from the chosen file
+     when there is one, otherwise from the existing URL. Best effort: a null
+     simply means the structured data omits duration. */
+  try{
+    const audioInput = document.getElementById('f-audio-file');
+    const picked = audioInput && audioInput.files && audioInput.files[0];
+    const dur = await readAudioDuration(picked || payload.audio_url);
+    if(dur) payload.duration_seconds = dur;
+  }catch(e){ /* never block a save on this */ }
 
   // Upload audio to Cloudflare R2 (via the Worker) if a new file was chosen.
   if(pendingAudioFile){

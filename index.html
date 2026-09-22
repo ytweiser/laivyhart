@@ -1662,6 +1662,11 @@ function mapSong(r){
     // attribution on rows, hero and now-playing is 1A-4.
     artist_id: r.artist_id || null,
     artist: r.artist || null,
+    // The canonical URL's slug, and the duration the JSON-LD uses. Both must
+    // survive mapSong or /song/<slug> cannot resolve and songShareUrl() falls
+    // back to the legacy /?song= form.
+    slug: r.slug || null,
+    duration_seconds: (r.duration_seconds == null ? null : Number(r.duration_seconds)),
     play_count: r.play_count || 0,
     plays_7d: r.plays_7d || 0,
     like_count: r.like_count || 0,
@@ -2695,6 +2700,21 @@ function renderNow(){
    ============================================================ */
 function setAmbientPlaying(on){ ambient.classList.toggle('is-playing', !!on); }
 
+/* Keep the address on the canonical /song/<slug> while a song is open, so
+   back and forward move between songs and the URL in the bar is always the one
+   worth sharing. replaceState when we are already on a song page (swapping one
+   song for another should not stack history three deep for one session of
+   browsing), pushState when arriving from elsewhere. */
+function syncSongUrl(s){
+  if(!s || !s.slug) return;
+  const want = '/song/' + encodeURIComponent(s.slug);
+  if(location.pathname === want) return;
+  try{
+    if(SONG_PATH_RE.test(location.pathname)) history.replaceState({ route:'listen' }, '', want);
+    else history.pushState({ route:'listen' }, '', want);
+  }catch(e){ /* history is best effort */ }
+}
+
 function loadSong(idx, keepRailQueue){
   currentIdx = idx;
   if(!keepRailQueue) manualQueue = null; // a non-rail pick ends any "Play all"
@@ -2706,6 +2726,7 @@ function loadSong(idx, keepRailQueue){
   loadComments();
   playCurrent();
   updateMiniPlayer();
+  if(route === 'listen') syncSongUrl(SONGS[idx]);
 }
 
 function playCurrent(){
@@ -3783,7 +3804,14 @@ function laivyToast(msg){
 // runs on (the bare domain 308-redirects to it), so crawlers get the injected
 // per-song preview directly instead of relying on redirect-following.
 const SHARE_ORIGIN = 'https://www.laivyhart.com';
-function songShareUrl(s){ return SHARE_ORIGIN + '/?song=' + encodeURIComponent(s.id); }
+/* The canonical URL is /song/<slug>. The legacy /?song=<id> form stays as the
+   fallback for a song that somehow has no slug; the middleware 301s it anyway,
+   so an old link already in someone's chat history still lands. */
+function songShareUrl(s){
+  return s && s.slug
+    ? SHARE_ORIGIN + '/song/' + encodeURIComponent(s.slug)
+    : SHARE_ORIGIN + '/?song=' + encodeURIComponent(s.id);
+}
 (function(){
   const btn = document.getElementById('now-share-btn');
   if(!btn) return;
@@ -3891,6 +3919,16 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
    ============================================================ */
 let route = 'home';
 const ARTIST_PATH_RE = /^\/artist\/([^\/]+)\/?$/;
+const SONG_PATH_RE   = /^\/song\/([^\/]+)\/?$/;
+function songSlugFromPath(){
+  const m = SONG_PATH_RE.exec(location.pathname);
+  if(!m) return null;
+  try{ return decodeURIComponent(m[1]).toLowerCase(); }catch(e){ return m[1].toLowerCase(); }
+}
+function songBySlug(slug){
+  if(!slug) return -1;
+  return SONGS.findIndex(s => s.slug && String(s.slug).toLowerCase() === slug);
+}
 function artistHandleFromPath(){
   const m = ARTIST_PATH_RE.exec(location.pathname);
   if(!m) return null;
@@ -3902,6 +3940,7 @@ function routeFromPath(){
   if(p === '/settings') return 'settings';
   if(p === '/auth/callback') return 'callback';
   if(ARTIST_PATH_RE.test(p)) return 'artist';
+  if(SONG_PATH_RE.test(p)) return 'listen';   // a song page IS the listen view
   return 'home';
 }
 
@@ -3948,6 +3987,13 @@ function navigate(next){
 window.addEventListener('popstate', () => {
   const r = routeFromPath();
   showPage(r);
+  // Going back/forward across /song/<slug> has to load that song, not just
+  // show the listen view with whatever was already playing.
+  const slug = songSlugFromPath();
+  if(slug !== null){
+    const idx = songBySlug(slug);
+    if(idx >= 0 && idx !== currentIdx) loadSong(idx, false);
+  }
   laivyTrack('page_view', { route: r });
 });
 
@@ -4010,6 +4056,25 @@ function initRoute(){
   }
   if(location.pathname === '/settings'){ showPage('settings'); return; }
   if(ARTIST_PATH_RE.test(location.pathname)){ showPage('artist'); return; }
+
+  /* /song/<slug> is the canonical song URL. The song is LOADED, not played:
+     a browser blocks autoplay without a gesture, so starting playback here
+     would only produce a silent, paused player. The edge middleware normally
+     answers this path with a rendered page; this is what runs once the app
+     boots on top of it. */
+  const slug = songSlugFromPath();
+  if(slug !== null){
+    const idx = songBySlug(slug);
+    if(idx >= 0){
+      showPage('listen');
+      loadSong(idx, false);
+      return;
+    }
+    // Unknown slug: fall through to the song page's own not-available state.
+    showPage('listen');
+    laivyToast('That song is not available.');
+    return;
+  }
 
   let songId = null;
   try{ songId = new URLSearchParams(location.search).get('song'); }catch(e){}
@@ -4281,6 +4346,11 @@ homeSearchEl.addEventListener('keydown', (e) => {
 /* ============================================================
    Init
    ============================================================ */
+/* The edge middleware injects a hidden #ssr block for crawlers. It is
+   hidden so it never affects layout, but there is no reason to keep it in the
+   DOM once the real app is running. */
+try{ const ssr = document.getElementById('ssr'); if(ssr) ssr.remove(); }catch(e){}
+
 loadSongs();
 // One-time visibility that the testing kill-switch is active this load.
 if(noTrack()) console.info('[laivy] do-not-track is ON (laivy-no-track=1): the loves still toggle and remember locally, but no play/like/love events are enqueued, flushed, or sent to analytics.');

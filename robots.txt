@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /auth/
+Disallow: /settings
+
+Sitemap: https://www.laivyhart.com/sitemap.xml

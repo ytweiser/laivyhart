@@ -38,6 +38,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outPath = join(root, 'songs.json');
 const chartPath = join(root, 'chart.json');
 const artistsPath = join(root, 'artists.json');
+const sitemapPath = join(root, 'sitemap.xml');
+const robotsPath = join(root, 'robots.txt');
 
 // Keep the committed snapshot and let the build proceed, unless there is no
 // snapshot at all (then there is nothing to serve, so fail hard).
@@ -181,3 +183,71 @@ async function writeChart() {
 }
 
 await writeChart();
+
+/* ------------------------------------------------------------
+   sitemap.xml + robots.txt
+
+   vercel.json sets outputDirectory ".", so the repo root IS the served root
+   and both files land at https://www.laivyhart.com/<name>.
+
+   lastmod: songs have no updated_at, so reviewed_at (when the song became
+   public) is the honest signal, falling back to created_at. Priorities are
+   uniform and modest on purpose -- a sitemap tells a crawler what exists, it
+   does not rank anything, and pretending otherwise just adds noise.
+
+   Only approved songs with a slug, and only artists that artists_public
+   returned (which already excludes suspended and deleted), ever appear.
+   ------------------------------------------------------------ */
+const SITE = 'https://www.laivyhart.com';
+
+function xmlEscape(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+function day(v) {
+  const t = v ? Date.parse(v) : NaN;
+  return isFinite(t) ? new Date(t).toISOString().slice(0, 10) : null;
+}
+function urlEntry(loc, lastmod, priority) {
+  return '  <url>\n    <loc>' + xmlEscape(loc) + '</loc>\n'
+    + (lastmod ? '    <lastmod>' + lastmod + '</lastmod>\n' : '')
+    + '    <priority>' + priority + '</priority>\n  </url>';
+}
+
+try {
+  const entries = [
+    urlEntry(SITE + '/', null, '1.0'),
+    urlEntry(SITE + '/listen', null, '0.8'),
+    urlEntry(SITE + '/about', null, '0.5'),
+    urlEntry(SITE + '/terms', null, '0.3'),
+  ];
+  for (const s of rows) {
+    if (s.status !== 'approved' || !s.slug) continue;
+    entries.push(urlEntry(SITE + '/song/' + encodeURIComponent(s.slug),
+                          day(s.reviewed_at || s.created_at), '0.7'));
+  }
+  for (const a of (artists || [])) {
+    entries.push(urlEntry(SITE + '/artist/' + encodeURIComponent(a.handle),
+                          day(a.created_at), '0.6'));
+  }
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    + '<urlset xmlns="http://www.sitemap.org/schemas/sitemap/0.9">\n'.replace('www.sitemap.org', 'www.sitemaps.org')
+    + entries.join('\n') + '\n</urlset>\n';
+  writeFileSync(sitemapPath, xml);
+  console.log(`[snapshot] Wrote sitemap.xml with ${entries.length} URLs.`);
+
+  writeFileSync(robotsPath,
+    'User-agent: *\n' +
+    'Allow: /\n' +
+    'Disallow: /admin.html\n' +
+    'Disallow: /auth/\n' +
+    'Disallow: /settings\n' +
+    '\n' +
+    'Sitemap: ' + SITE + '/sitemap.xml\n');
+  console.log('[snapshot] Wrote robots.txt.');
+} catch (e) {
+  // Same build-safe rule as everything else here: a missing sitemap is a
+  // smaller problem than a failed deploy.
+  console.warn(`[snapshot] Could not write sitemap/robots (${e && e.message}) — keeping any existing files.`);
+}
