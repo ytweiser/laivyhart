@@ -645,7 +645,10 @@
      box than the pills: a heart or rosette outline reads smaller than a solid
      pill at the same height, so this matches them optically. */
   .rail-badge.is-shape{
-    width:1.72rem; height:1.72rem; padding:0;
+    /* Was 1.72rem when the glyph was a bare digit. "#8" is roughly twice as
+       wide, so the shapes get a little more room to keep the same breathing
+       space around the text. */
+    width:1.82rem; height:1.82rem; padding:0;
     filter:drop-shadow(0 5px 14px rgba(0,0,0,0.32));
   }
   .rail-badge-shape{
@@ -653,9 +656,15 @@
     color:var(--accent-2); fill:currentColor;
   }
   .rail-badge-val{position:relative; z-index:1; font-size:0.72rem;}
-  /* A heart's optical centre sits above its geometric one -- centred text lands
-     in the point. Nudge the number up into the lobes. */
-  .rail-badge.shape-heart .rail-badge-val{transform:translateY(-0.06rem);}
+  /* A heart's optical centre sits well above its geometric one. Measured on the
+     rasterised glyph, the shape is a full-width 24/30 across rows 23%-43% and
+     then narrows hard -- by 67% it is down to 14/30, which will not hold two
+     characters. The old -0.06rem nudge left "#8" straddling the 52%-62% band at
+     roughly 18px of interior against ~15px of text. -0.2rem lifts the ink into
+     the 23%-52% band, where the narrowest chord is 20px, and centres it in the
+     lobes where a number in a heart is expected to sit anyway. The rosette
+     needs no nudge: it is widest (26-28/30) straight across its middle. */
+  .rail-badge.shape-heart .rail-badge-val{transform:translateY(-0.2rem);}
   .rail-badge.is-label{
     text-transform:uppercase; letter-spacing:0.06em; font-size:0.66rem;
   }
@@ -2275,7 +2284,7 @@ function railBadgeHTML(railKey, i){
       `<svg class="rail-badge-shape" viewBox="0 0 24 24" aria-hidden="true">` +
         `<path d="${BADGE_SHAPES[cfg.shape]}"/>` +
       `</svg>` +
-      `<span class="rail-badge-val">${n}</span>` +
+      `<span class="rail-badge-val">#${n}</span>` +
     `</span>`;
 }
 
