@@ -22,6 +22,17 @@
       var c = localStorage.getItem('laivy-color');
       if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
       document.documentElement.setAttribute('data-color', c);
+      /* Start the homepage banner plate for THIS theme downloading now, before
+         the stylesheet has even been parsed. data-color is already set, so the
+         only plate ever requested is the right one -- there is no moment where
+         a wrong one could paint. imageSrcset/imageSizes are not needed: the
+         type negotiation is the browser's, and a browser that ignores the
+         type hint simply does not preload, which costs nothing. */
+      var pl = document.createElement('link');
+      pl.rel = 'preload'; pl.as = 'image';
+      pl.href = '/brand/plate-' + c + '.webp'; pl.type = 'image/webp';
+      pl.fetchPriority = 'high';
+      document.head.appendChild(pl);
     }catch(e){
       document.documentElement.setAttribute('data-theme','dark');
       document.documentElement.setAttribute('data-color','bordeaux');
@@ -394,54 +405,100 @@
   }
   .palette-toggle:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
 
-  /* Site banner: the brand artwork from /brand. Desktop and tablet show the
-     full banner at 3:1 with NO scrim and no text overlay, since the wordmark is
-     part of the image and the art is already dark. Narrow screens crop that too
-     tightly, so they compose instead: the background-only plate at 2:1 with the
-     transparent wordmark laid over it, keeping the whole wordmark visible. */
-  /* The only themeable thing about the banner is a soft accent glow BEHIND it.
-     The artwork on top is the gold brand art and never recolors on any theme;
-     the glow is what keeps it from looking stranded on emerald or royal. It is
-     a large blurred radial built from rgba(var(--accent-*-rgb), a), so it
-     repaints the instant data-color or data-theme flips, with no JS involved --
-     the same mechanism as the editor's band tint.
-     It has to hang on a wrapper: .site-banner is overflow:hidden because it
-     crops the artwork, so a glow drawn inside it would be clipped to the very
-     box it is meant to spill out of. */
-  .site-banner-wrap{
-    position:relative; isolation:isolate; margin-bottom:1.1rem;
-    --banner-glow:0.5;
-  }
-  /* Slightly larger than the banner on every side and weighted low, so the
-     light pools under the art rather than haloing it evenly. The bleed costs
-     no scrollbar: body already sets overflow-x:hidden. */
-  .site-banner-wrap::before{
-    content:''; position:absolute; z-index:0; pointer-events:none;
-    left:-5%; right:-5%; top:-7%; bottom:-13%;
-    background:radial-gradient(58% 58% at 50% 52%,
-      rgba(var(--accent-2-rgb), 0.85) 0%,
-      rgba(var(--accent-1-rgb), 0.45) 42%,
-      rgba(var(--accent-1-rgb), 0) 72%);
-    filter:blur(34px);
-    opacity:var(--banner-glow);
-  }
-  /* The same glow reads much hotter against a light page, so light mode pulls
-     it back rather than recoloring it: still the active accent, just quieter. */
-  [data-theme="light"] .site-banner-wrap{--banner-glow:0.32;}
-
+  /* Site banner: the per-theme plate from /brand with the gold wordmark
+     composited on top. The plate is the ONE piece of brand art that follows the
+     palette -- there is a plate-<key>.png per data-color -- and it is applied as
+     a CSS background keyed off [data-color], so switching theme swaps it in the
+     same frame as every other themed surface, with no JS and nothing refetched.
+     The wordmark over it never recolors: it stays the gold PNG, untouched.
+     The accent glow that used to sit behind this banner is gone; the plate
+     carries the theme colour now, so the glow was doing the job twice. */
   .site-banner{
-    position:relative; z-index:1; width:100%; overflow:hidden; border-radius:16px;
+    position:relative; width:100%; overflow:hidden; border-radius:16px;
     aspect-ratio:3 / 1; max-height:320px; min-height:170px;
-    display:block;
+    display:block; margin-bottom:1.1rem;
+    background:#0a0810;               /* shows for the instant before the plate decodes */
+
+    /* All four plates put their horizon within 0.4% of each other (measured:
+       bordeaux 64.5%, royal 65.1%, emerald 64.6%, gold 64.4%), so one value
+       anchors the wordmark on every theme. */
+    --horizon-y:64.7%;
+    /* Wordmark height as a fraction of the plate height. 80% of the plate's
+       WIDTH is the size the mark has always been composited at on narrow
+       screens; at 3:1 that is 80% of the height, at 2:1 it is 53.33%. */
+    --mark-h:80%;
   }
-  .site-banner-bg{position:absolute; inset:0; z-index:0;}
-  .site-banner-img{width:100%; height:100%; object-fit:cover; display:block;}
-  /* The wordmark overlay is the narrow-screen composition only. Its position
-     puts the point of the V just above the horizon in the background plate:
-     at 80% width the wordmark box is 0.533 of the banner height, the V point
-     sits at 79% of that box, and the horizon is at ~66% of the banner. */
-  .site-banner-mark{display:none;}
-  .site-banner.is-fallback .site-banner-mark{display:none !important;}
+  .site-banner-bg{
+    position:absolute; inset:0; z-index:0;
+    background-repeat:no-repeat; background-position:center center; background-size:cover;
+  }
+  /* One rule per data-color key, as a three-rung ladder -- last valid
+     declaration wins, so each rung only has to beat the one above it:
+       1. plain url(), the PNG. Universal, and what anything that cannot decode
+          WebP at all ends on.
+       2. -webkit-image-set(), understood by WebKit/Blink for years. This is the
+          rung that catches Safari 14-16 and Chrome <113: they decode WebP fine
+          but do not parse type(), and without it they would pull the ~1.8 MB
+          PNG and waste the preload.
+       3. image-set() with type(), the standard form, from mid-2023 on.
+     If every rung failed the banner still reads: .site-banner paints near-black
+     under this, and the gold wordmark sits on top of that. */
+  [data-color="bordeaux"] .site-banner-bg{
+    background-image:url('/brand/plate-bordeaux.png');
+    background-image:-webkit-image-set(url('/brand/plate-bordeaux.webp') 1x);
+    background-image:image-set(url('/brand/plate-bordeaux.webp') type('image/webp'),
+                               url('/brand/plate-bordeaux.png')  type('image/png'));
+  }
+  [data-color="royal"] .site-banner-bg{
+    background-image:url('/brand/plate-royal.png');
+    background-image:-webkit-image-set(url('/brand/plate-royal.webp') 1x);
+    background-image:image-set(url('/brand/plate-royal.webp') type('image/webp'),
+                               url('/brand/plate-royal.png')  type('image/png'));
+  }
+  [data-color="emerald"] .site-banner-bg{
+    background-image:url('/brand/plate-emerald.png');
+    background-image:-webkit-image-set(url('/brand/plate-emerald.webp') 1x);
+    background-image:image-set(url('/brand/plate-emerald.webp') type('image/webp'),
+                               url('/brand/plate-emerald.png')  type('image/png'));
+  }
+  [data-color="gold"] .site-banner-bg{
+    background-image:url('/brand/plate-gold.png');
+    background-image:-webkit-image-set(url('/brand/plate-gold.webp') 1x);
+    background-image:image-set(url('/brand/plate-gold.webp') type('image/webp'),
+                               url('/brand/plate-gold.png')  type('image/png'));
+  }
+
+  /* The wordmark. Sized by HEIGHT so the composition survives max-height
+     clamping the plate away from 3:1, centred on its own canvas (the ink sits
+     at 4.2%-95.9% of it, centre 50.1%), and pinned by the one landmark that
+     matters: the point of the V, at 79.97% of the canvas, lands on the horizon.
+     The drop shadow is the legibility fix -- see the note below. */
+  .site-banner-mark{
+    display:block; position:absolute; z-index:1;
+    left:50%; transform:translateX(-50%);
+    height:var(--mark-h); width:auto; max-width:none;
+    top:calc(var(--horizon-y) - var(--mark-h) * 0.7997);
+    /* The ivory half of the wordmark crosses the bright flare above the horizon
+       on all four plates, where it measured 1.7-2.4:1 against it -- effectively
+       invisible. A dark shadow behind the glyphs fixes it without touching the
+       plate: over the dark sky it is invisible, and it only darkens where the
+       art is bright. The tight 2px pass is what makes the edges crisp; the 12px
+       pass kills the flare. Measured back to 8.5-13.8:1 on the ivory, against
+       5.8:1 for the banner shipping before this. */
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,0.45))
+           drop-shadow(0 0 12px rgba(0,0,0,0.55));
+  }
+
+  /* The plate always paints, but the wordmark is still a file that can 404. If
+     it does, live text in the same gold takes its place rather than leaving the
+     plate bare. The banner's aria-label already names the brand either way. */
+  .site-banner.is-markless::after{
+    content:'Laivy Hart'; position:absolute; z-index:1; left:0; right:0;
+    top:calc(var(--horizon-y) - 1.15em); text-align:center;
+    font-family:var(--font-display); font-weight:600; color:#F3E4C4;
+    font-size:clamp(1.5rem, 5.6vw, 3.3rem); line-height:1;
+    text-shadow:0 1px 2px rgba(0,0,0,0.5), 0 0 14px rgba(0,0,0,0.6);
+  }
 
   /* Tagline under the banner: live text, never part of the artwork, so it stays
      selectable, translatable, and follows the theme. */
@@ -912,10 +969,15 @@
       background:var(--glass-hi); border:1px solid var(--glass-border); box-shadow:0 10px 30px rgba(0,0,0,0.3);
     }
     .home-palette.open .palette{display:flex;}
-    /* Banner: roughly 2:1, capped at 200px. */
+    /* Banner: roughly 2:1, capped at 200px. The plate is the same 3:1 art,
+       background-size:cover crops it to the taller box from the sides, so every
+       vertical landmark -- the horizon above all -- stays where it was. */
     .site-banner{aspect-ratio:2 / 1; max-height:200px; min-height:140px;}
-    /* Compose: background plate (swapped in by the <picture> source) + wordmark. */
-    .site-banner-mark{display:block; position:absolute; z-index:1; left:10%; width:80%; top:24%;}
+    /* 53.33% of a 2:1 plate's height is exactly 80% of its width: the same size
+       the wordmark has always been composited at here. The shared rule then
+       lands the V on the horizon by itself (64.7% - 42.65% = top 22.05%) and
+       the ink spans 13.4%-86.7% across, fully visible. */
+    .site-banner{--mark-h:53.33%;}
     /* Primary buttons: all three side by side, together spanning the row.
        Tighter gap and type, and the label may wrap to a second line rather
        than overflow its button on a narrow phone. */
@@ -1172,15 +1234,12 @@
     </div>
   </header>
 
-  <!-- Site banner: brand artwork, with the wordmark overlaid only on narrow
-       screens. The container carries the accessible name for both cases. The
-       wrapper exists only to hang the accent glow behind the artwork, which
-       .site-banner cannot do itself without clipping it. -->
-  <div class="site-banner-wrap">
-    <div class="site-banner" id="site-banner" role="img" aria-label="Laivy Hart">
-      <div class="site-banner-bg" id="site-banner-bg"></div>
-      <div id="site-banner-mark-wrap"></div>
-    </div>
+  <!-- Site banner: the plate for the active theme (a CSS background keyed off
+       [data-color]) with the gold wordmark composited over it. The container
+       carries the accessible name, so the mark itself is aria-hidden. -->
+  <div class="site-banner" id="site-banner" role="img" aria-label="Laivy Hart">
+    <div class="site-banner-bg" id="site-banner-bg"></div>
+    <div id="site-banner-mark-wrap"></div>
   </div>
   <div class="site-tagline">
     <div class="site-tagline-1">Every soul has a song</div>
@@ -1259,24 +1318,19 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // Play counts are tracked silently. Flip to true to reveal them publicly.
 const SHOW_PLAY_COUNTS = false;
 
-// Homepage banner image. Empty string => a generative theme gradient (drawn the
-// same way as the coverless fallback art). When set, the image is rendered
-// behind the banner text (through the cover image CDN) with a dark scrim.
-// Brand artwork, committed as static files under /brand (see brand/README.md)
-// and precached by the service worker. The theme gradient below stays as the
-// fallback if any of these fail to load.
-// Each asset ships twice: a WebP at display width, which is what almost every
+// Homepage banner. The plate behind the wordmark is a per-theme CSS background
+// (brand/plate-<data-color key>.*), selected by the [data-color] rules in the
+// stylesheet rather than from here, so the only artwork this file names is the
+// wordmark. It ships twice: a WebP at display width, which is what almost every
 // visitor gets, and the original PNG as the fallback for a browser that cannot
-// decode WebP. The PNGs are the source files and stay untouched.
-const SITE_BANNER_URL     = 'brand/banner.png';      // full banner, wordmark included, 3:1
-const SITE_BANNER_WEBP    = 'brand/banner.webp';
-const SITE_BANNER_BG_URL  = 'brand/banner-bg.png';   // background plate, no text, for the narrow composition
-const SITE_BANNER_BG_WEBP = 'brand/banner-bg.webp';
+// decode WebP. The PNG is the source file and stays untouched.
 const SITE_WORDMARK_URL   = 'brand/wordmark.png';    // transparent wordmark
 const SITE_WORDMARK_WEBP  = 'brand/wordmark.webp';
-// The breakpoint where the banner switches to the composed 2:1 layout. It is
-// both a CSS media query and a matchMedia test, so it lives in one place.
-const BANNER_NARROW_MQ = '(max-width:900px)';
+// Deliberately unused, and kept that way: brand/banner.png is the source of the
+// share image (og-image.png) and brand/banner-bg.png is the pre-plate
+// background, held as a fallback. Neither is fetched by the page any more.
+const SITE_BANNER_URL     = 'brand/banner.png';      // full banner, wordmark included, 3:1
+const SITE_BANNER_BG_URL  = 'brand/banner-bg.png';   // background plate, no text
 
 /* ============================================================
    Small utilities
@@ -1387,10 +1441,10 @@ function refreshGenArt(){
   // Coverless tiles are the only theme-colored surface not made of CSS vars.
   if(!Array.isArray(SONGS) || !SONGS.length) return;
   renderList();
-  // Recolor the homepage banner (gradient) + featured/rail art when it's shown.
+  // Featured/rail art when the homepage is shown. The banner is not in this
+  // list: its plate is a [data-color] CSS background and has already swapped.
   const home = document.getElementById('page-home');
   if(home && !home.classList.contains('hidden')) renderHomepage();
-  else updateSiteBanner();
   const thumb = document.getElementById('now-thumb');
   if(thumb){
     if(currentIdx === null) thumb.style.cssText = genArtStyle('laivy hart');
@@ -2076,77 +2130,42 @@ function findASongHTML(){
     </section>`;
 }
 
-// Paint the site banner: the SITE_BANNER_URL image (with a scrim) when set,
-// otherwise a generative theme gradient (same routine as the coverless art).
+// Composite the wordmark onto the banner. The plate underneath is a CSS
+// background selected by [data-color] (see .site-banner-bg in the stylesheet),
+// so it needs nothing from here -- and in particular it does NOT need
+// repainting on a theme switch: the rule that matches changes the instant
+// data-color flips, in the same frame as every other themed surface, and the
+// new plate is already in the service worker's precache. So this runs once and
+// is idempotent: renderHomepage calls it on every render, including the one
+// refreshGenArt triggers on a color switch, and after the first it does nothing.
+// The wordmark is injected rather than left in the markup only so the fallback
+// below has a single place to swap it out.
 function updateSiteBanner(){
   const banner = document.getElementById('site-banner');
-  const bg = document.getElementById('site-banner-bg');
-  if(!banner || !bg) return;
-  if(!SITE_BANNER_URL){ siteBannerFallback(); return; }
-  bg.style.cssText = '';
-  // Local files, served straight from /brand: no image CDN in front of them.
-  // Source order decides what a browser fetches, and it fetches exactly one:
-  // narrow WebP, narrow PNG, wide WebP, then the wide PNG on the img itself.
-  // The narrow pair is the background-only plate; the wordmark goes over it as
-  // its own element. width/height give the image its intrinsic ratio, and the
-  // banner box is already reserved by its CSS aspect-ratio, so nothing shifts.
-  bg.innerHTML =
-    `<picture>` +
-      `<source media="${BANNER_NARROW_MQ}" type="image/webp" srcset="${escHtml(SITE_BANNER_BG_WEBP)}">` +
-      `<source media="${BANNER_NARROW_MQ}" srcset="${escHtml(SITE_BANNER_BG_URL)}">` +
-      `<source type="image/webp" srcset="${escHtml(SITE_BANNER_WEBP)}">` +
-      `<img class="site-banner-img" src="${escHtml(SITE_BANNER_URL)}" width="2171" height="724"` +
-      ` alt="" fetchpriority="high" loading="eager" decoding="async" onerror="siteBannerFallback()">` +
-    `</picture>`;
-  banner.classList.add('has-image');
-  banner.classList.remove('is-fallback');
-  renderBannerMark();
-}
-
-function bannerIsNarrow(){
-  try{ return !!(window.matchMedia && window.matchMedia(BANNER_NARROW_MQ).matches); }
-  catch(e){ return false; }
-}
-
-// The wordmark overlay belongs to the narrow composition only, and it is
-// injected rather than left in the markup so a desktop visitor never downloads
-// it: a display:none <img> is still fetched by most browsers.
-function renderBannerMark(){
   const wrap = document.getElementById('site-banner-mark-wrap');
-  if(!wrap) return;
-  const banner = document.getElementById('site-banner');
-  if(!bannerIsNarrow() || (banner && banner.classList.contains('is-fallback'))){
-    wrap.innerHTML = '';
-    return;
-  }
-  if(wrap.querySelector('img')) return;
+  if(!banner || !wrap) return;
+  if(wrap.querySelector('img')) return;            // already composited
+  banner.classList.remove('is-markless');
+  // Local files, served straight from /brand: no image CDN in front of them.
+  // The browser fetches exactly one -- the WebP, or the PNG if it cannot decode
+  // WebP. width/height give the image its intrinsic ratio; the banner box is
+  // already reserved by its CSS aspect-ratio, so nothing shifts as it loads.
   wrap.innerHTML =
     `<picture>` +
       `<source type="image/webp" srcset="${escHtml(SITE_WORDMARK_WEBP)}">` +
       `<img class="site-banner-mark" src="${escHtml(SITE_WORDMARK_URL)}" width="2172" height="724"` +
-      ` alt="" aria-hidden="true" decoding="async" onerror="siteBannerFallback()">` +
+      ` alt="" aria-hidden="true" fetchpriority="high" decoding="async" onerror="siteBannerFallback()">` +
     `</picture>`;
 }
 
-// Crossing the breakpoint swaps the composition in or out.
-try{
-  const mq = window.matchMedia(BANNER_NARROW_MQ);
-  if(mq.addEventListener) mq.addEventListener('change', renderBannerMark);
-  else if(mq.addListener) mq.addListener(renderBannerMark);
-}catch(e){ /* no matchMedia: the desktop banner is used */ }
-
-// If the artwork cannot be fetched, fall back to the generative theme gradient
-// the banner used before, so the homepage never shows an empty slab.
+// The plate is CSS and always paints, so the only thing left that can fail is
+// the wordmark file. Drop the broken image and let the CSS text wordmark stand
+// in, rather than leaving the plate with nothing on it.
 function siteBannerFallback(){
   const banner = document.getElementById('site-banner');
-  const bg = document.getElementById('site-banner-bg');
-  if(!banner || !bg) return;
-  bg.innerHTML = '';
-  bg.style.cssText = genArtStyle('laivy hart');
-  banner.classList.remove('has-image');
-  banner.classList.add('is-fallback');
   const wrap = document.getElementById('site-banner-mark-wrap');
   if(wrap) wrap.innerHTML = '';
+  if(banner) banner.classList.add('is-markless');
 }
 
 // A single landscape rail card, shared by the ranked rails and the editor's band.
