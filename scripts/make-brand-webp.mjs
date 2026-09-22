@@ -13,13 +13,14 @@
      npm i sharp        # not a repo dependency; install ad hoc
      node scripts/make-brand-webp.mjs
 
-   Widths: the banner and its background plate render full-bleed in a content
-   column that tops out near 1100 CSS px, so 1600 covers a 2x display at common
-   widths without carrying the full 2171. The wordmark is only used in the
-   narrow composition at 80% of a phone-width banner, so 1200 is already
-   generous. Quality is highest on the banner, which carries the gold lettering
-   and has to stay crisp; the background plate is a smooth gradient that
-   compresses further without showing it.
+   Widths: the banner, its background plate and the per-theme plates all render
+   full-bleed in a content column that tops out near 1100 CSS px, so 1600 covers
+   a 2x display at common widths without carrying the full 2172. The wordmark is
+   only used in the narrow composition at 80% of a phone-width banner, so 1200 is
+   already generous. Quality is highest on the banner, which carries the gold
+   lettering and has to stay crisp; the plain background plate is a smooth
+   gradient that compresses further without showing it, and the per-theme plates
+   sit in between because of the sunburst.
    ============================================================ */
 import sharp from 'sharp';
 import { fileURLToPath } from 'node:url';
@@ -29,10 +30,17 @@ import { statSync } from 'node:fs';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const kb = (p) => (statSync(p).size / 1024).toFixed(0);
 
+// The four per-theme plates are the same kind of artwork as banner-bg -- a 3:1
+// background scene, no text -- so they take the same width. They carry a gold
+// sunburst of fine rays on top of the smooth flared horizon, which is exactly
+// what a low WebP quality smears first, so they sit a little above banner-bg.
+const PLATES = ['bordeaux', 'royal', 'emerald', 'gold'];   // the data-color keys
+
 const JOBS = [
   { name: 'banner',    width: 1600, quality: 88 },                        // gold lettering: keep it crisp
   { name: 'banner-bg', width: 1600, quality: 82 },                        // smooth gradient
   { name: 'wordmark',  width: 1200, quality: 85, alphaQuality: 92 },      // keeps its alpha channel
+  ...PLATES.map((k) => ({ name: 'plate-' + k, width: 1600, quality: 86 })),
 ];
 
 let before = 0, after = 0;

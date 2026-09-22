@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v68';
+const CACHE_VERSION = 'v69';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -33,16 +33,31 @@ const SHELL = [
 // is atomic, so a single missing or renamed file there would fail the whole
 // install and strand every visitor on the previous service worker. These are
 // added one at a time and a miss is simply skipped.
-// Only the WebP derivatives are precached: they are what the homepage actually
-// renders, and they total ~148 KB against ~3.1 MB for the source PNGs. The PNGs
-// are still served as the fallback for a browser that cannot decode WebP, and
-// such a browser caches them through the normal stale-while-revalidate path on
-// first use, so precaching megabytes that almost nobody fetches would only make
-// the install heavier.
+// For the original three, only the WebP derivatives are precached: they are what
+// the homepage actually renders, and they total ~148 KB against ~3.1 MB for the
+// source PNGs. Those PNGs are still served as the fallback for a browser that
+// cannot decode WebP, and such a browser caches them through the normal
+// stale-while-revalidate path on first use.
+//
+// The four per-theme plates are precached in BOTH formats, as asked. That is
+// what makes this list ~7.3 MB rather than ~480 KB: the four WebPs are 330 KB
+// together, the four PNGs are 6.6 MB. Every visitor pays for all four themes
+// even though the page only ever renders the one matching their data-color.
+// To go back to the WebP-only rule, delete the four .png lines at the bottom --
+// the fallback still works, it just arrives on first use like the others do.
 const BRAND = [
   'brand/banner.webp',     // full banner, wordmark on the glow background, 3:1
   'brand/banner-bg.webp',  // background only, no text, for compositing
-  'brand/wordmark.webp'    // transparent wordmark, logo alone
+  'brand/wordmark.webp',   // transparent wordmark, logo alone
+  // Per-theme background plates, named for the data-color keys in COLORS.
+  'brand/plate-bordeaux.webp',
+  'brand/plate-royal.webp',
+  'brand/plate-emerald.webp',
+  'brand/plate-gold.webp',
+  'brand/plate-bordeaux.png',
+  'brand/plate-royal.png',
+  'brand/plate-emerald.png',
+  'brand/plate-gold.png'
 ];
 
 const SUPABASE_HOST = 'tshkrghrgokplakktvik.supabase.co';

@@ -15,26 +15,46 @@ Expected files, exactly these names:
 | `banner.png` | the full banner, wordmark on the glow background, 3:1 |
 | `banner-bg.png` | the background only, glow and horizon, no text, for compositing |
 | `wordmark.png` | the wordmark alone, transparent background |
+| `plate-bordeaux.png` | per-theme background plate, flared horizon + gold sunburst, no text |
+| `plate-royal.png` | same, Royal Blue |
+| `plate-emerald.png` | same, Emerald |
+| `plate-gold.png` | same, Gold |
+
+The four plates are named for the **`data-color` keys** in `COLORS`
+(`index.html`), not for their display labels — so Royal Blue is `plate-royal`.
+Getting this exact is what lets the banner pick one with a plain
+`` `brand/plate-${colorTheme}.webp` ``. All four are 2172x724 (3:1), 8-bit RGB
+PNG, no alpha — the same canvas as `banner-bg.png`. Their sunburst stays gold on
+every theme; only the scene behind it changes color.
 
 Keep the originals byte for byte: do not resize or recompress them. If a file is
 actually a JPEG rather than a PNG, keep its real extension and update the name in
 both this table and the `BRAND` list in `sw.js`.
 
 Each one also has a **WebP display derivative** beside it, built by
-`scripts/make-brand-webp.mjs` and committed: `banner.webp` and `banner-bg.webp`
-at 1600px, `wordmark.webp` at 1200px with its alpha intact. Those are what the
-homepage renders; the PNGs above stay untouched as the source files and as the
-fallback for a browser that cannot decode WebP.
+`scripts/make-brand-webp.mjs` and committed: `banner.webp`, `banner-bg.webp` and
+the four `plate-*.webp` at 1600px, `wordmark.webp` at 1200px with its alpha
+intact. Those are what the homepage renders; the PNGs above stay untouched as
+the source files and as the fallback for a browser that cannot decode WebP. The
+plates are encoded at q86 rather than banner-bg's q82 because the sunburst's
+fine rays are the first thing a low quality smears.
 
 | | PNG | WebP |
 | --- | --- | --- |
 | banner | 1278 KB | 52 KB |
 | banner-bg | 1267 KB | 29 KB |
 | wordmark | 649 KB | 67 KB |
-| total | 3.12 MB | 148 KB |
+| plate-bordeaux | 1873 KB | 107 KB |
+| plate-royal | 1538 KB | 56 KB |
+| plate-emerald | 1734 KB | 85 KB |
+| plate-gold | 1669 KB | 82 KB |
+| total | 9.77 MB | 478 KB |
 
-`sw.js` precaches the **WebP** files into the asset cache, separately from the
-shell and tolerantly: a file that is missing or renamed is skipped instead of
-failing the service worker install. The PNGs are not precached, since almost
-nobody fetches them; they are cached on first use by the normal
-stale-while-revalidate path.
+`sw.js` precaches into the asset cache separately from the shell, and
+tolerantly: a file that is missing or renamed is skipped instead of failing the
+service worker install. For the original three only the **WebP** is precached,
+since almost nobody fetches their PNGs; those arrive on first use by the normal
+stale-while-revalidate path. The four plates are precached in **both** formats,
+which is a deliberate call and the reason the list is ~7.3 MB rather than
+~480 KB — every visitor pays for all four themes though only one is ever
+rendered. Deleting the four `.png` lines in `BRAND` reverts that.
