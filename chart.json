@@ -1,13 +1,13 @@
 {
-  "chart_date": "2026-09-21",
+  "chart_date": "2026-09-22",
   "entries": [
     {
       "rank": 1,
-      "song_id": "5647c338-0aee-4472-8e35-44dad08c5477"
+      "song_id": "62c8b530-2456-4fa2-bf52-c797bfedea65"
     },
     {
       "rank": 2,
-      "song_id": "62c8b530-2456-4fa2-bf52-c797bfedea65"
+      "song_id": "5647c338-0aee-4472-8e35-44dad08c5477"
     },
     {
       "rank": 3,
@@ -35,11 +35,11 @@
     },
     {
       "rank": 9,
-      "song_id": "2a3e1636-f169-4fc4-a89f-428939b43533"
+      "song_id": "f0e43564-e330-49ed-a69e-4767cbc8a323"
     },
     {
       "rank": 10,
-      "song_id": "00d5043f-ce81-4170-866f-61ae8adf56b0"
+      "song_id": "0670f698-7866-45b5-bdbf-5f02fbb52192"
     }
   ]
 }

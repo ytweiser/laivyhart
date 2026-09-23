@@ -242,10 +242,13 @@ the moment anyone could sign in.
 
 1. The submit path must **flip `is_artist` true** (inside a SECURITY DEFINER
    function) and rely on `review_song()` to assign the slug on approval.
-2. **Two generic Hebrew slugs**, `song-26b4` (שמם אדם) and `song-e93c`
-   (ברכי נפשי) — both Hebrew titles with no transliteration, so both fallbacks
-   produced `''`. Add a transliteration, then null and regenerate the slug
-   **before those URLs are shared anywhere**.
+2. ~~Two generic Hebrew slugs~~ — **CLOSED 23 September 2026.** The owner
+   entered English titles in the admin and the two slugs were regenerated from
+   them: `song-26b4` → `your-better-half-26b4` (שמם אדם, "Your Better Half")
+   and `song-e93c` → `nature-s-beauty-e93c` (ברכי נפשי, "Nature's Beauty").
+   Applied as the one-time data migration `data_fix_reslug_two_hebrew_songs`;
+   the other 35 slugs were verified byte-identical before and after. Neither
+   old URL was ever shared, so no redirect was needed.
 3. `admin_delete_artist()` is already FK-aware (songs → `removed` first).
 4. The avatar upload route exists and is JWT-authorized; **avatar orphan
    cleanup is manual and monthly** (`scripts/check-orphans.mjs`).
@@ -272,10 +275,20 @@ forbid imitating a named artist, including with AI tools.
 
 ## Open items at the close of 1A
 
-1. The two generic Hebrew slugs (above).
-2. `[DATE]` is still a placeholder in `docs/legal/terms-v1.md` **and** in
-   `terms.html` — the text is mirrored, not generated.
-3. `sql/008b_durations_generated.sql` holds 37 reviewed `update` statements that
-   have not been run.
+Items 1–3 were closed by the cleanup pass of **23 September 2026**.
+
+1. ~~The two generic Hebrew slugs.~~ **CLOSED** — regenerated from the owner's
+   transliterations; see 1B inheritance note 2 above for the new slugs.
+2. ~~`[DATE]` placeholder in the terms.~~ **CLOSED** — both
+   `docs/legal/terms-v1.md` and `terms.html` now read "23 September 2026". The
+   text is mirrored, not generated, so both files must be edited together.
+3. ~~`sql/008b_durations_generated.sql` unrun.~~ **CLOSED** — applied as the
+   migration `008b_durations`. All 37 songs now carry a `duration_seconds`.
+   The file stays in `sql/` as the record of what was run.
+   **One value is worth a second look:** "Hear it From Them" reads **33s**,
+   which is not a song length. The header was read correctly by the backfill
+   script, so the object in R2 is most likely a clip or a truncated upload.
+   It is cosmetic — the value only feeds the `duration` field of the
+   MusicRecording JSON-LD — but re-uploading the full audio would fix it.
 4. Avatar orphan listing needs wrangler 4 (`r2 object list` does not exist in
    the pinned 3.x).

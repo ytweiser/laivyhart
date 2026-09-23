@@ -1,6 +1,6 @@
 # Terms of Use and Privacy, Laivy Hart
 
-Last updated [DATE].
+Last updated 23 September 2026.
 
 Laivy Hart is a music site at laivyhart.com. These terms are a short first
 version and will be expanded before the site accepts songs from people other
