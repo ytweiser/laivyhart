@@ -746,6 +746,54 @@
      the pills. */
   .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
 
+  /* ---------- Badges (BADGE-2) ----------
+     A quiet honor mark, never a control: no handler, no cursor, pointer-events
+     off on the glyph, nothing animated. Colour comes from theme variables only
+     (the one exception is the card overlay, which sits on top of artwork and
+     needs a fixed dark plate to stay legible whatever the cover looks like). */
+  .badge-strip{display:inline-flex; align-items:center; gap:0.28rem; flex-shrink:0;}
+  .badge-chip, .badge-pill, .badge-more{ pointer-events:none; cursor:default; user-select:none; }
+  .badge-ic{ width:0.92rem; height:0.92rem; display:block; flex-shrink:0; pointer-events:none; }
+
+  /* COMPACT (list rows): muted, so the row still reads as a row. */
+  .badge-strip.is-row{margin-left:0.1rem;}
+  .badge-strip.is-row .badge-chip{display:inline-flex; color:var(--text-dim);}
+
+  /* COMPACT (artist song cards): overlaid on the cover corner -- the slot the
+     rank badge uses on ranked rails, empty here -- so the card's size never
+     changes. */
+  .badge-strip.is-card{
+    position:absolute; left:0.4rem; bottom:0.4rem; z-index:2;
+    display:inline-flex; align-items:center; gap:0.22rem;
+    padding:0.2rem 0.34rem; border-radius:999px;
+    background:rgba(0,0,0,0.42);
+    backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  }
+  .badge-strip.is-card .badge-chip{display:inline-flex; color:#fff;}
+  .badge-strip.is-card .badge-ic{width:0.82rem; height:0.82rem;}
+  .badge-more{font-family:var(--font-ui); font-size:0.58rem; font-weight:700; color:#fff;}
+
+  /* EXPANSIVE (now-playing and the song page): icon + label pill. */
+  .now-badges{margin-top:0.55rem;}
+  .now-badges:empty{display:none;}
+  .badge-strip.is-full{display:flex; flex-wrap:wrap; gap:0.35rem;}
+  .badge-pill{
+    display:inline-flex; align-items:center; gap:0.32rem;
+    padding:0.22rem 0.55rem; border-radius:999px;
+    background:rgba(var(--accent-2-rgb),0.10);
+    border:1px solid rgba(var(--accent-2-rgb),0.26);
+    color:var(--text);
+  }
+  /* --star-accent, not --accent-2: accent-2 is the bright shade and dies on a
+     light ground (gold/light measures 1.92:1, emerald/light 2.77:1). That
+     token already encodes the site's rule -- accent-2 in dark, accent-1 in
+     light, with a deeper gold for gold/light -- and was measured when the
+     rating stars were lit, so the badge glyph reuses it rather than repeating
+     the mistake or inventing a second token. */
+  .badge-pill .badge-ic{color:var(--star-accent);}
+  .badge-pill-t{font-family:var(--font-ui); font-size:0.68rem; font-weight:600;
+    letter-spacing:0.03em; white-space:nowrap;}
+
   .rows{flex:1; min-height:0; overflow-y:auto; margin-right:-0.3rem; padding-right:0.3rem;}
   /* Round cover thumb on the left, titles carry the weight on the right. The
      meta slot in the gap is artist-only since CH-2. */
@@ -1068,6 +1116,12 @@
      the three loves, so they stay on ONE row at 56px with readable labels.
      Three 56px circles plus two 1.4rem gaps is ~213px of a ~366px content box. */
   @media (max-width:410px){
+    /* A narrow row cannot hold two icons beside the artist name without
+       pushing the row taller, so it falls back to the single highest-priority
+       one. The full set is always on the roomy surfaces. */
+    .badge-strip.is-row .badge-chip:nth-child(n+2){display:none;}
+    .badge-ic{width:0.86rem; height:0.86rem;}
+    .badge-pill-t{font-size:0.64rem;}
     .transport .tbtn:not(.play){width:2rem; height:2rem;}
     .loves-row{gap:1.4rem;}
   }
@@ -1128,6 +1182,9 @@
         </div>
       </div>
       <div class="now-artist" id="now-artist"></div>
+      <!-- BADGE-2: the expansive set. /song/<slug> IS this panel, so this one
+           element serves both the now-playing dock and the song page. -->
+      <div class="now-badges" id="now-badges"></div>
       <div class="now-chips" id="now-chips"></div>
       <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
@@ -1688,6 +1745,152 @@ async function loadChannels(){
   channelTitle = new Map(CHANNELS.map(c => [c.id, c.title]));
 }
 
+/* ============================================================
+   Badges (BADGE-2)
+
+   ONE bulk read of the song_badges view, exactly like channels — never a
+   per-song query, and never anything in a render path. The view is the single
+   source of truth from BADGE-1; this just fetches it.
+
+   WHY LIVE AND NOT THE EMBEDDED SNAPSHOT: the brief suggested rendering from
+   song.badges as embedded by the build. That works only when songs came from
+   songs.json — and normally they do not. loadSongs() reads Supabase first, and
+   `select('*')` on the songs TABLE cannot carry a view, so on the live path
+   song.badges would be empty and no badge would ever appear in production.
+   So: live read first, snapshot second. That also keeps number_one_week (which
+   turns over nightly) correct between Publishes rather than only after one.
+   ============================================================ */
+async function loadBadges(){
+  let ok = false;
+  try{
+    const res = await supabaseClient.from('song_badges').select('song_id,badge,value,sort');
+    if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no badges'));
+    const bySong = new Map();
+    for(const b of res.data){
+      if(!bySong.has(b.song_id)) bySong.set(b.song_id, []);
+      bySong.get(b.song_id).push({ badge: b.badge, value: b.value, sort: b.sort });
+    }
+    for(const [, list] of bySong) list.sort((a, b) => a.sort - b.sort);
+    SONGS.forEach(s => { s.badges = bySong.get(s.id) || []; });
+    ok = true;
+  }catch(err){
+    console.warn('[laivy] Supabase badges load failed; using the snapshot.', err);
+  }
+
+  // Songs from the snapshot already carry badges through mapSong. Songs from
+  // Supabase do not, so recover them from songs.json rather than showing none.
+  if(!ok && !SONGS.some(s => (s.badges || []).length)){
+    try{
+      const res = await fetch('/songs.json', { cache: 'no-store' });
+      if(res.ok){
+        const rows = await res.json();
+        if(Array.isArray(rows)){
+          const byId = new Map(rows.map(r => [r.id, Array.isArray(r.badges) ? r.badges : []]));
+          SONGS.forEach(s => { s.badges = byId.get(s.id) || []; });
+        }
+      }
+    }catch(e){ /* no badges; every surface simply renders none */ }
+  }
+}
+
+/* ------------------------------------------------------------
+   The badge vocabulary: one glyph and one label per badge.
+
+   Inline SVG in the site's existing idiom (currentColor, fill:none, round
+   caps/joins) so themes follow and no icon library arrives. Every glyph is
+   deliberately unlike the ratings dock's stars and its outline love-heart, so
+   an honor mark can never be mistaken for a control: badges carry no handler,
+   no cursor and pointer-events:none on the glyph.
+
+   `label(value)` spells the graduated counts out; the value is the weeks/songs
+   count from the view and nothing else. No play or heart number appears here.
+   ------------------------------------------------------------ */
+const BADGE_ICONS = {
+  // rosette with ribbon tails and a bold 1
+  number_one_week:     '<circle cx="12" cy="8.5" r="5.2"/><path d="M9.2 13.2L7.4 21l4.6-2.2L16.6 21l-1.8-7.8"/><path d="M11.2 6.8l1.4-.8v5.2"/>',
+  // trophy
+  hit_number_one:      '<path d="M8 4h8v3.2a4 4 0 0 1-8 0z"/><path d="M8 5.2H5.2v1.6a3 3 0 0 0 3 3"/><path d="M16 5.2h2.8v1.6a3 3 0 0 1-3 3"/><path d="M12 11v3.6"/><path d="M9.2 19.4h5.6"/><path d="M10.2 19.4l.5-2.8h2.6l.5 2.8"/>',
+  // crown
+  weeks_at_number_one: '<path d="M4.2 18.4h15.6"/><path d="M4.2 18.4L3 8.4l4.8 3.4L12 5.2l4.2 6.6L21 8.4l-1.2 10"/>',
+  // quill, echoing the ratings words icon
+  best_words:          '<path d="M4 20c0-5 2.2-9.3 5.9-12.1C12.6 5.8 16 4.7 20 4.4c-.2 4-1.3 7.4-3.4 10.1C13.7 18.1 9.3 20 4.4 20"/><path d="M4 20c1.9-2.6 4.3-4.8 7.1-6.4"/>',
+  // note, echoing the ratings music icon
+  best_music:          '<path d="M11.4 17.2V4.6c3.4.8 5 2.6 4.7 5.4"/><ellipse cx="8.2" cy="17.4" rx="3.3" ry="2.6" transform="rotate(-22 8.2 17.4)" fill="currentColor" stroke="none"/>',
+  // rising bars
+  weeks_on_chart:      '<path d="M4 20V13.5"/><path d="M9.3 20V8.5"/><path d="M14.7 20v-9"/><path d="M20 20V4.5"/>',
+  // heart on a ribbon — an honor once held
+  was_most_loved:      '<path d="M12 13.6l-1-.9c-2.9-3-4.9-5.1-4.9-7.1 0-1.7 1.3-3 3-3 1 0 1.9.4 2.5 1.1h.8c.6-.7 1.5-1.1 2.5-1.1 1.7 0 3 1.3 3 3 0 2-2 4.1-4.9 7.1z"/><path d="M8.6 14.6L7 21.4l5-2.2 5 2.2-1.6-6.8"/>',
+  // solid heart (the love BUTTON is an outline heart, so these never collide)
+  most_loved:          '<path d="M12 20.2l-1.4-1.3C6.5 14.8 2.7 11.3 2.7 7.9 2.7 5.2 4.8 3.2 7.4 3.2c1.5 0 2.9.7 3.9 1.8h1.4c1-1.1 2.4-1.8 3.9-1.8 2.6 0 4.7 2 4.7 4.7 0 3.4-3.8 6.9-7.9 11z" fill="currentColor" stroke="none"/>',
+  // speech bubble
+  most_talked:         '<path d="M20.2 11.6a7.4 7.4 0 0 1-7.4 7.4H9.4L5 21.8v-4.2a7.4 7.4 0 0 1 4.4-13.4h3.4a7.4 7.4 0 0 1 7.4 7.4z"/>',
+  // sparkle
+  new:                 '<path d="M11 3.6l1.7 4.6 4.6 1.7-4.6 1.7L11 16.2 9.3 11.6 4.7 9.9l4.6-1.7z"/><path d="M18 15.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>',
+};
+
+const BADGE_LABELS = {
+  number_one_week:     () => '#1 this week',
+  hit_number_one:      () => 'Hit #1',
+  weeks_at_number_one: (n) => `${n} week${n === 1 ? '' : 's'} at #1`,
+  best_words:          () => 'Best words',
+  best_music:          () => 'Best music',
+  weeks_on_chart:      (n) => `${n} week${n === 1 ? '' : 's'} on the chart`,
+  was_most_loved:      () => 'Was most loved',
+  most_loved:          () => 'Most loved',
+  most_talked:         () => 'Most talked about',
+  new:                 () => 'New',
+};
+
+function badgeLabel(b){
+  const fn = BADGE_LABELS[b.badge];
+  return fn ? fn(b.value == null ? 0 : b.value) : '';
+}
+
+function badgeIconHTML(name){
+  const d = BADGE_ICONS[name];
+  if(!d) return '';
+  return `<svg class="badge-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"`
+       + ` stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`
+       + ` aria-hidden="true" focusable="false">${d}</svg>`;
+}
+
+/* One strip, three shapes.
+     'row'   — up to 2 icons, no labels, no numbers  (/listen rows)
+     'card'  — up to 2 icons plus a +N marker        (artist song cards)
+     'full'  — every badge as an icon + label pill   (now-playing / song page)
+   The list is already sorted by the view's `sort`, which IS the priority
+   order, so "top 2" is just a slice -- nothing is re-derived here. */
+const BADGE_ROW_CAP = 2;
+
+function badgeStripHTML(s, mode){
+  const all = (s && s.badges) || [];
+  if(!all.length) return '';
+
+  if(mode === 'full'){
+    const pills = all.map(b => {
+      const text = badgeLabel(b);
+      if(!text) return '';
+      return `<span class="badge-pill">${badgeIconHTML(b.badge)}<span class="badge-pill-t">${escHtml(text)}</span></span>`;
+    }).join('');
+    return pills ? `<div class="badge-strip is-full">${pills}</div>` : '';
+  }
+
+  const shown = all.slice(0, BADGE_ROW_CAP);
+  const rest = all.length - shown.length;
+  const icons = shown.map(b => {
+    const text = badgeLabel(b);
+    // aria-label carries the meaning on the icon-only surfaces; role="img"
+    // makes a screen reader announce it rather than skipping an empty span.
+    return `<span class="badge-chip" role="img" aria-label="${escHtml(text)}" title="${escHtml(text)}">`
+         + `${badgeIconHTML(b.badge)}</span>`;
+  }).join('');
+  const more = (mode === 'card' && rest > 0)
+    ? `<span class="badge-more" role="img" aria-label="and ${rest} more honor${rest === 1 ? '' : 's'}"`
+      + ` title="${escHtml(all.slice(BADGE_ROW_CAP).map(badgeLabel).join(', '))}">+${rest}</span>`
+    : '';
+  return `<span class="badge-strip is-${mode}">${icons}${more}</span>`;
+}
+
 /* Shuffle the song list ONCE per browser session so languages intersperse.
    The order is remembered in sessionStorage, so it stays stable while
    browsing/reloading within a visit, but a new visit reshuffles. */
@@ -1722,6 +1925,9 @@ function mapSong(r){
     categories: Array.isArray(r.categories) ? r.categories : [],
     // CH-2: the snapshot embeds these; the live path fills them in loadChannels().
     channels: Array.isArray(r.channels) ? r.channels : [],
+    // BADGE-2: same story — the snapshot embeds these, loadBadges() fills the
+    // live path. [{badge, value, sort}, …] already ordered by sort.
+    badges: Array.isArray(r.badges) ? r.badges : [],
     tags: Array.isArray(r.tags) ? r.tags : [],
     length: formatLength(r.length_seconds) || (durCache[r.id] ? formatLength(durCache[r.id]) : ''),
     length_seconds: (r.length_seconds == null ? null : Number(r.length_seconds)),
@@ -1847,6 +2053,7 @@ async function loadSongs(){
   // Before buildSearchIndexes: search now indexes channel TITLES, which are
   // only known once the channel list has loaded.
   await loadChannels();
+  await loadBadges();
   buildSearchIndexes();
   applySessionShuffle();
   loadRatingSettings();
@@ -2202,6 +2409,7 @@ function renderList(){
         <div class="row-mid">
           ${playing ? eqHTML() : ''}
           ${artistLinkHTML(s, 'row-artist', false)}
+          ${badgeStripHTML(s, 'row')}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
         <div class="row-titles">
@@ -2502,7 +2710,12 @@ function railCardHTML(s, idxOf, railKey, i){
   // that used to sit beside it.
   const hover = sub || '';
   return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}"${hover ? ` title="${escHtml(hover)}"` : ''}>
-      <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}</div>
+      <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}${
+        // Honor icons, ARTIST PAGE ONLY -- the homepage rails stay clean. They
+        // overlay the cover corner (the slot the rank badge uses on ranked
+        // rails, which is empty here) so the card's size is untouched.
+        railKey === 'artist' ? badgeStripHTML(s, 'card') : ''
+      }</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
       ${a ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
           : (sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : '')}
@@ -2690,6 +2903,7 @@ function renderNow(){
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
     topline.classList.remove('hidden');
     chips.innerHTML = ''; nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
     dockReact.classList.add('hidden');
     paintLoves();
@@ -2770,6 +2984,9 @@ function renderNow(){
   paintLoves();
   dockReact.classList.remove('hidden');
   engage.classList.remove('hidden');
+
+  const nowBadges = document.getElementById('now-badges');
+  if(nowBadges) nowBadges.innerHTML = badgeStripHTML(s, 'full');
 
   chips.innerHTML = s.categories.map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
 
