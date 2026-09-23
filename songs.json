@@ -108,7 +108,10 @@
       "name_he": null,
       "avatar": null
     },
-    "channels": []
+    "channels": [
+      "move-me",
+      "perceptions"
+    ]
   },
   {
     "title": "Fires Still Burning",
@@ -385,6 +388,7 @@
     },
     "channels": [
       "inspire-me",
+      "perceptions",
       "fire-me-up"
     ]
   },
@@ -437,7 +441,9 @@
       "name_he": null,
       "avatar": null
     },
-    "channels": []
+    "channels": [
+      "make-me-feel-good"
+    ]
   },
   {
     "title": "She Carried Me",
@@ -657,7 +663,10 @@
       "name_he": null,
       "avatar": null
     },
-    "channels": []
+    "channels": [
+      "move-me",
+      "wind-me-down"
+    ]
   },
   {
     "title": "אַל תַּשְׁלִיכֵנִי",
@@ -1825,7 +1834,9 @@
       "name_he": null,
       "avatar": null
     },
-    "channels": []
+    "channels": [
+      "fire-me-up"
+    ]
   },
   {
     "title": "רְפָאֵנוּ",

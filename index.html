@@ -290,7 +290,7 @@
   .tbtn:hover{transform:translateY(-1px);}
   .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
   .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.45);}
-  /* Radio + Category radio: a tidy pair of playback actions in the Bordeaux
+  /* Radio + Mood radio: a tidy pair of playback actions in the Bordeaux
      palette, warmer and more present than a plain form field, but distinct
      from the round play button and from the Love/Share reaction pair. */
   .radio-btn{
@@ -307,21 +307,64 @@
     box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.26);}
   .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
 
-  .cat-radio-wrap{position:relative; display:inline-flex; align-items:center;}
-  .cat-radio-ic{position:absolute; left:0.66rem; width:0.9rem; height:0.9rem; color:var(--accent-2); pointer-events:none;}
-  .cat-radio-arrow{position:absolute; right:0.62rem; width:0.82rem; height:0.82rem; color:var(--accent-2); pointer-events:none;}
-  .cat-radio{
+  .mood-radio-ic{width:0.9rem; height:0.9rem; color:var(--accent-2); flex-shrink:0;}
+  .mood-radio{
     appearance:none; -webkit-appearance:none; -moz-appearance:none;
     font-family:var(--font-ui); font-size:0.7rem; font-weight:600; letter-spacing:0.02em;
-    padding:0.5rem 1.85rem 0.5rem 1.95rem; border-radius:14px; cursor:pointer; max-width:12rem;
+    display:inline-flex; align-items:center; gap:0.42rem;
+    padding:0.5rem 0.95rem; border-radius:14px; cursor:pointer; max-width:12rem;
     color:var(--accent-2);
     background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
     border:1px solid var(--accent-2);
-    transition:background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+    transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease);
   }
-  .cat-radio:hover{background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2)); box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.22);}
-  .cat-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
-  .cat-radio option{color:var(--text); background:var(--bg-2);}
+  .mood-radio:hover{transform:translateY(-1px); background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2)); box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.22);}
+  .mood-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  .mood-radio.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
+  .mood-radio.active .mood-radio-ic{color:#fff;}
+
+  /* ---------- The homepage mood strip (CH-2) ----------
+     Text cards, not song cards: a mood word over a themed tint. The tint walks
+     from accent-1 to accent-2 across the eight cards via --mood-i, so the row
+     reads as one family rather than eight identical chips, and it recolours
+     with the theme because both ends are theme variables. */
+  .mood-strip .rail-head{margin-bottom:0.7rem;}
+  .mood-scroll{gap:0.55rem;}
+  .mood-card{
+    flex:0 0 auto; width:10.5rem; min-height:4.6rem;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:0.9rem 0.85rem; border-radius:var(--radius-sm); cursor:pointer;
+    border:1px solid rgba(var(--accent-2-rgb),0.30);
+    background:linear-gradient(135deg,
+      rgba(var(--accent-1-rgb), calc(0.10 + var(--mood-i) * 0.012)),
+      rgba(var(--accent-2-rgb), calc(0.20 - var(--mood-i) * 0.010)));
+    transition:transform 0.18s var(--ease), box-shadow 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  .mood-card-title{
+    font-family:var(--font-ui); font-size:0.74rem; font-weight:700;
+    letter-spacing:0.09em; line-height:1.35; color:var(--text);
+  }
+  .mood-card:hover{transform:translateY(-2px); border-color:var(--accent-2);
+    box-shadow:0 8px 20px rgba(var(--accent-1-rgb),0.24);}
+  .mood-card:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+
+  /* The one place /listen names an active channel, so the listener can see and
+     leave the station. Not a picker -- channels are entered from the strip. */
+  .channel-banner{
+    display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;
+    margin:0 0 0.9rem; padding:0.5rem 0.7rem; border-radius:var(--radius-xs);
+    background:rgba(var(--accent-2-rgb),0.10); border:1px solid rgba(var(--accent-2-rgb),0.28);
+  }
+  .channel-banner-label{font-family:var(--font-ui); font-size:0.56rem; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--text-faint);}
+  .channel-banner-title{font-family:var(--font-ui); font-size:0.78rem; font-weight:700;
+    letter-spacing:0.06em; color:var(--text);}
+  .channel-banner-clear{
+    margin-left:auto; background:none; border:0; cursor:pointer; padding:0.2rem 0.35rem;
+    font-family:var(--font-ui); font-size:0.7rem; color:var(--accent-3); border-radius:6px;
+  }
+  .channel-banner-clear:hover{color:var(--text);}
+  .channel-banner-clear:focus-visible{outline:2px solid var(--accent-2); outline-offset:1px;}
 
   /* ---------- RIGHT: browse ---------- */
   /* Pinned to the viewport so the song list keeps its own independent scroll
@@ -333,7 +376,7 @@
     height:calc(100vh - 32px);
   }
   .tabs{display:flex; align-items:center; gap:0.4rem; margin-bottom:0.9rem; flex-wrap:wrap;}
-  /* Radio + Category radio relocated into the list header, right of the tabs. */
+  /* Radio + Mood radio relocated into the list header, right of the tabs. */
   .tabs-radio{margin-left:auto; display:flex; align-items:center; gap:0.5rem;}
   .tab{
     font-family:var(--font-ui); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.06em;
@@ -531,8 +574,6 @@
   /* Find a song: mood pills + a two-size tag cloud. */
   .find-song{margin:0 0 2.2rem;}
   .find-song-h{font-family:var(--font-display); font-style:italic; font-weight:500; font-size:1.3rem; color:var(--text); margin:0 0 0.85rem;}
-  .mood-row{display:flex; flex-wrap:wrap; gap:0.45rem; margin-bottom:1.15rem;}
-  .mood-row .chip{flex:0 0 auto;}
   .cloud-label{font-family:var(--font-ui); font-size:0.58rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint); margin-bottom:0.5rem;}
   .tag-cloud{display:flex; flex-wrap:wrap; align-items:baseline; gap:0.4rem 0.5rem;}
   .cloud-tag{
@@ -557,7 +598,6 @@
   .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
   .hero-title.disp{font-family:var(--font-display);}
   .hero-sub{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim); margin-top:0.12rem;}
-  .hero-cat{font-family:var(--font-ui); font-size:0.6rem; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-faint); margin-top:0.55rem;}
   .hero-note{font-family:var(--font-display); font-style:italic; font-size:1rem; line-height:1.5; color:var(--text-dim); margin:0.55rem 0 0; max-width:34rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
 
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
@@ -700,30 +740,15 @@
   .mini-sub{font-family:var(--font-display); font-style:italic; font-size:0.8rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .mini-btn{background:none; border:none; cursor:pointer; color:var(--text); width:2.4rem; height:2.4rem; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .mini-btn svg{width:1.4rem; height:1.4rem; fill:currentColor;}
-  /* Category pills grouped into labeled, horizontally-scrollable rows */
+  /* CH-2: this container held the three grouped category pill rows
+     (Mood/Occasion/Subject). It now holds the shared tag cloud and, when a
+     channel is active, the banner naming it. The grouped-pill CSS went with
+     the pills. */
   .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
-  .cat-allrow{display:flex;}
-  .cat-all{padding-inline:0.9rem;}
-  .cat-group{display:flex; align-items:center; gap:0.55rem; min-width:0;}
-  .cat-group-label{
-    flex-shrink:0; width:3.4rem;
-    font-family:var(--font-ui); font-size:0.56rem; letter-spacing:0.1em; text-transform:uppercase;
-    color:var(--text-faint); text-align:right;
-  }
-  .cat-scroll{
-    display:flex; gap:0.4rem; overflow-x:auto; flex:1; min-width:0;
-    padding-bottom:2px; scroll-behavior:smooth;
-    scrollbar-width:none; -ms-overflow-style:none;
-    -webkit-overflow-scrolling:touch;
-    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 0.6rem, #000 calc(100% - 0.9rem), transparent 100%);
-    mask-image:linear-gradient(90deg, transparent 0, #000 0.6rem, #000 calc(100% - 0.9rem), transparent 100%);
-  }
-  .cat-scroll::-webkit-scrollbar{display:none; height:0;}
-  .cat-scroll .chip{flex-shrink:0;}
 
   .rows{flex:1; min-height:0; overflow-y:auto; margin-right:-0.3rem; padding-right:0.3rem;}
-  /* Round cover thumb on the left, titles carry the weight on the right, one
-     quiet category floating in the gap just left of the title. */
+  /* Round cover thumb on the left, titles carry the weight on the right. The
+     meta slot in the gap is artist-only since CH-2. */
   .row{
     display:flex; align-items:center; gap:0.9rem;
     padding:0.8rem 0.5rem; border-bottom:1px solid var(--line); cursor:pointer;
@@ -739,10 +764,6 @@
   }
   /* Middle slot: pushed to the right so it sits just left of the title. */
   .row-mid{display:flex; align-items:center; gap:0.5rem; margin-left:auto; flex-shrink:0; min-width:0;}
-  .row-cat{
-    font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase;
-    color:var(--text-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:8.5rem;
-  }
   .row-len{font-family:var(--font-ui); font-size:0.66rem; color:var(--text-faint); display:flex; align-items:center; gap:0.35rem;}
   .row-titles{text-align:right; min-width:0; display:flex; flex-direction:column; gap:0.05rem;}
   .row-title-primary{font-size:1.325rem; line-height:1.28; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
@@ -966,12 +987,11 @@
     /* Undo the desktop sticky/viewport-height pin so the list stacks in the
        single-column flow and grows with the page. */
     .browse{padding:1rem 1rem 0.4rem; position:static; top:auto; height:auto;}
-    /* Tabs row wraps: Radio + Category radio drop beneath the tabs, full width,
+    /* Tabs row wraps: Radio + Mood radio drop beneath the tabs, full width,
        two across. */
     .tabs-radio{flex-basis:100%; margin-left:0; margin-top:0.15rem;}
     .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
-    .tabs-radio .cat-radio-wrap{flex:1 1 0; min-width:0;}
-    .tabs-radio .cat-radio{width:100%; max-width:none;}
+    .tabs-radio .mood-radio{flex:1 1 0; min-width:0; max-width:none; justify-content:center;}
     /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
        all three loves on one line at 56px. Dock spacing is trimmed so the loves
        row adds its own height plus the one 0.5rem row gap, nothing more. */
@@ -1007,7 +1027,6 @@
     .rows{max-height:none;}
     /* Keep the single category from crowding the title on a narrow screen. */
     .row{gap:0.7rem;}
-    .row-cat{max-width:5.5rem;}
     /* Homepage on phones. */
     #page-home{--page-pad:12px; padding:12px var(--page-pad) 6rem;}
     .home-header-right{flex-basis:100%;}
@@ -1204,17 +1223,19 @@
     <div class="tabs">
       <button class="tab active" id="tab-songs">Songs</button>
       <button class="tab" id="tab-playlists">Playlists</button>
-      <!-- Radio + Category radio: relocated here from the player dock, right of the tabs. -->
+      <!-- Radio + Mood radio: relocated here from the player dock, right of the tabs. -->
       <div class="tabs-radio">
         <button class="radio-btn" id="radio-btn" aria-label="Shuffle and play everything">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
           Radio
         </button>
-        <span class="cat-radio-wrap">
-          <svg class="cat-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
-          <select class="cat-radio" id="cat-radio-select" aria-label="Category radio"><option value="">Category radio</option></select>
-          <svg class="cat-radio-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-        </span>
+        <!-- CH-2: was a Category radio <select>. There is no channel chooser
+             any more -- Mood radio spins the ACTIVE channel, or everything when
+             none is active -- so the control is a plain button. -->
+        <button class="mood-radio" id="mood-radio-btn" type="button" aria-label="Mood radio">
+          <svg class="mood-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
+          <span id="mood-radio-label">Mood radio</span>
+        </button>
       </div>
     </div>
 
@@ -1584,24 +1605,87 @@ markActiveSwatch(colorTheme);
 let SONGS = [];
 
 // Category -> group ('mood'|'occasion'|'subject'), loaded from the categories table.
-let categoryGroup = new Map();
-// Mood categories for the homepage "Find a song" row, ordered by sort_order
-// (nulls last) then name. Empty during a Supabase outage (categories are only
-// in the table, not songs.json) — the mood row just hides then.
-let moodCategories = [];
-async function loadCategoryGroups(){
-  const { data, error } = await supabaseClient.from('categories').select('name, group_name, sort_order');
-  if(error){ console.error(error); return; }
-  const rows = data || [];
-  categoryGroup = new Map(rows.filter(c => c.group_name).map(c => [c.name, c.group_name]));
-  moodCategories = rows
-    .filter(c => c.group_name === 'mood')
-    .sort((a, b) => {
-      const ao = a.sort_order == null ? Infinity : a.sort_order;
-      const bo = b.sort_order == null ? Infinity : b.sort_order;
-      return (ao - bo) || a.name.localeCompare(b.name);
-    })
-    .map(c => c.name);
+/* CH-2 retired categories from the UI. The `categories` table, songs.categories[]
+   and featured_category all remain in the database, untouched and unread --
+   loadCategoryGroups(), categoryGroup, moodCategories and pickRowCategory were
+   deleted here rather than left as dead code calling them. A later cleanup can
+   drop the columns once channels have proven themselves. */
+
+/* ============================================================
+   Channels (CH-2)
+
+   Overlapping mood sets, many per song. These replace the three category
+   groups as the browse layer; the category table and columns are still in the
+   database but nothing here reads them any more.
+
+   Live first, snapshot second, exactly like songs. The `songs` select cannot
+   carry memberships (they live in their own table), so the live path fetches
+   both channel tables and attaches the ids to SONGS. The snapshot path needs
+   no attaching: scripts/snapshot-songs.mjs already embedded song.channels, and
+   mapSong carries it through.
+   ============================================================ */
+let CHANNELS = [];                 // [{id,title,tagline,sort_order,active}], ordered
+let channelTitle = new Map();      // id -> title
+let activeChannel = null;          // the channel being browsed/heard, or null
+
+function channelById(id){ return CHANNELS.find(c => c.id === id) || null; }
+function songsInChannel(id){ return SONGS.filter(s => (s.channels || []).includes(id)); }
+
+async function loadChannels(){
+  let ok = false;
+  try{
+    const [cRes, mRes] = await Promise.all([
+      supabaseClient.from('channels').select('id,title,tagline,sort_order,active').order('sort_order'),
+      supabaseClient.from('song_channels').select('song_id,channel_id'),
+    ]);
+    if(cRes.error || !Array.isArray(cRes.data)) throw (cRes.error || new Error('no channels'));
+    if(mRes.error || !Array.isArray(mRes.data)) throw (mRes.error || new Error('no memberships'));
+    CHANNELS = cRes.data.filter(c => c.active !== false);
+    // Rank by the channel's own sort_order so every song's list is in the
+    // owner's intended order, not whatever order the rows came back in.
+    const rank = new Map(CHANNELS.map((c, i) => [c.id, i]));
+    const bySong = new Map();
+    for(const r of mRes.data){
+      if(!rank.has(r.channel_id)) continue;
+      if(!bySong.has(r.song_id)) bySong.set(r.song_id, []);
+      bySong.get(r.song_id).push(r.channel_id);
+    }
+    for(const [, list] of bySong) list.sort((a, b) => rank.get(a) - rank.get(b));
+    SONGS.forEach(s => { s.channels = bySong.get(s.id) || []; });
+    ok = true;
+  }catch(err){
+    console.warn('[laivy] Supabase channels load failed; using the snapshot.', err);
+  }
+
+  if(!ok){
+    // channels.json for the list itself.
+    try{
+      const res = await fetch('/channels.json', { cache: 'no-store' });
+      if(res.ok){
+        const rows = await res.json();
+        if(Array.isArray(rows)) CHANNELS = rows.filter(c => c.active !== false);
+      }
+    }catch(e){ /* leave CHANNELS empty; the strip simply hides */ }
+
+    // Memberships: already present if songs came from the snapshot. If songs
+    // came from Supabase but the channel tables did not answer, recover them
+    // from songs.json rather than leaving every channel empty.
+    if(CHANNELS.length && !SONGS.some(s => (s.channels || []).length)){
+      try{
+        const res = await fetch('/songs.json', { cache: 'no-store' });
+        if(res.ok){
+          const rows = await res.json();
+          if(Array.isArray(rows)){
+            const byId = new Map(rows.map(r => [r.id, Array.isArray(r.channels) ? r.channels : []]));
+            SONGS.forEach(s => { s.channels = byId.get(s.id) || []; });
+          }
+        }
+      }catch(e){ /* channels stay empty; browse still works without them */ }
+    }
+  }
+
+  CHANNELS.sort((a, b) => (a.sort_order - b.sort_order) || a.title.localeCompare(b.title));
+  channelTitle = new Map(CHANNELS.map(c => [c.id, c.title]));
 }
 
 /* Shuffle the song list ONCE per browser session so languages intersperse.
@@ -1636,6 +1720,8 @@ function mapSong(r){
     title: r.title || '',
     title_translit: r.title_translit || '',
     categories: Array.isArray(r.categories) ? r.categories : [],
+    // CH-2: the snapshot embeds these; the live path fills them in loadChannels().
+    channels: Array.isArray(r.channels) ? r.channels : [],
     tags: Array.isArray(r.tags) ? r.tags : [],
     length: formatLength(r.length_seconds) || (durCache[r.id] ? formatLength(durCache[r.id]) : ''),
     length_seconds: (r.length_seconds == null ? null : Number(r.length_seconds)),
@@ -1758,12 +1844,14 @@ async function loadSongs(){
     return;
   }
   SONGS = data.map(mapSong);
+  // Before buildSearchIndexes: search now indexes channel TITLES, which are
+  // only known once the channel list has loaded.
+  await loadChannels();
   buildSearchIndexes();
   applySessionShuffle();
-  await loadCategoryGroups();
   loadRatingSettings();
   await loadChart();          // before initRoute: the homepage ranks on it
-  renderFilterPills();
+  renderBrowseCloud();
   renderList();
   renderNow();
   renderPlaylists();
@@ -1808,14 +1896,13 @@ function processDurQueue(){
 /* ============================================================
    State
    ============================================================ */
-let activeCat = 'all';
 let searchTerm = '';
 const SORT_KEY = 'laivy-sort-v1';
 function loadSort(){ try{ return localStorage.getItem(SORT_KEY) || 'shuffle'; }catch(e){ return 'shuffle'; } }
 let activeSort = loadSort();
 let currentIdx = null;
 let langView = 'orig';   // 'orig' | 'trans'
-let mode = 'manual';     // manual | radio | catRadio | playlist
+let mode = 'manual';     // manual | radio | channelRadio | playlist
 let queue = [];
 let queuePos = 0;
 // Small ordered queue for a homepage rail's "Play all" (manual mode has no
@@ -1840,49 +1927,59 @@ function thumbStyle(song){
 }
 
 /* ============================================================
-   Categories and filtering
+   Browse controls
+
+   CH-2 retired the three category pill groups (Mood / Occasion / Subject)
+   from /listen. In their place sits the SAME two-size alphabetical tag cloud
+   the homepage's "Find a song" uses -- one component, rendered in two places
+   (see tagCloudHTML). Selecting a tag filters the list exactly as
+   /listen?tag=<tag> does.
+
+   There is deliberately NO channel picker here. Channels are reachable only
+   from the homepage mood strip; that is the owner's decision, not an omission.
+   When a channel IS active (arrived from the strip or a ?channel= link) a
+   single dismissable banner names it, so the listener can see and leave the
+   station they are in.
    ============================================================ */
-function allCategories(){
-  const set = new Set();
-  SONGS.forEach(s => s.categories.forEach(c => set.add(c)));
-  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+
+// The shared tag cloud: alphabetical, two sizes by frequency. Used by the
+// homepage "Find a song" section and by /listen.
+function tagCloudHTML(){
+  const tags = tagCloud();
+  if(!tags.length) return '';
+  return tags.map(t =>
+    `<button class="cloud-tag ${t.count >= 6 ? 'big' : 'small'}" type="button" data-tag="${escHtml(t.tag)}">${escHtml(t.tag)}</button>`
+  ).join('');
 }
-function renderFilterPills(){
+
+function renderBrowseCloud(){
   const el = document.getElementById('filter-pills');
-  const GROUPS = [
-    { key: 'mood', label: 'Mood' },
-    { key: 'occasion', label: 'Occasion' },
-    { key: 'subject', label: 'Subject' },
-  ];
-  // Bucket categories by group; anything not yet assigned falls under Subject.
-  const buckets = { mood: [], occasion: [], subject: [] };
-  allCategories().forEach(c => {
-    const g = categoryGroup.get(c);
-    (buckets[g] || buckets.subject).push(c);
-  });
+  if(!el) return;
+  const cloud = tagCloudHTML();
+  const ch = activeChannel ? channelById(activeChannel) : null;
+  el.innerHTML =
+    (ch ? `<div class="channel-banner">
+             <span class="channel-banner-label">Mood</span>
+             <span class="channel-banner-title">${escHtml(ch.title)}</span>
+             <button class="channel-banner-clear" type="button" aria-label="Leave this mood">Clear</button>
+           </div>` : '') +
+    (cloud ? `<div class="cloud-label">Themes</div><div class="tag-cloud">${cloud}</div>` : '');
 
-  let html = `<div class="cat-allrow"><button class="chip cat-all ${activeCat==='all'?'active':''}" data-cat="all">All</button></div>`;
-  GROUPS.forEach(g => {
-    const cats = buckets[g.key];
-    if(!cats.length) return; // hide an empty group row (e.g. Occasion until you tag occasion categories)
-    html += `<div class="cat-group" data-group="${g.key}">
-      <span class="cat-group-label">${g.label}</span>
-      <div class="cat-scroll">${
-        cats.map(c => `<button class="chip ${activeCat===c?'active':''}" data-cat="${escHtml(c)}">${escHtml(c)}</button>`).join('')
-      }</div>
-    </div>`;
+  el.querySelectorAll('.cloud-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const se = document.getElementById('search');
+      if(se) se.value = btn.dataset.tag;
+      searchTerm = btn.dataset.tag;
+      renderList();
+    });
   });
-  el.innerHTML = html;
-  el.querySelectorAll('.chip').forEach(btn => {
-    btn.addEventListener('click', () => { activeCat = btn.dataset.cat; renderFilterPills(); renderList(); });
+  const clear = el.querySelector('.channel-banner-clear');
+  if(clear) clear.addEventListener('click', () => {
+    activeChannel = null;
+    try{ history.replaceState({ route: 'listen' }, '', '/listen'); }catch(e){}
+    renderBrowseCloud();
+    renderList();
   });
-
-  const sel = document.getElementById('cat-radio-select');
-  sel.innerHTML = `<option value="">Category radio</option>` +
-    allCategories().map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
-  // Keep the Category radio control in sync with the active filter, so the pill
-  // and this dropdown always show the same category (or "Category radio" for All).
-  sel.value = (activeCat && activeCat !== 'all') ? activeCat : '';
 }
 /* Normalize text for search on BOTH the index and the query so the two agree,
    AND return a map from each normalized-char index back to the index of the raw
@@ -1955,7 +2052,10 @@ function buildSearchIndexes(){
     s.nTitle = normalizeForSearch(s.title);
     s.nTranslit = normalizeForSearch(s.title_translit);
     s.nTags = (s.tags || []).map(normalizeForSearch);
-    s.nCategories = (s.categories || []).map(normalizeForSearch);
+    // CH-2: Category is out of search, Channel is in. Keep the raw titles too
+    // so a match can be labelled and snippeted like any other field.
+    s.channelTitles = (s.channels || []).map(id => channelTitle.get(id) || '').filter(Boolean);
+    s.nChannels = s.channelTitles.map(normalizeForSearch);
     s.nAbout = normalizeForSearch(s.about);
     s.nLyricsOriginal = normalizeForSearch(s.lyrics_original);
     s.nLyricsTranslation = normalizeForSearch(s.lyrics_translation);
@@ -1984,8 +2084,8 @@ function termField(s, t){
     return { field: 'artist', label: 'Artist', raw: s.artist.name_he, term: t };
   const ti = s.nTags.findIndex(x => x.includes(t));
   if(ti >= 0) return { field: 'tags', label: 'Tag', raw: s.tags[ti], term: t };
-  const ci = s.nCategories.findIndex(x => x.includes(t));
-  if(ci >= 0) return { field: 'categories', label: 'Category', raw: s.categories[ci], term: t };
+  const ci = s.nChannels.findIndex(x => x.includes(t));
+  if(ci >= 0) return { field: 'channels', label: 'Channel', raw: s.channelTitles[ci], term: t };
   if(s.nAbout.includes(t)) return { field: 'about', label: 'About', raw: s.about, term: t };
   if(s.nLyricsOriginal.includes(t)) return { field: 'lyrics', label: 'Lyrics', raw: s.lyrics_original, term: t };
   if(s.nLyricsTranslation.includes(t)) return { field: 'translation', label: 'Translation', raw: s.lyrics_translation, term: t };
@@ -1993,8 +2093,9 @@ function termField(s, t){
 }
 
 function songMatches(s){
-  const inCat = activeCat === 'all' || s.categories.includes(activeCat);
-  if(!inCat) return false;
+  // CH-2: the only list filter is the active channel (arrived via the
+  // homepage mood strip or /listen?channel=). Categories no longer filter.
+  if(activeChannel && !(s.channels || []).includes(activeChannel)) return false;
   const terms = currentTerms();
   if(terms.length === 0) return true;
   return terms.every(t => termField(s, t) !== null);  // every term in some field
@@ -2057,18 +2158,6 @@ function visibleOrder(){
    ============================================================ */
 function eqHTML(){ return `<span class="eq"><span></span><span></span><span></span><span></span></span>`; }
 
-// The single category shown on a song row. An admin-set featured_category wins
-// (if it is still one of the song's categories); otherwise fall back to a group
-// hierarchy: first occasion, then mood, then subject (ungrouped counts as
-// subject); else nothing.
-function pickRowCategory(s){
-  if(s.featured_category && s.categories.includes(s.featured_category)) return s.featured_category;
-  const groupOf = c => categoryGroup.get(c) || 'subject';
-  return s.categories.find(c => groupOf(c) === 'occasion')
-      || s.categories.find(c => groupOf(c) === 'mood')
-      || s.categories.find(c => groupOf(c) === 'subject')
-      || '';
-}
 
 // Round cover thumbnail (anchored to its focal point) when present, else a
 // Bordeaux generative circle seeded from the title. Shared by the song rows and
@@ -2097,7 +2186,6 @@ function renderList(){
     // Primary is always the song's own language (bold), secondary is muted below.
     const primary = heb ? s.title : (s.title || s.title_translit);
     const secondary = heb ? s.title_translit : '';
-    const cat = pickRowCategory(s);
     // "Why it matched": a snippet from the field the first query term matched in,
     // unless that field is the title/translit (already visible in the row).
     let snipHTML = '';
@@ -2114,8 +2202,6 @@ function renderList(){
         <div class="row-mid">
           ${playing ? eqHTML() : ''}
           ${artistLinkHTML(s, 'row-artist', false)}
-          ${(artistOf(s) && cat) ? `<span class="row-meta-dot" aria-hidden="true">&middot;</span>` : ''}
-          ${cat ? `<div class="row-cat">${escHtml(cat)}</div>` : ''}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
         <div class="row-titles">
@@ -2257,7 +2343,6 @@ function heroHTML(s, idx, label){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = (heb && s.title_translit) ? s.title_translit : '';
-  const cat = pickRowCategory(s);
   const note = firstSentenceOf(s.about);
   const cover = s.cover
     ? coverThumbHTML(s, 'hero-cover-img', 900)
@@ -2269,7 +2354,6 @@ function heroHTML(s, idx, label){
           <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
           ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
           ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '', true)} <span class="attr-he" dir="rtl" lang="he">מאת</span></div>` : ''}
-          ${cat ? `<div class="hero-cat">${escHtml(cat)}</div>` : ''}
           ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
         </div>
       </div>
@@ -2277,8 +2361,9 @@ function heroHTML(s, idx, label){
     </button>`;
 }
 
-// "Find a song": mood pills (from the categories 'mood' group, ordered by
-// sort_order) + a two-size tag cloud built from the in-memory catalog.
+// "Find a song": the two-size tag cloud built from the in-memory catalog.
+// CH-2 removed the mood pills that sat above it (they were category pills);
+// moods now live in the strip near the top of the page.
 function tagCloud(){
   const counts = new Map();
   SONGS.forEach(s => (s.tags || []).forEach(t => counts.set(t, (counts.get(t) || 0) + 1)));
@@ -2287,15 +2372,36 @@ function tagCloud(){
     .sort((a, b) => a.tag.localeCompare(b.tag));   // alphabetical, not by weight
 }
 function findASongHTML(){
-  const moods = moodCategories;
-  const tags = tagCloud();
-  if(!moods.length && !tags.length) return '';
-  const moodPills = moods.map(c => `<button class="chip mood-pill" type="button" data-cat="${escHtml(c)}">${escHtml(c)}</button>`).join('');
-  const cloud = tags.map(t => `<button class="cloud-tag ${t.count >= 6 ? 'big' : 'small'}" type="button" data-tag="${escHtml(t.tag)}">${escHtml(t.tag)}</button>`).join('');
+  const cloud = tagCloudHTML();
+  if(!cloud) return '';
   return `<section class="find-song">
       <h2 class="find-song-h">Find a song</h2>
-      ${moods.length ? `<div class="mood-row">${moodPills}</div>` : ''}
-      ${tags.length ? `<div class="cloud-label">Themes</div><div class="tag-cloud">${cloud}</div>` : ''}
+      <div class="cloud-label">Themes</div><div class="tag-cloud">${cloud}</div>
+    </section>`;
+}
+
+/* ============================================================
+   The homepage mood strip: "What is your mood today"
+
+   Eight compact text cards, one per channel, in sort_order. Title only -- the
+   taglines are stored but deliberately not shown here. Same edge-fade and
+   hover-arrow affordances as the song rails (railAffordancesHTML), but these
+   are words over a themed tint rather than song cards, so the section reads as
+   "pick a feeling" rather than "here is more music".
+
+   This is the ONLY entry point to a channel: there is no channel picker on
+   /listen.
+   ============================================================ */
+function moodStripHTML(){
+  if(!CHANNELS.length) return '';
+  const cards = CHANNELS.map((c, i) =>
+    `<button class="mood-card" type="button" data-channel="${escHtml(c.id)}" style="--mood-i:${i}">
+       <span class="mood-card-title">${escHtml(c.title)}</span>
+     </button>`
+  ).join('');
+  return `<section class="rail mood-strip" data-rail="moods">
+      <div class="rail-head"><h2 class="rail-title-h">What is your mood today</h2></div>
+      ${railAffordancesHTML('rail-scroll mood-scroll', 'moods', cards)}
     </section>`;
 }
 
@@ -2390,10 +2496,11 @@ function railCardHTML(s, idxOf, railKey, i){
   const sub = heb ? s.title_translit : '';
   const badge = railBadgeHTML(railKey, i);
   const a = artistOf(s);
-  // Line 2 is the artist now. The transliteration and the category move into
-  // the card's title attribute -- a hover detail on pointer devices, absent on
-  // touch -- so the card gains attribution without gaining height.
-  const hover = [sub, pickRowCategory(s)].filter(Boolean).join(' \u00b7 ');
+  // Line 2 is the artist. The transliteration moves into the card's title
+  // attribute -- a hover detail on pointer devices, absent on touch -- so the
+  // card gains attribution without gaining height. CH-2 dropped the category
+  // that used to sit beside it.
+  const hover = sub || '';
   return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}"${hover ? ` title="${escHtml(hover)}"` : ''}>
       <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
@@ -2482,14 +2589,23 @@ function renderHomepage(){
 
   let html = '';
   if(hero) html += heroHTML(hero, idxOf.get(hero.id), "This week's #1 song");   // always weekly wording
-  html += rails.map(sec => railHTML(sec, idxOf)).join('');
+  // The strip sits directly under the weekly rail, so it is the first thing
+  // below the chart rather than a footer afterthought.
+  html += rails.map(sec =>
+    railHTML(sec, idxOf) + (sec.key === 'most_listened' ? moodStripHTML() : '')
+  ).join('');
+  // If there is no weekly rail at all (a very small catalog), the strip would
+  // otherwise vanish -- put it first instead.
+  if(!rails.some(sec => sec.key === 'most_listened')) html = moodStripHTML() + html;
   if(editors.length) html += editorsBandHTML(editors, idxOf);
   html += findASongHTML();     // "Find a song": moved to the bottom, above the footer
   el.innerHTML = html;
 
-  // Find a song: mood pill -> /listen with that category; tag -> /listen search.
-  el.querySelectorAll('.mood-pill').forEach(b => b.addEventListener('click', () => goListenWithParam('cat', b.dataset.cat)));
+  // Find a song: a tag goes to /listen with that tag searched.
   el.querySelectorAll('.cloud-tag').forEach(b => b.addEventListener('click', () => goListenWithParam('tag', b.dataset.tag)));
+  // Mood strip: go to /listen?channel=<id> and start that channel shuffling.
+  // The click is the gesture, so it plays rather than merely cueing.
+  el.querySelectorAll('.mood-card').forEach(b => b.addEventListener('click', () => goChannel(b.dataset.channel)));
 
   // Hero + rail/editor cards: go to the song page and play that song.
   el.querySelectorAll('.home-hero2, .rail-item').forEach(btn => {
@@ -2707,6 +2823,13 @@ function setAmbientPlaying(on){ ambient.classList.toggle('is-playing', !!on); }
    browsing), pushState when arriving from elsewhere. */
 function syncSongUrl(s){
   if(!s || !s.slug) return;
+  // CH-2: inside a channel the address belongs to the STATION, not the track.
+  // /listen?channel=<id> is what the listener arrived on, what is shareable,
+  // and what the brief asks to keep, so the per-song rewrite stands down until
+  // they leave the channel (the banner's Clear, or any other navigation). The
+  // now-playing share button is unaffected -- songShareUrl() builds from the
+  // song's own slug and never reads the address bar.
+  if(activeChannel) return;
   const want = '/song/' + encodeURIComponent(s.slug);
   if(location.pathname === want) return;
   try{
@@ -3562,10 +3685,11 @@ function renderFeed(){
 }
 
 /* ============================================================
-   Radio, category radio, queue navigation
+   Radio, Mood radio, queue navigation
    ============================================================ */
-function shuffledIndices(catFilter){
-  let idxs = SONGS.map((s,i)=>i).filter(i => !catFilter || SONGS[i].categories.includes(catFilter));
+function shuffledIndices(channelFilter){
+  let idxs = SONGS.map((s,i)=>i)
+    .filter(i => !channelFilter || (SONGS[i].channels || []).includes(channelFilter));
   for(let i=idxs.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
   return idxs;
 }
@@ -3594,20 +3718,47 @@ function startRadio(){
   loadSong(queue[0]);
 }
 document.getElementById('radio-btn').addEventListener('click', startRadio);
-document.getElementById('cat-radio-select').addEventListener('change', (e) => {
-  const cat = e.target.value;
-  if(!cat) return;
-  mode = 'catRadio';
-  laivyTrack('category_radio', { category: cat });
-  document.getElementById('radio-btn').classList.remove('active');
-  // Behave like clicking that category pill: filter the list + activate the
-  // pill so the listener sees the exact set being played.
-  activeCat = cat;
-  renderFilterPills();
+/* Mood radio (CH-2, was Category radio).
+
+   With a channel active -- the listener arrived from the homepage strip or a
+   /listen?channel= link -- it shuffles within THAT channel and the list stays
+   filtered to it, so what is on screen is the station being heard. That is
+   exactly how Category radio behaved for a category.
+
+   With no channel active it is plain Radio: shuffle everything. It never
+   presents a chooser, because channels are only reachable from the strip. */
+function startMoodRadio(){
+  if(SONGS.length === 0) return;
+  if(activeChannel && songsInChannel(activeChannel).length){
+    startChannelRadio(activeChannel);
+  } else {
+    startRadio();
+  }
+}
+document.getElementById('mood-radio-btn').addEventListener('click', startMoodRadio);
+
+/* Play a channel as a session shuffle.
+
+   There is no autoplay flag: playCurrent() already attempts play() and, when
+   the browser refuses for want of a gesture, catches it and leaves the track
+   cued with the play icon showing. So a cold /listen?channel= link lands
+   "loaded, first track ready, silent", while a tap on a mood card -- which IS
+   a gesture -- starts playing. Same rule the ?song= deep-link already uses. */
+function startChannelRadio(id){
+  const members = songsInChannel(id);
+  if(!members.length) return;
+  activeChannel = id;
+  mode = 'channelRadio';             // the queue-driven mode Category radio used
+  laivyTrack('mood_radio', { channel: id });
+  const rb = document.getElementById('radio-btn');
+  if(rb) rb.classList.remove('active');
+  const mb = document.getElementById('mood-radio-btn');
+  if(mb) mb.classList.add('active');
+  renderBrowseCloud();
   renderList();
-  queue = shuffledIndices(cat); queuePos = 0;
+  queue = shuffledIndices(id); queuePos = 0;
   if(queue.length) loadSong(queue[0]);
-});
+}
 // Manual prev/next walk the VISIBLE (sorted + filtered) order so they match
 // what the listener sees. If the current song has been filtered out of view,
 // step in from the near end. Radio / category radio keep their own shuffled
@@ -4195,22 +4346,43 @@ function goListenWithParam(kind, value){
   laivyTrack('page_view', { route: 'listen' });
   applyListenParams();
 }
-// Apply a ?cat=/?tag= param already in the URL (sets the category or the search
-// box + renders, no playback), then clear it with replaceState so back/forward
-// behaves. Returns true if it applied one.
+// Homepage mood strip -> /listen?channel=<id>, list filtered to that channel
+// and the channel shuffling. Unlike ?cat=/?tag=, the address KEEPS the param:
+// the listener is in a named station and the URL should say so (and be
+// shareable).
+function goChannel(id){
+  if(!id || !channelById(id)) return;
+  history.pushState({ route: 'listen' }, '', '/listen?channel=' + encodeURIComponent(id));
+  showPage('listen');
+  laivyTrack('page_view', { route: 'listen' });
+  switchTab('songs');
+  startChannelRadio(id);
+}
+
+// Apply a ?channel=/?tag= param already in the URL. A channel filters the list
+// and readies its shuffle (silent until a gesture -- see startChannelRadio);
+// a tag just searches. ?cat= is still honoured as a legacy no-op redirect to
+// the unfiltered list, since CH-2 retired categories from the UI.
+// The channel param stays in the address; tag/cat are cleared with
+// replaceState so back/forward behaves. Returns true if it applied one.
 function applyListenParams(){
-  let cat = null, tag = null;
-  try{ const q = new URLSearchParams(location.search); cat = q.get('cat'); tag = q.get('tag'); }catch(e){}
-  if(!cat && !tag) return false;
-  if(cat){
-    activeCat = cat;
-    renderFilterPills();
-  } else {
+  let cat = null, tag = null, channel = null;
+  try{
+    const q = new URLSearchParams(location.search);
+    cat = q.get('cat'); tag = q.get('tag'); channel = q.get('channel');
+  }catch(e){}
+  if(!cat && !tag && !channel) return false;
+  switchTab('songs');
+  if(channel && channelById(channel)){
+    startChannelRadio(channel);      // filters, renders and cues; keeps the URL
+    return true;
+  }
+  if(tag){
     const se = document.getElementById('search');
     if(se) se.value = tag;
     searchTerm = tag;
   }
-  switchTab('songs');
+  renderBrowseCloud();
   renderList();
   history.replaceState({ route: 'listen' }, '', '/listen');
   return true;
@@ -4273,11 +4445,15 @@ function initRoute(){
     playSongById(songId);
     return;
   }
-  // Direct /listen?cat= or /listen?tag= (or /?cat=…): show the song page, apply
-  // the filter, no playback.
-  let cat = null, tag = null;
-  try{ const q = new URLSearchParams(location.search); cat = q.get('cat'); tag = q.get('tag'); }catch(e){}
-  if(cat || tag){
+  // Direct /listen?channel=, ?tag= or legacy ?cat=: show the song page and
+  // apply it. A channel readies its shuffle; nothing autoplays without a
+  // gesture.
+  let cat = null, tag = null, channel = null;
+  try{
+    const q = new URLSearchParams(location.search);
+    cat = q.get('cat'); tag = q.get('tag'); channel = q.get('channel');
+  }catch(e){}
+  if(cat || tag || channel){
     showPage('listen');
     applyListenParams();
     return;
