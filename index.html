@@ -204,8 +204,6 @@
   }
   .lightbox-close:hover{background:var(--accent-2); border-color:transparent;}
 
-  .now-chips{display:flex; flex-wrap:wrap; gap:0.4rem; margin-top:0.55rem;}
-  .now-chips .chip{cursor:default; text-transform:none; letter-spacing:0.02em;}
 
   .pullquote{
     margin:0.75rem 0 0; padding:0.55rem 0 0.55rem 1rem;
@@ -1185,7 +1183,6 @@
       <!-- BADGE-2: the expansive set. /song/<slug> IS this panel, so this one
            element serves both the now-playing dock and the song page. -->
       <div class="now-badges" id="now-badges"></div>
-      <div class="now-chips" id="now-chips"></div>
       <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
     </div>
@@ -1852,6 +1849,72 @@ function badgeIconHTML(name){
   return `<svg class="badge-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"`
        + ` stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`
        + ` aria-hidden="true" focusable="false">${d}</svg>`;
+}
+
+/* ------------------------------------------------------------
+   BADGE-3: the artist trophy case.
+
+   Phrasing is deliberately NOT the song phrasing. On a song "1 week at #1" is
+   that song's record; on an artist it is the catalog's, and "Hit #1" becomes a
+   count of songs rather than a yes. So this has its own label table rather
+   than reusing BADGE_LABELS and hoping the wording still reads true.
+
+   EARNED ONLY. artist_badges contains no live badges by construction (BADGE-1
+   left them out): #1-this-week, most_loved, most_talked and new are a song's
+   state right now, not something a catalog has won. They still appear on the
+   artist's individual song cards.
+   ------------------------------------------------------------ */
+const TROPHY_LABELS = {
+  hit_number_one:      (n) => `Hit #1: ${n} song${n === 1 ? '' : 's'}`,
+  weeks_at_number_one: (n) => `${n} week${n === 1 ? '' : 's'} at #1`,
+  weeks_on_chart:      (n) => `${n} week${n === 1 ? '' : 's'} on the chart`,
+  best_words:          (n) => `Best words: ${n} song${n === 1 ? '' : 's'}`,
+  best_music:          (n) => `Best music: ${n} song${n === 1 ? '' : 's'}`,
+  was_most_loved:      (n) => `Was most loved: ${n} song${n === 1 ? '' : 's'}`,
+};
+
+/* One read for the page's artist, live first and artists.json second -- the
+   same shape resolveArtist() uses, so an outage degrades the whole page
+   consistently instead of half of it. Never per-badge. */
+async function loadArtistBadges(artistId, handle){
+  if(!artistId) return [];
+  try{
+    const { data, error } = await supabaseClient
+      .from('artist_badges')
+      .select('badge, value, sort')
+      .eq('artist_id', artistId);
+    if(error) throw error;
+    if(Array.isArray(data)) return data.slice().sort((a, b) => a.sort - b.sort);
+  }catch(e){
+    console.warn('[laivy] artist_badges load failed; using artists.json.', e && e.message);
+  }
+  try{
+    const res = await fetch('/artists.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const hit = (rows || []).find(a => a.id === artistId
+      || (handle && String(a.handle).toLowerCase() === String(handle).toLowerCase()));
+    const list = (hit && Array.isArray(hit.badges)) ? hit.badges : [];
+    return list.slice().sort((a, b) => a.sort - b.sort);
+  }catch(e){ return []; }
+}
+
+/* The shelf. An artist with nothing earned gets NO section at all -- an empty
+   trophy case is worse than none, and this catalog will have artists who have
+   not won anything yet. */
+function trophyCaseHTML(list){
+  const items = (list || []).map(b => {
+    const fn = TROPHY_LABELS[b.badge];
+    if(!fn) return '';                       // a live badge would land here; none do
+    const n = b.value == null ? 0 : b.value;
+    if(n < 1) return '';
+    return `<li class="trophy">${badgeIconHTML(b.badge)}<span class="trophy-t">${escHtml(fn(n))}</span></li>`;
+  }).filter(Boolean).join('');
+  if(!items) return '';
+  return `<section class="trophy-case" aria-labelledby="trophy-h">
+      <h2 class="rail-title-h" id="trophy-h">Honors <span class="artist-he" dir="rtl" lang="he">הישגים</span></h2>
+      <ul class="trophy-list">${items}</ul>
+    </section>`;
 }
 
 /* One strip, three shapes.
@@ -2883,7 +2946,6 @@ function renderNow(){
   const bannerImg = document.getElementById('now-banner-img');
   const bannerTitle = document.getElementById('now-banner-title');
   const bannerSub = document.getElementById('now-banner-sub');
-  const chips = document.getElementById('now-chips');
   const nowTags = document.getElementById('now-tags');
   const about = document.getElementById('now-about');
   const langToggle = document.getElementById('lang-toggle');
@@ -2902,7 +2964,7 @@ function renderNow(){
     thumb.style.cssText = genArtStyle('laivy hart');
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
     topline.classList.remove('hidden');
-    chips.innerHTML = ''; nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
     const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
     dockReact.classList.add('hidden');
@@ -2988,7 +3050,6 @@ function renderNow(){
   const nowBadges = document.getElementById('now-badges');
   if(nowBadges) nowBadges.innerHTML = badgeStripHTML(s, 'full');
 
-  chips.innerHTML = s.categories.map(c => `<span class="chip">${escHtml(c)}</span>`).join('');
 
   // Tags: small, quiet, clickable chips under the categories. Only when present.
   nowTags.innerHTML = (s.tags && s.tags.length)
@@ -4764,6 +4825,11 @@ async function renderArtistPage(handle){
   const cards = mine.map((s, i) => railCardHTML(s, idxOf, 'artist', i)).join('');
   const bioHTML = a.bio ? escHtml(a.bio).replace(/\n/g, '<br>') : '';
 
+  // One read for this artist. Awaited before the page is written so the case
+  // never pops in after the songs have already painted.
+  const honors = await loadArtistBadges(a.id, a.handle);
+  if(token !== artistPageToken) return;
+
   root.innerHTML = `
     <div class="artist-wrap">
       <header class="artist-head">
@@ -4785,6 +4851,8 @@ async function renderArtistPage(handle){
           </div>
         </div>
       </header>
+
+      ${trophyCaseHTML(honors)}
 
       ${mine.length
         ? `<section class="rail" data-rail="artist">

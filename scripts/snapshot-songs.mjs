@@ -220,7 +220,33 @@ if (artists) {
   // song_count is approved songs only, matching what songs.json carries.
   const counts = new Map();
   for (const row of rows) counts.set(row.artist_id, (counts.get(row.artist_id) || 0) + 1);
-  const out = artists.map((a) => ({ ...compactArtist(a), song_count: counts.get(a.id) || 0 }));
+
+  /* BADGE-3: the trophy-case aggregate, so artists.json is a real fallback for
+     the artist page rather than leaving the case blank during an outage. Read
+     from the artist_badges view -- the aggregate semantics (distinct weeks,
+     not song-weeks) live there and must not be re-derived from song badges,
+     which would silently give a different answer. */
+  let artistBadges = new Map();
+  try {
+    const abres = await fetch(`${url}/rest/v1/artist_badges?select=artist_id,badge,value,sort`, { headers });
+    if (!abres.ok) throw new Error(`HTTP ${abres.status}`);
+    const abrows = await abres.json();
+    if (!Array.isArray(abrows)) throw new Error('not an array');
+    for (const b of abrows) {
+      if (!artistBadges.has(b.artist_id)) artistBadges.set(b.artist_id, []);
+      artistBadges.get(b.artist_id).push({ badge: b.badge, value: b.value, sort: b.sort });
+    }
+    for (const [, list] of artistBadges) list.sort((x, y) => x.sort - y.sort);
+    console.log(`[snapshot] Read artist honors for ${artistBadges.size} artist(s).`);
+  } catch (e) {
+    console.warn(`[snapshot] Could not read artist_badges (${e && e.message}) — artists.json without honors.`);
+  }
+
+  const out = artists.map((a) => ({
+    ...compactArtist(a),
+    song_count: counts.get(a.id) || 0,
+    badges: artistBadges.get(a.id) || [],
+  }));
   writeFileSync(artistsPath, JSON.stringify(out, null, 2) + '\n');
   console.log(`[snapshot] Wrote artists.json with ${out.length} artist(s).`);
 }

@@ -5,6 +5,23 @@
     "name": "Laivy Hart",
     "name_he": null,
     "avatar": null,
-    "song_count": 37
+    "song_count": 37,
+    "badges": [
+      {
+        "badge": "hit_number_one",
+        "value": 1,
+        "sort": 2
+      },
+      {
+        "badge": "weeks_at_number_one",
+        "value": 1,
+        "sort": 3
+      },
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
+    ]
   }
 ]
