@@ -57,3 +57,40 @@ begin
 
   raise notice 'inserted % new rows; still uncovered: %', n_new, coalesce(orphans, 'none');
 end $$;
+
+-- ------------------------------------------------------------
+-- CH-3 Step 1: the last membership, appended here rather than given its own
+-- file — it is one row of the same seed. Applied as
+-- 011c_membership_hear_it_from_them.
+--
+-- "Hear it From Them" was the one approved song CH-2's list left unplaced.
+-- With this row, coverage IS complete, so the assertion below is fatal again.
+-- ------------------------------------------------------------
+do $$
+declare
+  orphans text;
+  n_fire  int;
+begin
+  if not exists (select 1 from public.songs where slug = 'hear-it-from-them-7886') then
+    raise exception 'hear-it-from-them-7886 does not resolve to a song';
+  end if;
+
+  insert into public.song_channels (song_id, channel_id, sort_order)
+  select g.id, 'fire-me-up', 90
+    from public.songs g
+   where g.slug = 'hear-it-from-them-7886'
+  on conflict (song_id, channel_id) do nothing;
+
+  select count(*) into n_fire from public.song_channels where channel_id = 'fire-me-up';
+  if n_fire <> 9 then
+    raise exception 'Expected fire-me-up to have 9 members, it has %', n_fire;
+  end if;
+
+  select string_agg(g.slug, ', ') into orphans
+    from public.songs g
+   where g.status = 'approved'
+     and not exists (select 1 from public.song_channels sc where sc.song_id = g.id);
+  if orphans is not null then
+    raise exception 'Approved songs still with no channel: %', orphans;
+  end if;
+end $$;
