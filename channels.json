@@ -1,0 +1,58 @@
+[
+  {
+    "id": "inspire-me",
+    "title": "INSPIRE ME",
+    "tagline": "For songs that make you want to rise, act, grow, overcome.",
+    "sort_order": 10,
+    "active": true
+  },
+  {
+    "id": "make-me-feel-good",
+    "title": "MAKE ME FEEL GOOD",
+    "tagline": "Bright, warm, optimistic, joyful.",
+    "sort_order": 20,
+    "active": true
+  },
+  {
+    "id": "move-me",
+    "title": "MOVE ME",
+    "tagline": "Heart, family, longing, vulnerability, beauty.",
+    "sort_order": 30,
+    "active": true
+  },
+  {
+    "id": "perceptions",
+    "title": "PERCEPTIONS",
+    "tagline": "You've always seen it one way. Maybe there's another.",
+    "sort_order": 40,
+    "active": true
+  },
+  {
+    "id": "help-me-escape",
+    "title": "HELP ME ESCAPE",
+    "tagline": "Music that takes you somewhere else.",
+    "sort_order": 50,
+    "active": true
+  },
+  {
+    "id": "fire-me-up",
+    "title": "FIRE ME UP",
+    "tagline": "Driving, powerful, defiant.",
+    "sort_order": 60,
+    "active": true
+  },
+  {
+    "id": "wind-me-down",
+    "title": "WIND ME DOWN",
+    "tagline": "Quiet, warm, reflective.",
+    "sort_order": 70,
+    "active": true
+  },
+  {
+    "id": "celebrate-with-me",
+    "title": "CELEBRATE WITH ME",
+    "tagline": "A different reason to press play.",
+    "sort_order": 80,
+    "active": true
+  }
+]

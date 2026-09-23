@@ -49,7 +49,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "perceptions"
+    ]
   },
   {
     "title": "Bonds of Darkness",
@@ -104,7 +107,8 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": []
   },
   {
     "title": "Fires Still Burning",
@@ -156,7 +160,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "fire-me-up"
+    ]
   },
   {
     "title": "Holy Land Vacation",
@@ -206,7 +214,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "help-me-escape",
+      "celebrate-with-me"
+    ]
   },
   {
     "title": "Jewish USA",
@@ -258,7 +271,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "help-me-escape"
+    ]
   },
   {
     "title": "My Perfect World",
@@ -307,7 +323,13 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "perceptions",
+      "help-me-escape",
+      "celebrate-with-me"
+    ]
   },
   {
     "title": "Rising Like Lions",
@@ -360,7 +382,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "fire-me-up"
+    ]
   },
   {
     "title": "Segulos Galore",
@@ -410,7 +436,8 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": []
   },
   {
     "title": "She Carried Me",
@@ -463,7 +490,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me"
+    ]
   },
   {
     "title": "Standing Proud",
@@ -515,7 +545,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "fire-me-up"
+    ]
   },
   {
     "title": "The Walls Fall First",
@@ -565,7 +599,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "fire-me-up"
+    ]
   },
   {
     "title": "The Year Is Waiting",
@@ -618,7 +656,8 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": []
   },
   {
     "title": "אַל תַּשְׁלִיכֵנִי",
@@ -671,7 +710,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me",
+      "wind-me-down"
+    ]
   },
   {
     "title": "אֱמֶת לַאֲמִתּוֹ",
@@ -723,7 +766,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "perceptions"
+    ]
   },
   {
     "title": "ברכי נפשי",
@@ -776,7 +823,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "perceptions",
+      "help-me-escape",
+      "wind-me-down"
+    ]
   },
   {
     "title": "גֶּשֶׁם וְטַל",
@@ -829,7 +881,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "help-me-escape",
+      "wind-me-down"
+    ]
   },
   {
     "title": "דוד מכרכר",
@@ -881,7 +938,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "fire-me-up",
+      "celebrate-with-me"
+    ]
   },
   {
     "title": "המלאכה לגמור",
@@ -930,7 +992,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me"
+    ]
   },
   {
     "title": "וְשָׂא נֵס",
@@ -980,7 +1045,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "fire-me-up"
+    ]
   },
   {
     "title": "יָבֹאוּ וְיָעִידוּ",
@@ -1030,7 +1098,8 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": []
   },
   {
     "title": "כְּאִלּוּ בָּנָה",
@@ -1083,7 +1152,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "celebrate-with-me"
+    ]
   },
   {
     "title": "לָגַעַת בְּנִשְׁמָתִי",
@@ -1136,7 +1209,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me",
+      "help-me-escape",
+      "wind-me-down"
+    ]
   },
   {
     "title": "מי יתן",
@@ -1188,7 +1266,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me"
+    ]
   },
   {
     "title": "מָלְאָה הָאָרֶץ דֵּעָה",
@@ -1240,7 +1321,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "perceptions"
+    ]
   },
   {
     "title": "נִכְסְפָה",
@@ -1290,7 +1374,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me"
+    ]
   },
   {
     "title": "סֻלָּם יַעֲקֹב",
@@ -1342,7 +1429,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "perceptions"
+    ]
   },
   {
     "title": "עוֹשֶׂה שָׁלוֹם",
@@ -1395,7 +1486,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "perceptions",
+      "wind-me-down"
+    ]
   },
   {
     "title": "עַל בְּלִימָה",
@@ -1448,7 +1543,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "perceptions",
+      "wind-me-down"
+    ]
   },
   {
     "title": "עָלֹה נַעֲלֶה",
@@ -1500,7 +1599,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "inspire-me",
+      "fire-me-up"
+    ]
   },
   {
     "title": "פִּתְחִי לִי",
@@ -1553,7 +1656,12 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me",
+      "help-me-escape",
+      "wind-me-down"
+    ]
   },
   {
     "title": "קָמוּ בָנֶיהָ",
@@ -1606,7 +1714,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "celebrate-with-me"
+    ]
   },
   {
     "title": "רֹאשׁ חֹדֶשׁ",
@@ -1658,7 +1770,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "help-me-escape"
+    ]
   },
   {
     "title": "רגע אחד",
@@ -1708,7 +1824,8 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": []
   },
   {
     "title": "רְפָאֵנוּ",
@@ -1761,7 +1878,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me",
+      "wind-me-down"
+    ]
   },
   {
     "title": "שְׁכִינָה בֵּינֵיהֶן",
@@ -1813,7 +1934,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me"
+    ]
   },
   {
     "title": "שמם אדם",
@@ -1863,7 +1987,10 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "move-me"
+    ]
   },
   {
     "title": "תִּפְאֶרֶת בָּנִים",
@@ -1916,6 +2043,11 @@
       "name": "Laivy Hart",
       "name_he": null,
       "avatar": null
-    }
+    },
+    "channels": [
+      "make-me-feel-good",
+      "move-me",
+      "celebrate-with-me"
+    ]
   }
 ]

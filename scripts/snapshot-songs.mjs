@@ -20,7 +20,9 @@
 
    Since 006_artists_and_ownership it also filters to status = 'approved' and
    embeds the owning artist on each row, and writes artists.json beside
-   songs.json. The status filter is belt and braces: RLS already hides
+   songs.json. Since CH-1 it also embeds `channels: [id, …]` on each row and
+   writes channels.json. Category fields are still emitted untouched; retiring
+   them from the UI is CH-2. The status filter is belt and braces: RLS already hides
    everything else from the publishable key, but naming it here means the
    snapshot cannot quietly start carrying drafts if that policy ever loosens.
 
@@ -38,6 +40,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outPath = join(root, 'songs.json');
 const chartPath = join(root, 'chart.json');
 const artistsPath = join(root, 'artists.json');
+const channelsPath = join(root, 'channels.json');
 const sitemapPath = join(root, 'sitemap.xml');
 const robotsPath = join(root, 'robots.txt');
 
@@ -118,8 +121,65 @@ if (artists) {
   }
 }
 
+/* ------------------------------------------------------------
+   Channels (CH-1). Overlapping mood sets, many per song — the browse layer
+   that will replace the three category groups. This embeds `channels: [id, …]`
+   on every song, ordered by the CHANNEL's sort_order so a consumer can render
+   them in the owner's intended order without a second lookup, and writes
+   channels.json beside songs.json.
+
+   Nothing in index.html reads either yet; the homepage strip and the /listen
+   swap are CH-2. Category fields are deliberately left untouched.
+
+   Soft-fail like artists above: songs.json is the artifact the site cannot do
+   without, so if either channel request fails we still write the songs, just
+   without the channel ids, and keep any existing channels.json.
+   ------------------------------------------------------------ */
+let channels = null;
+try {
+  const cres = await fetch(
+    `${url}/rest/v1/channels?select=id,title,tagline,sort_order,active&order=sort_order`,
+    { headers },
+  );
+  if (!cres.ok) throw new Error(`HTTP ${cres.status}`);
+  const crows = await cres.json();
+  if (!Array.isArray(crows)) throw new Error('not an array');
+
+  const mres = await fetch(
+    `${url}/rest/v1/song_channels?select=song_id,channel_id`,
+    { headers },
+  );
+  if (!mres.ok) throw new Error(`memberships HTTP ${mres.status}`);
+  const mrows = await mres.json();
+  if (!Array.isArray(mrows)) throw new Error('memberships not an array');
+
+  channels = crows;
+
+  // Rank by the channel's own sort_order, so every song's list comes out in
+  // the same, deliberate order rather than in whatever order PostgREST
+  // returned the membership rows.
+  const rank = new Map(crows.map((c, i) => [c.id, i]));
+  const bySong = new Map();
+  for (const m of mrows) {
+    if (!rank.has(m.channel_id)) continue;          // inactive or unknown
+    if (!bySong.has(m.song_id)) bySong.set(m.song_id, []);
+    bySong.get(m.song_id).push(m.channel_id);
+  }
+  for (const [, list] of bySong) list.sort((a, b) => rank.get(a) - rank.get(b));
+  for (const row of rows) row.channels = bySong.get(row.id) || [];
+} catch (e) {
+  console.warn(`[snapshot] Could not read channels (${e && e.message}) — writing songs.json without channel ids, and keeping any existing channels.json.`);
+}
+
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');
 console.log(`[snapshot] Wrote songs.json with ${rows.length} approved songs.`);
+
+if (channels) {
+  writeFileSync(channelsPath, JSON.stringify(channels, null, 2) + '\n');
+  const placed = rows.filter((r) => r.channels && r.channels.length).length;
+  console.log(`[snapshot] Wrote channels.json with ${channels.length} channel(s); `
+    + `${placed}/${rows.length} songs carry at least one channel.`);
+}
 
 if (artists) {
   // song_count is approved songs only, matching what songs.json carries.
