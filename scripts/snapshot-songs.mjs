@@ -21,7 +21,8 @@
    Since 006_artists_and_ownership it also filters to status = 'approved' and
    embeds the owning artist on each row, and writes artists.json beside
    songs.json. Since CH-1 it also embeds `channels: [id, …]` on each row and
-   writes channels.json. Category fields are still emitted untouched; retiring
+   writes channels.json. Since BADGE-1 it also embeds
+   `badges: [{badge, value, sort}, …]` read from the song_badges view. Category fields are still emitted untouched; retiring
    them from the UI is CH-2. The status filter is belt and braces: RLS already hides
    everything else from the publishable key, but naming it here means the
    snapshot cannot quietly start carrying drafts if that policy ever loosens.
@@ -169,6 +170,40 @@ try {
   for (const row of rows) row.channels = bySong.get(row.id) || [];
 } catch (e) {
   console.warn(`[snapshot] Could not read channels (${e && e.message}) — writing songs.json without channel ids, and keeping any existing channels.json.`);
+}
+
+/* ------------------------------------------------------------
+   Badges (BADGE-1). song_badges is a VIEW, so there is nothing to compute
+   here -- read it and group by song. Ordered by `sort`, which is the priority
+   the view already assigns, so a consumer never re-derives it.
+
+   CAVEAT worth knowing: four of these badges are LIVE (number_one_week,
+   most_loved, most_talked, new), so what lands in songs.json is their value at
+   BUILD TIME. The snapshot is the offline/outage fallback; a live read is
+   always fresher. BADGE-2 decides which to prefer.
+
+   Soft-fail like artists and channels: songs.json is the artifact the site
+   cannot do without, so a failed badge read still writes the songs, just
+   without the badges array.
+   ------------------------------------------------------------ */
+try {
+  const bres = await fetch(`${url}/rest/v1/song_badges?select=song_id,badge,value,sort`, { headers });
+  if (!bres.ok) throw new Error(`HTTP ${bres.status}`);
+  const brows = await bres.json();
+  if (!Array.isArray(brows)) throw new Error('not an array');
+
+  const bySong = new Map();
+  for (const b of brows) {
+    if (!bySong.has(b.song_id)) bySong.set(b.song_id, []);
+    bySong.get(b.song_id).push({ badge: b.badge, value: b.value, sort: b.sort });
+  }
+  for (const [, list] of bySong) list.sort((a, b) => a.sort - b.sort);
+  for (const row of rows) row.badges = bySong.get(row.id) || [];
+
+  const earned = rows.reduce((n, r) => n + r.badges.length, 0);
+  console.log(`[snapshot] Read ${earned} badge(s) across ${bySong.size} song(s).`);
+} catch (e) {
+  console.warn(`[snapshot] Could not read song_badges (${e && e.message}) — writing songs.json without badges.`);
 }
 
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');

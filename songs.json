@@ -52,6 +52,28 @@
     },
     "channels": [
       "perceptions"
+    ],
+    "badges": [
+      {
+        "badge": "hit_number_one",
+        "value": null,
+        "sort": 2
+      },
+      {
+        "badge": "weeks_at_number_one",
+        "value": 1,
+        "sort": 3
+      },
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      },
+      {
+        "badge": "most_loved",
+        "value": null,
+        "sort": 8
+      }
     ]
   },
   {
@@ -111,7 +133,8 @@
     "channels": [
       "move-me",
       "perceptions"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "Fires Still Burning",
@@ -167,7 +190,8 @@
     "channels": [
       "inspire-me",
       "fire-me-up"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "Holy Land Vacation",
@@ -222,6 +246,13 @@
       "make-me-feel-good",
       "help-me-escape",
       "celebrate-with-me"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -277,7 +308,8 @@
     },
     "channels": [
       "help-me-escape"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "My Perfect World",
@@ -332,6 +364,23 @@
       "perceptions",
       "help-me-escape",
       "celebrate-with-me"
+    ],
+    "badges": [
+      {
+        "badge": "number_one_week",
+        "value": null,
+        "sort": 1
+      },
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      },
+      {
+        "badge": "new",
+        "value": null,
+        "sort": 10
+      }
     ]
   },
   {
@@ -390,7 +439,8 @@
       "inspire-me",
       "perceptions",
       "fire-me-up"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "Segulos Galore",
@@ -443,7 +493,8 @@
     },
     "channels": [
       "make-me-feel-good"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "She Carried Me",
@@ -499,7 +550,8 @@
     },
     "channels": [
       "move-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "Standing Proud",
@@ -555,6 +607,13 @@
     "channels": [
       "inspire-me",
       "fire-me-up"
+    ],
+    "badges": [
+      {
+        "badge": "new",
+        "value": null,
+        "sort": 10
+      }
     ]
   },
   {
@@ -609,6 +668,13 @@
     "channels": [
       "inspire-me",
       "fire-me-up"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -666,6 +732,13 @@
     "channels": [
       "move-me",
       "wind-me-down"
+    ],
+    "badges": [
+      {
+        "badge": "new",
+        "value": null,
+        "sort": 10
+      }
     ]
   },
   {
@@ -723,7 +796,8 @@
     "channels": [
       "move-me",
       "wind-me-down"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "אֱמֶת לַאֲמִתּוֹ",
@@ -779,7 +853,8 @@
     "channels": [
       "inspire-me",
       "perceptions"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "ברכי נפשי",
@@ -837,7 +912,8 @@
       "perceptions",
       "help-me-escape",
       "wind-me-down"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "גֶּשֶׁם וְטַל",
@@ -895,7 +971,8 @@
       "make-me-feel-good",
       "help-me-escape",
       "wind-me-down"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "דוד מכרכר",
@@ -952,6 +1029,13 @@
       "make-me-feel-good",
       "fire-me-up",
       "celebrate-with-me"
+    ],
+    "badges": [
+      {
+        "badge": "most_loved",
+        "value": null,
+        "sort": 8
+      }
     ]
   },
   {
@@ -1004,7 +1088,8 @@
     },
     "channels": [
       "inspire-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "וְשָׂא נֵס",
@@ -1057,7 +1142,8 @@
     },
     "channels": [
       "fire-me-up"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "יָבֹאוּ וְיָעִידוּ",
@@ -1110,7 +1196,8 @@
     },
     "channels": [
       "fire-me-up"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "כְּאִלּוּ בָּנָה",
@@ -1167,6 +1254,13 @@
     "channels": [
       "make-me-feel-good",
       "celebrate-with-me"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -1225,6 +1319,18 @@
       "move-me",
       "help-me-escape",
       "wind-me-down"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      },
+      {
+        "badge": "most_loved",
+        "value": null,
+        "sort": 8
+      }
     ]
   },
   {
@@ -1280,7 +1386,8 @@
     },
     "channels": [
       "move-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "מָלְאָה הָאָרֶץ דֵּעָה",
@@ -1335,7 +1442,8 @@
     },
     "channels": [
       "perceptions"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "נִכְסְפָה",
@@ -1388,7 +1496,8 @@
     },
     "channels": [
       "move-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "סֻלָּם יַעֲקֹב",
@@ -1444,7 +1553,8 @@
     "channels": [
       "inspire-me",
       "perceptions"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "עוֹשֶׂה שָׁלוֹם",
@@ -1501,6 +1611,13 @@
     "channels": [
       "perceptions",
       "wind-me-down"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -1558,7 +1675,8 @@
     "channels": [
       "perceptions",
       "wind-me-down"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "עָלֹה נַעֲלֶה",
@@ -1614,7 +1732,8 @@
     "channels": [
       "inspire-me",
       "fire-me-up"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "פִּתְחִי לִי",
@@ -1672,6 +1791,13 @@
       "move-me",
       "help-me-escape",
       "wind-me-down"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -1729,7 +1855,8 @@
     "channels": [
       "make-me-feel-good",
       "celebrate-with-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "רֹאשׁ חֹדֶשׁ",
@@ -1785,7 +1912,8 @@
     "channels": [
       "make-me-feel-good",
       "help-me-escape"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "רגע אחד",
@@ -1838,6 +1966,13 @@
     },
     "channels": [
       "fire-me-up"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -1895,7 +2030,8 @@
     "channels": [
       "move-me",
       "wind-me-down"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "שְׁכִינָה בֵּינֵיהֶן",
@@ -1950,6 +2086,13 @@
     },
     "channels": [
       "move-me"
+    ],
+    "badges": [
+      {
+        "badge": "weeks_on_chart",
+        "value": 1,
+        "sort": 6
+      }
     ]
   },
   {
@@ -2003,7 +2146,8 @@
     },
     "channels": [
       "move-me"
-    ]
+    ],
+    "badges": []
   },
   {
     "title": "תִּפְאֶרֶת בָּנִים",
@@ -2061,6 +2205,7 @@
       "make-me-feel-good",
       "move-me",
       "celebrate-with-me"
-    ]
+    ],
+    "badges": []
   }
 ]
