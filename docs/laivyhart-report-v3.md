@@ -285,10 +285,26 @@ Items 1–3 were closed by the cleanup pass of **23 September 2026**.
 3. ~~`sql/008b_durations_generated.sql` unrun.~~ **CLOSED** — applied as the
    migration `008b_durations`. All 37 songs now carry a `duration_seconds`.
    The file stays in `sql/` as the record of what was run.
-   **One value is worth a second look:** "Hear it From Them" reads **33s**,
-   which is not a song length. The header was read correctly by the backfill
-   script, so the object in R2 is most likely a clip or a truncated upload.
-   It is cosmetic — the value only feeds the `duration` field of the
-   MusicRecording JSON-LD — but re-uploading the full audio would fix it.
+   **One value was wrong and has since been corrected** (23 September 2026):
+   "Hear it From Them" read **33s**. The audio in R2 was never truncated — the
+   file simply carries no Xing/VBRI header, so `music-metadata` could not read
+   a declared duration and estimated one from the buffer it was given. The
+   backfill hands it a 512 KB `Range` slice, and
+   `512*1024*8 / 128000 bps = 32.77s`, which rounded to 33. Parsing the whole
+   5,756,589-byte object gives **359.78s → 360s**, agreeing three ways (parser
+   duration, `numberOfSamples/sampleRate`, `totalBytes*8/bitrate`) and matching
+   the owner's player reading of −5:40 remaining at 0:18. Fixed by the one-row
+   migration `data_fix_duration_hear_it_from_them`.
+
+   The other 36 were screened by **implied bitrate** (`bytes*8/duration`, which
+   needs only a `HEAD`): all land in a normal **128–225 kbps** band, so they
+   are credible. The bad row implied 1396 kbps, which no MP3 is. That screen is
+   the cheap way to catch this class of error in future.
+
+   **Latent bug, not yet fixed:** `scripts/backfill-durations.mjs` will make the
+   same mistake on any future file lacking a Xing header, and it fails silently
+   with a plausible-looking small number. It should reject a duration whose
+   implied bitrate is outside roughly 64–320 kbps and re-read the full object
+   instead.
 4. Avatar orphan listing needs wrangler 4 (`r2 object list` does not exist in
    the pinned 3.x).
