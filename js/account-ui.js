@@ -170,7 +170,7 @@ function renderSlot(slot) {
     chip.textContent = initialOf(artist);
   }
 
-  const menu = el('div', 'lv-menu');
+  const menu = el('div', 'lv-menu account-menu');
   menu.setAttribute('role', 'menu');
   menu.hidden = true;
   /* "My page" only points at a public page when there IS one. Since 1A-7 a

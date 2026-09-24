@@ -12,6 +12,12 @@
      Save draft      status='draft'   — no transliteration, no checkbox needed
      Submit for review status='submitted' — full validation, then the triggers
 
+   Submit runs in a fixed order: validate -> upload -> write -> transition.
+   Cheap checks first, so a missing transliteration never costs a 20 MB
+   upload; the upload before any row is touched; the content (with the new
+   media URLs) written as a draft; and only then the status flip, so a refusal
+   from the guard (caps, account age) leaves a saved draft, not lost uploads.
+
    Media goes to the Worker's JWT routes with the session's access token:
    /upload/audio -> songs/<sub>/, /upload/cover -> covers/<sub>/. The admin's
    UPLOAD_TOKEN is never involved and a contributor never holds it.
@@ -89,10 +95,13 @@ const isHebrewTitle = (s) => /[֐-׿]/.test(s.title || '');
 /* Draft rules are deliberately looser than submit rules: a draft is a
    scratchpad, and demanding a transliteration before someone has even chosen
    a file would be the wrong moment to ask. */
-export function validateForSubmit(song, agreed) {
+/* `hasPendingAudio`: a file chosen in this form counts, because Submit
+   uploads it before it transitions. Audio is required as "already uploaded
+   OR about to be uploaded by this same click". */
+export function validateForSubmit(song, agreed, hasPendingAudio = false) {
   const errs = [];
   if (!(song.title || '').trim()) errs.push('A title is needed.');
-  if (!(song.audio_url || '').trim()) errs.push('An audio file is needed.');
+  if (!(song.audio_url || '').trim() && !hasPendingAudio) errs.push('An audio file is needed.');
   if (isHebrewTitle(song) && !(song.title_translit || '').trim()) {
     errs.push('A transliteration is needed for a Hebrew title, so your song gets a readable web address.');
   }
@@ -136,25 +145,40 @@ async function stampTermsIfNeeded(uid) {
   } catch (e) { /* consent stamping must never block a submission */ }
 }
 
+/* Statuses a contributor's row can be written back to 'draft' from. The guard
+   refuses approved -> draft, and pulling a 'submitted' song back to draft would
+   drop it out of the queue, so those two are written straight to 'submitted'. */
+const DRAFTABLE = new Set(['draft', 'rejected', 'removed']);
+
 export async function saveSong(mode, form, setStatus) {
   const uid = authUser() && authUser().id;
   if (!uid) throw new Error('Please sign in.');
 
+  // 1. Validate — cheap checks only, before any byte is uploaded.
   const song = { ...current, ...form };
-  const errs = mode === 'submit' ? validateForSubmit(song, form.agreed) : validateForDraft(song);
+  const errs = mode === 'submit' ? validateForSubmit(song, form.agreed, !!pendingAudio) : validateForDraft(song);
   if (errs.length) return { errors: errs };
 
-  // Media first: a failed upload must not leave a half-saved row behind.
-  if (pendingAudio) {
-    song.audio_url = await uploadMedia('audio', pendingAudio, pendingAudio.type || 'audio/mpeg', setStatus);
-    const d = await readAudioDuration(pendingAudio);
-    if (d) song.duration_seconds = d;
-  }
-  if (pendingCover) {
-    let blob = pendingCover, ctype = 'image/jpeg';
-    try { const c = await compressImage(pendingCover, 1600, 0.82); if (c) blob = c; }
-    catch (e) { /* send the original if compression fails */ }
-    song.cover_url = await uploadMedia('cover', blob, ctype, setStatus);
+  // 2. Upload. Media first: a failed upload must not leave a half-saved row
+  //    behind, and on Submit it must not transition anything.
+  try {
+    if (pendingAudio) {
+      song.audio_url = await uploadMedia('audio', pendingAudio, pendingAudio.type || 'audio/mpeg', setStatus);
+      const d = await readAudioDuration(pendingAudio);
+      if (d) song.duration_seconds = d;
+    }
+    if (pendingCover) {
+      let blob = pendingCover, ctype = 'image/jpeg';
+      try { const c = await compressImage(pendingCover, 1600, 0.82); if (c) blob = c; }
+      catch (e) { /* send the original if compression fails */ }
+      song.cover_url = await uploadMedia('cover', blob, ctype, setStatus);
+    }
+  } catch (e) {
+    const why = (e && e.message) || 'The upload failed.';
+    if (mode !== 'submit') throw e;
+    return { errors: [why, current.id
+      ? 'Nothing was submitted; your song is unchanged. Please try again.'
+      : 'Nothing was submitted or saved. Please try again.'] };
   }
 
   const payload = {
@@ -176,6 +200,13 @@ export async function saveSong(mode, form, setStatus) {
   // the guard refuses a content edit that tries to stay approved.
   if (current.id && current.status === 'approved') payload.status = 'submitted';
 
+  // A submit on a new or draft-like row writes the content as a draft first
+  // and transitions in a second call (step 4).
+  const twoStep = mode === 'submit' && (!current.id || DRAFTABLE.has(current.status));
+  const finalStatus = payload.status;
+  if (twoStep) payload.status = 'draft';
+
+  // 3. Write.
   if (setStatus) setStatus('Saving…');
   let error, saved = current.id;
   if (current.id) {
@@ -192,9 +223,21 @@ export async function saveSong(mode, form, setStatus) {
   // only ever make them less accurate.
   if (error) return { errors: [error.message] };
 
-  if (payload.status === 'submitted') await stampTermsIfNeeded(uid);
+  // The row now holds the uploaded media, so a retry must neither insert a
+  // second row nor upload the same files again.
+  Object.assign(current, payload, { id: saved });
   pendingAudio = null; pendingCover = null;
-  return { id: saved, status: payload.status };
+
+  // 4. Transition.
+  if (twoStep) {
+    if (setStatus) setStatus('Submitting for review…');
+    ({ error } = await supabase.from('songs').update({ status: finalStatus }).eq('id', saved));
+    if (error) return { id: saved, errors: [error.message, 'Your song was saved as a draft; it was not submitted.'] };
+    current.status = finalStatus;
+  }
+
+  if (finalStatus === 'submitted') await stampTermsIfNeeded(uid);
+  return { id: saved, status: finalStatus };
 }
 
 export async function withdrawSong(songId) {
@@ -234,6 +277,8 @@ export async function renderUploadPage(container, songId) {
 
   current = blankSong(user.id);
   lastReason = null;
+  // Fresh file inputs, so nothing chosen on a previous render may ride along.
+  pendingAudio = null; pendingCover = null;
   if (songId) {
     const { data, error } = await supabase.from('songs').select('*').eq('id', songId).maybeSingle();
     // RLS already scopes this to the caller's own songs, so a miss is a miss.
@@ -343,28 +388,36 @@ export async function renderUploadPage(container, songId) {
     if (f.size > AUDIO_MAX_BYTES) { note.textContent = `That file is ${(f.size / 1048576).toFixed(1)} MB. The limit is 20 MB.`; return; }
     if (f.type && !AUDIO_TYPES.includes(f.type)) { note.textContent = 'Please choose an MP3, M4A or WAV file.'; return; }
     pendingAudio = f;
-    note.textContent = `${f.name} — ${(f.size / 1048576).toFixed(1)} MB, uploads when you save.`;
+    note.textContent = `${f.name} — ${(f.size / 1048576).toFixed(1)} MB, uploads when you save or submit.`;
   });
 
   container.querySelector('#u-cover').addEventListener('change', (e) => {
     const f = e.target.files[0] || null;
     const note = container.querySelector('#u-cover-status');
     pendingCover = f;
-    note.textContent = f ? `${f.name} — resized and uploaded when you save.`
+    note.textContent = f ? `${f.name} — resized and uploaded when you save or submit.`
                          : 'Without one, your song gets a coloured plate with its name on it.';
   });
 
+  const buttons = [...container.querySelectorAll('.u-actions button')];
+  let busy = false;
   const run = async (mode) => {
+    if (busy) return;
+    busy = true;
+    buttons.forEach((b) => { b.disabled = true; });
     try {
       const out = await saveSong(mode, fieldsFromDom(container), setStatus);
+      // Whatever was pending has been uploaded (even when a later step failed).
+      if (!pendingAudio && current.audio_url) container.querySelector('#u-audio-status').textContent = 'A file is already attached.';
+      if (!pendingCover && current.cover_url) container.querySelector('#u-cover-status').textContent = 'A cover is already attached.';
       if (out.errors) { setErrors(out.errors); return; }
-      current.id = out.id;
       msg.className = 'u-msg is-ok';
       msg.textContent = out.status === 'submitted'
         ? 'Submitted for review. You will see it here until it is approved.'
         : 'Draft saved.';
       if (out.status === 'submitted') setTimeout(() => renderUploadPage(container, out.id), 1200);
     } catch (e) { setErrors([(e && e.message) || 'Something went wrong.']); }
+    finally { busy = false; buttons.forEach((b) => { b.disabled = false; }); }
   };
   container.querySelector('#u-draft').addEventListener('click', () => run('draft'));
   container.querySelector('#u-submit').addEventListener('click', () => run('submit'));
