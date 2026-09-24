@@ -327,8 +327,29 @@
   /* Reuses .lv-menu (the account-chip menu) wholesale -- same surface, border,
      shadow and radius -- and only overrides the anchoring, since this one hangs
      from a control on the left of its row rather than the top-right chip. */
-  .mood-menu{
-    left:0; right:auto; min-width:13rem; max-height:60vh; overflow-y:auto;
+  /* DIAGNOSIS -> FIX, four things at once. Specificity .lv-menu.mood-menu so
+     these beat the shared .lv-menu rules whatever the file order.
+
+     1. OPAQUE. .lv-menu paints var(--glass-hi), which is rgba(255,255,255,0.07)
+        in dark -- 7% white, i.e. see-through. Fine over the topbar where the
+        account chip lives; useless over a busy song list. --bg-2 is the site's
+        solid panel surface (what .lv-modal uses) and is an opaque hex in all
+        eight theme x lighting combinations.
+     2. TOP-MOST. z-index 360 clears the loves row (150), the mini-player (200)
+        and the account menu (301), and stays under the true modals (400).
+     3. NOT CLIPPED. position:fixed, with coordinates set from the button's
+        rect at open time -- see placeMoodMenu(). The element is also PORTALLED
+        to <body>; see the note there for why fixed alone is not enough.
+     4. POINTER-CAPTURING. An explicit pointer-events:auto plus a solid fill,
+        so a tap on the panel's padding cannot reach a control behind it. */
+  .lv-menu.mood-menu{
+    position:fixed; top:0; left:0; right:auto; z-index:360;
+    min-width:13rem; max-width:min(18rem, calc(100vw - 1.5rem));
+    max-height:min(60vh, 26rem); overflow-y:auto;
+    background:var(--bg-2);
+    border:1px solid var(--glass-border);
+    box-shadow:0 18px 48px rgba(0,0,0,0.45);
+    pointer-events:auto;
   }
   .mood-menu-item{
     display:flex; align-items:center; gap:0.5rem; width:100%;
@@ -4086,7 +4107,46 @@ document.getElementById('radio-btn').addEventListener('click', startRadio);
    implementation rather than two that can drift. */
 const moodBtn  = document.getElementById('mood-radio-btn');
 const moodMenu = document.getElementById('mood-menu');
-let onMoodDocClick = null, onMoodKeydown = null;
+let onMoodDocClick = null, onMoodKeydown = null, onMoodReflow = null;
+
+/* PORTAL. The menu was authored inside .mood-radio-wrap, which sits under
+   .browse -> .panel{overflow:hidden}. Two separate ancestors broke it:
+
+     - .panel's overflow:hidden CLIPS it. .tabs-radio is margin-left:auto, so
+       the button sits at the panel's right edge and a 13rem menu ran straight
+       off that edge and was cut -- which is why the list looked incomplete.
+     - .browse is position:sticky, and sticky ALWAYS creates a stacking
+       context. That trapped the menu's z-index inside .browse, so it could not
+       rise above the mini-player or the dock no matter how high it was set.
+
+   position:fixed escapes the clipping but NOT the stacking context, so neither
+   fix alone is enough. Moving the element to <body> escapes both. Done once at
+   startup rather than on every open, so there is no DOM churn and the
+   open/close listeners keep working on the same node. */
+if(moodMenu && document.body) document.body.appendChild(moodMenu);
+
+/* Anchor the fixed panel under the button, clamped to the viewport so it can
+   never hang off an edge, and flipped above the button when there is more room
+   there. Recomputed on open and on any scroll/resize while open. */
+function placeMoodMenu(){
+  if(!moodMenu || !moodBtn || moodMenu.hidden) return;
+  const b = moodBtn.getBoundingClientRect();
+  const m = moodMenu.getBoundingClientRect();
+  const pad = 8;
+  const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
+
+  let top = b.bottom + 6;
+  if(vh && top + m.height > vh - pad && b.top - 6 - m.height > pad){
+    top = b.top - 6 - m.height;          // not enough room below: flip above
+  }
+  if(vh) top = Math.max(pad, Math.min(top, vh - m.height - pad));
+
+  let left = b.left;
+  if(vw) left = Math.max(pad, Math.min(left, vw - m.width - pad));
+
+  moodMenu.style.top = Math.round(top) + 'px';
+  moodMenu.style.left = Math.round(left) + 'px';
+}
 
 function renderMoodMenu(){
   if(!moodMenu) return;
@@ -4121,6 +4181,11 @@ function closeMoodMenu(){
   if(moodBtn) moodBtn.setAttribute('aria-expanded', 'false');
   if(onMoodDocClick){ document.removeEventListener('click', onMoodDocClick, true); onMoodDocClick = null; }
   if(onMoodKeydown){ document.removeEventListener('keydown', onMoodKeydown, true); onMoodKeydown = null; }
+  if(onMoodReflow){
+    window.removeEventListener('scroll', onMoodReflow, true);
+    window.removeEventListener('resize', onMoodReflow);
+    onMoodReflow = null;
+  }
 }
 
 function openMoodMenu(){
@@ -4138,7 +4203,19 @@ function openMoodMenu(){
   };
   document.addEventListener('click', onMoodDocClick, true);
   document.addEventListener('keydown', onMoodKeydown, true);
+
+  // The panel is fixed and anchored to a button that scrolls with the page.
+  // Capture-phase scroll so it follows inner scrollers too, not just the page.
+  onMoodReflow = () => placeMoodMenu();
+  window.addEventListener('scroll', onMoodReflow, true);
+  window.addEventListener('resize', onMoodReflow);
+
+  placeMoodMenu();
 }
+
+/* Belt and braces on top of the solid fill: a tap on the panel's own padding
+   is stopped here, so it can never reach a delegated handler behind it. */
+if(moodMenu) moodMenu.addEventListener('click', (e) => { e.stopPropagation(); });
 
 if(moodBtn) moodBtn.addEventListener('click', (e) => {
   e.stopPropagation();
