@@ -320,6 +320,25 @@
   .mood-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .mood-radio.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
   .mood-radio.active .mood-radio-ic{color:#fff;}
+  /* The chooser. The wrap is the positioning context for the menu; the caret
+     is what tells a visitor this opens something rather than playing. */
+  .mood-radio-wrap{position:relative; display:inline-flex; align-items:center;}
+  .mood-radio-caret{width:0.78rem; height:0.78rem; flex-shrink:0; opacity:0.85;}
+  /* Reuses .lv-menu (the account-chip menu) wholesale -- same surface, border,
+     shadow and radius -- and only overrides the anchoring, since this one hangs
+     from a control on the left of its row rather than the top-right chip. */
+  .mood-menu{
+    left:0; right:auto; min-width:13rem; max-height:60vh; overflow-y:auto;
+  }
+  .mood-menu-item{
+    display:flex; align-items:center; gap:0.5rem; width:100%;
+    font-family:var(--font-ui); font-size:0.82rem; letter-spacing:0.03em;
+  }
+  .mood-menu-item.is-on{color:var(--accent-2); font-weight:700;}
+  .mood-menu-tick{width:0.85rem; flex-shrink:0; color:var(--accent-2);}
+  .mood-menu-empty{
+    padding:0.5rem 0.65rem; font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint);
+  }
 
   /* ---------- The homepage mood strip (CH-2) ----------
      Text cards, not song cards: a mood word over a themed tint. The tint walks
@@ -1047,7 +1066,8 @@
        two across. */
     .tabs-radio{flex-basis:100%; margin-left:0; margin-top:0.15rem;}
     .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
-    .tabs-radio .mood-radio{flex:1 1 0; min-width:0; max-width:none; justify-content:center;}
+    .tabs-radio .mood-radio-wrap{flex:1 1 0; min-width:0;}
+    .tabs-radio .mood-radio{width:100%; max-width:none; justify-content:center;}
     /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
        all three loves on one line at 56px. Dock spacing is trimmed so the loves
        row adds its own height plus the one 0.5rem row gap, nothing more. */
@@ -1297,13 +1317,19 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
           Radio
         </button>
-        <!-- CH-2: was a Category radio <select>. There is no channel chooser
-             any more -- Mood radio spins the ACTIVE channel, or everything when
-             none is active -- so the control is a plain button. -->
-        <button class="mood-radio" id="mood-radio-btn" type="button" aria-label="Mood radio">
-          <svg class="mood-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
-          <span id="mood-radio-label">Mood radio</span>
-        </button>
+        <!-- Mood radio is a CHOOSER. CH-2 made it a plain button on the
+             premise that /listen had no channel picker; that premise is
+             reversed. It opens a menu of the eight moods and plays nothing
+             until one is picked, so it can never be mistaken for plain Radio. -->
+        <span class="mood-radio-wrap">
+          <button class="mood-radio" id="mood-radio-btn" type="button"
+                  aria-haspopup="menu" aria-expanded="false" aria-label="Mood radio">
+            <svg class="mood-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
+            <span id="mood-radio-label">Mood radio</span>
+            <svg class="mood-radio-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="lv-menu mood-menu" id="mood-menu" role="menu" aria-label="Choose a mood" hidden></div>
+        </span>
       </div>
     </div>
 
@@ -4016,24 +4042,77 @@ function startRadio(){
   loadSong(queue[0]);
 }
 document.getElementById('radio-btn').addEventListener('click', startRadio);
-/* Mood radio (CH-2, was Category radio).
+/* Mood radio: a chooser, not a play button.
 
-   With a channel active -- the listener arrived from the homepage strip or a
-   /listen?channel= link -- it shuffles within THAT channel and the list stays
-   filtered to it, so what is on screen is the station being heard. That is
-   exactly how Category radio behaved for a category.
+   CH-2 shipped this as a plain button that shuffled the active channel, or
+   everything when there was none. On /listen there usually IS none, so it
+   silently behaved exactly like Radio -- no filter, no station name, nothing
+   to distinguish it. It now always presents the eight moods first and plays
+   nothing until one is picked.
 
-   With no channel active it is plain Radio: shuffle everything. It never
-   presents a chooser, because channels are only reachable from the strip. */
-function startMoodRadio(){
-  if(SONGS.length === 0) return;
-  if(activeChannel && songsInChannel(activeChannel).length){
-    startChannelRadio(activeChannel);
-  } else {
-    startRadio();
+   Picking a mood hands off to goChannel(), the SAME path the homepage strip
+   uses, so the filter, the banner, the address and the shuffle are one
+   implementation rather than two that can drift. */
+const moodBtn  = document.getElementById('mood-radio-btn');
+const moodMenu = document.getElementById('mood-menu');
+let onMoodDocClick = null, onMoodKeydown = null;
+
+function renderMoodMenu(){
+  if(!moodMenu) return;
+  if(!CHANNELS.length){
+    moodMenu.innerHTML = `<div class="mood-menu-empty">No moods yet.</div>`;
+    return;
   }
+  // Same source and same order as the homepage strip, so the two can never
+  // show different sets.
+  moodMenu.innerHTML = CHANNELS.map(c => {
+    const on = c.id === activeChannel;
+    return `<button role="menuitemradio" type="button" aria-checked="${on ? 'true' : 'false'}"`
+         + ` class="mood-menu-item${on ? ' is-on' : ''}" data-channel="${escHtml(c.id)}">`
+         + `<span class="mood-menu-tick" aria-hidden="true">${on ? '&check;' : ''}</span>`
+         + `<span>${escHtml(c.title)}</span></button>`;
+  }).join('');
+  moodMenu.querySelectorAll('.mood-menu-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = item.dataset.channel;
+      closeMoodMenu();
+      if(id) goChannel(id);          // the strip's path, reused wholesale
+    });
+  });
 }
-document.getElementById('mood-radio-btn').addEventListener('click', startMoodRadio);
+
+/* Dismissal follows the account-chip menu exactly: capture-phase listeners so
+   nothing in between can swallow the click, both attached on open and removed
+   on close so none leak, plus Escape and a re-click toggle. */
+function closeMoodMenu(){
+  if(!moodMenu || moodMenu.hidden) return;
+  moodMenu.hidden = true;
+  if(moodBtn) moodBtn.setAttribute('aria-expanded', 'false');
+  if(onMoodDocClick){ document.removeEventListener('click', onMoodDocClick, true); onMoodDocClick = null; }
+  if(onMoodKeydown){ document.removeEventListener('keydown', onMoodKeydown, true); onMoodKeydown = null; }
+}
+
+function openMoodMenu(){
+  if(!moodMenu || !moodMenu.hidden) return;
+  renderMoodMenu();                  // rebuild each open so the tick is current
+  moodMenu.hidden = false;
+  if(moodBtn) moodBtn.setAttribute('aria-expanded', 'true');
+
+  onMoodDocClick = (e) => {
+    if((moodBtn && moodBtn.contains(e.target)) || moodMenu.contains(e.target)) return;
+    closeMoodMenu();
+  };
+  onMoodKeydown = (e) => {
+    if(e.key === 'Escape'){ closeMoodMenu(); try{ moodBtn.focus(); }catch(err){} }
+  };
+  document.addEventListener('click', onMoodDocClick, true);
+  document.addEventListener('keydown', onMoodKeydown, true);
+}
+
+if(moodBtn) moodBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if(moodMenu && moodMenu.hidden) openMoodMenu(); else closeMoodMenu();
+});
 
 /* Play a channel as a session shuffle.
 
@@ -4650,9 +4729,13 @@ function goListenWithParam(kind, value){
 // shareable).
 function goChannel(id){
   if(!id || !channelById(id)) return;
+  // Mood radio now calls this from /listen itself, where the route is not
+  // changing. Only count a page_view when it actually is one -- the strip
+  // still logs it, because that IS a move from the homepage.
+  const wasListen = routeFromPath() === 'listen';
   history.pushState({ route: 'listen' }, '', '/listen?channel=' + encodeURIComponent(id));
   showPage('listen');
-  laivyTrack('page_view', { route: 'listen' });
+  if(!wasListen) laivyTrack('page_view', { route: 'listen' });
   switchTab('songs');
   startChannelRadio(id);
 }
