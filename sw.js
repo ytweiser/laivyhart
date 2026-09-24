@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v101';
+const CACHE_VERSION = 'v102';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -51,6 +51,7 @@ const SHELL = [
 const BRAND = [
   'artists.json',          // artist directory, read by the /artist fallback
   'channels.json',         // CH-2 mood strip; same build-time, tolerant reasoning
+  'settings.json',         // 1B-3 launch switches; same reasoning
   'brand/banner.webp',     // full banner, wordmark on the glow background, 3:1
   'brand/banner-bg.webp',  // background only, no text, for compositing
   'brand/wordmark.webp',   // transparent wordmark, logo alone

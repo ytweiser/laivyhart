@@ -205,7 +205,139 @@ export function uploadKeyFor(kind, sub, id, ext) {
   return key;
 }
 
+/* ============================================================
+   1B-3: the daily report.
+
+   Two ways in, one pipeline:
+     scheduled()      — the 03:00 UTC cron. Calls build_daily_report() with the
+                        SERVICE ROLE key (a Wrangler secret, never in the repo)
+                        and mails the result through Resend.
+     POST /report/send — the admin's "send me today's report now" button. It
+                        verifies the caller's Supabase JWT and then calls the
+                        RPC with THAT token, not the service key: the function
+                        guards is_admin() itself, so a non-admin session is
+                        refused by the database and the service key is never
+                        spent on a request that came from a browser.
+
+   ALWAYS SENDS. An empty day is a one-line email, so silence can never be
+   mistaken for "the job broke".
+   ============================================================ */
+const SUPABASE_URL = 'https://tshkrghrgokplakktvik.supabase.co';
+const REPORT_TO = 'hello@laivyhart.com';
+const REPORT_FROM = 'Laivy Hart <hello@laivyhart.com>';
+
+export async function fetchDailyReport(bearer, env, fetchImpl = fetch) {
+  // apikey is the anon/publishable key for routing; Authorization carries
+  // whoever is actually asking (service role for the cron, the admin's own
+  // session for the button).
+  const apikey = env.SUPABASE_ANON_KEY || bearer;
+  const res = await fetchImpl(SUPABASE_URL + '/rest/v1/rpc/build_daily_report', {
+    method: 'POST',
+    headers: {
+      apikey,
+      Authorization: 'Bearer ' + bearer,
+      'Content-Type': 'application/json',
+      Prefer: 'params=single-object',
+    },
+    body: '{}',
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error('report RPC HTTP ' + res.status + ': ' + text.slice(0, 200));
+  return JSON.parse(text);
+}
+
+const fmtWhen = (iso) => {
+  try {
+    return new Date(iso).toLocaleString('en-GB', {
+      timeZone: 'Asia/Jerusalem', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
+  } catch (e) { return String(iso || ''); }
+};
+
+/* Plain text on purpose: it has to read cleanly in every mail client, and the
+   owner reads it on a phone at six in the morning. */
+export function formatReport(r) {
+  const n = (x) => Number(x || 0);
+  const signups = n(r.signups && r.signups.count);
+  const queue = n(r.review_queue && r.review_queue.count);
+  const comments = n(r.pending_comments);
+  const tags = Array.isArray(r.proposed_tags_new) ? r.proposed_tags_new : [];
+  const an = r.anomalies || {};
+  const capList = Array.isArray(an.submitters_at_or_over_cap) ? an.submitters_at_or_over_cap : [];
+  const young = an.ratings_from_young_accounts || { count: 0, songs: [] };
+  const chart = (r.chart && Array.isArray(r.chart.top10)) ? r.chart.top10 : [];
+
+  const subject = `Laivy Hart daily: ${signups} new, ${queue} to review`;
+  const quiet = signups === 0 && queue === 0 && comments === 0 && tags.length === 0
+             && capList.length === 0 && n(young.count) === 0;
+
+  const L = [];
+  L.push(`Laivy Hart — last 24 hours, to ${fmtWhen(r.generated_at)} (Jerusalem)`);
+  L.push('');
+  if (quiet) {
+    L.push('Nothing waiting: no new sign-ups, nothing to review, no pending comments, no anomalies.');
+  } else {
+    L.push(`New sign-ups: ${signups}`);
+    for (const a of (r.signups && r.signups.list) || []) {
+      L.push(`  - ${a.name || '(no name)'} @${a.handle || '?'}  ${fmtWhen(a.created_at)}`);
+    }
+    L.push('');
+    L.push(`Review queue: ${queue}`);
+    for (const s of (r.review_queue && r.review_queue.list) || []) {
+      L.push(`  - "${s.title}" by @${s.artist || '?'}  submitted ${fmtWhen(s.submitted_at)}`);
+    }
+    L.push('');
+    L.push(`Pending comments: ${comments}`);
+    L.push('');
+    L.push(`Proposed tags not yet in the vocabulary: ${tags.length ? tags.join(', ') : 'none'}`);
+    L.push('');
+    L.push('Anomalies');
+    if (!capList.length) L.push(`  - No account at or over the ${an.submissions_cap || '?'}/day submission cap.`);
+    for (const c of capList) {
+      L.push(`  - @${c.handle}: ${c.submissions_24h} submissions in 24h${c.over_cap ? '  ** OVER CAP — the guard should have stopped this **' : ' (at cap)'}`);
+    }
+    L.push(`  - Ratings from accounts younger than 7 days: ${n(young.count)}`
+      + (n(young.count) ? `  (${(young.songs || []).join(', ')})` : ''));
+  }
+  L.push('');
+  L.push(`Chart (${r.chart && r.chart.chart_date ? r.chart.chart_date : 'no snapshot yet'})`);
+  for (const c of chart) L.push(`  ${String(c.rank).padStart(2)}. ${c.title}`);
+  L.push('');
+  L.push('— sent by the Laivy Hart report job');
+  return { subject, text: L.join('\n') };
+}
+
+export async function sendReportEmail(env, subject, text, fetchImpl = fetch) {
+  if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
+  const res = await fetchImpl('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: REPORT_FROM, to: [REPORT_TO], subject, text }),
+  });
+  const body = await res.text();
+  if (!res.ok) throw new Error('Resend HTTP ' + res.status + ': ' + body.slice(0, 200));
+  return body;
+}
+
+export async function runDailyReport(bearer, env, fetchImpl = fetch) {
+  const data = await fetchDailyReport(bearer, env, fetchImpl);
+  const { subject, text } = formatReport(data);
+  await sendReportEmail(env, subject, text, fetchImpl);
+  return { subject, queue: data.review_queue && data.review_queue.count, signups: data.signups && data.signups.count };
+}
+
 export default {
+  /* The 03:00 UTC cron (06:00 Jerusalem). See wrangler.toml [triggers]. */
+  async scheduled(event, env, ctx) {
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('daily report: SUPABASE_SERVICE_ROLE_KEY not set; skipping');
+      return;
+    }
+    ctx.waitUntil(runDailyReport(env.SUPABASE_SERVICE_ROLE_KEY, env)
+      .then((r) => console.log('daily report sent:', r.subject))
+      .catch((e) => console.error('daily report failed:', e && e.message)));
+  },
+
   async fetch(request, env) {
     const origin = request.headers.get('Origin');
 
@@ -254,6 +386,26 @@ export default {
         return json({ error: 'Upload failed: ' + (e && e.message) }, 500, origin);
       }
       return json({ url: PUBLIC_BASE + '/' + key, key }, 200, origin);
+    }
+
+    /* --- /report/send: the admin's on-demand report. JWT-verified here, and
+       then the RPC is called with the admin's OWN token so the database's
+       is_admin() guard is what actually authorizes it. --- */
+    if (new URL(request.url).pathname === '/report/send') {
+      if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
+      const hdr = request.headers.get('Authorization') || '';
+      const jwt = hdr.startsWith('Bearer ') ? hdr.slice(7) : hdr;
+      try { await verifySupabaseJwt(jwt, env); }
+      catch (e) { return json({ error: 'Unauthorized: ' + (e && e.message) }, 401, origin); }
+      try {
+        const r = await runDailyReport(jwt, env);
+        return json({ ok: true, subject: r.subject }, 200, origin);
+      } catch (e) {
+        const m = (e && e.message) || 'failed';
+        // The database's own refusal for a non-admin comes back as a 403,
+        // everything else as a 502 so the admin sees which side failed.
+        return json({ error: m }, /Only an admin/.test(m) ? 403 : 502, origin);
+      }
     }
 
     /* --- /upload/audio and /upload/cover: contributors, JWT-authorized ---

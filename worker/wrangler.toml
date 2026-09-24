@@ -10,3 +10,13 @@ bucket_name = "laivyhart-audio"
 
 # UPLOAD_TOKEN is NOT stored here. Set it as an encrypted secret:
 #   npx wrangler secret put UPLOAD_TOKEN
+
+# 1B-3: the daily report. 03:00 UTC = 06:00 Jerusalem. Needs two more secrets:
+#   npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   npx wrangler secret put RESEND_API_KEY
+# The anon key is public and may sit here as a plain var (it is in config.js).
+[triggers]
+crons = ["0 3 * * *"]
+
+[vars]
+SUPABASE_ANON_KEY = "sb_publishable_nvhaOpLWBxZxo7X7tRtCWw_QhQ82dV4"

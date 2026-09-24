@@ -854,7 +854,7 @@
   .artist-owner-tools{margin:1.6rem 0 2rem;}
   .artist-owner-list{display:flex; flex-direction:column; gap:0.3rem; margin-top:0.7rem;}
 
-  /* The homepage contribute CTA (1B-2, behind SHOW_CONTRIBUTE_CTA). */
+  /* The homepage contribute CTA (1B-2; switched by site_settings.contribute_cta_enabled since 1B-3). */
   .contribute-cta{margin:2.4rem 0 1rem; text-align:center;}
   .contribute-cta-note{font-family:var(--font-ui); font-size:0.85rem; color:var(--text-dim); margin:0 0 0.9rem;}
 
@@ -2285,6 +2285,7 @@ async function loadSongs(){
   // only known once the channel list has loaded.
   await loadChannels();
   await loadBadges();
+  await loadPublicSettings();   // before initRoute: the homepage reads the CTA switch
   buildSearchIndexes();
   applySessionShuffle();
   loadRatingSettings();
@@ -2392,12 +2393,34 @@ function thumbStyle(song){
    that generated those links is hidden. */
 const SHOW_TAG_CLOUD = false;
 
-/* 1B-3 flips this to true at the same moment public signup opens. Until then
-   the homepage says nothing about contributing, because there is nowhere for a
-   stranger to sign up -- an invitation you cannot accept is worse than none.
-   The affordance is built and rendered by contributeCtaHTML(); only this
-   constant keeps it off. */
-const SHOW_CONTRIBUTE_CTA = false;
+/* 1B-3: the launch switches live in site_settings, not in code, so the owner
+   flips them in the Table Editor with no deploy -- signup first (in Supabase
+   Auth), then contribute_cta_enabled here, so no visitor ever sees an
+   invitation they cannot accept. Read live at boot from the public-read
+   site_settings table; falls back to the build-time settings.json, then to
+   these defaults, so an outage can never turn the switch ON by accident. */
+const PUBLIC_SETTING_KEYS = ['contribute_cta_enabled'];
+let PUBLIC_SETTINGS = { contribute_cta_enabled: false };
+
+function applyPublicSettings(rows){
+  for(const r of rows || []){
+    if(!PUBLIC_SETTING_KEYS.includes(r.key)) continue;
+    let v = r.value;
+    if(typeof v === 'string'){ try{ v = JSON.parse(v); }catch(e){} }
+    PUBLIC_SETTINGS[r.key] = v;
+  }
+}
+async function loadPublicSettings(){
+  try{
+    const { data, error } = await supabaseClient
+      .from('site_settings').select('key, value').in('key', PUBLIC_SETTING_KEYS);
+    if(!error && Array.isArray(data)){ applyPublicSettings(data); return; }
+  }catch(e){ /* fall through */ }
+  try{
+    const res = await fetch('/settings.json', { cache: 'no-cache' });
+    if(res.ok){ const rows = await res.json(); if(Array.isArray(rows)) applyPublicSettings(rows); }
+  }catch(e){ /* defaults stand */ }
+}
 
 // The shared tag cloud: alphabetical, two sizes by frequency. Used by the
 // homepage "Find a song" section and by /listen. Kept in the file, not
@@ -2867,7 +2890,7 @@ function tagCloud(){
    sign-in modal and lands on /upload afterwards; signed in it goes straight
    there. */
 function contributeCtaHTML(){
-  if(!SHOW_CONTRIBUTE_CTA) return '';
+  if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
   return `<section class="contribute-cta">
       <h2 class="find-song-h">Share your music</h2>
       <p class="contribute-cta-note">Original songs only. Nothing is public until it is reviewed.</p>

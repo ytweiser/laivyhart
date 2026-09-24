@@ -206,6 +206,22 @@ try {
   console.warn(`[snapshot] Could not read song_badges (${e && e.message}) — writing songs.json without badges.`);
 }
 
+/* 1B-3: the public settings subset, so the homepage's launch switch has a
+   build-time fallback. Only the keys listed are ever written -- site_settings
+   also holds admin knobs that do not belong in a public file. On failure the
+   file is simply not rewritten and the site falls back to its defaults (off). */
+try {
+  const PUBLIC_KEYS = ['contribute_cta_enabled'];
+  const sres = await fetch(`${url}/rest/v1/site_settings?select=key,value&key=in.(${PUBLIC_KEYS.join(',')})`, { headers });
+  if (!sres.ok) throw new Error(`HTTP ${sres.status}`);
+  const srows = await sres.json();
+  if (!Array.isArray(srows)) throw new Error('not an array');
+  writeFileSync(join(root, 'settings.json'), JSON.stringify(srows, null, 2) + '\n');
+  console.log(`[snapshot] Wrote settings.json with ${srows.length} public setting(s).`);
+} catch (e) {
+  console.warn(`[snapshot] Could not read public settings (${e && e.message}) — keeping any existing settings.json.`);
+}
+
 /* 1B-1: songs.json is a PUBLIC file. proposed_channels and proposed_tags are a
    contributor's private suggestions to the owner, consumed at review time, so
    they are stripped here rather than published. `select=*` picks up every new
