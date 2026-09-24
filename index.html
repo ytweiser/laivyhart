@@ -762,6 +762,10 @@
      channel is active, the banner naming it. The grouped-pill CSS went with
      the pills. */
   .filter-pills{display:flex; flex-direction:column; gap:0.45rem;}
+  /* With the cloud hidden and no channel active this container is empty; an
+     empty flex box would still contribute its parent's gap, leaving a hole
+     above the list. */
+  .filter-pills:empty{display:none;}
 
   /* ---------- Badges (BADGE-2) ----------
      A quiet honor mark, never a control: no handler, no cursor, pointer-events
@@ -2262,8 +2266,21 @@ function thumbStyle(song){
    station they are in.
    ============================================================ */
 
+/* ONE FLAG hides the tag cloud in both places it appears. Flip it to true and
+   the homepage "Find a song" section and the /listen cloud both come back --
+   nothing was deleted. Hidden for now because the catalog is small enough to
+   browse by title and the current tag vocabulary reads more scholarly than the
+   site's fun-radio feel; it will likely return with a bigger catalog and a
+   warmer vocabulary.
+
+   TAGS THEMSELVES ARE UNTOUCHED: songs.tags[], the admin Tags field, the Tag
+   search field and /listen?tag=<tag> all keep working. Only the visual cloud
+   that generated those links is hidden. */
+const SHOW_TAG_CLOUD = false;
+
 // The shared tag cloud: alphabetical, two sizes by frequency. Used by the
-// homepage "Find a song" section and by /listen.
+// homepage "Find a song" section and by /listen. Kept in the file, not
+// rendered while SHOW_TAG_CLOUD is false.
 function tagCloudHTML(){
   const tags = tagCloud();
   if(!tags.length) return '';
@@ -2275,7 +2292,9 @@ function tagCloudHTML(){
 function renderBrowseCloud(){
   const el = document.getElementById('filter-pills');
   if(!el) return;
-  const cloud = tagCloudHTML();
+  // Only the cloud is gated. The channel banner rendered below lives in this
+  // same container but belongs to the Mood radio / ?channel= flow, so it stays.
+  const cloud = SHOW_TAG_CLOUD ? tagCloudHTML() : '';
   const ch = activeChannel ? channelById(activeChannel) : null;
   el.innerHTML =
     (ch ? `<div class="channel-banner">
@@ -2930,7 +2949,9 @@ function renderHomepage(){
   // otherwise vanish -- put it first instead.
   if(!rails.some(sec => sec.key === 'most_listened')) html = moodStripHTML() + html;
   if(editors.length) html += editorsBandHTML(editors, idxOf);
-  html += findASongHTML();     // "Find a song": moved to the bottom, above the footer
+  // "Find a song" was the tag cloud alone once CH-2 removed its mood pills.
+  // Hidden behind the flag; the mood strip above is untouched.
+  if(SHOW_TAG_CLOUD) html += findASongHTML();
   el.innerHTML = html;
 
   // Find a song: a tag goes to /listen with that tag searched.
