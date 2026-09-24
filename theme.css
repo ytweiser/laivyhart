@@ -92,6 +92,22 @@
   /* Accent-tinted hairline: accent-2 in dark, accent-1 in light. */
   --accent-stroke:rgba(var(--accent-2-rgb), var(--stroke-alpha));
 
+  /* BADGE GOLD. Every badge on every surface uses this ONE token -- rows,
+     now-playing, the song page, artist cards and the trophy case. Deliberately
+     NOT a colour per badge family: the owner asked for one warm award tone,
+     not a potpourri.
+
+     Theme-aware the way --star-accent is, and for the same measured reason: a
+     bright gold on an ivory ground washes out (that is the trap the rating
+     stars hit at 1.92:1). Bright metallic gold on the dark grounds, deep brass
+     on the light ones. Measured against all four backgrounds in each lighting:
+     dark 11.83-14.28:1, light 5.32-5.51:1. One value covers all four light
+     backgrounds, so unlike --star-accent no per-theme override is needed. */
+  --badge-gold:#EFC868;
+  /* The artist-card overlay sits on a fixed dark plate over artwork, so it
+     does NOT follow the lighting -- it always wants the bright gold. */
+  --badge-gold-bright:#EFC868;
+
   /* The rating stars, same rule as the hairline above and for the same reason:
      accent-2 is the bright shade and reads on a dark ground, accent-1 is the
      deep one and is what stays legible on ivory. A star is a control, not
@@ -118,6 +134,8 @@
 
   --accent-stroke:rgba(var(--accent-1-rgb), var(--stroke-alpha));
   --star-accent:var(--accent-1);
+  /* Deep brass: the light counterpart of --badge-gold. See the note above. */
+  --badge-gold:#7F5B10;
 
   --ambient-opacity:0.16;
   --ambient-blur:84px;
@@ -589,7 +607,7 @@ body{
   border:1px solid rgba(var(--accent-2-rgb),0.30);
   cursor:default; user-select:none;
 }
-.trophy .badge-ic{ width:1.15rem; height:1.15rem; color:var(--star-accent); flex-shrink:0; }
+.trophy .badge-ic{ width:1.45rem; height:1.45rem; color:var(--badge-gold); flex-shrink:0; }
 .trophy-t{
   font-family:var(--font-ui); font-size:0.8rem; font-weight:600;
   letter-spacing:0.02em; color:var(--text); white-space:nowrap;

@@ -770,19 +770,23 @@
      needs a fixed dark plate to stay legible whatever the cover looks like). */
   .badge-strip{display:inline-flex; align-items:center; gap:0.28rem; flex-shrink:0;}
   .badge-chip, .badge-pill, .badge-more{ pointer-events:none; cursor:default; user-select:none; }
-  .badge-ic{ width:0.92rem; height:0.92rem; display:block; flex-shrink:0; pointer-events:none; }
+  .badge-ic{ width:1.25rem; height:1.25rem; display:block; flex-shrink:0; pointer-events:none; }
 
-  /* COMPACT (list rows): muted, so the row still reads as a row. */
+  /* COMPACT (list rows): gold, not grey. These are earned honors; --text-dim
+     made them read as disabled metadata. */
   .badge-strip.is-row{margin-left:0;}
-  .badge-strip.is-row .badge-chip{display:inline-flex; color:var(--text-dim);}
+  .badge-strip.is-row .badge-chip{display:inline-flex; color:var(--badge-gold);}
 
   /* The lane itself. Fixed width, never shrinks, always present: reserving it
      on un-badged rows is what keeps the whole list on one grid, so the eye
      does not have to re-find the column between a badged row and a bare one.
      Width = 2 icons (0.92rem each) + their 0.28rem gap. It is a flex ITEM of
      .row and inherits the row's vertical centring, so it adds no height. */
+  /* Widened for the bigger glyphs: 2 icons (1.25rem) + their 0.28rem gap.
+     Still a FIXED width, so the column still lines up across every row, and
+     still far under the 45px thumb that sets the row height. */
   .row-badges{
-    flex:0 0 auto; width:2.12rem; min-width:2.12rem;
+    flex:0 0 auto; width:2.78rem; min-width:2.78rem;
     display:flex; align-items:center; justify-content:flex-start;
   }
 
@@ -791,14 +795,18 @@
      changes. */
   .badge-strip.is-card{
     position:absolute; left:0.4rem; bottom:0.4rem; z-index:2;
-    display:inline-flex; align-items:center; gap:0.22rem;
-    padding:0.2rem 0.34rem; border-radius:999px;
-    background:rgba(0,0,0,0.42);
+    display:inline-flex; align-items:center; gap:0.24rem;
+    padding:0.22rem 0.38rem; border-radius:999px;
+    /* Deepened from 0.42: gold on the old plate measured 1.90:1 over a white
+       cover. At 0.65 it is 4.38:1 against the worst case artwork can give. */
+    background:rgba(0,0,0,0.65);
     backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
   }
-  .badge-strip.is-card .badge-chip{display:inline-flex; color:#fff;}
-  .badge-strip.is-card .badge-ic{width:0.82rem; height:0.82rem;}
-  .badge-more{font-family:var(--font-ui); font-size:0.58rem; font-weight:700; color:#fff;}
+  /* The plate is always dark, whatever the lighting, so this one uses the
+     bright gold rather than the lighting-aware token. */
+  .badge-strip.is-card .badge-chip{display:inline-flex; color:var(--badge-gold-bright);}
+  .badge-strip.is-card .badge-ic{width:1rem; height:1rem;}
+  .badge-more{font-family:var(--font-ui); font-size:0.62rem; font-weight:700; color:var(--badge-gold-bright);}
 
   /* EXPANSIVE (now-playing and the song page): icon + label pill. */
   .now-badges{margin-top:0.55rem;}
@@ -817,7 +825,7 @@
      light, with a deeper gold for gold/light -- and was measured when the
      rating stars were lit, so the badge glyph reuses it rather than repeating
      the mistake or inventing a second token. */
-  .badge-pill .badge-ic{color:var(--star-accent);}
+  .badge-pill .badge-ic{color:var(--badge-gold); width:1.15rem; height:1.15rem;}
   .badge-pill-t{font-family:var(--font-ui); font-size:0.68rem; font-weight:600;
     letter-spacing:0.03em; white-space:nowrap;}
 
@@ -1151,8 +1159,8 @@
     /* One icon at this width, so the lane shrinks to one icon's worth rather
        than reserving room for a second that is hidden. Still a fixed width,
        so the column still lines up. */
-    .row-badges{width:0.86rem; min-width:0.86rem;}
-    .badge-ic{width:0.86rem; height:0.86rem;}
+    .row-badges{width:1.15rem; min-width:1.15rem;}
+    .badge-ic{width:1.15rem; height:1.15rem;}
     .badge-pill-t{font-size:0.64rem;}
     .transport .tbtn:not(.play){width:2rem; height:2rem;}
     .loves-row{gap:1.4rem;}
@@ -1886,8 +1894,10 @@ function badgeLabel(b){
 function badgeIconHTML(name){
   const d = BADGE_ICONS[name];
   if(!d) return '';
+  // stroke-width 2.1 (was 1.7): at the larger sizes a hairline read as timid.
+  // It is set once here, so every surface gets the same confident weight.
   return `<svg class="badge-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor"`
-       + ` stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`
+       + ` stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"`
        + ` aria-hidden="true" focusable="false">${d}</svg>`;
 }
 
