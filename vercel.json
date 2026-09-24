@@ -16,6 +16,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/upload",
+      "destination": "/index.html"
+    },
+    {
       "source": "/terms",
       "destination": "/terms.html"
     },

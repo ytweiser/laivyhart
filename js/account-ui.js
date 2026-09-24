@@ -183,6 +183,7 @@ function renderSlot(slot) {
     : '/settings';
   menu.innerHTML =
     `<a role="menuitem" href="${esc(myPage)}">My page</a>` +
+    `<a role="menuitem" href="/upload">Upload a song</a>` +
     `<a role="menuitem" href="/settings">Settings</a>` +
     (isAdmin() ? `<a role="menuitem" href="/admin.html">Admin</a>` : '') +
     `<button role="menuitem" type="button" data-act="signout">Sign out</button>`;

@@ -793,6 +793,99 @@
      off on the glyph, nothing animated. Colour comes from theme variables only
      (the one exception is the card overlay, which sits on top of artwork and
      needs a fixed dark plate to stay legible whatever the cover looks like). */
+  /* ---------- /upload, the contributor form (1B-2) ---------- */
+  .upload-wrap{max-width:46rem; margin:0 auto; padding:1.4rem 1.5rem 6rem;}
+  .upload-wrap h1{font-family:var(--font-display); font-weight:600; font-size:2rem; margin:1rem 0 0.2rem;}
+  .upload-sub{font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); margin:0 0 1.6rem;}
+  .upload-note{font-family:var(--font-ui); font-size:0.95rem; color:var(--text-dim);}
+  .upload-wrap .field{margin-bottom:1.15rem; display:flex; flex-direction:column;}
+  .upload-wrap label{font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--text-dim); margin-bottom:0.4rem;}
+  .u-optional{text-transform:none; letter-spacing:0.02em; color:var(--text-faint); font-size:0.7rem;}
+  .upload-wrap input[type=text], .upload-wrap select, .upload-wrap textarea{
+    font-family:var(--font-ui); font-size:0.95rem; color:var(--text);
+    background:var(--chip-bg); border:1px solid var(--chip-border);
+    border-radius:var(--radius-xs); padding:0.6rem 0.7rem; width:100%;
+  }
+  .upload-wrap textarea{min-height:140px; resize:vertical; line-height:1.6;}
+  .upload-wrap input:focus, .upload-wrap select:focus, .upload-wrap textarea:focus{
+    outline:none; border-color:var(--accent-2);
+  }
+  .upload-banner{
+    display:block; margin:0 0 1.3rem; padding:0.7rem 0.9rem; border-radius:var(--radius-xs);
+    font-family:var(--font-ui); font-size:0.85rem; line-height:1.5; color:var(--text);
+    background:rgba(var(--accent-2-rgb),0.10); border:1px solid rgba(var(--accent-2-rgb),0.28);
+  }
+  .upload-banner.is-reject{background:rgba(var(--accent-1-rgb),0.12); border-color:rgba(var(--accent-1-rgb),0.34);}
+  .upload-banner-tip{display:block; margin-top:0.3rem; color:var(--text-dim); font-size:0.8rem;}
+  .u-chans{display:flex; flex-wrap:wrap; gap:0.4rem;}
+  .u-chan{
+    font-family:var(--font-ui); font-size:0.7rem; font-weight:600; letter-spacing:0.06em;
+    padding:0.4rem 0.7rem; border-radius:999px; cursor:pointer;
+    background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text-dim);
+  }
+  .u-chan.on{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .u-agree-row{
+    display:flex; align-items:flex-start; gap:0.6rem; margin:0.4rem 0 1.4rem;
+    font-family:var(--font-ui); font-size:0.88rem; line-height:1.5; color:var(--text);
+    text-transform:none; letter-spacing:normal;
+  }
+  .u-agree-row input{margin-top:0.2rem; flex-shrink:0;}
+  .u-actions{display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap;}
+  .u-withdraw{
+    background:none; border:1px solid var(--accent-1); color:var(--accent-1);
+    font-family:var(--font-ui); font-size:0.76rem; text-transform:uppercase; letter-spacing:0.05em;
+    padding:0.7rem 1.1rem; border-radius:12px; cursor:pointer; margin-left:auto;
+  }
+  .u-withdraw:hover{background:var(--accent-1); color:#fff;}
+  .u-msg{font-family:var(--font-ui); font-size:0.88rem; margin-top:1rem; line-height:1.6; color:var(--text-dim);}
+  .u-msg.is-ok{color:var(--accent-2);}
+  .u-msg.is-err{color:var(--accent-3);}
+  .artist-private-actions{margin-top:1rem;}
+  .artist-private-empty{font-family:var(--font-ui); font-size:0.85rem; color:var(--text-faint); margin:0.3rem 0 0;}
+  .artist-private-act{
+    font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--accent-3); text-decoration:none; background:none; border:0; cursor:pointer;
+    padding:0.2rem 0.4rem; border-radius:6px;
+  }
+  .artist-private-act:hover{color:var(--text);}
+  .artist-private-act.is-warn{color:var(--accent-1);}
+  .artist-private-act-row{display:inline-flex; align-items:center; gap:0.5rem; margin-left:auto;}
+  .artist-owner-tools{margin:1.6rem 0 2rem;}
+  .artist-owner-list{display:flex; flex-direction:column; gap:0.3rem; margin-top:0.7rem;}
+
+  /* The homepage contribute CTA (1B-2, behind SHOW_CONTRIBUTE_CTA). */
+  .contribute-cta{margin:2.4rem 0 1rem; text-align:center;}
+  .contribute-cta-note{font-family:var(--font-ui); font-size:0.85rem; color:var(--text-dim); margin:0 0 0.9rem;}
+
+  /* ---------- The no-cover plate (1B-2) ----------
+     Colour comes entirely from genArtStyle's inline gradient, which is built
+     from ART_THEMES[colorTheme] -- so this is theme-driven with no colour of
+     its own. Only layout and type live here. */
+  .cover-plate{display:flex; align-items:center; justify-content:center; overflow:hidden;}
+  .cover-plate-text{
+    display:flex; flex-direction:column; align-items:center; gap:0.12rem;
+    padding:0.5rem 0.6rem; text-align:center; min-width:0; max-width:100%;
+  }
+  .cover-plate-title{
+    font-family:var(--font-display); font-weight:600; font-size:0.95rem; line-height:1.2;
+    color:#fff; text-shadow:0 1px 6px rgba(0,0,0,0.45);
+    overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+  }
+  .cover-plate-title.heb{font-family:var(--font-heb); direction:rtl; font-weight:500;}
+  .cover-plate-sub{
+    font-family:var(--font-display); font-style:italic; font-size:0.72rem; line-height:1.2;
+    color:rgba(255,255,255,0.82); text-shadow:0 1px 5px rgba(0,0,0,0.45);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
+  }
+  /* The 45px round row thumb: an initial, because a title there is a smudge. */
+  .cover-plate.is-tiny .cover-plate-initial{
+    font-family:var(--font-display); font-weight:700; font-size:1.05rem;
+    color:#fff; text-shadow:0 1px 4px rgba(0,0,0,0.5); line-height:1;
+  }
+  .hero-cover-img.cover-plate .cover-plate-title{font-size:1.6rem; -webkit-line-clamp:4;}
+  .hero-cover-img.cover-plate .cover-plate-sub{font-size:0.95rem;}
+
   .badge-strip{display:inline-flex; align-items:center; gap:0.28rem; flex-shrink:0;}
   .badge-chip, .badge-pill, .badge-more{ pointer-events:none; cursor:default; user-select:none; }
   .badge-ic{ width:1.25rem; height:1.25rem; display:block; flex-shrink:0; pointer-events:none; }
@@ -2299,6 +2392,13 @@ function thumbStyle(song){
    that generated those links is hidden. */
 const SHOW_TAG_CLOUD = false;
 
+/* 1B-3 flips this to true at the same moment public signup opens. Until then
+   the homepage says nothing about contributing, because there is nowhere for a
+   stranger to sign up -- an invitation you cannot accept is worse than none.
+   The affordance is built and rendered by contributeCtaHTML(); only this
+   constant keeps it off. */
+const SHOW_CONTRIBUTE_CTA = false;
+
 // The shared tag cloud: alphabetical, two sizes by frequency. Used by the
 // homepage "Find a song" section and by /listen. Kept in the file, not
 // rendered while SHOW_TAG_CLOUD is false.
@@ -2522,13 +2622,37 @@ function eqHTML(){ return `<span class="eq"><span></span><span></span><span></sp
 // Round cover thumbnail (anchored to its focal point) when present, else a
 // Bordeaux generative circle seeded from the title. Shared by the song rows and
 // the homepage rails so focal-point handling stays in one place.
+/* The no-cover plate (1B-2). A cover is optional for contributors, so every
+   cover slot needs something honest to show. The gradient itself is NOT new --
+   genArtStyle() has always filled these slots and is already theme-driven via
+   ART_THEMES[colorTheme]. What 1B-2 adds is the song's NAME on the plate, so a
+   cover-less song is identifiable rather than an anonymous smear of colour.
+
+   The 45px row thumbnail is the exception: a title there would be an
+   illegible smudge, so it gets the first letter instead -- the same initial
+   idiom the avatar fallback already uses. */
+function defaultCoverHTML(s, cls){
+  const heb = isHebrew(s);
+  const title = (heb ? s.title : (s.title || s.title_translit)) || '';
+  const sub = heb ? (s.title_translit || '') : '';
+  const style = genArtStyle(s.title || s.title_translit || s.id);
+  const tiny = cls === 'row-thumb';
+  const inner = tiny
+    ? `<span class="cover-plate-initial" aria-hidden="true">${escHtml((title.trim()[0] || '?').toUpperCase())}</span>`
+    : `<span class="cover-plate-text">`
+      + `<span class="cover-plate-title${heb ? ' heb' : ''}">${escHtml(title)}</span>`
+      + (sub ? `<span class="cover-plate-sub">${escHtml(sub)}</span>` : '')
+      + `</span>`;
+  return `<div class="${cls} cover-plate${tiny ? ' is-tiny' : ''}" style="${style}">${inner}</div>`;
+}
+
 function coverThumbHTML(s, cls, w){
   if(s.cover){
     const fx = s.cover_focus_x == null ? 50 : s.cover_focus_x;
     const fy = s.cover_focus_y == null ? 50 : s.cover_focus_y;
     return `<img class="${cls}" src="${escHtml(cdnImg(s.cover, w))}" data-raw="${escHtml(s.cover)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" loading="lazy" style="object-position:${fx}% ${fy}%;">`;
   }
-  return `<div class="${cls}" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+  return defaultCoverHTML(s, cls);
 }
 function rowThumbHTML(s){ return coverThumbHTML(s, 'row-thumb', 140); }
 
@@ -2713,7 +2837,7 @@ function heroHTML(s, idx, label){
   const note = firstSentenceOf(s.about);
   const cover = s.cover
     ? coverThumbHTML(s, 'hero-cover-img', 900)
-    : `<div class="hero-cover-img" style="${genArtStyle(s.title || s.title_translit || s.id)}"></div>`;
+    : defaultCoverHTML(s, 'hero-cover-img');
   return `<button class="home-hero2" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
       <div class="hero-left">
         <div class="hero-label">${escHtml(label)}</div>
@@ -2738,6 +2862,19 @@ function tagCloud(){
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => a.tag.localeCompare(b.tag));   // alphabetical, not by weight
 }
+/* Deliberately understated: one quiet line at the foot of the homepage, in the
+   site's existing outlined-button idiom, not a banner. Signed out it opens the
+   sign-in modal and lands on /upload afterwards; signed in it goes straight
+   there. */
+function contributeCtaHTML(){
+  if(!SHOW_CONTRIBUTE_CTA) return '';
+  return `<section class="contribute-cta">
+      <h2 class="find-song-h">Share your music</h2>
+      <p class="contribute-cta-note">Original songs only. Nothing is public until it is reviewed.</p>
+      <button class="home-primary-btn outlined" type="button" id="contribute-btn">Upload a song</button>
+    </section>`;
+}
+
 function findASongHTML(){
   const cloud = tagCloudHTML();
   if(!cloud) return '';
@@ -2973,7 +3110,14 @@ function renderHomepage(){
   // "Find a song" was the tag cloud alone once CH-2 removed its mood pills.
   // Hidden behind the flag; the mood strip above is untouched.
   if(SHOW_TAG_CLOUD) html += findASongHTML();
+  html += contributeCtaHTML();
   el.innerHTML = html;
+
+  const cta = el.querySelector('#contribute-btn');
+  if(cta) cta.addEventListener('click', () => {
+    if(window.laivy && window.laivy.auth && window.laivy.auth.user){ navigate('upload'); return; }
+    if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
+  });
 
   // Find a song: a tag goes to /listen with that tag searched.
   el.querySelectorAll('.cloud-tag').forEach(b => b.addEventListener('click', () => goListenWithParam('tag', b.dataset.tag)));
@@ -4763,6 +4907,7 @@ function routeFromPath(){
   const p = location.pathname;
   if(p === '/listen') return 'listen';
   if(p === '/settings') return 'settings';
+  if(p === '/upload')   return 'upload';
   if(p === '/auth/callback') return 'callback';
   if(ARTIST_PATH_RE.test(p)) return 'artist';
   if(SONG_PATH_RE.test(p)) return 'listen';   // a song page IS the listen view
@@ -4787,9 +4932,18 @@ function showPage(next){
   document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
   document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
   if(settings) settings.classList.toggle('hidden', next !== 'settings' && next !== 'callback');
+  const uploadRoot = document.getElementById('upload-root');
+  if(uploadRoot) uploadRoot.classList.toggle('hidden', next !== 'upload');
   if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
   if(next === 'artist'){
     renderArtistPage(artistHandleFromPath());
+  } else if(next === 'upload'){
+    // ?song=<id> edits an existing one. RLS scopes it to the caller's own.
+    let songParam = null;
+    try{ songParam = new URLSearchParams(location.search).get('song'); }catch(e){}
+    if(uploadRoot && window.laivy && window.laivy.upload){
+      window.laivy.upload.renderUploadPage(uploadRoot, songParam);
+    }
   } else if(next === 'settings'){
     if(settings && window.laivy && window.laivy.accountUI) window.laivy.accountUI.renderSettings(settings);
   } else if(next === 'callback'){
@@ -4800,7 +4954,12 @@ function showPage(next){
 }
 // User-initiated navigation: push history + fire a manual page_view (GA4's
 // automatic page_view only fires on real loads, not SPA transitions).
-function routePath(r){ return r === 'listen' ? '/listen' : r === 'settings' ? '/settings' : '/'; }
+function routePath(r){
+  return r === 'listen' ? '/listen'
+       : r === 'settings' ? '/settings'
+       : r === 'upload' ? '/upload'
+       : '/';
+}
 // The artist route is the only one with a parameter, so it navigates by href
 // rather than through navigate(); showPage() below handles rendering it.
 
@@ -4905,6 +5064,7 @@ function initRoute(){
     return;
   }
   if(location.pathname === '/settings'){ showPage('settings'); return; }
+  if(location.pathname === '/upload'){ showPage('upload'); return; }
   if(ARTIST_PATH_RE.test(location.pathname)){ showPage('artist'); return; }
 
   /* /song/<slug> is the canonical song URL. The song is LOADED, not played:
@@ -5065,6 +5225,16 @@ async function renderArtistPage(handle){
 
       ${trophyCaseHTML(honors)}
 
+      ${(isOwner && mine.length) ? `<section class="artist-owner-tools">
+           <h2 class="rail-title-h">Your published songs</h2>
+           <p class="artist-private-note">Editing sends a song back for review and takes it off the site until it is re-approved.</p>
+           <div class="artist-owner-list">${mine.map(s => `
+             <div class="artist-private-row">
+               <span class="artist-private-title">${escHtml(s.title || s.title_translit || 'Untitled')}</span>
+               ${ownerSongActionsHTML(s)}
+             </div>`).join('')}</div>
+         </section>` : ''}
+
       ${mine.length
         ? `<section class="rail" data-rail="artist">
              <div class="rail-head"><h2 class="rail-title-h">Songs <span class="artist-he" dir="rtl" lang="he">שירים</span></h2></div>
@@ -5072,15 +5242,32 @@ async function renderArtistPage(handle){
            </section>`
         : `<p class="artist-empty">No songs yet.<br><span class="artist-he" dir="rtl" lang="he">אין שירים עדיין.</span></p>`}
 
-      ${isOwner ? `<section class="artist-private" id="artist-private" hidden>
+      ${isOwner ? `<section class="artist-private" id="artist-private">
            <h2 class="rail-title-h">Not yet public <span class="artist-he" dir="rtl" lang="he">עדיין לא פורסם</span></h2>
            <p class="artist-private-note">Only you can see this.</p>
            <div class="artist-private-list" id="artist-private-list"></div>
+           <div class="artist-private-actions">
+             <a class="home-primary-btn outlined" href="/upload">Add a song</a>
+           </div>
          </section>` : ''}
     </div>`;
 
   // Cards behave exactly as they do in a homepage rail: open /listen with that
   // song loaded. loadSong(idx, false) does not autoplay.
+  root.querySelectorAll('[data-withdraw]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(!confirm('Take this song off the site? You can submit it again later.')) return;
+      try{
+        const { error } = await supabaseClient.from('songs')
+          .update({ status: 'removed' }).eq('id', btn.dataset.withdraw);
+        if(error) throw error;
+        btn.textContent = 'Withdrawn';
+        btn.disabled = true;
+      }catch(err){ alert('Could not withdraw: ' + (err && err.message)); }
+    });
+  });
+
   root.querySelectorAll('.rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = Number(btn.dataset.idx);
@@ -5134,13 +5321,30 @@ async function renderArtistPrivate(a){
     if(error) throw error;
     rows = data || [];
   }catch(e){ return; }
-  if(!rows.length) return;                      // nothing to show: stay hidden
+  /* 1B-2: the section is no longer hidden when empty, because it now carries
+     the "Add a song" button and an owner with nothing pending still needs a
+     way in. An empty list says so rather than showing a bare heading. */
   section.hidden = false;
+  if(!rows.length){
+    host.innerHTML = `<p class="artist-private-empty">Nothing waiting. Anything you save as a draft or submit for review shows up here.</p>`;
+    return;
+  }
   host.innerHTML = rows.map(r => `
     <div class="artist-private-row">
       <span class="artist-private-title">${escHtml(r.title || r.title_translit || 'Untitled')}</span>
       <span class="artist-private-pill" data-status="${escHtml(r.status)}">${escHtml(STATUS_LABEL[r.status] || r.status)}</span>
+      <a class="artist-private-act" href="/upload?song=${encodeURIComponent(r.id)}">Edit</a>
     </div>`).join('');
+}
+
+/* The owner's APPROVED songs get their own row of controls on their page:
+   Edit (which sends the song back to review, per 1B-1) and Withdraw. Kept
+   separate from the private list above, which is by definition not approved. */
+function ownerSongActionsHTML(s){
+  return `<span class="artist-private-act-row">`
+       + `<a class="artist-private-act" href="/upload?song=${encodeURIComponent(s.id)}">Edit</a>`
+       + `<button type="button" class="artist-private-act is-warn" data-withdraw="${escHtml(s.id)}">Withdraw</button>`
+       + `</span>`;
 }
 
 /* ============================================================
@@ -5223,12 +5427,16 @@ flushEventQueue();
 <!-- Host for the /settings and /auth/callback views: a sibling of #page-home
      and #page-listen, so showPage() can hide those two without hiding this. -->
 <div id="settings-root" class="hidden"></div>
+<!-- 1B-2: the contributor upload form, rendered by js/upload.js -->
+<div id="upload-root" class="hidden"></div>
 <!-- Public artist page, /artist/<handle>. Another sibling view. -->
 <div id="artist-root" class="hidden"></div>
 
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->
 <script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/media-utils.js"></script>
+<script type="module" src="/js/upload.js"></script>
 <script type="module" src="/js/account-ui.js"></script>
 </body>
 </html>

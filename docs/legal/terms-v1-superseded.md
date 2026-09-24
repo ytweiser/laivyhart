@@ -1,3 +1,6 @@
+> **SUPERSEDED.** This is the original v1, kept for the record only. The Terms
+> in force are `docs/legal/terms-v2.md`, mirrored at `terms.html`.
+
 # Terms of Use and Privacy, Laivy Hart
 
 Last updated 23 September 2026.
