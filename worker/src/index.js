@@ -86,6 +86,8 @@ const JWKS_URL = 'https://tshkrghrgokplakktvik.supabase.co/auth/v1/.well-known/j
 const JWKS_TTL_MS = 10 * 60 * 1000;
 let jwksCache = { keys: null, at: 0 };
 
+export function __resetJwksCacheForTests() { jwksCache = { keys: null, at: 0 }; }
+
 async function getJwks(force) {
   const fresh = jwksCache.keys && (Date.now() - jwksCache.at) < JWKS_TTL_MS;
   if (fresh && !force) return jwksCache.keys;
@@ -109,7 +111,7 @@ function b64urlToJson(str) {
 }
 
 /* Returns the `sub` claim, or throws. Verifies signature, exp and nbf. */
-async function verifySupabaseJwt(token, env) {
+export async function verifySupabaseJwt(token, env) {
   const parts = (token || '').split('.');
   if (parts.length !== 3) throw new Error('malformed token');
   const [h64, p64, s64] = parts;
@@ -156,6 +158,52 @@ async function verifySupabaseJwt(token, env) {
 }
 
 const AVATAR_MAX_BYTES = 512 * 1024;
+
+/* ============================================================
+   1B-1: contributor media routes.
+
+   Same JWT verification as /upload/avatar, same guarantee: the key is built
+   from the VERIFIED `sub` and a server-generated uuid, never from anything the
+   caller sent, so a contributor's write cannot leave their own prefix no
+   matter what they put in the request.
+
+   The admin's UPLOAD_TOKEN route is untouched and still writes wherever the
+   admin asks. Both land in the same R2 bucket under distinct prefixes.
+
+   SEED LIMITS -- adjust freely, they are one edit each:
+     audio  20 MB, content-type in AUDIO_TYPES
+     cover  512 KB, always stored as image/jpeg (the client compresses first,
+            exactly as the avatar route already assumes)
+   ============================================================ */
+export const AUDIO_MAX_BYTES = 20 * 1024 * 1024;
+export const COVER_MAX_BYTES = 512 * 1024;
+
+// Extension comes from the verified content-type, never from a caller filename.
+export const AUDIO_TYPES = {
+  'audio/mpeg': 'mp3',
+  'audio/mp4':  'm4a',
+  'audio/x-m4a': 'm4a',
+  'audio/wav':  'wav',
+};
+
+export function audioExtFor(contentType) {
+  const base = String(contentType || '').split(';')[0].trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(AUDIO_TYPES, base) ? AUDIO_TYPES[base] : null;
+}
+
+/* The only place an upload key is ever constructed. `sub` is the verified JWT
+   subject; `id` is generated here. Neither can contain a slash or a dot-dot,
+   but both are re-validated anyway -- a key is the one thing worth checking
+   twice, since a bad one writes into somebody else's folder. */
+export function uploadKeyFor(kind, sub, id, ext) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(sub || ''))) throw new Error('bad subject');
+  if (!/^[0-9a-f-]{36}$/i.test(String(id || ''))) throw new Error('bad id');
+  if (!/^[a-z0-9]{2,4}$/.test(String(ext || ''))) throw new Error('bad extension');
+  const prefix = kind === 'audio' ? 'songs' : 'covers';
+  const key = `${prefix}/${sub}/${id}.${ext}`;
+  if (key.includes('..') || key.split('/').length !== 3) throw new Error('bad key');
+  return key;
+}
 
 export default {
   async fetch(request, env) {
@@ -206,6 +254,62 @@ export default {
         return json({ error: 'Upload failed: ' + (e && e.message) }, 500, origin);
       }
       return json({ url: PUBLIC_BASE + '/' + key, key }, 200, origin);
+    }
+
+    /* --- /upload/audio and /upload/cover: contributors, JWT-authorized ---
+       Placed with the avatar route, BEFORE the UPLOAD_TOKEN gate, for the same
+       reason: a contributor does not have the admin token and must not. */
+    {
+      const path = new URL(request.url).pathname;
+      const kind = path === '/upload/audio' ? 'audio'
+                 : path === '/upload/cover' ? 'cover' : null;
+      if (kind) {
+        const hdr = request.headers.get('Authorization') || '';
+        const jwt = hdr.startsWith('Bearer ') ? hdr.slice(7) : hdr;
+        let sub;
+        try {
+          sub = await verifySupabaseJwt(jwt, env);
+        } catch (e) {
+          return json({ error: 'Unauthorized: ' + (e && e.message) }, 401, origin);
+        }
+
+        const max = kind === 'audio' ? AUDIO_MAX_BYTES : COVER_MAX_BYTES;
+        const declared = Number(request.headers.get('Content-Length') || 0);
+        if (declared && declared > max) {
+          return json({ error: kind === 'audio' ? 'Audio too large' : 'Image too large' }, 413, origin);
+        }
+
+        let ext = 'jpg';
+        let storedType = 'image/jpeg';
+        if (kind === 'audio') {
+          ext = audioExtFor(request.headers.get('Content-Type'));
+          if (!ext) {
+            return json({ error: 'Unsupported audio type. Send MP3, M4A or WAV.' }, 415, origin);
+          }
+          storedType = String(request.headers.get('Content-Type')).split(';')[0].trim().toLowerCase();
+        }
+
+        if (!request.body) return json({ error: 'Empty body' }, 400, origin);
+        // Content-Length can be absent or a lie, so measure what arrived.
+        const bytes = new Uint8Array(await request.arrayBuffer());
+        if (bytes.byteLength === 0) return json({ error: 'Empty body' }, 400, origin);
+        if (bytes.byteLength > max) {
+          return json({ error: kind === 'audio' ? 'Audio too large' : 'Image too large' }, 413, origin);
+        }
+
+        let key;
+        try {
+          key = uploadKeyFor(kind, sub, crypto.randomUUID(), ext);
+        } catch (e) {
+          return json({ error: 'Bad upload target' }, 400, origin);
+        }
+        try {
+          await env.AUDIO_BUCKET.put(key, bytes, { httpMetadata: { contentType: storedType } });
+        } catch (e) {
+          return json({ error: 'Upload failed: ' + (e && e.message) }, 500, origin);
+        }
+        return json({ url: PUBLIC_BASE + '/' + key, key }, 200, origin);
+      }
     }
 
     // --- Auth (shared by /publish and the admin upload route) ---

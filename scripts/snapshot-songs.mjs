@@ -206,6 +206,15 @@ try {
   console.warn(`[snapshot] Could not read song_badges (${e && e.message}) — writing songs.json without badges.`);
 }
 
+/* 1B-1: songs.json is a PUBLIC file. proposed_channels and proposed_tags are a
+   contributor's private suggestions to the owner, consumed at review time, so
+   they are stripped here rather than published. `select=*` picks up every new
+   column automatically, which is convenient until a column is internal. */
+for (const row of rows) {
+  delete row.proposed_channels;
+  delete row.proposed_tags;
+}
+
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');
 console.log(`[snapshot] Wrote songs.json with ${rows.length} approved songs.`);
 

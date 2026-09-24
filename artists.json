@@ -21,6 +21,11 @@
         "badge": "weeks_on_chart",
         "value": 1,
         "sort": 6
+      },
+      {
+        "badge": "was_most_loved",
+        "value": 1,
+        "sort": 7
       }
     ]
   }
