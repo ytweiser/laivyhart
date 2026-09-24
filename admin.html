@@ -1694,7 +1694,7 @@ function rvFmtDur(sec){
 }
 
 function rvItemHTML(s){
-  const a = s.artists || {};
+  const a = s.artist || {};
   const h = reviewArtistHist.get(s.artist_id) || { approved: 0, rejected: 0, last7: 0 };
   const heb = /[\u0590-\u05FF]/.test(s.title || '');
   const chanTitle = (id) => { const c = channels.find(x => x.id === id); return c ? c.title : id; };
@@ -1750,10 +1750,16 @@ async function showReview(){
     <div id="rv-list"><div class="mod-empty">Loading&hellip;</div></div>`;
   document.getElementById('rv-refresh').addEventListener('click', showReview);
   document.getElementById('rv-report').addEventListener('click', sendReportNow);
+  // The badge is its own head count and runs first, so a failure in the
+  // display query below can never zero or freeze it.
+  refreshReviewCount();
 
   const { data, error } = await supabaseClient
     .from('songs')
-    .select('*, artists(handle, display_name)')
+    // Pinned to the FK: since 1B-1, ratings/reviews/submission_events each
+    // reference both songs and artists, so a bare artists(...) embed is
+    // ambiguous and PostgREST refuses it (PGRST201).
+    .select('*, artist:artists!songs_artist_id_fkey(id, handle, display_name, avatar_url)')
     .eq('status', 'submitted')
     .order('submitted_at', { ascending: true, nullsFirst: false });
   const list = document.getElementById('rv-list');
@@ -1898,7 +1904,7 @@ async function showComments(){
 
   const { data, error } = await supabaseClient
     .from('comments')
-    .select('id, name, city, body, created_at, song_id, songs(title, title_translit)')
+    .select('id, name, city, body, created_at, song_id, songs!comments_song_id_fkey(title, title_translit)')
     .eq('status', 'pending')
     .order('created_at', { ascending: true });
 

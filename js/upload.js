@@ -177,6 +177,7 @@ async function stampTermsIfNeeded(uid) {
    refuses approved -> draft, and pulling a 'submitted' song back to draft would
    drop it out of the queue, so those two are written straight to 'submitted'. */
 const DRAFTABLE = new Set(['draft', 'rejected', 'removed']);
+const GONE = 'This song no longer exists (it may have been deleted), so nothing was saved. Start a new song to upload it again.';
 
 /* `hooks` is either a status callback (text) or
    { status(text), progress(kind, { name, size, loaded, total, done }) }. */
@@ -262,7 +263,11 @@ export async function saveSong(mode, form, hooks) {
   status('Saving…');
   let error, saved = current.id;
   if (current.id) {
-    ({ error } = await supabase.from('songs').update(payload).eq('id', current.id));
+    // .select('id') so an update that matched nothing is visible: PostgREST
+    // answers 204 either way, and a song deleted meanwhile (e.g. from the
+    // admin) must not be reported as saved or submitted.
+    const res = await supabase.from('songs').update(payload).eq('id', current.id).select('id');
+    error = res.error || (Array.isArray(res.data) && !res.data.length ? { message: GONE } : null);
   } else {
     payload.artist_id = uid;
     payload.source = 'uploaded';
@@ -283,7 +288,8 @@ export async function saveSong(mode, form, hooks) {
   // 4. Transition.
   if (twoStep) {
     status('Submitting for review…');
-    ({ error } = await supabase.from('songs').update({ status: finalStatus }).eq('id', saved));
+    const res = await supabase.from('songs').update({ status: finalStatus }).eq('id', saved).select('id');
+    error = res.error || (Array.isArray(res.data) && !res.data.length ? { message: GONE } : null);
     if (error) return { id: saved, db: true, errors: [error.message, 'Your song was saved for later; it was not submitted.'] };
     current.status = finalStatus;
   }
