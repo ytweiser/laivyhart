@@ -841,6 +841,47 @@
   .u-msg{font-family:var(--font-ui); font-size:0.88rem; margin-top:1rem; line-height:1.6; color:var(--text-dim);}
   .u-msg.is-ok{color:var(--accent-2);}
   .u-msg.is-err{color:var(--accent-3);}
+  /* Attached-file cards (clarity pass): once a file is attached the raw
+     picker is hidden, so "No file chosen" is never what a person reads. */
+  .u-file-card{
+    display:flex; align-items:center; gap:0.85rem; padding:0.7rem 0.8rem;
+    border-radius:var(--radius-xs); background:var(--chip-bg); border:1px solid var(--chip-border);
+  }
+  .u-file-card[data-state="uploaded"]{border-color:rgba(var(--accent-2-rgb),0.4);}
+  .u-play{
+    width:2.4rem; height:2.4rem; flex-shrink:0; border-radius:50%; border:0; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:var(--accent-grad); color:#fff;
+  }
+  .u-play svg{width:1.05rem; height:1.05rem;}
+  .u-file-main{flex:1; min-width:0; display:flex; flex-direction:column; gap:0.15rem;}
+  .u-file-name{font-family:var(--font-ui); font-size:0.92rem; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .u-file-meta{font-family:var(--font-ui); font-size:0.78rem; color:var(--text-dim);}
+  .u-file-meta:empty{display:none;}
+  .u-file-state{font-family:var(--font-ui); font-size:0.78rem; color:var(--text-dim);}
+  .u-file-card[data-state="uploaded"] .u-file-state{color:var(--accent-2);}
+  .u-progress{height:6px; border-radius:999px; background:var(--glass-border); overflow:hidden; margin-top:0.3rem;}
+  .u-progress[hidden]{display:none;}
+  .u-progress-fill{height:100%; width:0; background:var(--accent-grad); transition:width 0.2s linear;}
+  .u-replace{
+    flex-shrink:0; background:none; border:0; cursor:pointer; padding:0.3rem 0.2rem;
+    font-family:var(--font-ui); font-size:0.8rem; color:var(--accent-2); text-decoration:underline;
+  }
+  .u-replace:disabled, .u-actions button:disabled{opacity:0.5; cursor:default;}
+  .u-cover-thumb{width:4.5rem; height:4.5rem; flex-shrink:0; border-radius:10px; object-fit:cover; display:block;}
+  .u-cover-thumb.cover-plate .cover-plate-title{font-size:0.62rem; -webkit-line-clamp:3;}
+  .u-cover-thumb.cover-plate .cover-plate-text{padding:0.25rem;}
+  .u-plate-row{margin-bottom:0.5rem;}
+  #u-audio-card:not(:empty), #u-cover-card .u-file-card{margin-bottom:0.5rem;}
+  .upload-wrap input[type=file][hidden]{display:none;}
+  .u-field-err{font-family:var(--font-ui); font-size:0.84rem; line-height:1.5; color:var(--accent-3); margin-top:0.35rem;}
+  .u-field-err[hidden]{display:none;}
+  .u-agree-block{margin:0.4rem 0 1.4rem;}
+  .u-agree-block .u-agree-row{margin:0;}
+  .u-actions-note{font-family:var(--font-ui); font-size:0.82rem; color:var(--text-faint); margin:0.7rem 0 0;}
+  .upload-done h1{margin-top:2rem;}
+  .upload-done .u-actions a{text-decoration:none;}
   .artist-private-actions{margin-top:1rem;}
   .artist-private-empty{font-family:var(--font-ui); font-size:0.85rem; color:var(--text-faint); margin:0.3rem 0 0;}
   .artist-private-act{
@@ -5184,7 +5225,7 @@ function artistAvatarHTML(a, px){
   return `<div class="artist-avatar is-initial" aria-hidden="true">${escHtml(initial)}</div>`;
 }
 
-const STATUS_LABEL = { draft:'Draft', submitted:'In review', rejected:'Not accepted', removed:'Removed' };
+const STATUS_LABEL = { draft:'Draft', submitted:'Awaiting review', rejected:'Needs changes', removed:'Removed' };
 
 async function renderArtistPage(handle){
   const root = document.getElementById('artist-root');
@@ -5277,19 +5318,7 @@ async function renderArtistPage(handle){
 
   // Cards behave exactly as they do in a homepage rail: open /listen with that
   // song loaded. loadSong(idx, false) does not autoplay.
-  root.querySelectorAll('[data-withdraw]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if(!confirm('Take this song off the site? You can submit it again later.')) return;
-      try{
-        const { error } = await supabaseClient.from('songs')
-          .update({ status: 'removed' }).eq('id', btn.dataset.withdraw);
-        if(error) throw error;
-        btn.textContent = 'Withdrawn';
-        btn.disabled = true;
-      }catch(err){ alert('Could not withdraw: ' + (err && err.message)); }
-    });
-  });
+  wireWithdraw(root);
 
   root.querySelectorAll('.rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -5344,6 +5373,20 @@ async function renderArtistPrivate(a){
     if(error) throw error;
     rows = data || [];
   }catch(e){ return; }
+  // The latest rejection reason per rejected song. `reviews` is readable by
+  // the song's own artist; a failure here just means no reason line.
+  const reasons = {};
+  const rejected = rows.filter(r => r.status === 'rejected').map(r => r.id);
+  if(rejected.length){
+    try{
+      const { data } = await supabaseClient.from('reviews')
+        .select('song_id, decision, reason, created_at')
+        .in('song_id', rejected).order('created_at', { ascending: false });
+      (data || []).forEach(v => {
+        if(!(v.song_id in reasons)) reasons[v.song_id] = v.decision === 'reject' ? (v.reason || 'No reason was given.') : null;
+      });
+    }catch(e){ /* the pill still says Needs changes; the edit form shows the reason */ }
+  }
   /* 1B-2: the section is no longer hidden when empty, because it now carries
      the "Add a song" button and an owner with nothing pending still needs a
      way in. An empty list says so rather than showing a bare heading. */
@@ -5353,11 +5396,38 @@ async function renderArtistPrivate(a){
     return;
   }
   host.innerHTML = rows.map(r => `
-    <div class="artist-private-row">
+    <div class="artist-private-row${reasons[r.id] ? ' has-reason' : ''}">
       <span class="artist-private-title">${escHtml(r.title || r.title_translit || 'Untitled')}</span>
       <span class="artist-private-pill" data-status="${escHtml(r.status)}">${escHtml(STATUS_LABEL[r.status] || r.status)}</span>
-      <a class="artist-private-act" href="/upload?song=${encodeURIComponent(r.id)}">Edit</a>
+      <span class="artist-private-act-row">
+        <a class="artist-private-act" href="/upload?song=${encodeURIComponent(r.id)}">Edit</a>
+        ${r.status !== 'removed' ? `<button type="button" class="artist-private-act is-warn" data-withdraw="${escHtml(r.id)}" data-private="1">Withdraw</button>` : ''}
+      </span>
+      ${reasons[r.id] ? `<details class="artist-private-reason"><summary>Why</summary><p>${escHtml(reasons[r.id])}</p></details>` : ''}
     </div>`).join('');
+  wireWithdraw(host);
+}
+
+/* Withdraw, for the published list and the private list alike. A private row
+   has nothing public to take down, so its copy says so and its pill updates. */
+function wireWithdraw(scope){
+  scope.querySelectorAll('[data-withdraw]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const priv = btn.dataset.private === '1';
+      if(!confirm(priv ? 'Withdraw this song? It moves to Removed; you can edit and submit it again later.'
+                       : 'Take this song off the site? You can submit it again later.')) return;
+      try{
+        const { error } = await supabaseClient.from('songs')
+          .update({ status: 'removed' }).eq('id', btn.dataset.withdraw);
+        if(error) throw error;
+        btn.textContent = 'Withdrawn';
+        btn.disabled = true;
+        const pill = btn.closest('.artist-private-row') && btn.closest('.artist-private-row').querySelector('.artist-private-pill');
+        if(pill){ pill.dataset.status = 'removed'; pill.textContent = STATUS_LABEL.removed; }
+      }catch(err){ alert('Could not withdraw: ' + (err && err.message)); }
+    });
+  });
 }
 
 /* The owner's APPROVED songs get their own row of controls on their page:

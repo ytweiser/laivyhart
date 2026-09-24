@@ -643,8 +643,14 @@ body{
   font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.04em; text-transform:uppercase;
   background:rgba(var(--accent-1-rgb), 0.18); color:var(--accent-3); border:1px solid var(--chip-border);
 }
-.artist-private-pill[data-status="rejected"],
 .artist-private-pill[data-status="removed"]{ background:rgba(0,0,0,0.22); color:var(--text-faint); }
+/* Needs changes asks for action, so it reads warmer than a plain grey. */
+.artist-private-pill[data-status="rejected"]{ background:rgba(var(--accent-1-rgb), 0.30); color:var(--text); border-color:rgba(var(--accent-1-rgb), 0.5); }
+.artist-private-pill[data-status="draft"]{ background:var(--chip-bg); color:var(--text-dim); }
+.artist-private-row.has-reason{ flex-wrap:wrap; }
+.artist-private-reason{ flex-basis:100%; font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim); }
+.artist-private-reason summary{ cursor:pointer; color:var(--accent-2); width:max-content; }
+.artist-private-reason p{ margin:0.3rem 0 0; line-height:1.5; }
 
 @media (max-width:760px){
   .artist-wrap{ padding:1rem 12px 6rem; }
