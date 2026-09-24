@@ -754,8 +754,18 @@
   .badge-ic{ width:0.92rem; height:0.92rem; display:block; flex-shrink:0; pointer-events:none; }
 
   /* COMPACT (list rows): muted, so the row still reads as a row. */
-  .badge-strip.is-row{margin-left:0.1rem;}
+  .badge-strip.is-row{margin-left:0;}
   .badge-strip.is-row .badge-chip{display:inline-flex; color:var(--text-dim);}
+
+  /* The lane itself. Fixed width, never shrinks, always present: reserving it
+     on un-badged rows is what keeps the whole list on one grid, so the eye
+     does not have to re-find the column between a badged row and a bare one.
+     Width = 2 icons (0.92rem each) + their 0.28rem gap. It is a flex ITEM of
+     .row and inherits the row's vertical centring, so it adds no height. */
+  .row-badges{
+    flex:0 0 auto; width:2.12rem; min-width:2.12rem;
+    display:flex; align-items:center; justify-content:flex-start;
+  }
 
   /* COMPACT (artist song cards): overlaid on the cover corner -- the slot the
      rank badge uses on ranked rails, empty here -- so the card's size never
@@ -1118,6 +1128,10 @@
        pushing the row taller, so it falls back to the single highest-priority
        one. The full set is always on the roomy surfaces. */
     .badge-strip.is-row .badge-chip:nth-child(n+2){display:none;}
+    /* One icon at this width, so the lane shrinks to one icon's worth rather
+       than reserving room for a second that is hidden. Still a fixed width,
+       so the column still lines up. */
+    .row-badges{width:0.86rem; min-width:0.86rem;}
     .badge-ic{width:0.86rem; height:0.86rem;}
     .badge-pill-t{font-size:0.64rem;}
     .transport .tbtn:not(.play){width:2rem; height:2rem;}
@@ -2469,10 +2483,16 @@ function renderList(){
     return `
       <div class="row ${playing?'playing':''}" data-idx="${idx}">
         ${rowThumbHTML(s)}
+        <!-- The badge lane. Anchored to the thumbnail at the row's leading
+             edge and ALWAYS rendered, even when empty, so every row's icons
+             (and everything after them) start at the same x and the trophies
+             read as a column down the list. It used to sit inside .row-mid,
+             which carries margin-left:auto and therefore floats against the
+             title block -- so its x moved with every title's length. -->
+        <div class="row-badges">${badgeStripHTML(s, 'row')}</div>
         <div class="row-mid">
           ${playing ? eqHTML() : ''}
           ${artistLinkHTML(s, 'row-artist', false)}
-          ${badgeStripHTML(s, 'row')}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
         <div class="row-titles">
