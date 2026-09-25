@@ -714,6 +714,10 @@ body{
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:8.5rem;
 }
 .row-meta-dot{ color:var(--text-faint); font-size:0.62rem; }
+/* HERO-2: "by <name>" on rows. The "by" matches the name's small meta type;
+   the name keeps its own truncation. */
+.row-by{ display:inline-flex; align-items:baseline; gap:0.3em; min-width:0;
+  font-family:var(--font-ui); font-size:0.62rem; letter-spacing:0.05em; color:var(--text-faint); white-space:nowrap; }
 
 /* Hero: a "by" line straight under the title, above the category. */
 .hero-by{
@@ -725,7 +729,9 @@ body{
 .rail-sub .artist-link{ color:var(--text-dim); }
 
 /* Now-playing: avatar + name, the whole row is the link. */
-.now-artist{ margin-top:0.5rem; }
+.now-artist{ margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem; }
+.now-artist:empty{ display:none; }
+.now-artist-by{ font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); }
 .now-artist-row{ display:inline-flex; align-items:center; gap:0.5rem; border-bottom:0; }
 .now-artist-av{
   width:28px; height:28px; border-radius:50%; object-fit:cover; flex-shrink:0; display:block;

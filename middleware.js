@@ -146,7 +146,8 @@ function songsOfArtist(a) {
 
 function renderSong(html, song) {
   const artist = song.artist || null;
-  const artistName = artist ? (artist.name || artist.handle) : SITE_NAME;
+  // songs.json embeds the live shape { handle, display_name, avatar_url } (HERO-2).
+  const artistName = artist ? (artist.display_name || artist.handle) : SITE_NAME;
   const canonical = SITE + '/song/' + encodeURIComponent(song.slug);
   const heading = song.title || song.title_translit || 'Untitled';
   const pageTitle = heading + ', by ' + artistName;

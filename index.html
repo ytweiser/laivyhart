@@ -634,41 +634,66 @@
   .cloud-tag.small{font-size:0.72rem; padding:0.12rem 0.6rem;}
   .cloud-tag.big{font-size:0.98rem; padding:0.22rem 0.85rem; color:var(--text-dim);}
 
-  /* Hero (HERO-1): the 3:2 cover on the left sets the block's height; the
-     right column is a grid item stretched to exactly that height. Its text
-     starts at the cover's top edge (no centring), and the contribute callout
-     takes whatever height is left, down to the cover's bottom edge. If the
-     column needs more room than the cover gives (narrow desktops), the row
-     grows instead of clipping and the cover stays top-aligned: an item with
-     an aspect-ratio would otherwise be stretched, hence align-self:start.
-     No longer one big button: the cover and Play play the song, the title
-     opens its page, the artist opens theirs, and the callout has its own
-     button -- none of which may nest inside a <button>. */
+  /* Hero (HERO-2): the #1 song is written ON its cover, bottom-left, over a
+     dark scrim; the right column is the contribute callout alone, stretched
+     to the tile's height with its content centred. The tile keeps the 55%
+     column and the 3:2 shape; it is not a <button> (it holds links and the
+     Play button), so a click on its bare surface plays via a handler and
+     Play is the keyboard route. Overlay type scales with the tile (cqw). */
   .home-hero2{display:grid; grid-template-columns:minmax(0, 55fr) minmax(0, 45fr); align-items:stretch; column-gap:2.4rem; width:100%; margin:0 0 2.4rem; text-align:left;}
-  .hero-cover{align-self:start; display:block; width:100%; min-width:0; aspect-ratio:3 / 2; padding:0; cursor:pointer; background:none; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);}
-  .hero-cover:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px;}
-  .hero-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
-  .hero-right{min-width:0; display:flex; flex-direction:column; gap:1rem;}
-  .hero-top{display:flex; flex-direction:column; align-items:flex-start;}
-  /* The eyebrow: display serif in the invitation accent, which holds 4.5:1
-     on every ground (plain accent-2 is 1.92:1 on gold-light). Sized down from
-     2.5rem so the #1 and the callout share the cover's height. */
-  .hero-label{font-family:var(--font-display); font-weight:700; font-size:1.75rem; line-height:1.1; color:var(--invite-accent); margin:0;}
-  /* The crown sits on the title's line, not a line of its own: the #1 text
-     and the callout have to share the cover's height. */
-  .hero-title-row{display:flex; align-items:center; gap:0.5rem; margin-top:0.7rem; min-width:0; max-width:100%;}
-  .hero-crown{color:var(--badge-gold); flex-shrink:0;}
-  .hero-crown .badge-ic{width:1.5rem; height:1.5rem;}
-  .hero-title-row .hero-title{min-width:0; overflow-wrap:anywhere;}
-  .hero-title{font-weight:600; font-size:1.65rem; line-height:1.16; color:var(--text); text-decoration:none;}
+  .hero-tile{
+    position:relative; align-self:start; width:100%; min-width:0; aspect-ratio:3 / 2; cursor:pointer;
+    border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);
+    container-type:inline-size; background:var(--bg-2);
+  }
+  .hero-cover-img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;}
+  /* No cover (or only a stock site image): the hero draws its own tile -- a
+     theme diagonal with one large, faint crown -- so it never reads as an
+     empty square. Rows and cards keep the shared plate. */
+  .hero-fallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(135deg, var(--accent-2), var(--bg-2));}
+  .hero-fallback svg{height:60%; width:auto; color:var(--text); opacity:0.12;}
+  /* The scrim, identical in every theme and lighting: the text is always
+     white on dark, whatever the image. Two layers: the tile-wide fade
+     (transparent at 40%, 0.78 at the bottom), and a band behind the overlay
+     itself that is already 0.6 where the eyebrow starts -- the overlay's
+     height does not scale with a narrow tile, so a fixed 40% line alone
+     would leave the eyebrow on bare image at 760px. Measured on a pure white
+     cover (the worst case): see the HERO-2 report. */
+  .hero-scrim{position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(to bottom, rgba(0,0,0,0) 40%, rgba(0,0,0,0.78) 100%);}
+  .hero-overlay{position:absolute; left:0; right:0; bottom:0; z-index:1;
+    display:flex; flex-direction:column; align-items:flex-start;
+    padding:clamp(14px, 3.4cqw, 28px); color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.55);}
+  .hero-overlay::before{content:''; position:absolute; left:0; right:0; bottom:0; top:-2.5rem; z-index:-1; pointer-events:none;
+    background:linear-gradient(to bottom, rgba(0,0,0,0) 0, rgba(0,0,0,0.6) 2.5rem, rgba(0,0,0,0.72) 100%);}
+  .hero-label{font-family:var(--font-display); font-weight:700; font-size:clamp(0.95rem, 3.3cqw, 1.4rem); line-height:1.15; color:#fff; margin:0;}
+  .hero-title-row{display:flex; align-items:center; gap:0.45rem; margin-top:0.45rem; min-width:0; max-width:100%;}
+  .hero-crown{color:var(--badge-gold-bright); flex-shrink:0;}
+  .hero-crown .badge-ic{width:clamp(1.1rem, 4cqw, 1.6rem); height:clamp(1.1rem, 4cqw, 1.6rem);}
+  .hero-title{font-weight:600; font-size:clamp(1.15rem, 4.6cqw, 1.9rem); line-height:1.15; color:#fff; text-decoration:none; min-width:0; overflow-wrap:anywhere;}
   a.hero-title:hover{text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px;}
-  .hero-play{margin-top:0.85rem; padding:0.55rem 1.1rem;}
-  /* The contribute callout: one box on the panel surface, filling the rest
-     of the column. Text colours are measured on --bg-2 in all 8 combos. */
+  .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
+  .hero-overlay .hero-sub{font-family:var(--font-display); font-style:italic; font-size:clamp(0.85rem, 2.6cqw, 1.05rem); color:#fff; margin-top:0.1rem;}
+  .hero-overlay .hero-by{font-family:var(--font-ui); font-size:clamp(0.78rem, 2.2cqw, 0.9rem); color:#fff; margin-top:0.3rem;}
+  .hero-overlay .hero-by .artist-link{color:#fff; border-bottom:1px solid rgba(255,255,255,0.55); text-decoration:none;}
+  /* Play: white on the scrim, dark label -- 18:1 in every theme, where a
+     white label on the gold accent gradient would not reach 4.5:1. */
+  .hero-play{
+    display:inline-flex; align-items:center; gap:0.4rem; margin-top:clamp(0.5rem, 2cqw, 0.85rem);
+    padding:0.45rem 1rem; border-radius:999px; border:0; cursor:pointer;
+    background:#fff; color:#141414; text-shadow:none;
+    font-family:var(--font-ui); font-size:clamp(0.82rem, 2.4cqw, 0.95rem); font-weight:600;
+  }
+  .hero-play svg{width:0.95rem; height:0.95rem;}
+  .hero-play:hover{background:#f1f1f1;}
+  .hero-play:focus-visible, .hero-overlay a:focus-visible{outline:2px solid #fff; outline-offset:3px;}
+  /* The contribute callout: alone in the right column, the tile's full
+     height, content centred. Text colours measured on --bg-2 in all 8. */
   .hero-callout{
-    flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:0.55rem;
+    display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:0.55rem;
     background:var(--bg-2); border:1px solid rgba(var(--accent-2-rgb),0.28); border-radius:var(--radius-sm);
-    padding:18px 20px;
+    padding:18px 20px; min-width:0;
   }
   .hero-callout-h{font-family:var(--font-display); font-weight:600; font-size:clamp(1.3rem, 2.3vw, 1.85rem); line-height:1.2; color:var(--text); margin:0;}
   /* --text, not --text-dim: dim measures 3.81:1 on --bg-2 in emerald-light.
@@ -676,11 +701,14 @@
   .hero-callout-sub{font-family:var(--font-display); font-style:italic; font-size:1.02rem; color:var(--text); margin:0;}
   .hero-callout .home-primary-btn{margin-top:0.35rem;}
   /* The phone rule gives every .home-primary-btn flex:1 1 0 for the main row;
-     inside these columns that would stretch the buttons vertically. */
+     inside the callout's column that would stretch the button vertically. */
   .home-hero2 .home-primary-btn{flex:0 0 auto;}
-  .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
+  /* Switch off: the tile alone, full content width, 3:2 until it reaches
+     today's 1280px height (371.7px); past that the height holds and the
+     image crops (object-fit, focal point) rather than becoming a billboard. */
+  .home-hero2.is-solo{grid-template-columns:minmax(0, 1fr);}
+  .home-hero2.is-solo .hero-tile{max-height:372px;}
   .hero-title.disp{font-family:var(--font-display);}
-  .hero-sub{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim); margin-top:0.12rem;}
 
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
      landscape (3:2) cards. The scroll track bleeds to the page edge, but the
@@ -1347,19 +1375,10 @@
   /* Very narrow (≈390px): shrink prev/next a touch and close the gaps between
      the three loves, so they stay on ONE row at 56px with readable labels.
      Three 56px circles plus two 1.4rem gaps is ~213px of a ~366px content box. */
-  /* HERO-1, phone: stack as before -- eyebrow, cover, then the #1 text -- and
-     the callout full width beneath. The two wrappers dissolve (display:
-     contents) so their children can be ordered around the cover. */
+  /* HERO-2, phone: the tile with its overlay first, full width, then the
+     callout full width beneath it. */
   @media (max-width:719.98px){
-    .home-hero2{display:flex; flex-direction:column; align-items:stretch; row-gap:0;}
-    .hero-right, .hero-top{display:contents;}
-    .hero-label{order:1; font-size:1.85rem; margin-bottom:0.7rem;}
-    .hero-cover{order:2; align-self:stretch; margin-bottom:0.8rem;}
-    .hero-title-row{order:3; margin-top:0;}
-    .hero-sub{order:5;}
-    .hero-by{order:6;}
-    .hero-play{order:7; align-self:flex-start;}
-    .hero-callout{order:8; margin-top:1.1rem;}
+    .home-hero2{grid-template-columns:minmax(0, 1fr); row-gap:1rem;}
   }
   @media (max-width:410px){
     /* A narrow row cannot hold two icons beside the artist name without
@@ -1738,11 +1757,9 @@ function escHtml(str){ return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;
 function artistOf(s){ return (s && s.artist && s.artist.handle) ? s.artist : null; }
 function artistHref(a){ return '/artist/' + encodeURIComponent(a.handle); }
 
-// Latin name, with the Hebrew name following in the muted bilingual style.
-function artistNameHTML(a){
-  return escHtml(a.name || a.handle) +
-    (a.name_he ? ` <span class="attr-he" dir="rtl" lang="he">${escHtml(a.name_he)}</span>` : '');
-}
+// The artist shape, live and snapshot alike: { handle, display_name, avatar_url }.
+function artistName(a){ return (a && (a.display_name || a.handle)) || ''; }
+function artistNameHTML(a){ return escHtml(artistName(a)); }
 
 // inButton: true when the caller's container is a <button>.
 function artistLinkHTML(s, cls, inButton){
@@ -2361,7 +2378,17 @@ async function loadSongs(){
   // network failure, so cover both: any failure falls back to songs.json.
   let data = null;
   try{
-    const res = await supabaseClient.from('songs').select('*').order('title');
+    /* The artist rides along on the same read (HERO-2), FK-pinned like the
+       review queue. Through artists_public, not artists: the table is RLS-
+       scoped, so an anonymous visitor would get artist:null for every song,
+       while the view is the public allow-list (and drops suspended/deleted
+       artists, which then render no "by" line). Same three fields and the
+       same shape songs.json embeds, so one renderer serves both. */
+    let res = await supabaseClient.from('songs')
+      .select('*, artist:artists_public!songs_artist_id_fkey(handle, display_name, avatar_url)')
+      .order('title');
+    // An embed problem must not cost the song list: retry bare before the snapshot.
+    if(res.error) res = await supabaseClient.from('songs').select('*').order('title');
     if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no data'));
     data = res.data;
   }catch(err){
@@ -2636,8 +2663,7 @@ function buildSearchIndexes(){
     s.nLyricsTranslation = normalizeForSearch(s.lyrics_translation);
     // Artist names go through the same normalizer as everything else, so the
     // nikkud and ch/kh/ts folding applies to a Hebrew artist name too.
-    s.nArtist = normalizeForSearch(s.artist ? (s.artist.name || '') : '');
-    s.nArtistHe = normalizeForSearch(s.artist ? (s.artist.name_he || '') : '');
+    s.nArtist = normalizeForSearch(s.artist ? (s.artist.display_name || '') : '');
   });
 }
 
@@ -2654,9 +2680,7 @@ function termField(s, t){
   // Artist ranks just under the titles: a name match is a strong signal and
   // should be labelled "Artist" rather than falling through to About.
   if(s.nArtist && s.nArtist.includes(t))
-    return { field: 'artist', label: 'Artist', raw: s.artist.name, term: t };
-  if(s.nArtistHe && s.nArtistHe.includes(t))
-    return { field: 'artist', label: 'Artist', raw: s.artist.name_he, term: t };
+    return { field: 'artist', label: 'Artist', raw: s.artist.display_name, term: t };
   const ti = s.nTags.findIndex(x => x.includes(t));
   if(ti >= 0) return { field: 'tags', label: 'Tag', raw: s.tags[ti], term: t };
   const ci = s.nChannels.findIndex(x => x.includes(t));
@@ -2807,7 +2831,7 @@ function renderList(){
         <div class="row-badges">${badgeStripHTML(s, 'row')}</div>
         <div class="row-mid">
           ${playing ? eqHTML() : ''}
-          ${artistLinkHTML(s, 'row-artist', false)}
+          ${artistOf(s) ? `<span class="row-by">by ${artistLinkHTML(s, 'row-artist', false)}</span>` : ''}
           ${SHOW_PLAY_COUNTS ? `<div class="row-len">&#9654; ${s.play_count}</div>` : ''}
         </div>
         <div class="row-titles">
@@ -2933,11 +2957,11 @@ function homepageSections(){
   return { hero, rails, editors, fallback };
 }
 
-// Hero (HERO-1): the #1 ranked song. Cover on the left; on the right the
-// eyebrow, crown, title (-> its song page), artist (-> their page) and Play,
-// then the contribute callout filling the rest of the cover's height. No play
-// or love counts. The callout exists only when the switch is on AND there is
-// a #1 -- it is never rendered on its own.
+// Hero (HERO-2): the #1 ranked song written on its own cover -- eyebrow,
+// crown + title (-> song page), "by" artist (-> their page), Play -- with the
+// contribute callout alone beside it. No play or love counts. The callout
+// exists only when the switch is on AND there is a #1; with the switch off
+// the tile stands alone (.is-solo).
 function heroCalloutHTML(){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
   return `<section class="hero-callout" aria-labelledby="hero-callout-h">
@@ -2949,32 +2973,37 @@ function heroCalloutHTML(){
       </button>
     </section>`;
 }
+// A stock site image is not a cover: the hero draws its own tile instead.
+const HERO_STOCK_COVER_RE = /\/og-image\.png(?:[?#]|$)|\/brand\//;
+function heroHasRealCover(s){ return !!(s.cover && !HERO_STOCK_COVER_RE.test(s.cover)); }
 function heroHTML(s, idx, label){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = (heb && s.title_translit) ? s.title_translit : '';
-  const cover = s.cover
-    ? coverThumbHTML(s, 'hero-cover-img', 900)
-    : defaultCoverHTML(s, 'hero-cover-img');
+  const art = heroHasRealCover(s)
+    ? coverThumbHTML(s, 'hero-cover-img', 900).replace('loading="lazy"', 'loading="eager" fetchpriority="high"')
+    : `<div class="hero-fallback" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">${BADGE_ICONS.weeks_at_number_one}</svg></div>`;
   const href = s.slug ? '/song/' + encodeURIComponent(s.slug) : '/listen';
-  return `<section class="home-hero2" aria-labelledby="hero-label">
-      <button class="hero-cover" type="button" data-hero-play data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">${cover}</button>
-      <div class="hero-right">
-        <div class="hero-top">
+  const callout = heroCalloutHTML();
+  return `<section class="home-hero2${callout ? '' : ' is-solo'}" aria-labelledby="hero-label">
+      <div class="hero-tile" data-hero-tile data-idx="${idx}">
+        ${art}
+        <div class="hero-scrim" aria-hidden="true"></div>
+        <div class="hero-overlay">
           <h2 class="hero-label" id="hero-label">${escHtml(label)}</h2>
           <div class="hero-title-row">
             <span class="hero-crown" title="#1 this week">${badgeIconHTML('weeks_at_number_one')}</span>
             <a class="hero-title ${heb ? 'heb' : 'disp'}" href="${escHtml(href)}" data-hero-open data-idx="${idx}">${escHtml(title)}</a>
           </div>
           ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
-          ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '')} <span class="attr-he" dir="rtl" lang="he">מאת</span></div>` : ''}
-          <button class="home-primary-btn filled hero-play" type="button" data-hero-play data-idx="${idx}" data-rail="hero">
+          ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '')}</div>` : ''}
+          <button class="hero-play" type="button" data-hero-play data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
             Play
           </button>
         </div>
-        ${heroCalloutHTML()}
       </div>
+      ${callout}
     </section>`;
 }
 
@@ -3283,6 +3312,16 @@ function renderHomepage(){
   el.querySelectorAll('.mood-card').forEach(b => b.addEventListener('click', () => goChannel(b.dataset.channel)));
 
   // Hero + rail/editor cards: go to the song page and play that song.
+  // The tile's bare surface plays, as the whole hero always did; its links and
+  // Play button handle themselves.
+  el.querySelectorAll('[data-hero-tile]').forEach(tile => tile.addEventListener('click', (e) => {
+    if(e.target.closest('a, button, [role="link"]')) return;
+    const s = SONGS[Number(tile.dataset.idx)];
+    if(!s) return;
+    laivyTrack('home_play', { rail: 'hero', song_id: s.id });
+    navigate('listen');
+    playSongById(s.id);
+  }));
   el.querySelectorAll('[data-hero-play], .rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SONGS[Number(btn.dataset.idx)];
@@ -3391,10 +3430,10 @@ function renderNow(){
     const a = artistOf(s);
     if(!a){ nowArtist.innerHTML = ''; }
     else {
-      const av = a.avatar
-        ? `<img class="now-artist-av" src="${escHtml(cdnImg(a.avatar, 56))}" data-raw="${escHtml(a.avatar)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="28" height="28">`
-        : `<span class="now-artist-av is-initial" aria-hidden="true">${escHtml(((a.name || a.handle || '?').trim()[0] || '?').toUpperCase())}</span>`;
-      nowArtist.innerHTML = `<a class="artist-link now-artist-row" href="${escHtml(artistHref(a))}">${av}<span class="now-artist-name">${artistNameHTML(a)}</span></a>`;
+      const av = a.avatar_url
+        ? `<img class="now-artist-av" src="${escHtml(cdnImg(a.avatar_url, 56))}" data-raw="${escHtml(a.avatar_url)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="28" height="28">`
+        : `<span class="now-artist-av is-initial" aria-hidden="true">${escHtml((artistName(a).trim()[0] || '?').toUpperCase())}</span>`;
+      nowArtist.innerHTML = `<span class="now-artist-by">by</span> <a class="artist-link now-artist-row" href="${escHtml(artistHref(a))}">${av}<span class="now-artist-name">${artistNameHTML(a)}</span></a>`;
     }
   }
 
@@ -4953,7 +4992,7 @@ function songShareUrl(s){
        title is injected by the middleware in 1A-5; this is the client text. */
     const sa = artistOf(s);
     const shareText = sa
-      ? `${title}, by ${sa.name || sa.handle}, on Laivy Hart`
+      ? `${title}, by ${artistName(sa)}, on Laivy Hart`
       : `Listen to ${title} on Laivy Hart`;
     const shareData = { title: title, text: shareText, url: url };
     if(navigator.share){
@@ -5557,7 +5596,7 @@ function updateMiniPlayer(){
   const mini = artistOf(s);
   const miniTranslit = heb ? (s.title_translit || '') : '';
   document.getElementById('mini-sub').textContent =
-    [miniTranslit, mini ? (mini.name || mini.handle) : ''].filter(Boolean).join(' \u00b7 ');
+    [miniTranslit, mini ? artistName(mini) : ''].filter(Boolean).join(' \u00b7 ');
   document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
 }
 document.getElementById('mini-play').addEventListener('click', togglePlay);

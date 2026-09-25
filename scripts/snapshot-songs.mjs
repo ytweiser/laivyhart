@@ -101,6 +101,15 @@ function compactArtist(a) {
   };
 }
 
+/* The artist embedded on each SONG uses the live read's shape exactly
+   (HERO-2: index.html embeds artist:artists_public!songs_artist_id_fkey(
+   handle, display_name, avatar_url)), so one renderer serves live and
+   snapshot. artists.json keeps compactArtist -- it is a different artifact
+   (artist pages, middleware) with bio/song_count/badges alongside. */
+function songArtist(a) {
+  return { handle: a.handle, display_name: a.display_name, avatar_url: a.avatar_url };
+}
+
 let artists = null;
 try {
   const ares = await fetch(
@@ -116,7 +125,7 @@ try {
 }
 
 if (artists) {
-  const byId = new Map(artists.map((a) => [a.id, compactArtist(a)]));
+  const byId = new Map(artists.map((a) => [a.id, songArtist(a)]));
   for (const row of rows) {
     row.artist = byId.get(row.artist_id) || null;
   }
