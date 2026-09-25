@@ -98,7 +98,7 @@ function buildModal() {
     const btn = e.currentTarget;
     btn.disabled = true; btn.textContent = 'Sending...';
     try {
-      await signInWithEmail(email);
+      await signInWithEmail(email, modalNext);
       modal.querySelector('[data-pane="form"]').hidden = true;
       const sent = modal.querySelector('[data-pane="sent"]');
       sent.hidden = false;
@@ -113,14 +113,21 @@ function buildModal() {
 
   modal.querySelector('[data-act="google"]').addEventListener('click', async () => {
     showErr('');
-    try { await signInWithGoogle(); }
+    try { await signInWithGoogle(modalNext); }
     catch (err) { showErr((err && err.message) || 'Could not start Google sign-in.'); }
   });
 
   return modal;
 }
 
-export function openModal() {
+/* Where a sign-in started from this modal should land. Null means "back where
+   you were" (auth.js's default); the "Share your music" link sets '/upload'.
+   `opts` may also be a click event when openModal is a listener -- only a
+   string `next` counts. */
+let modalNext = null;
+
+export function openModal(opts) {
+  modalNext = (opts && typeof opts.next === 'string') ? opts.next : null;
   const m = buildModal();
   m.querySelector('[data-pane="form"]').hidden = false;
   m.querySelector('[data-pane="sent"]').hidden = true;
@@ -142,17 +149,65 @@ function initialOf(a) {
 // the other. index.html renders two account slots (listen topbar + homepage).
 let openChipMenu = null;
 
+/* ---------------- "Share your music" nav link ----------------
+   The contribute invitation, on every page that has an account slot (the
+   /listen and homepage topbars, about, terms). Gated by the same
+   site_settings.contribute_cta_enabled switch as the homepage CTA, read
+   here because about/terms have no page script of their own: live first,
+   then the build-time settings.json, and OFF by default so an outage can
+   never show an invitation nobody can accept. It renders only once the
+   switch is known to be true, so there is no flash of it when it is off. */
+let contributeOn = false;
+async function readContributeSwitch() {
+  const norm = (v) => {
+    if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) {} }
+    return v === true;
+  };
+  try {
+    if (supabase) {
+      const { data, error } = await supabase.from('site_settings')
+        .select('value').eq('key', 'contribute_cta_enabled').maybeSingle();
+      if (!error) return norm(data && data.value);
+    }
+  } catch (e) { /* fall through */ }
+  try {
+    const res = await fetch('/settings.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const rows = await res.json();
+      const r = Array.isArray(rows) && rows.find((x) => x && x.key === 'contribute_cta_enabled');
+      return norm(r && r.value);
+    }
+  } catch (e) { /* defaults stand */ }
+  return false;
+}
+
+function shareLink(user) {
+  // Signed in it is a plain link; signed out it opens the modal and the
+  // sign-in lands on /upload rather than back here.
+  const a = el('a', 'nav-share', user ? 'Upload a song' : 'Share your music');
+  a.href = '/upload';
+  if (location.pathname === '/upload') { a.classList.add('is-current'); a.setAttribute('aria-current', 'page'); }
+  a.addEventListener('click', (e) => {
+    track('contribute_click', { where: 'nav', signed_in: !!user });
+    if (user) return;
+    e.preventDefault();
+    openModal({ next: '/upload' });
+  });
+  return a;
+}
+
 function renderSlot(slot) {
   const { user, artist } = authState();
   // Re-rendering throws the old chip away; close its menu first so its
   // listeners are removed rather than left pointing at a detached node.
   if (openChipMenu) openChipMenu();
   slot.innerHTML = '';
+  if (contributeOn) slot.appendChild(shareLink(user));
 
   if (!user) {
-    const a = el('button', 'lv-signin-link', 'Sign in');
+    const a = el('button', 'lv-signin-link', 'Sign in or join');
     a.type = 'button';
-    a.setAttribute('aria-label', 'Sign in / התחברות');
+    a.setAttribute('aria-label', 'Sign in or join / התחברות או הצטרפות');
     a.addEventListener('click', openModal);
     slot.appendChild(a);
     return;
@@ -613,6 +668,7 @@ function onAuth() {
 
 window.addEventListener('laivy:auth', onAuth);
 renderAccountSlots();          // signed-out first, corrected on the first event
+readContributeSwitch().then((on) => { contributeOn = on; if (on) renderAccountSlots(); });
 if (authState().ready) onAuth();
 
 window.laivy = window.laivy || {};

@@ -608,6 +608,22 @@
   .home-primary-btn.filled:hover{filter:brightness(1.07);}
   .home-primary-btn.outlined{background:none; border-color:var(--chip-border); color:var(--text);}
   .home-primary-btn.outlined:hover{border-color:var(--accent-2); color:var(--accent-2);}
+  /* Upload your song: a first-class action next to Radio, not a footnote.
+     A strong accent outline on a faint accent wash, so it carries Radio's
+     weight without two solid buttons competing. */
+  .home-primary-btn.upload{
+    background:rgba(var(--accent-2-rgb),0.10); border:1.5px solid var(--invite-accent);
+    color:var(--invite-accent); font-weight:600;
+  }
+  .home-primary-btn.upload:hover{background:rgba(var(--accent-2-rgb),0.18);}
+  /* display:inline-flex above would otherwise beat the hidden attribute. */
+  .home-primary-btn[hidden]{display:none;}
+  .home-primary-btns{flex-wrap:wrap;}
+  .site-tagline-3{
+    font-family:var(--font-display); font-style:italic; color:var(--text-dim);
+    font-size:clamp(0.95rem, 2vw, 1.12rem); margin-top:0.8rem;
+  }
+  .site-tagline-3[hidden]{display:none;}
 
   /* Find a song: mood pills + a two-size tag cloud. */
   .find-song{margin:0 0 2.2rem;}
@@ -1294,6 +1310,8 @@
        Tighter gap and type, and the label may wrap to a second line rather
        than overflow its button on a narrow phone. */
     .home-primary-btns{gap:0.5rem;}
+    /* With Upload showing there are four: two by two rather than four slivers. */
+    .home-primary-btns.has-upload .home-primary-btn{flex:1 1 calc(50% - 0.25rem);}
     .home-primary-btn{flex:1 1 0; min-width:0; padding:0.7rem 0.45rem; font-size:0.85rem; gap:0.35rem;}
     .home-primary-btn svg{width:1rem; height:1rem;}
     /* Hero: stack label, cover, then text (title/category/note). hero-left
@@ -1573,6 +1591,10 @@
   <div class="site-tagline">
     <div class="site-tagline-1">Every soul has a song</div>
     <div class="site-tagline-2">Create &middot; Share &middot; Listen &middot; Belong</div>
+    <!-- The contribute invitation (English-only, like the upload form). Hidden
+         until site_settings.contribute_cta_enabled is known to be true; see
+         applyContributeChrome(). Never over the banner. -->
+    <div class="site-tagline-3" id="home-invite" hidden>Write your song and share it with the world.</div>
   </div>
 
   <div class="home-primary-btns">
@@ -1583,6 +1605,10 @@
     <button class="home-primary-btn outlined" id="home-browse" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/></svg>
       Browse all songs
+    </button>
+    <button class="home-primary-btn upload" id="home-upload" type="button" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+      <span data-label>Upload your song</span>
     </button>
     <button class="home-primary-btn outlined" id="home-share" type="button" aria-label="Share Laivy Hart">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
@@ -2327,6 +2353,7 @@ async function loadSongs(){
   await loadChannels();
   await loadBadges();
   await loadPublicSettings();   // before initRoute: the homepage reads the CTA switch
+  applyContributeChrome();
   buildSearchIndexes();
   applySessionShuffle();
   loadRatingSettings();
@@ -2930,6 +2957,32 @@ function tagCloud(){
    site's existing outlined-button idiom, not a banner. Signed out it opens the
    sign-in modal and lands on /upload afterwards; signed in it goes straight
    there. */
+/* The under-tagline invitation and the Upload button in the primary row. Both
+   live in static markup, hidden, and are shown only when the switch is true;
+   the label follows the auth state. The bottom section (below) is kept as a
+   second chance after scrolling. */
+function openUploadOrSignIn(where){
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  laivyTrack('contribute_click', { where, signed_in: signedIn });
+  if(signedIn){ navigate('upload'); return; }
+  // Sign-in lands on /upload (auth callback next=), not back on the homepage.
+  if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: '/upload' });
+}
+function applyContributeChrome(){
+  const on = PUBLIC_SETTINGS.contribute_cta_enabled === true;
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  const invite = document.getElementById('home-invite');
+  const btn = document.getElementById('home-upload');
+  if(invite) invite.hidden = !on;
+  if(btn){
+    btn.hidden = !on;
+    btn.querySelector('[data-label]').textContent = signedIn ? 'Upload a song' : 'Upload your song';
+    const row = btn.closest('.home-primary-btns');
+    if(row) row.classList.toggle('has-upload', on);
+  }
+}
+window.addEventListener('laivy:auth', applyContributeChrome);
+
 function contributeCtaHTML(){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
   return `<section class="contribute-cta">
@@ -3178,10 +3231,7 @@ function renderHomepage(){
   el.innerHTML = html;
 
   const cta = el.querySelector('#contribute-btn');
-  if(cta) cta.addEventListener('click', () => {
-    if(window.laivy && window.laivy.auth && window.laivy.auth.user){ navigate('upload'); return; }
-    if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
-  });
+  if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));
 
   // Find a song: a tag goes to /listen with that tag searched.
   el.querySelectorAll('.cloud-tag').forEach(b => b.addEventListener('click', () => goListenWithParam('tag', b.dataset.tag)));
@@ -5489,6 +5539,7 @@ document.addEventListener('click', (e) => {
 });
 document.getElementById('home-radio').addEventListener('click', () => { navigate('listen'); startRadio(); });
 document.getElementById('home-browse').addEventListener('click', () => { navigate('listen'); switchTab('songs'); });
+document.getElementById('home-upload').addEventListener('click', () => openUploadOrSignIn('home_primary'));
 const homeSearchEl = document.getElementById('home-search');
 homeSearchEl.addEventListener('keydown', (e) => {
   if(e.key !== 'Enter') return;

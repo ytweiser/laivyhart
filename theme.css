@@ -113,6 +113,12 @@
      deep one and is what stays legible on ivory. A star is a control, not
      decoration, so it has to hold up in both lightings. */
   --star-accent:var(--accent-2);
+  /* The contribute invitation's text/outline (nav link, Upload button). It is
+     TEXT, so it must clear 4.5:1 on the page ground, which accent-2 does not
+     in the light themes (gold-light 1.92:1). The pale accent-3 on the dark
+     grounds, the deep accent-1 on the light ones, and emerald/gold light one
+     step deeper still -- see the overrides below the palette blocks. */
+  --invite-accent:var(--accent-3);
 
   --ambient-opacity:0.55;
   --ambient-blur:72px;
@@ -134,6 +140,7 @@
 
   --accent-stroke:rgba(var(--accent-1-rgb), var(--stroke-alpha));
   --star-accent:var(--accent-1);
+  --invite-accent:var(--accent-1);
   /* Deep brass: the light counterpart of --badge-gold. See the note above. */
   --badge-gold:#7F5B10;
 
@@ -184,6 +191,10 @@
    control, not decoration, so gold-light takes one step deeper (3.74:1). Every
    other colour x lighting uses its accent untouched. */
 [data-color="gold"][data-theme="light"]{ --star-accent:#9C7420; }
+/* --invite-accent: accent-1 is 4.12:1 (emerald) and 2.72:1 (gold) on the
+   Upload button's wash in light, so both take a deeper shade of their own hue. */
+[data-color="emerald"][data-theme="light"]{ --invite-accent:#0B6147; }
+[data-color="gold"][data-theme="light"]{ --invite-accent:#7A5A14; }
 
 *{box-sizing:border-box;}
 html,body{margin:0; padding:0;}
@@ -327,6 +338,20 @@ body{
 .site-nav a:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:3px;}
 @media (max-width:900px){
   .site-nav{flex-basis:100%; margin-right:0; gap:1.25rem;}
+}
+/* The account slot sits inside the nav and now holds two things (the
+   "Share your music" link, then Sign in or the chip), so it lays them out
+   with the nav's own spacing. */
+#account-slot{display:flex; align-items:center; gap:inherit;}
+/* The contribute link is the one nav item in the accent colour: the site's
+   purpose, said once in every header, without a box or a badge. */
+.site-nav a.nav-share{color:var(--invite-accent);}
+.site-nav a.nav-share:hover{color:var(--text);}
+.site-nav a.nav-share.is-current{color:var(--invite-accent); border-bottom-color:currentColor;}
+/* Four links plus "Sign in or join" is wider than a phone; let the account
+   slot drop to a second line rather than overflow. */
+@media (max-width:560px){
+  .site-nav{flex-wrap:wrap; row-gap:0.55rem;}
 }
 
 .quiet-link{

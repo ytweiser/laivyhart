@@ -111,26 +111,28 @@ if (supabase) {
 /* ---------------- helpers ---------------- */
 
 // Where the provider sends the browser back to. `next` carries the page the
-// visitor was on so the callback can put them back there.
-function callbackUrl() {
-  const next = location.pathname + location.search;
+// visitor was on so the callback can put them back there -- or, when a caller
+// names one (the "Share your music" link sends '/upload'), that page instead.
+function callbackUrl(target) {
+  const next = (typeof target === 'string' && target[0] === '/' && target[1] !== '/')
+    ? target : location.pathname + location.search;
   return `${location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
 }
 
-export async function signInWithEmail(email) {
+export async function signInWithEmail(email, next) {
   if (!supabase) throw new Error('Auth is unavailable.');
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: callbackUrl() },
+    options: { emailRedirectTo: callbackUrl(next) },
   });
   if (error) throw error;
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(next) {
   if (!supabase) throw new Error('Auth is unavailable.');
   const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: callbackUrl(), queryParams: { prompt: 'select_account' } },
+    options: { redirectTo: callbackUrl(next), queryParams: { prompt: 'select_account' } },
   });
   if (error) throw error;
 }
