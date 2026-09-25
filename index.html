@@ -619,11 +619,6 @@
   /* display:inline-flex above would otherwise beat the hidden attribute. */
   .home-primary-btn[hidden]{display:none;}
   .home-primary-btns{flex-wrap:wrap;}
-  .site-tagline-3{
-    font-family:var(--font-display); font-style:italic; color:var(--text-dim);
-    font-size:clamp(0.95rem, 2vw, 1.12rem); margin-top:0.8rem;
-  }
-  .site-tagline-3[hidden]{display:none;}
 
   /* Find a song: mood pills + a two-size tag cloud. */
   .find-song{margin:0 0 2.2rem;}
@@ -639,20 +634,53 @@
   .cloud-tag.small{font-size:0.72rem; padding:0.12rem 0.6rem;}
   .cloud-tag.big{font-size:0.98rem; padding:0.22rem 0.85rem; color:var(--text-dim);}
 
-  /* Hero: two-column labeled block — large label + text left, 3:2 cover right,
-     text vertically centered against the cover. Whole block is tappable. */
-  .home-hero2{display:flex; align-items:center; gap:2.4rem; width:100%; margin:0 0 2.4rem; text-align:left; background:none; border:none; padding:0; cursor:pointer;}
-  .hero-left{flex:0 0 45%; min-width:0; display:flex; flex-direction:column; justify-content:center;}
-  .hero-cover{flex:1 1 55%; min-width:0; aspect-ratio:3 / 2; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);}
+  /* Hero (HERO-1): the 3:2 cover on the left sets the block's height; the
+     right column is a grid item stretched to exactly that height. Its text
+     starts at the cover's top edge (no centring), and the contribute callout
+     takes whatever height is left, down to the cover's bottom edge. If the
+     column needs more room than the cover gives (narrow desktops), the row
+     grows instead of clipping and the cover stays top-aligned: an item with
+     an aspect-ratio would otherwise be stretched, hence align-self:start.
+     No longer one big button: the cover and Play play the song, the title
+     opens its page, the artist opens theirs, and the callout has its own
+     button -- none of which may nest inside a <button>. */
+  .home-hero2{display:grid; grid-template-columns:minmax(0, 55fr) minmax(0, 45fr); align-items:stretch; column-gap:2.4rem; width:100%; margin:0 0 2.4rem; text-align:left;}
+  .hero-cover{align-self:start; display:block; width:100%; min-width:0; aspect-ratio:3 / 2; padding:0; cursor:pointer; background:none; border-radius:16px; overflow:hidden; border:1px solid var(--glass-border); box-shadow:0 12px 34px rgba(0,0,0,0.32);}
+  .hero-cover:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px;}
   .hero-cover-img{width:100%; height:100%; object-fit:cover; display:block;}
-  /* The weekly #1 label is the hero's dominant element: bold display serif in the
-     accent color, ~1.3x the title (1.9rem) on desktop, with space beneath. */
-  .hero-label{font-family:var(--font-display); font-weight:700; font-size:2.5rem; line-height:1.1; color:var(--accent-2); margin-bottom:1rem;}
-  .hero-title{font-weight:600; font-size:1.9rem; line-height:1.16; color:var(--text);}
+  .hero-right{min-width:0; display:flex; flex-direction:column; gap:1rem;}
+  .hero-top{display:flex; flex-direction:column; align-items:flex-start;}
+  /* The eyebrow: display serif in the invitation accent, which holds 4.5:1
+     on every ground (plain accent-2 is 1.92:1 on gold-light). Sized down from
+     2.5rem so the #1 and the callout share the cover's height. */
+  .hero-label{font-family:var(--font-display); font-weight:700; font-size:1.75rem; line-height:1.1; color:var(--invite-accent); margin:0;}
+  /* The crown sits on the title's line, not a line of its own: the #1 text
+     and the callout have to share the cover's height. */
+  .hero-title-row{display:flex; align-items:center; gap:0.5rem; margin-top:0.7rem; min-width:0; max-width:100%;}
+  .hero-crown{color:var(--badge-gold); flex-shrink:0;}
+  .hero-crown .badge-ic{width:1.5rem; height:1.5rem;}
+  .hero-title-row .hero-title{min-width:0; overflow-wrap:anywhere;}
+  .hero-title{font-weight:600; font-size:1.65rem; line-height:1.16; color:var(--text); text-decoration:none;}
+  a.hero-title:hover{text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px;}
+  .hero-play{margin-top:0.85rem; padding:0.55rem 1.1rem;}
+  /* The contribute callout: one box on the panel surface, filling the rest
+     of the column. Text colours are measured on --bg-2 in all 8 combos. */
+  .hero-callout{
+    flex:1 1 auto; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:0.55rem;
+    background:var(--bg-2); border:1px solid rgba(var(--accent-2-rgb),0.28); border-radius:var(--radius-sm);
+    padding:18px 20px;
+  }
+  .hero-callout-h{font-family:var(--font-display); font-weight:600; font-size:clamp(1.3rem, 2.3vw, 1.85rem); line-height:1.2; color:var(--text); margin:0;}
+  /* --text, not --text-dim: dim measures 3.81:1 on --bg-2 in emerald-light.
+     The italic and smaller size already keep it secondary to the heading. */
+  .hero-callout-sub{font-family:var(--font-display); font-style:italic; font-size:1.02rem; color:var(--text); margin:0;}
+  .hero-callout .home-primary-btn{margin-top:0.35rem;}
+  /* The phone rule gives every .home-primary-btn flex:1 1 0 for the main row;
+     inside these columns that would stretch the buttons vertically. */
+  .home-hero2 .home-primary-btn{flex:0 0 auto;}
   .hero-title.heb{font-family:var(--font-heb); direction:rtl;}
   .hero-title.disp{font-family:var(--font-display);}
   .hero-sub{font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--text-dim); margin-top:0.12rem;}
-  .hero-note{font-family:var(--font-display); font-style:italic; font-size:1rem; line-height:1.5; color:var(--text-dim); margin:0.55rem 0 0; max-width:34rem; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
 
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
      landscape (3:2) cards. The scroll track bleeds to the page edge, but the
@@ -1310,17 +1338,8 @@
        Tighter gap and type, and the label may wrap to a second line rather
        than overflow its button on a narrow phone. */
     .home-primary-btns{gap:0.5rem;}
-    /* With Upload showing there are four: two by two rather than four slivers. */
-    .home-primary-btns.has-upload .home-primary-btn{flex:1 1 calc(50% - 0.25rem);}
     .home-primary-btn{flex:1 1 0; min-width:0; padding:0.7rem 0.45rem; font-size:0.85rem; gap:0.35rem;}
     .home-primary-btn svg{width:1rem; height:1rem;}
-    /* Hero: stack label, cover, then text (title/category/note). hero-left
-       becomes transparent so its children reorder with the cover between. */
-    .home-hero2{flex-direction:column; align-items:stretch; gap:0;}
-    .hero-left{display:contents;}
-    .hero-label{order:1; font-size:1.85rem; margin-bottom:0.7rem;}   /* ~1.15x the 1.6rem mobile title */
-    .hero-cover{order:2; flex:0 0 auto; margin-bottom:0.8rem;}
-    .hero-text{order:3;}
     .hero-title{font-size:1.6rem;}
     /* Rails: ~1.5 landscape cards across a 390px viewport (240px ~= 62vw). */
     #page-home .rail-item{width:62vw; max-width:280px;}
@@ -1328,6 +1347,20 @@
   /* Very narrow (≈390px): shrink prev/next a touch and close the gaps between
      the three loves, so they stay on ONE row at 56px with readable labels.
      Three 56px circles plus two 1.4rem gaps is ~213px of a ~366px content box. */
+  /* HERO-1, phone: stack as before -- eyebrow, cover, then the #1 text -- and
+     the callout full width beneath. The two wrappers dissolve (display:
+     contents) so their children can be ordered around the cover. */
+  @media (max-width:719.98px){
+    .home-hero2{display:flex; flex-direction:column; align-items:stretch; row-gap:0;}
+    .hero-right, .hero-top{display:contents;}
+    .hero-label{order:1; font-size:1.85rem; margin-bottom:0.7rem;}
+    .hero-cover{order:2; align-self:stretch; margin-bottom:0.8rem;}
+    .hero-title-row{order:3; margin-top:0;}
+    .hero-sub{order:5;}
+    .hero-by{order:6;}
+    .hero-play{order:7; align-self:flex-start;}
+    .hero-callout{order:8; margin-top:1.1rem;}
+  }
   @media (max-width:410px){
     /* A narrow row cannot hold two icons beside the artist name without
        pushing the row taller, so it falls back to the single highest-priority
@@ -1591,10 +1624,6 @@
   <div class="site-tagline">
     <div class="site-tagline-1">Every soul has a song</div>
     <div class="site-tagline-2">Create &middot; Share &middot; Listen &middot; Belong</div>
-    <!-- The contribute invitation (English-only, like the upload form). Hidden
-         until site_settings.contribute_cta_enabled is known to be true; see
-         applyContributeChrome(). Never over the banner. -->
-    <div class="site-tagline-3" id="home-invite" hidden>Write your song and share it with the world.</div>
   </div>
 
   <div class="home-primary-btns">
@@ -1605,10 +1634,6 @@
     <button class="home-primary-btn outlined" id="home-browse" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/></svg>
       Browse all songs
-    </button>
-    <button class="home-primary-btn upload" id="home-upload" type="button" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
-      <span data-label>Upload your song</span>
     </button>
     <button class="home-primary-btn outlined" id="home-share" type="button" aria-label="Share Laivy Hart">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
@@ -2353,7 +2378,6 @@ async function loadSongs(){
   await loadChannels();
   await loadBadges();
   await loadPublicSettings();   // before initRoute: the homepage reads the CTA switch
-  applyContributeChrome();
   buildSearchIndexes();
   applySessionShuffle();
   loadRatingSettings();
@@ -2830,14 +2854,6 @@ function byNewestThenTitle(a, b){
       || String(a.title || '').localeCompare(String(b.title || ''));
 }
 
-// The first sentence (or ~160 chars) of the inspiration note.
-function firstSentenceOf(t){
-  if(!t) return '';
-  const m = String(t).match(/^\s*(.+?[.!?])(\s|$)/);
-  let out = (m ? m[1] : String(t)).trim();
-  if(out.length > 160) out = out.slice(0, 157).replace(/\s+\S*$/, '') + '…';
-  return out;
-}
 
 // The single place the homepage ranking lives. Returns { hero, rails } where
 // rails is [{key, title, songs}] and only rails with >=3 songs are included.
@@ -2917,30 +2933,49 @@ function homepageSections(){
   return { hero, rails, editors, fallback };
 }
 
-// Hero: the #1 ranked song as a two-column block — a large label + text on the
-// left, the landscape 3:2 cover on the right (stacked label/cover/text on
-// mobile). Whole block plays the song. label + cover are separate children (not
-// inside .hero-text) so the mobile order can slot the cover between them.
+// Hero (HERO-1): the #1 ranked song. Cover on the left; on the right the
+// eyebrow, crown, title (-> its song page), artist (-> their page) and Play,
+// then the contribute callout filling the rest of the cover's height. No play
+// or love counts. The callout exists only when the switch is on AND there is
+// a #1 -- it is never rendered on its own.
+function heroCalloutHTML(){
+  if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
+  return `<section class="hero-callout" aria-labelledby="hero-callout-h">
+      <h3 class="hero-callout-h" id="hero-callout-h">Write your song and share it with the world.</h3>
+      <p class="hero-callout-sub">You could be next week's #1.</p>
+      <button class="home-primary-btn upload" id="hero-upload" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+        <span data-label>${escHtml(contributeLabel())}</span>
+      </button>
+    </section>`;
+}
 function heroHTML(s, idx, label){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
   const sub = (heb && s.title_translit) ? s.title_translit : '';
-  const note = firstSentenceOf(s.about);
   const cover = s.cover
     ? coverThumbHTML(s, 'hero-cover-img', 900)
     : defaultCoverHTML(s, 'hero-cover-img');
-  return `<button class="home-hero2" type="button" data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">
-      <div class="hero-left">
-        <div class="hero-label">${escHtml(label)}</div>
-        <div class="hero-text">
-          <div class="hero-title ${heb ? 'heb' : 'disp'}">${escHtml(title)}</div>
+  const href = s.slug ? '/song/' + encodeURIComponent(s.slug) : '/listen';
+  return `<section class="home-hero2" aria-labelledby="hero-label">
+      <button class="hero-cover" type="button" data-hero-play data-idx="${idx}" data-rail="hero" aria-label="Play ${escHtml(title)}">${cover}</button>
+      <div class="hero-right">
+        <div class="hero-top">
+          <h2 class="hero-label" id="hero-label">${escHtml(label)}</h2>
+          <div class="hero-title-row">
+            <span class="hero-crown" title="#1 this week">${badgeIconHTML('weeks_at_number_one')}</span>
+            <a class="hero-title ${heb ? 'heb' : 'disp'}" href="${escHtml(href)}" data-hero-open data-idx="${idx}">${escHtml(title)}</a>
+          </div>
           ${sub ? `<div class="hero-sub disp">${escHtml(sub)}</div>` : ''}
-          ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '', true)} <span class="attr-he" dir="rtl" lang="he">מאת</span></div>` : ''}
-          ${note ? `<div class="hero-note">${escHtml(note)}</div>` : ''}
+          ${artistOf(s) ? `<div class="hero-by">by ${artistLinkHTML(s, '')} <span class="attr-he" dir="rtl" lang="he">מאת</span></div>` : ''}
+          <button class="home-primary-btn filled hero-play" type="button" data-hero-play data-idx="${idx}" data-rail="hero">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+            Play
+          </button>
         </div>
+        ${heroCalloutHTML()}
       </div>
-      <div class="hero-cover">${cover}</div>
-    </button>`;
+    </section>`;
 }
 
 // "Find a song": the two-size tag cloud built from the in-memory catalog.
@@ -2957,10 +2992,10 @@ function tagCloud(){
    site's existing outlined-button idiom, not a banner. Signed out it opens the
    sign-in modal and lands on /upload afterwards; signed in it goes straight
    there. */
-/* The under-tagline invitation and the Upload button in the primary row. Both
-   live in static markup, hidden, and are shown only when the switch is true;
-   the label follows the auth state. The bottom section (below) is kept as a
-   second chance after scrolling. */
+/* The contribute callout lives in the #1 block (HERO-1); the bottom section
+   (below) is kept as a second chance after scrolling. Both render only when
+   the switch is true -- renderHomepage runs after loadPublicSettings, so the
+   switch is always known by then. The callout's label follows the auth state. */
 function openUploadOrSignIn(where){
   const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
   laivyTrack('contribute_click', { where, signed_in: signedIn });
@@ -2968,18 +3003,13 @@ function openUploadOrSignIn(where){
   // Sign-in lands on /upload (auth callback next=), not back on the homepage.
   if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: '/upload' });
 }
-function applyContributeChrome(){
-  const on = PUBLIC_SETTINGS.contribute_cta_enabled === true;
+function contributeLabel(){
   const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
-  const invite = document.getElementById('home-invite');
-  const btn = document.getElementById('home-upload');
-  if(invite) invite.hidden = !on;
-  if(btn){
-    btn.hidden = !on;
-    btn.querySelector('[data-label]').textContent = signedIn ? 'Upload a song' : 'Upload your song';
-    const row = btn.closest('.home-primary-btns');
-    if(row) row.classList.toggle('has-upload', on);
-  }
+  return signedIn ? 'Upload a song' : 'Upload your song';
+}
+function applyContributeChrome(){
+  const btn = document.getElementById('hero-upload');
+  if(btn) btn.querySelector('[data-label]').textContent = contributeLabel();
 }
 window.addEventListener('laivy:auth', applyContributeChrome);
 
@@ -3232,6 +3262,19 @@ function renderHomepage(){
 
   const cta = el.querySelector('#contribute-btn');
   if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));
+  const heroUp = el.querySelector('#hero-upload');
+  if(heroUp) heroUp.addEventListener('click', () => openUploadOrSignIn('home_hero'));
+  // The #1 title opens its song page without playing (as artist-page cards do).
+  el.querySelectorAll('[data-hero-open]').forEach(a => a.addEventListener('click', (e) => {
+    if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return;
+    const idx = Number(a.dataset.idx);
+    if(!SONGS[idx]) return;
+    e.preventDefault();
+    laivyTrack('home_open', { rail: 'hero', song_id: SONGS[idx].id });
+    history.pushState({ route: 'listen' }, '', '/listen');
+    showPage('listen');
+    loadSong(idx, false);
+  }));
 
   // Find a song: a tag goes to /listen with that tag searched.
   el.querySelectorAll('.cloud-tag').forEach(b => b.addEventListener('click', () => goListenWithParam('tag', b.dataset.tag)));
@@ -3240,7 +3283,7 @@ function renderHomepage(){
   el.querySelectorAll('.mood-card').forEach(b => b.addEventListener('click', () => goChannel(b.dataset.channel)));
 
   // Hero + rail/editor cards: go to the song page and play that song.
-  el.querySelectorAll('.home-hero2, .rail-item').forEach(btn => {
+  el.querySelectorAll('[data-hero-play], .rail-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const s = SONGS[Number(btn.dataset.idx)];
       if(!s) return;
@@ -5539,7 +5582,7 @@ document.addEventListener('click', (e) => {
 });
 document.getElementById('home-radio').addEventListener('click', () => { navigate('listen'); startRadio(); });
 document.getElementById('home-browse').addEventListener('click', () => { navigate('listen'); switchTab('songs'); });
-document.getElementById('home-upload').addEventListener('click', () => openUploadOrSignIn('home_primary'));
+
 const homeSearchEl = document.getElementById('home-search');
 homeSearchEl.addEventListener('keydown', (e) => {
   if(e.key !== 'Enter') return;
