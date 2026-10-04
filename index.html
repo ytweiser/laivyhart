@@ -12,16 +12,36 @@
   gtag('config', 'G-S2RJQEGV45');
 </script>
 <title>Laivy Hart</title>
+<!-- Default skin (FIX-1/Part B): royal + dark, for every first visit, no
+     matter the visitor's system colour-scheme. A persisted choice below still
+     wins. Placeholder content here is irrelevant -- the inline script right
+     after it overwrites it before first paint, and this tag has to exist
+     first in source order for that script to find it with no flash. -->
+<meta name="theme-color" content="#0A0C1A">
 <script>
-  /* Set the lighting and color theme before first paint to avoid a flash. */
+  /* Set the lighting and color theme before first paint to avoid a flash.
+     DEFAULT_THEME/DEFAULT_COLOR is the one constant every page's bootstrap
+     agrees on: dark lighting, royal color, regardless of prefers-color-scheme.
+     A visitor's own switcher choice (localStorage) still overrides it. */
   (function(){
+    var DEFAULT_THEME = 'dark', DEFAULT_COLOR = 'royal';
+    // --bg per [data-color][data-theme], copied from theme.css, so the
+    // browser-chrome theme-color always matches what is about to paint.
+    var BG = {
+      'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+      'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+      'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+      'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+    };
     try{
       var t = localStorage.getItem('laivy-theme');
-      if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+      if(t !== 'light' && t !== 'dark'){ t = DEFAULT_THEME; }
       document.documentElement.setAttribute('data-theme', t);
       var c = localStorage.getItem('laivy-color');
-      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = DEFAULT_COLOR; }
       document.documentElement.setAttribute('data-color', c);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', BG[c + '-' + t] || BG['royal-dark']);
       /* Start the homepage banner plate for THIS theme downloading now, before
          the stylesheet has even been parsed. data-color is already set, so the
          only plate ever requested is the right one -- there is no moment where
@@ -34,8 +54,8 @@
       pl.fetchPriority = 'high';
       document.head.appendChild(pl);
     }catch(e){
-      document.documentElement.setAttribute('data-theme','dark');
-      document.documentElement.setAttribute('data-color','bordeaux');
+      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+      document.documentElement.setAttribute('data-color', DEFAULT_COLOR);
     }
   })();
 </script>
@@ -46,8 +66,6 @@
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#F5ECEE" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Laivy Hart">
@@ -1854,10 +1872,26 @@ function cdnImg(url, w){
 /* ============================================================
    Theme toggle (persisted)
    ============================================================ */
+// Same table as the head's pre-paint bootstrap script (theme.css --bg per
+// [data-color][data-theme]), kept in sync so the browser-chrome color never
+// lags a live switch either.
+const THEME_COLOR_BG = {
+  'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+  'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+  'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+  'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+};
+function syncThemeColorMeta(){
+  const t = document.documentElement.getAttribute('data-theme');
+  const c = document.documentElement.getAttribute('data-color');
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if(mc) mc.setAttribute('content', THEME_COLOR_BG[c + '-' + t] || THEME_COLOR_BG['royal-dark']);
+}
 function toggleLightDark(){
   const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   try{ localStorage.setItem('laivy-theme', next); }catch(e){}
+  syncThemeColorMeta();
 }
 // Wire every light/dark toggle (the /listen topbar one + the homepage header one)
 // to the same handler so either page controls both.
@@ -1891,7 +1925,7 @@ const COLOR_KEY = 'laivy-color';
 const COLORS = ['bordeaux', 'emerald', 'royal', 'gold'];
 function readColor(){
   const c = document.documentElement.getAttribute('data-color');
-  return COLORS.includes(c) ? c : 'bordeaux';
+  return COLORS.includes(c) ? c : 'royal';
 }
 let colorTheme = readColor();
 function markActiveSwatch(name){
@@ -1916,11 +1950,12 @@ function refreshGenArt(){
   }
 }
 function applyColor(name){
-  if(!COLORS.includes(name)) name = 'bordeaux';
+  if(!COLORS.includes(name)) name = 'royal';
   colorTheme = name;
   document.documentElement.setAttribute('data-color', name);
   try{ localStorage.setItem(COLOR_KEY, name); }catch(e){}
   markActiveSwatch(name);
+  syncThemeColorMeta();
   refreshGenArt();
 }
 document.querySelectorAll('.swatch').forEach(sw => {
@@ -2387,8 +2422,14 @@ async function loadSongs(){
     let res = await supabaseClient.from('songs')
       .select('*, artist:artists_public!songs_artist_id_fkey(handle, display_name, avatar_url)')
       .order('title');
-    // An embed problem must not cost the song list: retry bare before the snapshot.
-    if(res.error) res = await supabaseClient.from('songs').select('*').order('title');
+    // An embed problem must not cost the song list: retry bare before the
+    // snapshot. But it must not be silent either -- a bare retry means every
+    // "by" line on the site vanishes, so say so once, loudly, with whatever
+    // PostgREST sent back (PGRST code + hint included).
+    if(res.error){
+      console.warn('[laivy] artist embed failed; songs will render with no "by" line.', res.error);
+      res = await supabaseClient.from('songs').select('*').order('title');
+    }
     if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no data'));
     data = res.data;
   }catch(err){

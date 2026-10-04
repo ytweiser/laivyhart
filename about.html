@@ -12,18 +12,32 @@
   gtag('config', 'G-S2RJQEGV45');
 </script>
 <title>About &middot; Laivy Hart</title>
+<!-- Default skin (Part B): royal + dark on every first visit, regardless of
+     system colour-scheme; a persisted choice still wins. Overwritten before
+     first paint by the script right after it -- must come first in source
+     order for that script to find and correct it with no flash. -->
+<meta name="theme-color" content="#0A0C1A">
 <script>
   (function(){
+    var DEFAULT_THEME = 'dark', DEFAULT_COLOR = 'royal';
+    var BG = {
+      'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+      'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+      'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+      'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+    };
     try{
       var t = localStorage.getItem('laivy-theme');
-      if(!t){ t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+      if(t !== 'light' && t !== 'dark'){ t = DEFAULT_THEME; }
       document.documentElement.setAttribute('data-theme', t);
       var c = localStorage.getItem('laivy-color');
-      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = 'bordeaux'; }
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = DEFAULT_COLOR; }
       document.documentElement.setAttribute('data-color', c);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', BG[c + '-' + t] || BG['royal-dark']);
     }catch(e){
-      document.documentElement.setAttribute('data-theme','dark');
-      document.documentElement.setAttribute('data-color','bordeaux');
+      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+      document.documentElement.setAttribute('data-color', DEFAULT_COLOR);
     }
   })();
 </script>
@@ -34,8 +48,6 @@
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#140810" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#F5ECEE" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Laivy Hart">
@@ -195,10 +207,23 @@
 </div>
 
 <script>
+  const THEME_COLOR_BG = {
+    'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+    'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+    'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+    'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+  };
+  function syncThemeColorMeta(){
+    const t = document.documentElement.getAttribute('data-theme');
+    const c = document.documentElement.getAttribute('data-color');
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute('content', THEME_COLOR_BG[c + '-' + t] || THEME_COLOR_BG['royal-dark']);
+  }
   document.getElementById('theme-toggle').addEventListener('click', () => {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try{ localStorage.setItem('laivy-theme', next); }catch(e){}
+    syncThemeColorMeta();
   });
 
   /* Color theme picker (persisted, shared with the jukebox via the same key).
@@ -215,14 +240,15 @@
       });
     }
     function apply(name){
-      if(COLORS.indexOf(name) === -1) name = 'bordeaux';
+      if(COLORS.indexOf(name) === -1) name = 'royal';
       document.documentElement.setAttribute('data-color', name);
       try{ localStorage.setItem('laivy-color', name); }catch(e){}
       mark(name);
+      syncThemeColorMeta();
     }
     swatches.forEach(sw => sw.addEventListener('click', () => apply(sw.dataset.color)));
     const cur = document.documentElement.getAttribute('data-color');
-    mark(COLORS.indexOf(cur) === -1 ? 'bordeaux' : cur);
+    mark(COLORS.indexOf(cur) === -1 ? 'royal' : cur);
   })();
 </script>
 
