@@ -291,6 +291,13 @@ function renderArtist(html, artist) {
       + (since ? '<li>Since ' + since + '</li>' : '')
       + '</ul>';
   }
+  // ARTIST-3 step 16: there is no Follow button here (no JS, no auth to
+  // check), so the count is the only thing that CAN render -- the same
+  // treatment the client gives the owner's own page.
+  {
+    const n = artist.follower_count || 0;
+    body += '<p>' + n + ' ' + (n === 1 ? 'follower' : 'followers') + '</p>';
+  }
   if (artist.badges && artist.badges.length) {
     const trophies = artist.badges.map((b) => {
       const fn = TROPHY_LABELS[b.badge];

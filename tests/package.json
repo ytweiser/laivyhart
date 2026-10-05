@@ -1,0 +1,13 @@
+{
+  "name": "laivyhart-tests",
+  "private": true,
+  "type": "module",
+  "description": "Local, offline verification harness for laivyhart.com. Never touches the live site or Tzvi's browser.",
+  "scripts": {
+    "test": "node run-all.mjs",
+    "install-browser": "node_modules/.bin/playwright-core install chromium"
+  },
+  "dependencies": {
+    "playwright-core": "1.60.0"
+  }
+}

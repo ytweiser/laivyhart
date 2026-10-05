@@ -585,6 +585,27 @@ export function renderSettings(container) {
         <button class="lv-btn filled" type="button" data-act="save">Save</button>
         <button class="lv-btn ghost" type="button" data-act="signout">Sign out</button>
       </div>
+
+      <hr class="lv-rule">
+      <h2 class="lv-section-h">My songs</h2>
+      <p class="lv-hint">Editing sends a song back for review and takes it off the site until it is re-approved.</p>
+      <div id="lv-mysongs-list"><p class="lv-hint">Loading&hellip;</p></div>
+
+      ${(artist && artist.is_artist) ? `
+      <hr class="lv-rule">
+      <h2 class="lv-section-h">My picks</h2>
+      <div class="lv-pick-search">
+        <input class="lv-input" id="lv-pick-search-input" type="text" placeholder="Search a title to add&hellip;" autocomplete="off">
+        <div class="lv-pick-results" id="lv-pick-search-results"></div>
+      </div>
+      <p class="lv-err" data-pick-err hidden></p>
+      <div id="lv-mypicks-list"><p class="lv-hint">Loading&hellip;</p></div>
+      ` : ''}
+
+      <hr class="lv-rule">
+      <h2 class="lv-section-h">Following</h2>
+      <div id="lv-following-list"><p class="lv-hint">Loading&hellip;</p></div>
+
       <hr class="lv-rule">
       <h2 class="lv-danger-h">Delete my account</h2>
       <p class="lv-hint">This removes your profile and takes your songs off the site. It cannot be undone.</p>
@@ -597,19 +618,31 @@ export function renderSettings(container) {
   const okEl = container.querySelector('[data-ok]');
   wireProfileFields(container, artist);
   wireAvatar(container, artist);
+  renderMySongs(container, artist);
+  if (artist && artist.is_artist) renderMyPicks(container, artist);
+  renderFollowing(container, user);
 
   container.querySelector('[data-act="save"]').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     btn.disabled = true; errEl.hidden = true; okEl.hidden = true;
     try {
       await saveProfile(container, artist);
-      okEl.hidden = false;
+      // saveProfile() -> refreshArtist() -> a fresh laivy:auth event ->
+      // renderSettings() runs AGAIN (so My songs/My picks/Following reload
+      // against the saved profile too) and replaces this whole container's
+      // innerHTML -- including okEl/errEl, which detaches the ones closed
+      // over above. Re-query the live ones so "Saved." lands on an element
+      // actually still in the document, not a stale reference.
+      const freshOk = container.querySelector('[data-ok]');
+      if (freshOk) freshOk.hidden = false;
       track('settings_saved', {});
-      renderAccountSlots();
     } catch (err) {
-      errEl.textContent = (err && err.message) || 'Could not save.';
-      errEl.hidden = false;
-    } finally { btn.disabled = false; }
+      const freshErr = container.querySelector('[data-err]');
+      if (freshErr) { freshErr.textContent = (err && err.message) || 'Could not save.'; freshErr.hidden = false; }
+    } finally {
+      const freshBtn = container.querySelector('[data-act="save"]');
+      if (freshBtn) freshBtn.disabled = false;
+    }
   });
 
   container.querySelector('[data-act="signout"]').addEventListener('click', async () => {
@@ -637,6 +670,277 @@ export function renderSettings(container) {
       delBtn.disabled = false;
     }
   });
+}
+
+/* ---------------- My songs (ARTIST-3) ----------------
+   Moved here from /artist/<handle>, which used to carry two separate
+   owner-only lists (the published Edit/Withdraw row, and a "Not yet public"
+   draft/pending list). One query, every status, one render -- the artist
+   page now keeps only its "Edit page" link to here. */
+const STATUS_LABEL = { draft: 'Draft', submitted: 'Awaiting review', rejected: 'Needs changes', removed: 'Removed' };
+
+function wireWithdraw(scope) {
+  scope.querySelectorAll('[data-withdraw]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (!confirm('Take this song off the site? You can submit it again later.')) return;
+      btn.disabled = true;
+      try {
+        const { error } = await supabase.from('songs').update({ status: 'removed' }).eq('id', btn.dataset.withdraw);
+        if (error) throw error;
+        btn.textContent = 'Withdrawn';
+        const pill = btn.closest('.artist-private-row') && btn.closest('.artist-private-row').querySelector('.artist-private-pill');
+        if (pill) { pill.hidden = false; pill.dataset.status = 'removed'; pill.textContent = STATUS_LABEL.removed; }
+      } catch (err) {
+        alert('Could not withdraw: ' + (err && err.message));
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+async function renderMySongs(container, artist) {
+  const host = container.querySelector('#lv-mysongs-list');
+  if (!host || !artist) return;
+  let rows = [];
+  try {
+    const { data, error } = await supabase.from('songs')
+      .select('id, title, title_translit, status, created_at')
+      .eq('artist_id', artist.id)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    rows = data || [];
+  } catch (e) {
+    host.innerHTML = `<p class="lv-hint">Could not load your songs right now.</p>`;
+    return;
+  }
+
+  // The latest rejection reason per rejected song (same as the old artist-page list).
+  const reasons = {};
+  const rejected = rows.filter((r) => r.status === 'rejected').map((r) => r.id);
+  if (rejected.length) {
+    try {
+      const { data } = await supabase.from('reviews')
+        .select('song_id, decision, reason, created_at')
+        .in('song_id', rejected).order('created_at', { ascending: false });
+      (data || []).forEach((v) => {
+        if (!(v.song_id in reasons)) reasons[v.song_id] = v.decision === 'reject' ? (v.reason || 'No reason was given.') : null;
+      });
+    } catch (e) { /* the pill still says Needs changes; the edit form shows the reason */ }
+  }
+
+  if (!rows.length) {
+    host.innerHTML = `<p class="artist-private-empty">Nothing yet. Anything you save as a draft, submit, or publish shows up here.</p>`;
+    return;
+  }
+  host.innerHTML = rows.map((r) => `
+    <div class="artist-private-row${reasons[r.id] ? ' has-reason' : ''}">
+      <span class="artist-private-title">${esc(r.title || r.title_translit || 'Untitled')}</span>
+      <span class="artist-private-pill" data-status="${esc(r.status)}"${r.status === 'approved' ? ' hidden' : ''}>${esc(STATUS_LABEL[r.status] || r.status)}</span>
+      <span class="artist-private-act-row">
+        <a class="artist-private-act" href="/upload?song=${encodeURIComponent(r.id)}">Edit</a>
+        ${r.status !== 'removed' ? `<button type="button" class="artist-private-act is-warn" data-withdraw="${esc(r.id)}">Withdraw</button>` : ''}
+      </span>
+      ${reasons[r.id] ? `<details class="artist-private-reason"><summary>Why</summary><p>${esc(reasons[r.id])}</p></details>` : ''}
+    </div>`).join('');
+  wireWithdraw(host);
+}
+
+/* ---------------- My picks (ARTIST-3, artists only) ----------------
+   "Reuse the existing search": same EXPERIENCE (debounced, live results) as
+   the site's search box, not literally the same in-memory index -- that
+   index lives in index.html's classic (non-module) script scope, which an
+   ES module cannot see, and SONGS there carries no `status` field to filter
+   on anyway (it only ever holds approved rows for an anonymous read). A
+   direct, explicitly `status=eq.approved` query is simpler and cannot drift
+   from that invariant. */
+const PICK_MAX = 6;
+
+async function searchApprovedSongsByTitle(q) {
+  const term = (q || '').trim();
+  if (term.length < 2) return [];
+  try {
+    const { data, error } = await supabase.from('songs')
+      .select('id, title, title_translit, language, artist:artists_public!songs_artist_id_fkey(display_name, handle)')
+      .eq('status', 'approved')
+      .or(`title.ilike.%${term}%,title_translit.ilike.%${term}%`)
+      .order('title')
+      .limit(8);
+    if (error) throw error;
+    return data || [];
+  } catch (e) { return []; }
+}
+
+async function renderMyPicks(container, artist) {
+  const section = container; // the whole settings container; ids are unique on the page
+  const searchInput = section.querySelector('#lv-pick-search-input');
+  const searchResults = section.querySelector('#lv-pick-search-results');
+  const list = section.querySelector('#lv-mypicks-list');
+  const errEl = section.querySelector('[data-pick-err]');
+  if (!searchInput || !list) return;
+
+  const showErr = (m) => { if (errEl) { errEl.textContent = m || ''; errEl.hidden = !m; } };
+
+  async function loadPicks() {
+    try {
+      const { data, error } = await supabase.from('artist_picks')
+        .select('id, song_id, note, position, songs(title, title_translit, language, artist:artists_public!songs_artist_id_fkey(display_name, handle))')
+        .eq('artist_id', artist.id)
+        .order('position');
+      if (error) throw error;
+      return data || [];
+    } catch (e) { return null; }
+  }
+
+  async function paint() {
+    const picks = await loadPicks();
+    if (picks === null) { list.innerHTML = `<p class="lv-hint">Could not load your picks right now.</p>`; return; }
+    if (!picks.length) {
+      list.innerHTML = `<p class="lv-hint">Pick up to six songs, yours or anyone's, and say why.</p>`;
+      return;
+    }
+    list.innerHTML = picks.map((p) => {
+      const song = p.songs || {};
+      const by = (song.artist && (song.artist.display_name || song.artist.handle)) || '';
+      const title = song.title || song.title_translit || 'Untitled';
+      return `<div class="lv-pick-row" data-pick-id="${esc(p.id)}" data-position="${p.position}">
+          <div class="lv-pick-head">
+            <div class="lv-pick-main">
+              <span class="lv-pick-title">${esc(title)}</span>
+              ${by ? `<span class="lv-pick-by">by ${esc(by)}</span>` : ''}
+            </div>
+            <div class="lv-pick-reorder">
+              <button type="button" class="lv-pick-move" data-dir="up" aria-label="Move up">&uarr;</button>
+              <button type="button" class="lv-pick-move" data-dir="down" aria-label="Move down">&darr;</button>
+            </div>
+          </div>
+          <textarea class="lv-input lv-textarea lv-pick-note" maxlength="140" rows="2" placeholder="Why this song? (optional)">${esc(p.note || '')}</textarea>
+          <p class="lv-hint"><span data-pick-count>${(p.note || '').length}</span>/140</p>
+          <button type="button" class="lv-btn outlined lv-pick-remove">Remove</button>
+        </div>`;
+    }).join('');
+
+    const rowEls = Array.from(list.querySelectorAll('.lv-pick-row'));
+    rowEls.forEach((row, i) => {
+      const pickId = row.dataset.pickId;
+      const note = row.querySelector('.lv-pick-note');
+      const count = row.querySelector('[data-pick-count]');
+      note.addEventListener('input', () => { count.textContent = String(note.value.length); });
+      note.addEventListener('change', async () => {
+        try {
+          const { error } = await supabase.from('artist_picks').update({ note: note.value.trim() || null }).eq('id', pickId);
+          if (error) throw error;
+          showErr('');
+        } catch (e) { showErr((e && e.message) || 'Could not save that note.'); }
+      });
+      row.querySelector('.lv-pick-remove').addEventListener('click', async () => {
+        try {
+          const { error } = await supabase.from('artist_picks').delete().eq('id', pickId);
+          if (error) throw error;
+          showErr('');
+          await paint();
+        } catch (e) { showErr((e && e.message) || 'Could not remove that pick.'); }
+      });
+      row.querySelectorAll('.lv-pick-move').forEach((btn) => {
+        if ((btn.dataset.dir === 'up' && i === 0) || (btn.dataset.dir === 'down' && i === rowEls.length - 1)) {
+          btn.disabled = true;
+          return;
+        }
+        btn.addEventListener('click', async () => {
+          const otherRow = btn.dataset.dir === 'up' ? rowEls[i - 1] : rowEls[i + 1];
+          if (!otherRow) return;
+          try {
+            const { error } = await supabase.rpc('swap_my_pick_positions', {
+              p_pos_a: Number(row.dataset.position), p_pos_b: Number(otherRow.dataset.position),
+            });
+            if (error) throw error;
+            showErr('');
+            await paint();
+          } catch (e) { showErr((e && e.message) || 'Could not reorder that.'); }
+        });
+      });
+    });
+  }
+
+  let searchDebounce;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(async () => {
+      const q = searchInput.value;
+      const results = await searchApprovedSongsByTitle(q);
+      if (!results.length) { searchResults.innerHTML = ''; return; }
+      searchResults.innerHTML = results.map((s) => {
+        const title = s.title || s.title_translit || 'Untitled';
+        const by = (s.artist && (s.artist.display_name || s.artist.handle)) || '';
+        return `<button type="button" class="lv-pick-result" data-song-id="${esc(s.id)}">${esc(title)}${by ? ` <span class="lv-pick-by">by ${esc(by)}</span>` : ''}</button>`;
+      }).join('');
+      searchResults.querySelectorAll('[data-song-id]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            const current = await loadPicks();
+            const nextPos = (current ? current.length : 0) + 1;
+            const { error } = await supabase.from('artist_picks')
+              .insert({ artist_id: artist.id, song_id: btn.dataset.songId, position: nextPos });
+            if (error) throw error;
+            showErr('');
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            await paint();
+          } catch (e) {
+            // The trigger's own words: the picks_max cap, or an unpublished song.
+            showErr((e && e.message) || 'Could not add that pick.');
+            btn.disabled = false;
+          }
+        });
+      });
+    }, 300);
+  });
+
+  await paint();
+}
+
+/* ---------------- Following (ARTIST-3) ----------------
+   Read under the signed-in user's own RLS (artist_follows_select_own) --
+   this is the one place that policy exists for. Unfollow reuses
+   follow_artist(p_on:false), the same RPC the artist page's button calls. */
+async function renderFollowing(container, user) {
+  const host = container.querySelector('#lv-following-list');
+  if (!host || !user) return;
+  try {
+    const { data, error } = await supabase.from('artist_follows').select('artist_id').eq('follower_user_id', user.id);
+    if (error) throw error;
+    const ids = (data || []).map((r) => r.artist_id);
+    if (!ids.length) { host.innerHTML = `<p class="lv-hint">You are not following anyone yet.</p>`; return; }
+    const { data: arows, error: aerr } = await supabase.from('artists_public')
+      .select('id, handle, display_name, avatar_url').in('id', ids);
+    if (aerr) throw aerr;
+    host.innerHTML = (arows || []).map((a) => `
+      <div class="lv-following-row" data-artist-id="${esc(a.id)}">
+        ${a.avatar_url
+          ? `<img class="lv-following-avatar" src="${esc('https://wsrv.nl/?url=' + encodeURIComponent(a.avatar_url) + '&w=72&output=jpg&q=80')}" alt="">`
+          : `<div class="lv-following-avatar is-initial">${esc(initialOf(a))}</div>`}
+        <a class="lv-following-name" href="/artist/${encodeURIComponent(a.handle)}">${esc(a.display_name || a.handle)}</a>
+        <button type="button" class="lv-btn outlined lv-following-unfollow" data-unfollow="${esc(a.id)}">Unfollow</button>
+      </div>`).join('');
+    host.querySelectorAll('[data-unfollow]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const { error } = await supabase.rpc('follow_artist', { p_artist_id: btn.dataset.unfollow, p_on: false });
+          if (error) throw error;
+          const row = btn.closest('.lv-following-row');
+          if (row) row.remove();
+          if (!host.querySelector('.lv-following-row')) host.innerHTML = `<p class="lv-hint">You are not following anyone yet.</p>`;
+        } catch (e) {
+          alert('Could not unfollow: ' + (e && e.message));
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (e) {
+    host.innerHTML = `<p class="lv-hint">Could not load your Following list right now.</p>`;
+  }
 }
 
 /* ---------------- wiring ---------------- */

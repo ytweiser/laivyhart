@@ -1160,6 +1160,25 @@
 
   .muted{color:var(--text-faint); font-family:var(--font-ui); font-size:0.85rem; padding:2rem 0.5rem; text-align:center;}
 
+  /* ARTIST-3: the "Artists" search result group, above the song rows in the
+     same #rows list. Same row height family as .row, just simpler (no badge
+     lane, no playlist-add button -- it is a navigation, not a queue item). */
+  .search-artists{border-bottom:1px solid var(--line); margin-bottom:0.2rem; padding-bottom:0.2rem;}
+  .search-artists-label{
+    font-family:var(--font-ui); font-size:0.7rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--text-faint); padding:0.4rem 0.5rem 0.2rem;
+  }
+  .search-artist-item{
+    display:flex; align-items:center; gap:0.7rem; padding:0.55rem 0.5rem; border-radius:10px;
+    text-decoration:none; color:inherit; transition:background 0.18s var(--ease);
+  }
+  .search-artist-item:hover{background:var(--glass-hi);}
+  .search-artist-item .artist-avatar{width:36px; height:36px; flex:0 0 36px;}
+  .search-artist-item .artist-avatar.is-initial{font-size:1.1rem;}
+  .search-artist-text{display:flex; flex-direction:column; min-width:0;}
+  .search-artist-name{font-family:var(--font-ui); font-weight:600; font-size:0.95rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .search-artist-handle{font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint);}
+
   /* playlists */
   .pl-new{display:flex; gap:0.5rem; margin-bottom:0.9rem;}
   .pl-new input{flex:1; background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:12px; padding:0.55rem 0.8rem; font-family:var(--font-ui); font-size:0.88rem; color:var(--text);}
@@ -1635,7 +1654,7 @@
     <div id="songs-panel" style="flex:1; min-height:0; display:flex; flex-direction:column;">
       <div class="controls">
         <div class="search-row">
-          <input class="search" id="search" type="text" placeholder="Search a title, category, or word" aria-label="Search songs">
+          <input class="search" id="search" type="text" placeholder="Search songs, artists, lyrics, tags" aria-label="Search songs">
           <select class="sort-select" id="sort-select" aria-label="Sort songs">
             <option value="shuffle">Shuffle</option>
             <option value="newest">Newest</option>
@@ -1677,7 +1696,7 @@
       <div id="account-slot"></div>
     </nav>
     <div class="home-header-right">
-      <input class="search home-search" id="home-search" type="text" placeholder="Search songs, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
+      <input class="search home-search" id="home-search" type="text" placeholder="Search songs, artists, lyrics, tags" aria-label="Search songs" enterkeyhint="search">
       <!-- Same theme controls as /listen (shared handlers + persistence). On
            mobile the four colors collapse behind a single swatch button. -->
       <div class="home-theme">
@@ -2346,8 +2365,12 @@ function trophyCaseHTML(list){
     return `<li class="trophy">${badgeIconHTML(b.badge)}<span class="trophy-t">${escHtml(fn(n))}</span></li>`;
   }).filter(Boolean).join('');
   if(!items) return '';
+  // ARTIST-3: renamed from "Honors" -- the song-card RAIL below is "Honors"
+  // now, so the tally needed its own, different name. English only, per the
+  // artist page's "no Hebrew labels" rule (step 5); the Hebrew heading this
+  // line used to carry is simply gone, not translated.
   return `<section class="trophy-case" aria-labelledby="trophy-h">
-      <h2 class="rail-title-h" id="trophy-h">Honors <span class="artist-he" dir="rtl" lang="he">הישגים</span></h2>
+      <h2 class="rail-title-h" id="trophy-h">Trophy case</h2>
       <ul class="trophy-list">${items}</ul>
     </section>`;
 }
@@ -2573,6 +2596,7 @@ async function loadSongs(){
   await loadBadges();
   await loadMilestones();
   await loadPublicSettings();   // before initRoute: the homepage reads the CTA switch
+  await loadArtistsDirectory(); // before buildSearchIndexes: shares normalizeForSearch, not a hard dependency, just tidy
   buildSearchIndexes();
   applySessionShuffle();
   loadRatingSettings();
@@ -2686,8 +2710,8 @@ const SHOW_TAG_CLOUD = false;
    invitation they cannot accept. Read live at boot from the public-read
    site_settings table; falls back to the build-time settings.json, then to
    these defaults, so an outage can never turn the switch ON by accident. */
-const PUBLIC_SETTING_KEYS = ['contribute_cta_enabled'];
-let PUBLIC_SETTINGS = { contribute_cta_enabled: false };
+const PUBLIC_SETTING_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart'];
+let PUBLIC_SETTINGS = { contribute_cta_enabled: false, honors_min_weeks_on_chart: 4 };
 
 function applyPublicSettings(rows){
   for(const r of rows || []){
@@ -2840,6 +2864,69 @@ function currentTerms(){
   return normalizeForSearch(searchTerm).split(' ').filter(Boolean);
 }
 
+/* ============================================================
+   ARTIST-3: artist search. The site's one search box (and the homepage box
+   that forwards into it) now also matches artists by display name and
+   handle -- accent- and case-insensitive through the SAME normalizeForSearch
+   every song field already uses, so "laivy", "Laivy Hart" and "laivyhart"
+   all fold to the same comparison.
+
+   ONE bulk read at boot, exactly like loadChannels/loadBadges: live first,
+   artists.json second. Never a per-keystroke query.
+   ============================================================ */
+let ARTISTS = [];
+async function loadArtistsDirectory(){
+  let ok = false;
+  try{
+    const { data, error } = await supabaseClient
+      .from('artists_public')
+      .select('id, handle, display_name, display_name_he, avatar_url');
+    if(error || !Array.isArray(data)) throw (error || new Error('no artists'));
+    ARTISTS = data;
+    ok = true;
+  }catch(e){
+    console.warn('[laivy] artists_public load failed; search will use artists.json.', e && e.message);
+  }
+  if(!ok){
+    try{
+      const res = await fetch('/artists.json', { cache: 'no-cache' });
+      if(res.ok){
+        const rows = await res.json();
+        if(Array.isArray(rows)){
+          ARTISTS = rows.map(a => ({ id: a.id, handle: a.handle, display_name: a.name, display_name_he: a.name_he, avatar_url: a.avatar }));
+        }
+      }
+    }catch(e2){ /* ARTISTS stays empty; the search simply never shows the group */ }
+  }
+  ARTISTS.forEach(a => {
+    a.nDisplayName = normalizeForSearch(a.display_name || '');
+    a.nHandle = normalizeForSearch(a.handle || '');
+  });
+}
+
+// Every AND-term must match the display name or the handle. Capped at 5
+// (step 7); order is otherwise whatever ARTISTS already came in (handle
+// order from the live/snapshot read), which is stable and good enough for a
+// handful of matches.
+function matchingArtists(terms){
+  return ARTISTS.filter(a => terms.every(t => a.nDisplayName.includes(t) || a.nHandle.includes(t))).slice(0, 5);
+}
+
+function artistResultsHTML(matches){
+  if(!matches.length) return '';
+  return `<div class="search-artists">
+      <div class="search-artists-label">Artists</div>
+      ${matches.map(a => `
+        <a class="artist-link search-artist-item" href="/artist/${encodeURIComponent(a.handle)}">
+          ${artistAvatarHTML(a, 36)}
+          <span class="search-artist-text">
+            <span class="search-artist-name">${escHtml(a.display_name || a.handle)}</span>
+            <span class="search-artist-handle">@${escHtml(a.handle)}</span>
+          </span>
+        </a>`).join('')}
+    </div>`;
+}
+
 // The highest-priority field a term appears in, or null. Priority: title,
 // translit, artist, tags, categories, about, lyrics (original), translation.
 function termField(s, t){
@@ -2966,12 +3053,17 @@ function rowThumbHTML(s){ return coverThumbHTML(s, 'row-thumb', 140); }
 function renderList(){
   const rows = document.getElementById('rows');
   const filtered = visibleOrder();
+  const terms = currentTerms();
+  // ARTIST-3: the "Artists" group sits above the song rows regardless of
+  // whether any SONG matched -- an artist with no matching songs is still a
+  // real result (step 21: a song-only query shows no group; an artist query
+  // must not be hidden just because their catalog did not also match).
+  const artistsHTML = artistResultsHTML(terms.length ? matchingArtists(terms) : []);
   if(filtered.length === 0){
-    rows.innerHTML = `<div class="muted">Nothing matches. Try another word or clear the filter.</div>`;
+    rows.innerHTML = artistsHTML + `<div class="muted">Nothing matches. Try another word or clear the filter.</div>`;
     return;
   }
-  const terms = currentTerms();
-  rows.innerHTML = filtered.map(({s, idx}) => {
+  rows.innerHTML = artistsHTML + filtered.map(({s, idx}) => {
     const playing = currentIdx === idx;
     const heb = isHebrew(s);
     // Primary is always the song's own language (bold), secondary is muted below.
@@ -3343,6 +3435,10 @@ function railBadgeHTML(railKey, i){
 const BADGED_RAIL_KEYS = new Set(['catalog']);
 // ARTIST-2: railKeys that gain the milestone corner ring (song_milestones).
 const RINGED_RAIL_KEYS = new Set(['catalog', 'success']);
+// ARTIST-3: railKeys whose cards are always THIS page's own artist's songs,
+// so naming them on every card is redundant -- Picks and Try These keep the
+// name, since those can be someone else's song (step 6).
+const NO_ARTIST_NAME_RAIL_KEYS = new Set(['honors', 'success', 'catalog']);
 
 function railCardHTML(s, idxOf, railKey, i){
   const heb = isHebrew(s);
@@ -3378,7 +3474,7 @@ function railCardHTML(s, idxOf, railKey, i){
         BADGED_RAIL_KEYS.has(railKey) ? badgeStripHTML(s, 'card') : ''
       }${ring}${ribbon}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
-      ${a ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
+      ${(a && !NO_ARTIST_NAME_RAIL_KEYS.has(railKey)) ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
           : (sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : '')}
     </button>`;
 }
@@ -5559,6 +5655,49 @@ async function loadArtistStats(a){
   }catch(e){ return null; }
 }
 
+/* ARTIST-3: follower_count (public) and, for a signed-in non-owner, whether
+   THEY already follow this artist (artist_follows self-select RLS -- a
+   listener can only ever read their own follow rows, so "are they following
+   artist X" is the one question that RLS answers for free). */
+async function loadFollowerCount(a){
+  try{
+    const { data, error } = await supabaseClient.rpc('follower_count', { p_artist_id: a.id });
+    if(error) throw error;
+    if(typeof data === 'number') return data;
+  }catch(e){ console.warn('[laivy] follower_count failed; using artists.json.', e && e.message); }
+  try{
+    const res = await fetch('/artists.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const hit = (rows || []).find(x => x.id === a.id
+      || (a.handle && String(x.handle).toLowerCase() === String(a.handle).toLowerCase()));
+    return (hit && typeof hit.follower_count === 'number') ? hit.follower_count : 0;
+  }catch(e){ return 0; }
+}
+async function loadIsFollowing(meId, artistId){
+  if(!meId) return false;
+  try{
+    const { data, error } = await supabaseClient.from('artist_follows')
+      .select('artist_id').eq('follower_user_id', meId).eq('artist_id', artistId).maybeSingle();
+    if(error) throw error;
+    return !!data;
+  }catch(e){ return false; }   // outage: defaults to "not following"; a real toggle corrects it
+}
+function followerWord(n){ return n === 1 ? 'follower' : 'followers'; }
+
+// The header's Follow slot. Owner: a plain count, no button (step 14).
+// Everyone else: Follow/Following + the count beside it (step 12).
+function followWidgetHTML(isOwner, followerCount, following){
+  if(isOwner){
+    return `<span class="follow-count" id="artist-follow-count">${followerCount} ${followerWord(followerCount)}</span>`;
+  }
+  return `<div class="follow-widget">
+      <button class="home-primary-btn ${following ? 'outlined' : 'filled'}" type="button" id="artist-follow-btn" data-following="${following ? 'true' : 'false'}">${following ? 'Following' : 'Follow'}</button>
+      <span class="follow-count" id="artist-follow-count">${followerCount} ${followerWord(followerCount)}</span>
+    </div>
+    <p class="follow-err" id="artist-follow-err" hidden></p>`;
+}
+
 // Ordered by position; skips a pick whose song is not approved (SONGS holds
 // approved songs only, so a miss there already means "not approved").
 async function loadArtistPicksRows(a){
@@ -5696,10 +5835,20 @@ function statStripHTML(stats){
     </div>`;
 }
 
-// Approved songs with >=1 PERMANENT badge, by badge priority then that
+// ARTIST-3: Honors ROW membership is narrower than "has a permanent badge" --
+// weeks_on_chart alone only counts once it reaches honors_min_weeks_on_chart
+// (site_settings, default 4; step 10). Every OTHER permanent badge still
+// qualifies outright, value and all, exactly as before. The Trophy case
+// tally (artist_badges, trophyCaseHTML above) is untouched by this -- it
+// keeps every earned badge, no threshold.
+function honorsQualifies(s){
+  const min = PUBLIC_SETTINGS.honors_min_weeks_on_chart || 4;
+  return permanentBadgesOf(s).some(b => b.badge !== 'weeks_on_chart' || (b.value || 0) >= min);
+}
+// Approved songs that qualify for Honors, by badge priority then that
 // badge's own count -- same ordering rule as every other badge surface.
 function honorsListOf(mine){
-  return mine.filter(s => permanentBadgesOf(s).length > 0).slice().sort((x, y) => {
+  return mine.filter(honorsQualifies).slice().sort((x, y) => {
     const px = permanentBadgesOf(x)[0], py = permanentBadgesOf(y)[0];
     return (px.sort - py.sort) || ((py.value || 0) - (px.value || 0));
   });
@@ -5777,8 +5926,6 @@ function artistAvatarHTML(a, px){
   return `<div class="artist-avatar is-initial" aria-hidden="true">${escHtml(initial)}</div>`;
 }
 
-const STATUS_LABEL = { draft:'Draft', submitted:'Awaiting review', rejected:'Needs changes', removed:'Removed' };
-
 // Shared by the initial paint, the catalog's re-sort, and the Try These row
 // that pops in after its own fetch -- any of them can hand this a fresh
 // container of fresh buttons.
@@ -5807,7 +5954,6 @@ async function renderArtistPage(handle){
   if(!a){
     root.innerHTML = `<div class="artist-wrap artist-missing">
         <h1>Artist not found</h1>
-        <p class="artist-he" dir="rtl" lang="he">האמן לא נמצא</p>
         <p><a class="quiet-link" href="/">Back to Laivy Hart</a></p>
       </div>`;
     return;
@@ -5834,11 +5980,13 @@ async function renderArtistPage(handle){
   // Batched and awaited before the page is written: the same "never pops in
   // after the songs have already painted" rule BADGE-3 already follows for
   // the trophy case, now covering everything with a snapshot fallback.
-  const [stats, honors, picksRows, chartWeeks] = await Promise.all([
+  const [stats, honors, picksRows, chartWeeks, followerCount, following] = await Promise.all([
     loadArtistStats(a),
     loadArtistBadges(a.id, a.handle),
     loadArtistPicksRows(a),
     loadArtistChartWeeks(mine.map(s => s.id)),
+    loadFollowerCount(a),
+    (!isOwner && me) ? loadIsFollowing(me.id, a.id) : Promise.resolve(false),
   ]);
   if(token !== artistPageToken) return;
 
@@ -5861,7 +6009,7 @@ async function renderArtistPage(handle){
           ${bioHTML ? `<p class="artist-bio">${bioHTML}</p>` : ''}
           ${moodChipsHTML(moodChips)}
           <div class="artist-actions">
-            <div class="artist-follow-slot" id="artist-follow-slot"></div>
+            <div class="artist-follow-slot" id="artist-follow-slot">${followWidgetHTML(isOwner, followerCount, following)}</div>
             ${mine.length ? `<button class="home-primary-btn filled" type="button" id="artist-playall">Play all</button>` : ''}
             ${mine.length > 1 ? `<button class="home-primary-btn outlined" type="button" id="artist-shuffle">Shuffle</button>` : ''}
             <button class="home-primary-btn outlined" type="button" id="artist-share">Share</button>
@@ -5874,18 +6022,8 @@ async function renderArtistPage(handle){
 
       ${trophyCaseHTML(honors)}
 
-      ${(isOwner && mine.length) ? `<section class="artist-owner-tools">
-           <h2 class="rail-title-h">Your published songs</h2>
-           <p class="artist-private-note">Editing sends a song back for review and takes it off the site until it is re-approved.</p>
-           <div class="artist-owner-list">${mine.map(s => `
-             <div class="artist-private-row">
-               <span class="artist-private-title">${escHtml(s.title || s.title_translit || 'Untitled')}</span>
-               ${ownerSongActionsHTML(s)}
-             </div>`).join('')}</div>
-         </section>` : ''}
-
       ${honorsList.length ? `<section class="rail" data-rail="honors">
-           <div class="rail-head"><h2 class="rail-title-h">Honors <span class="artist-he" dir="rtl" lang="he">הישגים</span></h2></div>
+           <div class="rail-head"><h2 class="rail-title-h">Honors</h2></div>
            ${railAffordancesHTML('rail-scroll', 'honors', honorsList.map((s, i) => railCardHTML(s, idxOf, 'honors', i)).join(''))}
          </section>` : ''}
 
@@ -5901,7 +6039,7 @@ async function renderArtistPage(handle){
 
       <section class="artist-catalog" data-rail="catalog">
         <div class="catalog-head">
-          <h2 class="rail-title-h">Catalog <span class="artist-he" dir="rtl" lang="he">שירים</span></h2>
+          <h2 class="rail-title-h">Catalog</h2>
           ${mine.length ? `<select class="sort-select" id="artist-sort-select" aria-label="Sort songs">
               <option value="newest">Newest</option>
               <option value="loved">Most loved</option>
@@ -5911,7 +6049,7 @@ async function renderArtistPage(handle){
         </div>
         ${mine.length
           ? `<div class="catalog-grid" id="artist-catalog-grid">${catalogCardsHTML()}</div>`
-          : `<p class="artist-empty">No songs yet.<br><span class="artist-he" dir="rtl" lang="he">אין שירים עדיין.</span></p>`}
+          : `<p class="artist-empty">No songs yet.</p>`}
       </section>
 
       <section class="artist-listeners" id="artist-listeners" hidden>
@@ -5925,19 +6063,10 @@ async function renderArtistPage(handle){
         <div id="artist-try-these-rail"></div>
       </section>
 
-      ${isOwner ? `<section class="artist-private" id="artist-private">
-           <h2 class="rail-title-h">Not yet public <span class="artist-he" dir="rtl" lang="he">עדיין לא פורסם</span></h2>
-           <p class="artist-private-note">Only you can see this.</p>
-           <div class="artist-private-list" id="artist-private-list"></div>
-           <div class="artist-private-actions">
-             <a class="home-primary-btn outlined" href="/upload">Add a song</a>
-           </div>
-         </section>` : ''}
     </div>`;
 
   // Cards behave exactly as they do in a homepage rail: open /listen with that
   // song loaded. loadSong(idx, false) does not autoplay.
-  wireWithdraw(root);
   wireArtistCardClicks(root, a);
 
   const playAll = document.getElementById('artist-playall');
@@ -5976,6 +6105,44 @@ async function renderArtistPage(handle){
     }catch(e){ /* the visitor cancelled the sheet */ }
   });
 
+  // Follow: signed-out opens sign-in with next=this page (openUploadOrSignIn's
+  // own pattern for /upload), so the visitor lands right back here and sees
+  // their REAL state -- it does not auto-resume the click, same as Upload.
+  // Signed-in: optimistic toggle, revert + show follow_artist's own message
+  // (self-follow, daily limit) inline on error.
+  const followBtn = document.getElementById('artist-follow-btn');
+  if(followBtn) followBtn.addEventListener('click', async () => {
+    if(!me){
+      laivyTrack('artist_follow_signin', { handle: a.handle });
+      if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: location.pathname });
+      return;
+    }
+    const countEl = document.getElementById('artist-follow-count');
+    const errEl = document.getElementById('artist-follow-err');
+    const wasFollowing = followBtn.dataset.following === 'true';
+    const nextOn = !wasFollowing;
+    followBtn.disabled = true;
+    if(errEl) errEl.hidden = true;
+    followBtn.textContent = nextOn ? 'Following' : 'Follow';
+    followBtn.dataset.following = String(nextOn);
+    followBtn.classList.toggle('filled', !nextOn);
+    followBtn.classList.toggle('outlined', nextOn);
+    try{
+      const { data, error } = await supabaseClient.rpc('follow_artist', { p_artist_id: a.id, p_on: nextOn });
+      if(error) throw error;
+      if(countEl && typeof data === 'number') countEl.textContent = `${data} ${followerWord(data)}`;
+      laivyTrack('artist_follow_toggle', { handle: a.handle, on: nextOn });
+    }catch(err){
+      followBtn.textContent = wasFollowing ? 'Following' : 'Follow';
+      followBtn.dataset.following = String(wasFollowing);
+      followBtn.classList.toggle('filled', !wasFollowing);
+      followBtn.classList.toggle('outlined', wasFollowing);
+      if(errEl){ errEl.textContent = (err && err.message) || 'Could not update that.'; errEl.hidden = false; }
+    }finally{
+      followBtn.disabled = false;
+    }
+  });
+
   // Mood chips: the mood's own radio (startChannelRadio via goChannel), not a
   // hard navigation -- same behavior a homepage mood-strip tap gets.
   root.querySelectorAll('.mood-chip[data-channel]').forEach(chip => {
@@ -6004,7 +6171,6 @@ async function renderArtistPage(handle){
   }
 
   setupRailAffordances('#artist-root');
-  if(isOwner) renderArtistPrivate(a);
 
   /* ------------------------------------------------------------
      Progressive, optional rows. Both are explicitly "hidden when empty"
@@ -6048,89 +6214,6 @@ async function renderArtistPage(handle){
   });
 }
 
-/* The owner's own unpublished songs. Live only: RLS songs_read_own returns
-   them to their owner and nothing else, and they are never in songs.json. */
-async function renderArtistPrivate(a){
-  const host = document.getElementById('artist-private-list');
-  const section = document.getElementById('artist-private');
-  if(!host || !section) return;
-  let rows = [];
-  try{
-    const { data, error } = await supabaseClient
-      .from('songs')
-      .select('id, title, title_translit, status, created_at')
-      .eq('artist_id', a.id)
-      .neq('status', 'approved')
-      .order('created_at', { ascending: false });
-    if(error) throw error;
-    rows = data || [];
-  }catch(e){ return; }
-  // The latest rejection reason per rejected song. `reviews` is readable by
-  // the song's own artist; a failure here just means no reason line.
-  const reasons = {};
-  const rejected = rows.filter(r => r.status === 'rejected').map(r => r.id);
-  if(rejected.length){
-    try{
-      const { data } = await supabaseClient.from('reviews')
-        .select('song_id, decision, reason, created_at')
-        .in('song_id', rejected).order('created_at', { ascending: false });
-      (data || []).forEach(v => {
-        if(!(v.song_id in reasons)) reasons[v.song_id] = v.decision === 'reject' ? (v.reason || 'No reason was given.') : null;
-      });
-    }catch(e){ /* the pill still says Needs changes; the edit form shows the reason */ }
-  }
-  /* 1B-2: the section is no longer hidden when empty, because it now carries
-     the "Add a song" button and an owner with nothing pending still needs a
-     way in. An empty list says so rather than showing a bare heading. */
-  section.hidden = false;
-  if(!rows.length){
-    host.innerHTML = `<p class="artist-private-empty">Nothing waiting. Anything you save as a draft or submit for review shows up here.</p>`;
-    return;
-  }
-  host.innerHTML = rows.map(r => `
-    <div class="artist-private-row${reasons[r.id] ? ' has-reason' : ''}">
-      <span class="artist-private-title">${escHtml(r.title || r.title_translit || 'Untitled')}</span>
-      <span class="artist-private-pill" data-status="${escHtml(r.status)}">${escHtml(STATUS_LABEL[r.status] || r.status)}</span>
-      <span class="artist-private-act-row">
-        <a class="artist-private-act" href="/upload?song=${encodeURIComponent(r.id)}">Edit</a>
-        ${r.status !== 'removed' ? `<button type="button" class="artist-private-act is-warn" data-withdraw="${escHtml(r.id)}" data-private="1">Withdraw</button>` : ''}
-      </span>
-      ${reasons[r.id] ? `<details class="artist-private-reason"><summary>Why</summary><p>${escHtml(reasons[r.id])}</p></details>` : ''}
-    </div>`).join('');
-  wireWithdraw(host);
-}
-
-/* Withdraw, for the published list and the private list alike. A private row
-   has nothing public to take down, so its copy says so and its pill updates. */
-function wireWithdraw(scope){
-  scope.querySelectorAll('[data-withdraw]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault(); e.stopPropagation();
-      const priv = btn.dataset.private === '1';
-      if(!confirm(priv ? 'Withdraw this song? It moves to Removed; you can edit and submit it again later.'
-                       : 'Take this song off the site? You can submit it again later.')) return;
-      try{
-        const { error } = await supabaseClient.from('songs')
-          .update({ status: 'removed' }).eq('id', btn.dataset.withdraw);
-        if(error) throw error;
-        btn.textContent = 'Withdrawn';
-        btn.disabled = true;
-        const pill = btn.closest('.artist-private-row') && btn.closest('.artist-private-row').querySelector('.artist-private-pill');
-        if(pill){ pill.dataset.status = 'removed'; pill.textContent = STATUS_LABEL.removed; }
-      }catch(err){ alert('Could not withdraw: ' + (err && err.message)); }
-    });
-  });
-}
-
-/* The owner's APPROVED songs get their own row of controls on their page:
-   Edit (which sends the song back to review, per 1B-1) and Withdraw. Kept
-   separate from the private list above, which is by definition not approved. */
-function ownerSongActionsHTML(s){
-  return `<span class="artist-private-act-row">`
-       + `<a class="artist-private-act" href="/upload?song=${encodeURIComponent(s.id)}">Edit</a>`
-       + `<button type="button" class="artist-private-act is-warn" data-withdraw="${escHtml(s.id)}">Withdraw</button>`
-       + `</span>`;
-}
 
 /* ============================================================
    Mini-player (homepage, while a song plays)

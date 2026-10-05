@@ -2,5 +2,9 @@
   {
     "key": "contribute_cta_enabled",
     "value": true
+  },
+  {
+    "key": "honors_min_weeks_on_chart",
+    "value": 4
   }
 ]

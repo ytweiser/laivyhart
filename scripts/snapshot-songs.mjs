@@ -251,14 +251,20 @@ try {
    build-time fallback. Only the keys listed are ever written -- site_settings
    also holds admin knobs that do not belong in a public file. On failure the
    file is simply not rewritten and the site falls back to its defaults (off). */
+// ARTIST-3: honors_min_weeks_on_chart defaults to 4 if the read below fails,
+// matching index.html's own PUBLIC_SETTINGS default exactly, so an outage
+// never makes the snapshot's Honors list disagree with the live site's.
+let honorsMinWeeksOnChart = 4;
 try {
-  const PUBLIC_KEYS = ['contribute_cta_enabled'];
+  const PUBLIC_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart'];
   const sres = await fetch(`${url}/rest/v1/site_settings?select=key,value&key=in.(${PUBLIC_KEYS.join(',')})`, { headers });
   if (!sres.ok) throw new Error(`HTTP ${sres.status}`);
   const srows = await sres.json();
   if (!Array.isArray(srows)) throw new Error('not an array');
   writeFileSync(join(root, 'settings.json'), JSON.stringify(srows, null, 2) + '\n');
   console.log(`[snapshot] Wrote settings.json with ${srows.length} public setting(s).`);
+  const row = srows.find((r) => r.key === 'honors_min_weeks_on_chart');
+  if (row && Number.isFinite(Number(row.value))) honorsMinWeeksOnChart = Number(row.value);
 } catch (e) {
   console.warn(`[snapshot] Could not read public settings (${e && e.message}) — keeping any existing settings.json.`);
 }
@@ -330,6 +336,26 @@ if (artists) {
     }
   }));
 
+  /* ARTIST-3: follower_count, same one-RPC-call-per-artist shape as
+     artist_stats above (it too takes a single p_artist_id, no bulk form).
+     Read by the client to refresh the live count; read by middleware.js so
+     the server-rendered page shows it without any button. */
+  const followersByArtist = new Map();
+  await Promise.all(artists.map(async (a) => {
+    try {
+      const fres = await fetch(`${url}/rest/v1/rpc/follower_count`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_artist_id: a.id }),
+      });
+      if (!fres.ok) throw new Error(`HTTP ${fres.status}`);
+      const n = await fres.json();
+      if (typeof n === 'number') followersByArtist.set(a.id, n);
+    } catch (e) {
+      console.warn(`[snapshot] Could not read follower_count for ${a.handle} (${e && e.message}).`);
+    }
+  }));
+
   /* ARTIST-2: mood chips -- distinct channels across THIS artist's approved
      songs, most-used first. Computed from the channel ids already embedded
      on `rows` above, not a second fetch. */
@@ -375,9 +401,16 @@ if (artists) {
     'hit_number_one', 'weeks_at_number_one', 'best_words',
     'best_music', 'weeks_on_chart', 'was_most_loved',
   ]);
+  // ARTIST-3: the same honors_min_weeks_on_chart gate index.html's
+  // honorsQualifies() applies live -- weeks_on_chart alone only counts once
+  // it reaches the threshold; every other permanent badge still qualifies
+  // outright. Keep these two in sync if the rule ever changes again.
+  function honorsQualifies(r) {
+    return (r.badges || []).some((b) => PERMANENT_BADGES.has(b.badge)
+      && (b.badge !== 'weeks_on_chart' || (b.value || 0) >= honorsMinWeeksOnChart));
+  }
   function honorsIdsFor(artistId) {
-    return rows.filter((r) => r.artist_id === artistId
-      && (r.badges || []).some((b) => PERMANENT_BADGES.has(b.badge))).map((r) => r.id);
+    return rows.filter((r) => r.artist_id === artistId && honorsQualifies(r)).map((r) => r.id);
   }
   function milestonesFor(artistId) {
     const ids = new Set(rows.filter((r) => r.artist_id === artistId).map((r) => r.id));
@@ -393,6 +426,7 @@ if (artists) {
     picks: picksByArtist.get(a.id) || [],
     honors: honorsIdsFor(a.id),
     milestones: milestonesFor(a.id),
+    follower_count: followersByArtist.get(a.id) ?? 0,
   }));
   writeFileSync(artistsPath, JSON.stringify(out, null, 2) + '\n');
   console.log(`[snapshot] Wrote artists.json with ${out.length} artist(s).`);
