@@ -107,6 +107,15 @@
   /* The artist-card overlay sits on a fixed dark plate over artwork, so it
      does NOT follow the lighting -- it always wants the bright gold. */
   --badge-gold-bright:#EFC868;
+  /* ARTIST-2: the milestone ring/ribbon's silver and bronze. Same fixed-plate
+     reasoning as --badge-gold-bright (they sit on the card's own
+     rgba(0,0,0,0.82) scrim band, identical in every theme, same convention as
+     .hero-scrim) -- so, like --badge-gold-bright, neither gets a light-mode
+     override. Measured against the worst case (a pure-white cover under that
+     scrim): gold-bright 8.50:1, silver 9.87:1, bronze 5.83:1 -- all clear
+     4.5:1 with room to spare. */
+  --badge-silver:#D7DCE4;
+  --badge-bronze:#D79E6E;
 
   /* The rating stars, same rule as the hairline above and for the same reason:
      accent-2 is the bright shade and reads on a dark ground, accent-1 is the
@@ -647,12 +656,65 @@ body{
   letter-spacing:0.02em; color:var(--text); white-space:nowrap;
 }
 
-.artist-stats{ display:flex; gap:0.55rem; align-items:center; margin-top:0.9rem;
-  font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); }
-.artist-actions{ display:flex; gap:0.7rem; flex-wrap:wrap; margin-top:1.2rem; }
+/* ARTIST-2: mood chips, one per distinct channel the artist's approved songs
+   carry, ordered by how many of their songs are in it. Pill-sized (the
+   --chip-* tokens already exist for exactly this), not the homepage's bigger
+   .mood-card -- the header has a name and a bio to carry too. */
+.artist-mood-chips{ display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.9rem; }
+.mood-chip{
+  display:inline-flex; align-items:center; padding:0.32rem 0.75rem; border-radius:999px;
+  background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text-dim);
+  font-family:var(--font-ui); font-size:0.78rem; text-decoration:none; transition:color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.mood-chip:hover{ color:var(--accent-2); border-color:rgba(var(--accent-2-rgb), 0.4); }
+
+.artist-actions{ display:flex; gap:0.7rem; flex-wrap:wrap; align-items:center; margin-top:1.2rem; }
 .artist-actions .home-primary-btn{ text-decoration:none; }
+/* ARTIST-3 fills this; empty today, reserves no visible space. */
+.artist-follow-slot:empty{ display:none; }
+
+/* Five tiles, always rendered (0 shows as 0 -- no "hide a zero" logic). No
+   raw play count ever appears here, same house rule BADGE-1/2 already keep:
+   the strip is songs/weeks/hearts/comments/since, never plays. */
+.artist-stat-strip{
+  display:flex; flex-wrap:wrap; gap:1.6rem; margin:1.6rem 0 0;
+  padding:1.1rem 1.3rem; border-radius:var(--radius-sm);
+  background:var(--glass-bg); border:1px solid var(--glass-border);
+}
+.stat-tile{ display:flex; flex-direction:column; gap:0.15rem; min-width:5.5rem; }
+.stat-tile-n{ font-family:var(--font-display); font-weight:600; font-size:1.5rem; color:var(--text); line-height:1; }
+.stat-tile-k{ font-family:var(--font-ui); font-size:0.74rem; letter-spacing:0.02em; color:var(--text-faint); }
 
 .artist-empty{ font-family:var(--font-ui); color:var(--text-dim); padding:2rem 0; line-height:1.8; }
+
+/* ARTIST-2: the catalog's own head (title + sort, no Play-all -- that moved
+   to the header) and the grid itself. Reuses .rail-item (290px cards) but
+   wraps instead of scrolling: "every approved song" is meant to be browsed,
+   not skimmed, so it is not a .rail-scroll. */
+.catalog-head{ display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:0.9rem; }
+.catalog-grid{ display:flex; flex-wrap:wrap; gap:1.4rem 1.1rem; }
+
+/* ARTIST-2: "What listeners say" -- three most recent approved comments on
+   this artist's approved songs. Distinct from the global .feed-item: that one
+   plays the song in place and never clamps; this one is a real link to the
+   song's own page (so a listener reading an artist's page can open it in a
+   new tab) and clamps to three lines so one long comment cannot push the
+   other two below the fold. */
+.artist-listeners{ margin:2.2rem 0; }
+.listener-list{ display:flex; flex-direction:column; gap:1.1rem; }
+.listener-item{ padding:0.15rem 0 0.15rem 0.95rem; border-left:2px solid transparent; border-image:var(--accent-grad) 1; }
+.listener-body{
+  font-family:var(--font-display); font-size:1.0rem; line-height:1.55; color:var(--text); margin:0;
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+}
+.listener-meta{ margin-top:0.3rem; font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint); }
+.listener-who{ color:var(--text-dim); font-style:italic; }
+.listener-song{ color:var(--accent-2); text-decoration:none; font-weight:600; }
+.listener-song:hover{ text-decoration:underline; }
+
+/* ARTIST-2: "If you like <name>, try these" -- recommend_for_artist, live
+   only (no snapshot fallback: a stale recommendation is worse than none). */
+.try-these-sub{ font-family:var(--font-ui); font-style:italic; font-size:0.82rem; color:var(--text-dim); margin:-0.4rem 0 0.9rem; }
 
 .artist-private{ margin-top:3rem; padding-top:1.4rem; border-top:1px solid var(--chip-border); }
 .artist-private-note{ font-family:var(--font-ui); font-size:0.82rem; color:var(--text-faint); margin:0.2rem 0 1rem; }
@@ -683,8 +745,12 @@ body{
   .artist-avatar{ width:120px; height:120px; flex-basis:120px; }
   .artist-avatar.is-initial{ font-size:3rem; }
   .artist-name{ font-size:1.7rem; }
-  .artist-stats, .artist-actions{ justify-content:center; }
+  .artist-actions{ justify-content:center; }
   .artist-bio{ text-align:left; }
+  .artist-mood-chips{ justify-content:center; }
+  .artist-stat-strip{ gap:1.1rem 1.4rem; justify-content:center; text-align:center; }
+  .stat-tile{ align-items:center; }
+  .catalog-grid, .artist-mood-chips{ justify-content:center; }
 }
 
 /* Avatar picker in /settings */

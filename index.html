@@ -1057,6 +1057,50 @@
   .badge-strip.is-card .badge-ic{width:1rem; height:1rem;}
   .badge-more{font-family:var(--font-ui); font-size:0.62rem; font-weight:700; color:var(--badge-gold-bright);}
 
+  /* ARTIST-2: the Honors/Success ribbon. A FLAT (not gradient) scrim, same
+     fixed-dark-plate reasoning as .badge-strip.is-card and .hero-scrim --
+     identical in every theme -- but deliberately darker (0.82 vs that
+     plate's 0.65): this one carries real TEXT, which needs the 4.5:1 text
+     minimum, not an icon's 3:1. See --badge-silver/--badge-bronze in
+     theme.css for the measured numbers. */
+  .card-ribbon{
+    position:absolute; left:0; right:0; bottom:0; z-index:2;
+    padding:0.4rem 0.6rem 0.35rem;
+    background:rgba(0,0,0,0.82);
+    font-family:var(--font-ui); font-weight:600; font-size:0.72rem; line-height:1.25;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    pointer-events:none;
+  }
+  .card-ribbon.tone-gold{color:var(--badge-gold-bright);}
+  .card-ribbon.tone-silver{color:var(--badge-silver);}
+  .card-ribbon.tone-bronze{color:var(--badge-bronze);}
+  .card-ribbon-more{opacity:0.78; font-weight:700; margin-left:0.3rem;}
+
+  /* ARTIST-2: the milestone ring (Success + Catalog cards). A solid dot, not
+     an outline, so its own fill IS the colour -- no text-contrast question,
+     only WCAG's 3:1 non-text minimum, comfortably cleared by a dark halo
+     (the box-shadow) against any cover. Top-right: the ribbon owns the
+     bottom edge and the honor-icon overlay owns bottom-left. */
+  .card-ring{
+    position:absolute; top:0.5rem; right:0.5rem; z-index:2;
+    width:0.95rem; height:0.95rem; border-radius:50%;
+    box-shadow:0 0 0 2px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4);
+    pointer-events:none;
+  }
+  .card-ring.tone-gold{background:var(--badge-gold-bright);}
+  .card-ring.tone-silver{background:var(--badge-silver);}
+  .card-ring.tone-bronze{background:var(--badge-bronze);}
+
+  /* ARTIST-2: Artist's picks. .pick-item takes over the rail's 290px sizing
+     from .rail-item, since the note paragraph now sits beside it in the same
+     flex column. */
+  .pick-item{flex:0 0 auto; width:290px; scroll-snap-align:start; display:flex; flex-direction:column; gap:0.5rem;}
+  .pick-item .rail-item{width:100%;}
+  .pick-note{
+    font-family:var(--font-display); font-style:italic; font-size:0.82rem; line-height:1.4;
+    color:var(--text-dim); margin:0; padding:0 0.1rem;
+  }
+
   /* EXPANSIVE (now-playing and the song page): icon + label pill. */
   .now-badges{margin-top:0.55rem;}
   .now-badges:empty{display:none;}
@@ -2100,6 +2144,65 @@ async function loadBadges(){
   }
 }
 
+/* ============================================================
+   ARTIST-2: song_milestones (sql/016/017) -- one bulk read, exactly like
+   loadBadges() above (same reasoning: live first so a tier crossed today
+   shows today, songs.json's embedded `milestones` second for an outage).
+   [{track, tier, threshold}, …] per song; a song absent from the map has
+   crossed no tier yet.
+   ============================================================ */
+async function loadMilestones(){
+  let ok = false;
+  try{
+    const res = await supabaseClient.from('song_milestones').select('song_id,track,tier,threshold');
+    if(res.error || !Array.isArray(res.data)) throw (res.error || new Error('no milestones'));
+    const bySong = new Map();
+    for(const m of res.data){
+      if(!bySong.has(m.song_id)) bySong.set(m.song_id, []);
+      bySong.get(m.song_id).push({ track: m.track, tier: m.tier, threshold: m.threshold });
+    }
+    SONGS.forEach(s => { s.milestones = bySong.get(s.id) || []; });
+    ok = true;
+  }catch(err){
+    console.warn('[laivy] Supabase milestones load failed; using the snapshot.', err);
+  }
+  if(!ok && !SONGS.some(s => (s.milestones || []).length)){
+    try{
+      const res = await fetch('/songs.json', { cache: 'no-store' });
+      if(res.ok){
+        const rows = await res.json();
+        if(Array.isArray(rows)){
+          const byId = new Map(rows.map(r => [r.id, Array.isArray(r.milestones) ? r.milestones : []]));
+          SONGS.forEach(s => { s.milestones = byId.get(s.id) || []; });
+        }
+      }
+    }catch(e){ /* no milestones; the ring and Success row simply hide */ }
+  }
+}
+
+/* The highest tier any track reached, 1..3, or 0 if none. Bronze/silver/gold
+   map 1:1 to tier (threshold arrays are ascending, so a higher tier is
+   always the harder one). */
+function topMilestoneTier(s){
+  const list = (s && s.milestones) || [];
+  return list.reduce((max, m) => Math.max(max, m.tier || 0), 0);
+}
+const MILESTONE_TONE = { 1:'bronze', 2:'silver', 3:'gold' };
+function milestoneToneOf(s){ return MILESTONE_TONE[topMilestoneTier(s)] || ''; }
+
+// "250+ plays" / "25+ hearts" / "10+ comments" -- bands only, never the exact
+// count, same house rule as everywhere else badges touch a real number.
+const MILESTONE_TRACK_NOUN = { plays:'plays', hearts:'hearts', comments:'comments' };
+function milestoneBandLabel(m){
+  const noun = MILESTONE_TRACK_NOUN[m.track] || m.track;
+  return `${m.threshold}+ ${noun}`;
+}
+function milestoneRibbonText(s){
+  const list = (s && s.milestones) || [];
+  if(!list.length) return '';
+  return list.map(milestoneBandLabel).join(' · ');
+}
+
 /* ------------------------------------------------------------
    The badge vocabulary: one glyph and one label per badge.
 
@@ -2151,6 +2254,26 @@ const BADGE_LABELS = {
 function badgeLabel(b){
   const fn = BADGE_LABELS[b.badge];
   return fn ? fn(b.value == null ? 0 : b.value) : '';
+}
+
+/* ARTIST-2: the EARNED badges, matching recommend_for_artist's (sql/017) own
+   list exactly -- a badge is an achievement only if it can still be true
+   next week without anything changing. number_one_week/most_loved/
+   most_talked/new are this moment's state, not a record, so the Honors row
+   (and its ribbon) never shows them even when a song happens to carry one. */
+const PERMANENT_BADGES = new Set([
+  'hit_number_one', 'weeks_at_number_one', 'best_words',
+  'best_music', 'weeks_on_chart', 'was_most_loved',
+]);
+function permanentBadgesOf(s){ return ((s && s.badges) || []).filter(b => PERMANENT_BADGES.has(b.badge)); }
+
+// "Hit #1", "11 weeks at #1", plus "+N" for the rest -- the ribbon's text,
+// built from the SAME label table and SAME priority order (sort) as every
+// other badge surface, just restricted to the permanent ones.
+function honorsRibbonText(s){
+  const list = permanentBadgesOf(s);
+  if(!list.length) return { text: '', more: 0 };
+  return { text: badgeLabel(list[0]), more: list.length - 1 };
 }
 
 function badgeIconHTML(name){
@@ -2303,6 +2426,9 @@ function mapSong(r){
     // BADGE-2: same story — the snapshot embeds these, loadBadges() fills the
     // live path. [{badge, value, sort}, …] already ordered by sort.
     badges: Array.isArray(r.badges) ? r.badges : [],
+    // ARTIST-2: same story as badges -- the snapshot embeds these, loadMilestones()
+    // fills the live path. [{track, tier, threshold}, …].
+    milestones: Array.isArray(r.milestones) ? r.milestones : [],
     tags: Array.isArray(r.tags) ? r.tags : [],
     length: formatLength(r.length_seconds) || (durCache[r.id] ? formatLength(durCache[r.id]) : ''),
     length_seconds: (r.length_seconds == null ? null : Number(r.length_seconds)),
@@ -2445,6 +2571,7 @@ async function loadSongs(){
   // only known once the channel list has loaded.
   await loadChannels();
   await loadBadges();
+  await loadMilestones();
   await loadPublicSettings();   // before initRoute: the homepage reads the CTA switch
   buildSearchIndexes();
   applySessionShuffle();
@@ -3211,6 +3338,12 @@ function railBadgeHTML(railKey, i){
 // A single landscape rail card, shared by the ranked rails and the editor's band.
 // i is the card's position in its rail; the badge (if the rail gets one) is
 // derived from it.
+// ARTIST-2: railKeys that show the honor-icon overlay (ARTIST PAGE ONLY --
+// the homepage rails stay clean, unchanged from the original comment below).
+const BADGED_RAIL_KEYS = new Set(['catalog']);
+// ARTIST-2: railKeys that gain the milestone corner ring (song_milestones).
+const RINGED_RAIL_KEYS = new Set(['catalog', 'success']);
+
 function railCardHTML(s, idxOf, railKey, i){
   const heb = isHebrew(s);
   const title = heb ? s.title : (s.title || s.title_translit);
@@ -3222,17 +3355,53 @@ function railCardHTML(s, idxOf, railKey, i){
   // card gains attribution without gaining height. CH-2 dropped the category
   // that used to sit beside it.
   const hover = sub || '';
+
+  // ARTIST-2: the Honors ribbon (top permanent badge + "+N") and the Success
+  // ribbon (joined milestone bands) are mutually exclusive with the honor-icon
+  // overlay -- each IS this card's badge/milestone display for its row, not
+  // an addition to it -- so only one of the three ever renders.
+  let ribbon = '';
+  if(railKey === 'honors'){
+    const { text, more } = honorsRibbonText(s);
+    if(text){
+      ribbon = `<div class="card-ribbon tone-gold">${escHtml(text)}${more > 0 ? `<span class="card-ribbon-more">+${more}</span>` : ''}</div>`;
+    }
+  } else if(railKey === 'success'){
+    const text = milestoneRibbonText(s);
+    if(text) ribbon = `<div class="card-ribbon tone-${milestoneToneOf(s) || 'bronze'}">${escHtml(text)}</div>`;
+  }
+  const ring = (RINGED_RAIL_KEYS.has(railKey) && milestoneToneOf(s))
+    ? `<span class="card-ring tone-${milestoneToneOf(s)}" aria-hidden="true"></span>` : '';
+
   return `<button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="${railKey}"${hover ? ` title="${escHtml(hover)}"` : ''}>
       <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}${badge}${
-        // Honor icons, ARTIST PAGE ONLY -- the homepage rails stay clean. They
-        // overlay the cover corner (the slot the rank badge uses on ranked
-        // rails, which is empty here) so the card's size is untouched.
-        railKey === 'artist' ? badgeStripHTML(s, 'card') : ''
-      }</div>
+        BADGED_RAIL_KEYS.has(railKey) ? badgeStripHTML(s, 'card') : ''
+      }${ring}${ribbon}</div>
       <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
       ${a ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
           : (sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : '')}
     </button>`;
+}
+
+// ARTIST-2: the Artist's picks row. Same thumb/title/by-line as railCardHTML,
+// but the note is NOT part of the clickable button -- it is the artist's own
+// words about a song, not a label on it, so it sits outside as its own quoted
+// paragraph. `.pick-item` wraps both and carries the rail's 290px sizing;
+// the inner button is width:100% (see the .pick-item .rail-item override).
+function pickCardHTML(s, idxOf, note){
+  const heb = isHebrew(s);
+  const title = heb ? s.title : (s.title || s.title_translit);
+  const sub = heb ? s.title_translit : '';
+  const a = artistOf(s);
+  return `<div class="pick-item">
+      <button class="rail-item" type="button" data-idx="${idxOf.get(s.id)}" data-rail="picks">
+        <div class="rail-thumb-wrap">${coverThumbHTML(s, 'rail-thumb', 500)}</div>
+        <div class="rail-title ${heb ? 'heb' : 'en'}">${escHtml(title)}</div>
+        ${a ? `<div class="rail-sub">${artistLinkHTML(s, '', true)}</div>`
+            : (sub ? `<div class="rail-sub">${escHtml(sub)}</div>` : '')}
+      </button>
+      ${note ? `<p class="pick-note">&ldquo;${escHtml(note)}&rdquo;</p>` : ''}
+    </div>`;
 }
 
 // Edge fades + hover arrows shared by every scroller. `scrollClass` is the inner
@@ -3276,10 +3445,15 @@ function editorsBandHTML(list, idxOf){
     </section>`;
 }
 
-// Wire the fades (all devices) + arrows (pointer devices) for every scroller in
-// the homepage, after each render. A single resize handler updates them all.
-function setupRailAffordances(){
-  document.querySelectorAll('#homepage .rail-scroll-wrap').forEach(wrap => {
+// Wire the fades (all devices) + arrows (pointer devices) for every scroller
+// under `scopeSel`, after each render. ARTIST-2: parameterized so the artist
+// page's five new rails get the same wiring the homepage always had -- it was
+// hardcoded to #homepage before, which meant the artist page's one existing
+// rail never actually got fades or arrows, only the free native touch-scroll.
+// The resize listener re-updates every scope's wraps, not just the latest
+// caller's, so switching pages never leaves a stale one unwired.
+function setupRailAffordances(scopeSel){
+  document.querySelectorAll((scopeSel || '#homepage') + ' .rail-scroll-wrap').forEach(wrap => {
     const sc = wrap.querySelector('.rail-scroll, .editors-scroll');
     if(!sc) return;
     const update = () => {
@@ -3290,7 +3464,7 @@ function setupRailAffordances(){
     wrap._railUpdate = update;
     sc.addEventListener('scroll', update, { passive: true });
     const step = () => {
-      const card = sc.querySelector('.rail-item');
+      const card = sc.querySelector('.rail-item, .pick-item');
       const gap = parseFloat(getComputedStyle(sc).columnGap) || 0;
       return card ? card.getBoundingClientRect().width + gap : sc.clientWidth * 0.8;
     };
@@ -3302,7 +3476,8 @@ function setupRailAffordances(){
   if(!window.__railResizeBound){
     window.__railResizeBound = true;
     window.addEventListener('resize', () => {
-      document.querySelectorAll('#homepage .rail-scroll-wrap').forEach(w => { if(w._railUpdate) w._railUpdate(); });
+      document.querySelectorAll('#homepage .rail-scroll-wrap, #artist-root .rail-scroll-wrap')
+        .forEach(w => { if(w._railUpdate) w._railUpdate(); });
     });
   }
 }
@@ -5356,10 +5531,214 @@ function initRoute(){
    rather than reimplementing either, so a card on an artist page behaves
    exactly like a card in a homepage rail.
 
-   HOUSE RULE: play counts are never shown. The stat line is song count and
-   summed loves only.
+   HOUSE RULE: play counts are never shown anywhere on this page.
    ============================================================ */
 let artistPageToken = 0;     // guards against a slow fetch landing after a newer one
+
+/* ------------------------------------------------------------
+   ARTIST-2 data loaders. Each follows the same shape as loadArtistBadges
+   above: one read, live first, artists.json second where sql/017's own
+   header documents a snapshot fallback exists. Comments and recommendations
+   have NO second branch -- stale social proof or a stale recommendation is
+   worse than the row simply not appearing yet, so both stay live-only.
+   ------------------------------------------------------------ */
+async function loadArtistStats(a){
+  try{
+    const { data, error } = await supabaseClient.rpc('artist_stats', { p_artist_id: a.id });
+    if(error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if(row) return row;
+  }catch(e){ console.warn('[laivy] artist_stats failed; using artists.json.', e && e.message); }
+  try{
+    const res = await fetch('/artists.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const hit = (rows || []).find(x => x.id === a.id
+      || (a.handle && String(x.handle).toLowerCase() === String(a.handle).toLowerCase()));
+    return (hit && hit.stats) || null;
+  }catch(e){ return null; }
+}
+
+// Ordered by position; skips a pick whose song is not approved (SONGS holds
+// approved songs only, so a miss there already means "not approved").
+async function loadArtistPicksRows(a){
+  try{
+    const { data, error } = await supabaseClient
+      .from('artist_picks')
+      .select('song_id, note, position')
+      .eq('artist_id', a.id)
+      .order('position');
+    if(error) throw error;
+    return (data || []).map(r => ({ song: SONGS.find(s => s.id === r.song_id), note: r.note }))
+      .filter(r => r.song);
+  }catch(e){
+    console.warn('[laivy] artist_picks failed; using artists.json.', e && e.message);
+  }
+  try{
+    const res = await fetch('/artists.json', { cache: 'no-cache' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    const hit = (rows || []).find(x => x.id === a.id
+      || (a.handle && String(x.handle).toLowerCase() === String(a.handle).toLowerCase()));
+    const picks = (hit && Array.isArray(hit.picks)) ? hit.picks : [];
+    return picks.map(p => ({ song: SONGS.find(s => s.id === p.song_id), note: p.note }))
+      .filter(r => r.song);
+  }catch(e){ return []; }
+}
+
+// The three most recent approved comments on this artist's approved songs.
+// songs!comments_song_id_fkey!inner pins the embed AND filters the outer
+// rows by it (a plain, non-inner embed filter only narrows the embedded
+// object, not which comment rows come back) -- the same FK-hint idiom
+// admin.html's moderation queue already uses, extended with !inner.
+async function loadArtistComments(a){
+  try{
+    const { data, error } = await supabaseClient
+      .from('comments')
+      .select('name, city, body, created_at, songs!comments_song_id_fkey!inner(title, title_translit, slug, language, artist_id, status)')
+      .eq('status', 'approved')
+      .eq('songs.artist_id', a.id)
+      .eq('songs.status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if(error) throw error;
+    return data || [];
+  }catch(e){
+    console.warn('[laivy] artist comments failed; the row stays hidden.', e && e.message);
+    return [];
+  }
+}
+
+// recommend_for_artist (sql/017): six rows, score desc, LIVE ONLY.
+async function loadRecommendations(a){
+  try{
+    const { data, error } = await supabaseClient.rpc('recommend_for_artist', { p_artist_id: a.id, p_limit: 6 });
+    if(error) throw error;
+    return (data || []).map(r => ({ song: SONGS.find(s => s.id === r.song_id), score: r.score, top_channels: r.top_channels || [] }))
+      .filter(r => r.song);
+  }catch(e){
+    console.warn('[laivy] recommend_for_artist failed; the row stays hidden.', e && e.message);
+    return [];
+  }
+}
+
+// Per-song weeks-on-chart, THIS artist's songs only, for the catalog's "Chart
+// history" sort. A plain read of a public table, not a new RPC -- sql/017
+// adds no SQL for Part B, so this is computed here from chart_snapshots
+// exactly as artist_stats' own weeks_on_chart is defined (sql/016/017):
+// distinct (week, song) pairs at rank 1..10, kind='plays'.
+async function loadArtistChartWeeks(songIds){
+  const out = new Map();
+  if(!songIds.length) return out;
+  try{
+    const { data, error } = await supabaseClient
+      .from('chart_snapshots')
+      .select('song_id, chart_date')
+      .eq('kind', 'plays')
+      .lte('rank', 10)
+      .in('song_id', songIds);
+    if(error) throw error;
+    const bySong = new Map();
+    for(const r of (data || [])){
+      if(!bySong.has(r.song_id)) bySong.set(r.song_id, new Set());
+      bySong.get(r.song_id).add(isoWeekStart(r.chart_date));
+    }
+    for(const [id, weeks] of bySong) out.set(id, weeks.size);
+  }catch(e){
+    console.warn('[laivy] chart-weeks load failed; "Chart history" will approximate by plays.', e && e.message);
+  }
+  return out;
+}
+// Monday of the ISO week containing this date string (date_trunc('week', …)'s
+// own definition), so grouping here matches the SQL side exactly.
+function isoWeekStart(dateStr){
+  const d = new Date(dateStr + 'T00:00:00Z');
+  const dow = d.getUTCDay();                       // 0=Sun..6=Sat
+  d.setUTCDate(d.getUTCDate() - ((dow + 6) % 7));   // back to Monday
+  return d.toISOString().slice(0, 10);
+}
+
+// Distinct channels across this artist's approved songs, most-used first.
+// /listen has no artist filter today (checked for ARTIST-2), so each chip
+// links to the mood alone: /listen?channel=<id>.
+function moodChipsOf(mine){
+  const counts = new Map();
+  for(const s of mine) for(const cid of (s.channels || [])) counts.set(cid, (counts.get(cid) || 0) + 1);
+  return Array.from(counts.entries())
+    .map(([id, count]) => ({ id, count, title: (channelById(id) || {}).title || id }))
+    .sort((x, y) => y.count - x.count || x.title.localeCompare(y.title));
+}
+function moodChipsHTML(chips){
+  if(!chips.length) return '';
+  return `<div class="artist-mood-chips">${chips.map(c =>
+    `<a class="mood-chip" href="/listen?channel=${encodeURIComponent(c.id)}" data-channel="${escHtml(c.id)}">${escHtml(c.title)}</a>`
+  ).join('')}</div>`;
+}
+
+// "Since Sep 2026" -- date arrives as a plain "YYYY-MM-DD" from the `since
+// date` RPC column; parsed as UTC midnight so no local timezone can shift it
+// a day either way.
+function fmtSince(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00Z');
+  if(!isFinite(d.getTime())) return '';
+  return 'Since ' + d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+function statStripHTML(stats){
+  const s = stats || {};
+  const tile = (n, k) => `<div class="stat-tile"><div class="stat-tile-n">${escHtml(String(n))}</div>${k ? `<div class="stat-tile-k">${escHtml(k)}</div>` : ''}</div>`;
+  return `<div class="artist-stat-strip">
+      ${tile(s.songs || 0, 'Songs')}
+      ${tile(s.weeks_on_chart || 0, 'Weeks on the chart')}
+      ${tile(s.hearts || 0, 'Hearts')}
+      ${tile(s.comments || 0, 'Comments')}
+      ${tile(fmtSince(s.since) || 'Since —', '')}
+    </div>`;
+}
+
+// Approved songs with >=1 PERMANENT badge, by badge priority then that
+// badge's own count -- same ordering rule as every other badge surface.
+function honorsListOf(mine){
+  return mine.filter(s => permanentBadgesOf(s).length > 0).slice().sort((x, y) => {
+    const px = permanentBadgesOf(x)[0], py = permanentBadgesOf(y)[0];
+    return (px.sort - py.sort) || ((py.value || 0) - (px.value || 0));
+  });
+}
+// Approved songs with >=1 milestone, highest tier first.
+function successListOf(mine){
+  return mine.filter(s => (s.milestones || []).length > 0).slice()
+    .sort((x, y) => topMilestoneTier(y) - topMilestoneTier(x) || byNewestThenTitle(x, y));
+}
+
+// The catalog's own sort, remembered for the SESSION only (sessionStorage,
+// not the /listen sort's localStorage -- a deliberate difference: this is a
+// visit-scoped browsing preference for one artist's page, not a site-wide
+// setting).
+const ARTIST_SORT_KEY = 'laivy-artist-sort-v1';
+function catalogSortedMine(mine, mode, chartWeeks){
+  const base = mine.slice();
+  switch(mode){
+    case 'loved': return base.sort((x, y) => (y.like_count - x.like_count) || byNewestThenTitle(x, y));
+    case 'chart': return base.sort((x, y) =>
+      ((chartWeeks.get(y.id) || 0) - (chartWeeks.get(x.id) || 0)) || ((y.play_count || 0) - (x.play_count || 0)));
+    case 'az': return base.sort((x, y) =>
+      (x.title || x.title_translit || '').localeCompare((y.title || y.title_translit || ''), ['he', 'en']));
+    default: return base.sort(byNewestThenTitle);   // 'newest'
+  }
+}
+
+// The two channels that recur most across the result set's own top_channels
+// -- the header subline is about the SET recommend_for_artist returned, not
+// any one card.
+function tryTheseSubline(rows){
+  const counts = new Map();
+  for(const r of rows) for(const cid of (r.top_channels || [])) counts.set(cid, (counts.get(cid) || 0) + 1);
+  const top = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 2)
+    .map(([id]) => (channelById(id) || {}).title).filter(Boolean);
+  if(top.length === 2) return `Because you like ${top[0]} and ${top[1]}`;
+  if(top.length === 1) return `Because you like ${top[0]}`;
+  return '';
+}
 
 // Handles are citext in the database, so the lookup is case-insensitive there.
 // artists_public excludes suspended and deleted artists, which is how those
@@ -5400,6 +5779,22 @@ function artistAvatarHTML(a, px){
 
 const STATUS_LABEL = { draft:'Draft', submitted:'Awaiting review', rejected:'Needs changes', removed:'Removed' };
 
+// Shared by the initial paint, the catalog's re-sort, and the Try These row
+// that pops in after its own fetch -- any of them can hand this a fresh
+// container of fresh buttons.
+function wireArtistCardClicks(scope, a){
+  scope.querySelectorAll('.rail-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      if(!SONGS[idx]) return;
+      laivyTrack('artist_song_open', { handle: a.handle, song_id: SONGS[idx].id, rail: btn.dataset.rail });
+      history.pushState({ route: 'listen' }, '', '/listen');
+      showPage('listen');
+      loadSong(idx, false);
+    });
+  });
+}
+
 async function renderArtistPage(handle){
   const root = document.getElementById('artist-root');
   if(!root) return;
@@ -5423,42 +5818,59 @@ async function renderArtistPage(handle){
   // only. Filtering it is therefore "live, falling back to the snapshot" for
   // free, and it keeps every card's index aligned with the player's queue.
   const mine = SONGS.filter(s => s.artist_id === a.id || (s.artist && s.artist.handle === a.handle));
-  mine.sort((x, y) => songCreatedTs(y) - songCreatedTs(x));
+  mine.sort((x, y) => songCreatedTs(y) - songCreatedTs(x));   // the base order; the catalog sorts its own copy
   const idxOf = new Map(SONGS.map((s, i) => [s.id, i]));
-  const loves = mine.reduce((n, s) => n + (s.like_count || 0), 0);
 
   const me = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
   const isOwner = !!(me && me.id === a.id);
 
-  const cards = mine.map((s, i) => railCardHTML(s, idxOf, 'artist', i)).join('');
   const bioHTML = a.bio ? escHtml(a.bio).replace(/\n/g, '<br>') : '';
+  const moodChips = moodChipsOf(mine);
+  const displayName = a.display_name || a.handle;
 
-  // One read for this artist. Awaited before the page is written so the case
-  // never pops in after the songs have already painted.
-  const honors = await loadArtistBadges(a.id, a.handle);
+  let artistSortMode = 'newest';
+  try{ artistSortMode = sessionStorage.getItem(ARTIST_SORT_KEY) || 'newest'; }catch(e){}
+
+  // Batched and awaited before the page is written: the same "never pops in
+  // after the songs have already painted" rule BADGE-3 already follows for
+  // the trophy case, now covering everything with a snapshot fallback.
+  const [stats, honors, picksRows, chartWeeks] = await Promise.all([
+    loadArtistStats(a),
+    loadArtistBadges(a.id, a.handle),
+    loadArtistPicksRows(a),
+    loadArtistChartWeeks(mine.map(s => s.id)),
+  ]);
   if(token !== artistPageToken) return;
+
+  const honorsList = honorsListOf(mine);
+  const successList = successListOf(mine);
+
+  function catalogCardsHTML(){
+    return catalogSortedMine(mine, artistSortMode, chartWeeks)
+      .map((s, i) => railCardHTML(s, idxOf, 'catalog', i)).join('');
+  }
 
   root.innerHTML = `
     <div class="artist-wrap">
       <header class="artist-head">
         ${artistAvatarHTML(a, 160)}
         <div class="artist-head-text">
-          <h1 class="artist-name">${escHtml(a.display_name || a.handle)}</h1>
+          <h1 class="artist-name">${escHtml(displayName)}</h1>
           ${a.display_name_he ? `<div class="artist-name-he" dir="rtl" lang="he">${escHtml(a.display_name_he)}</div>` : ''}
           <div class="artist-handle">/artist/${escHtml(a.handle)}</div>
           ${bioHTML ? `<p class="artist-bio">${bioHTML}</p>` : ''}
-          <div class="artist-stats">
-            <span>${mine.length} ${mine.length === 1 ? 'song' : 'songs'}</span>
-            <span aria-hidden="true">&middot;</span>
-            <span>${loves} ${loves === 1 ? 'love' : 'loves'}</span>
-          </div>
+          ${moodChipsHTML(moodChips)}
           <div class="artist-actions">
+            <div class="artist-follow-slot" id="artist-follow-slot"></div>
             ${mine.length ? `<button class="home-primary-btn filled" type="button" id="artist-playall">Play all</button>` : ''}
+            ${mine.length > 1 ? `<button class="home-primary-btn outlined" type="button" id="artist-shuffle">Shuffle</button>` : ''}
             <button class="home-primary-btn outlined" type="button" id="artist-share">Share</button>
             ${isOwner ? `<a class="home-primary-btn outlined" href="/settings">Edit page</a>` : ''}
           </div>
         </div>
       </header>
+
+      ${statStripHTML(stats)}
 
       ${trophyCaseHTML(honors)}
 
@@ -5472,12 +5884,46 @@ async function renderArtistPage(handle){
              </div>`).join('')}</div>
          </section>` : ''}
 
-      ${mine.length
-        ? `<section class="rail" data-rail="artist">
-             <div class="rail-head"><h2 class="rail-title-h">Songs <span class="artist-he" dir="rtl" lang="he">שירים</span></h2></div>
-             ${railAffordancesHTML('rail-scroll', 'artist', cards)}
-           </section>`
-        : `<p class="artist-empty">No songs yet.<br><span class="artist-he" dir="rtl" lang="he">אין שירים עדיין.</span></p>`}
+      ${honorsList.length ? `<section class="rail" data-rail="honors">
+           <div class="rail-head"><h2 class="rail-title-h">Honors <span class="artist-he" dir="rtl" lang="he">הישגים</span></h2></div>
+           ${railAffordancesHTML('rail-scroll', 'honors', honorsList.map((s, i) => railCardHTML(s, idxOf, 'honors', i)).join(''))}
+         </section>` : ''}
+
+      ${successList.length ? `<section class="rail" data-rail="success">
+           <div class="rail-head"><h2 class="rail-title-h">Success</h2></div>
+           ${railAffordancesHTML('rail-scroll', 'success', successList.map((s, i) => railCardHTML(s, idxOf, 'success', i)).join(''))}
+         </section>` : ''}
+
+      ${picksRows.length ? `<section class="rail" data-rail="picks">
+           <div class="rail-head"><h2 class="rail-title-h">${escHtml(displayName)}&rsquo;s picks</h2></div>
+           ${railAffordancesHTML('rail-scroll', 'picks', picksRows.map(p => pickCardHTML(p.song, idxOf, p.note)).join(''))}
+         </section>` : ''}
+
+      <section class="artist-catalog" data-rail="catalog">
+        <div class="catalog-head">
+          <h2 class="rail-title-h">Catalog <span class="artist-he" dir="rtl" lang="he">שירים</span></h2>
+          ${mine.length ? `<select class="sort-select" id="artist-sort-select" aria-label="Sort songs">
+              <option value="newest">Newest</option>
+              <option value="loved">Most loved</option>
+              <option value="chart">Chart history</option>
+              <option value="az">A to Z</option>
+            </select>` : ''}
+        </div>
+        ${mine.length
+          ? `<div class="catalog-grid" id="artist-catalog-grid">${catalogCardsHTML()}</div>`
+          : `<p class="artist-empty">No songs yet.<br><span class="artist-he" dir="rtl" lang="he">אין שירים עדיין.</span></p>`}
+      </section>
+
+      <section class="artist-listeners" id="artist-listeners" hidden>
+        <h2 class="rail-title-h">What listeners say</h2>
+        <div class="listener-list" id="artist-listener-list"></div>
+      </section>
+
+      <section class="rail" data-rail="try_these" id="artist-try-these" hidden>
+        <div class="rail-head"><h2 class="rail-title-h">If you like ${escHtml(displayName)}, try these</h2></div>
+        <p class="try-these-sub" id="try-these-sub"></p>
+        <div id="artist-try-these-rail"></div>
+      </section>
 
       ${isOwner ? `<section class="artist-private" id="artist-private">
            <h2 class="rail-title-h">Not yet public <span class="artist-he" dir="rtl" lang="he">עדיין לא פורסם</span></h2>
@@ -5492,30 +5938,35 @@ async function renderArtistPage(handle){
   // Cards behave exactly as they do in a homepage rail: open /listen with that
   // song loaded. loadSong(idx, false) does not autoplay.
   wireWithdraw(root);
-
-  root.querySelectorAll('.rail-item').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.idx);
-      if(!SONGS[idx]) return;
-      laivyTrack('artist_song_open', { handle: a.handle, song_id: SONGS[idx].id });
-      history.pushState({ route: 'listen' }, '', '/listen');
-      showPage('listen');
-      loadSong(idx, false);
-    });
-  });
+  wireArtistCardClicks(root, a);
 
   const playAll = document.getElementById('artist-playall');
   if(playAll) playAll.addEventListener('click', () => {
-    laivyTrack('artist_play_all', { handle: a.handle, count: mine.length });
+    laivyTrack('artist_play_all', { handle: a.handle, count: mine.length, sort: artistSortMode });
     history.pushState({ route: 'listen' }, '', '/listen');
     showPage('listen');
-    playRail(mine.map(s => idxOf.get(s.id)));
+    // "the catalog in its current sort" -- whatever the sort control shows now.
+    const ordered = catalogSortedMine(mine, artistSortMode, chartWeeks);
+    playRail(ordered.map(s => idxOf.get(s.id)));
+  });
+
+  const shuffleBtn = document.getElementById('artist-shuffle');
+  if(shuffleBtn) shuffleBtn.addEventListener('click', () => {
+    laivyTrack('artist_shuffle', { handle: a.handle, count: mine.length });
+    history.pushState({ route: 'listen' }, '', '/listen');
+    showPage('listen');
+    const idxs = mine.map(s => idxOf.get(s.id));
+    for(let i = idxs.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+    }
+    playRail(idxs);
   });
 
   const shareBtn = document.getElementById('artist-share');
   if(shareBtn) shareBtn.addEventListener('click', async () => {
     const url = `${location.origin}/artist/${encodeURIComponent(a.handle)}`;
-    const title = a.display_name || a.handle;
+    const title = displayName;
     laivyTrack('artist_share', { handle: a.handle });
     try{
       if(navigator.share){ await navigator.share({ title, url }); return; }
@@ -5525,8 +5976,76 @@ async function renderArtistPage(handle){
     }catch(e){ /* the visitor cancelled the sheet */ }
   });
 
-  setupRailAffordances();
+  // Mood chips: the mood's own radio (startChannelRadio via goChannel), not a
+  // hard navigation -- same behavior a homepage mood-strip tap gets.
+  root.querySelectorAll('.mood-chip[data-channel]').forEach(chip => {
+    chip.addEventListener('click', (e) => {
+      e.preventDefault();
+      laivyTrack('artist_mood_chip', { handle: a.handle, channel: chip.dataset.channel });
+      goChannel(chip.dataset.channel);
+    });
+  });
+
+  // Catalog sort: re-render just the grid. Remembered for THIS SESSION only
+  // (sessionStorage) -- deliberately not the /listen sort's localStorage; see
+  // ARTIST_SORT_KEY's own comment.
+  const sortSel = document.getElementById('artist-sort-select');
+  if(sortSel){
+    sortSel.value = artistSortMode;
+    sortSel.addEventListener('change', (e) => {
+      artistSortMode = e.target.value;
+      try{ sessionStorage.setItem(ARTIST_SORT_KEY, artistSortMode); }catch(_){}
+      laivyTrack('artist_catalog_sort', { handle: a.handle, sort: artistSortMode });
+      const grid = document.getElementById('artist-catalog-grid');
+      if(!grid) return;
+      grid.innerHTML = catalogCardsHTML();
+      wireArtistCardClicks(grid, a);
+    });
+  }
+
+  setupRailAffordances('#artist-root');
   if(isOwner) renderArtistPrivate(a);
+
+  /* ------------------------------------------------------------
+     Progressive, optional rows. Both are explicitly "hidden when empty"
+     regardless of WHY they are empty, so a result landing a beat after the
+     rest of the page is already interactive costs nothing -- there is no
+     space reserved for either to pop into.
+     ------------------------------------------------------------ */
+  loadArtistComments(a).then(rows => {
+    if(token !== artistPageToken || !rows.length) return;
+    const sec = document.getElementById('artist-listeners');
+    const list = document.getElementById('artist-listener-list');
+    if(!sec || !list) return;
+    list.innerHTML = rows.map(c => {
+      const song = c.songs || null;
+      const heb = song ? isHebrew(song) : false;
+      const title = song ? (heb ? song.title : (song.title || song.title_translit)) : 'A song';
+      const link = (song && song.slug)
+        ? `<a class="listener-song" href="/song/${encodeURIComponent(song.slug)}">${escHtml(title)}</a>`
+        : `<span class="listener-song">${escHtml(title)}</span>`;
+      const who = sigJoin(c.name, c.city) || 'A listener';
+      return `<div class="listener-item">
+          <p class="listener-body">${escHtml(c.body)}</p>
+          <div class="listener-meta"><span class="listener-who">${escHtml(who)}</span> &middot; ${link}</div>
+        </div>`;
+    }).join('');
+    sec.hidden = false;
+  });
+
+  loadRecommendations(a).then(rows => {
+    if(token !== artistPageToken || !rows.length) return;
+    const sec = document.getElementById('artist-try-these');
+    const rail = document.getElementById('artist-try-these-rail');
+    const sub = document.getElementById('try-these-sub');
+    if(!sec || !rail) return;
+    const items = rows.map((r, i) => railCardHTML(r.song, idxOf, 'try_these', i)).join('');
+    rail.innerHTML = railAffordancesHTML('rail-scroll', 'try_these', items);
+    if(sub) sub.textContent = tryTheseSubline(rows);
+    sec.hidden = false;
+    wireArtistCardClicks(rail, a);
+    setupRailAffordances('#artist-root');
+  });
 }
 
 /* The owner's own unpublished songs. Live only: RLS songs_read_own returns

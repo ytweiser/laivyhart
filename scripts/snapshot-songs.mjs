@@ -98,6 +98,11 @@ function compactArtist(a) {
     name: a.display_name,
     name_he: a.display_name_he,
     avatar: a.avatar_url,
+    // ARTIST-2: artists_public already selects bio (below) -- it just never
+    // made it into this object. middleware.js's renderArtist() already reads
+    // artist.bio for both the meta description and the MusicGroup JSON-LD
+    // description, so this alone is what turns that on in production.
+    bio: a.bio,
   };
 }
 
@@ -215,6 +220,33 @@ try {
   console.warn(`[snapshot] Could not read song_badges (${e && e.message}) — writing songs.json without badges.`);
 }
 
+/* ------------------------------------------------------------
+   ARTIST-2: song_milestones (sql/016/017). Same soft-fail shape as badges
+   above -- a VIEW, nothing to compute, grouped by song and embedded as
+   `milestones: [{track, tier, threshold}, …]` so loadMilestones()'s outage
+   fallback (reading songs.json) has something to recover.
+   ------------------------------------------------------------ */
+let allMilestones = [];
+try {
+  const mres = await fetch(`${url}/rest/v1/song_milestones?select=song_id,track,tier,threshold`, { headers });
+  if (!mres.ok) throw new Error(`HTTP ${mres.status}`);
+  const mrows = await mres.json();
+  if (!Array.isArray(mrows)) throw new Error('not an array');
+  allMilestones = mrows;
+
+  const bySong = new Map();
+  for (const m of mrows) {
+    if (!bySong.has(m.song_id)) bySong.set(m.song_id, []);
+    bySong.get(m.song_id).push({ track: m.track, tier: m.tier, threshold: m.threshold });
+  }
+  for (const row of rows) row.milestones = bySong.get(row.id) || [];
+
+  const crossed = rows.reduce((n, r) => n + r.milestones.length, 0);
+  console.log(`[snapshot] Read ${crossed} milestone(s) across ${bySong.size} song(s).`);
+} catch (e) {
+  console.warn(`[snapshot] Could not read song_milestones (${e && e.message}) — writing songs.json without milestones.`);
+}
+
 /* 1B-3: the public settings subset, so the homepage's launch switch has a
    build-time fallback. Only the keys listed are ever written -- site_settings
    also holds admin knobs that do not belong in a public file. On failure the
@@ -276,10 +308,91 @@ if (artists) {
     console.warn(`[snapshot] Could not read artist_badges (${e && e.message}) — artists.json without honors.`);
   }
 
+  /* ARTIST-2: artist_stats (sql/016/017), one RPC call per artist -- it takes
+     a single p_artist_id, not a bulk list, so there is no one-shot read like
+     the views above. The catalog is small; this is a handful of requests at
+     build time, not a runtime cost. Soft-fail per artist: one artist's stats
+     failing must not blank every other artist's. */
+  const statsByArtist = new Map();
+  await Promise.all(artists.map(async (a) => {
+    try {
+      const sres = await fetch(`${url}/rest/v1/rpc/artist_stats`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ p_artist_id: a.id }),
+      });
+      if (!sres.ok) throw new Error(`HTTP ${sres.status}`);
+      const srows = await sres.json();
+      const row = Array.isArray(srows) ? srows[0] : srows;
+      if (row) statsByArtist.set(a.id, row);
+    } catch (e) {
+      console.warn(`[snapshot] Could not read artist_stats for ${a.handle} (${e && e.message}).`);
+    }
+  }));
+
+  /* ARTIST-2: mood chips -- distinct channels across THIS artist's approved
+     songs, most-used first. Computed from the channel ids already embedded
+     on `rows` above, not a second fetch. */
+  function moodChipsFor(artistId) {
+    const counts = new Map();
+    for (const row of rows) {
+      if (row.artist_id !== artistId) continue;
+      for (const cid of (row.channels || [])) counts.set(cid, (counts.get(cid) || 0) + 1);
+    }
+    const titleOf = new Map((channels || []).map((c) => [c.id, c.title]));
+    return Array.from(counts.entries())
+      .map(([id, count]) => ({ id, title: titleOf.get(id) || id, count }))
+      .sort((x, y) => y.count - x.count || x.title.localeCompare(y.title));
+  }
+
+  /* ARTIST-2: artist_picks (sql/016), one bulk read -- RLS already lets
+     anon select every row, so there is nothing per-artist to filter at the
+     request level. A pick whose song is not in `rows` (not approved) is
+     dropped here, matching the live read's own skip rule exactly. */
+  let picksByArtist = new Map();
+  try {
+    const pres = await fetch(
+      `${url}/rest/v1/artist_picks?select=artist_id,song_id,note,position&order=artist_id,position`,
+      { headers },
+    );
+    if (!pres.ok) throw new Error(`HTTP ${pres.status}`);
+    const prows = await pres.json();
+    if (!Array.isArray(prows)) throw new Error('not an array');
+    const approvedIds = new Set(rows.map((r) => r.id));
+    for (const p of prows) {
+      if (!approvedIds.has(p.song_id)) continue;
+      if (!picksByArtist.has(p.artist_id)) picksByArtist.set(p.artist_id, []);
+      picksByArtist.get(p.artist_id).push({ song_id: p.song_id, note: p.note, position: p.position });
+    }
+    console.log(`[snapshot] Read ${prows.length} pick(s) across ${picksByArtist.size} artist(s).`);
+  } catch (e) {
+    console.warn(`[snapshot] Could not read artist_picks (${e && e.message}) — artists.json without picks.`);
+  }
+
+  // Same permanent/live split as recommend_for_artist (sql/017) and the
+  // client's PERMANENT_BADGES -- an achievement, not this moment's state.
+  const PERMANENT_BADGES = new Set([
+    'hit_number_one', 'weeks_at_number_one', 'best_words',
+    'best_music', 'weeks_on_chart', 'was_most_loved',
+  ]);
+  function honorsIdsFor(artistId) {
+    return rows.filter((r) => r.artist_id === artistId
+      && (r.badges || []).some((b) => PERMANENT_BADGES.has(b.badge))).map((r) => r.id);
+  }
+  function milestonesFor(artistId) {
+    const ids = new Set(rows.filter((r) => r.artist_id === artistId).map((r) => r.id));
+    return allMilestones.filter((m) => ids.has(m.song_id));
+  }
+
   const out = artists.map((a) => ({
     ...compactArtist(a),
     song_count: counts.get(a.id) || 0,
     badges: artistBadges.get(a.id) || [],
+    stats: statsByArtist.get(a.id) || null,
+    mood_chips: moodChipsFor(a.id),
+    picks: picksByArtist.get(a.id) || [],
+    honors: honorsIdsFor(a.id),
+    milestones: milestonesFor(a.id),
   }));
   writeFileSync(artistsPath, JSON.stringify(out, null, 2) + '\n');
   console.log(`[snapshot] Wrote artists.json with ${out.length} artist(s).`);

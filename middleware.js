@@ -122,6 +122,27 @@ function injectSsr(html, inner) {
 
 const isHebrew = (s) => /[֐-׿]/.test(String(s || ''));
 
+// ARTIST-2: EARNED-only, same six badges and same phrasing as index.html's
+// own TROPHY_LABELS (BADGE-3) -- kept as a second copy rather than a shared
+// import because this file and index.html load in different runtimes
+// (edge function vs. browser) with no shared module between them, the same
+// reason js/supabase-client.js's own header gives for why config duplicates.
+const TROPHY_LABELS = {
+  hit_number_one: (n) => `Hit #1: ${n} song${n === 1 ? '' : 's'}`,
+  weeks_at_number_one: (n) => `${n} week${n === 1 ? '' : 's'} at #1`,
+  weeks_on_chart: (n) => `${n} week${n === 1 ? '' : 's'} on the chart`,
+  best_words: (n) => `Best words: ${n} song${n === 1 ? '' : 's'}`,
+  best_music: (n) => `Best music: ${n} song${n === 1 ? '' : 's'}`,
+  was_most_loved: (n) => `Was most loved: ${n} song${n === 1 ? '' : 's'}`,
+};
+
+// "Sep 2026" from a plain "YYYY-MM-DD" -- artist_stats' `since` column, as
+// snapshot-songs.mjs writes it into artists.json.
+function monthYear(dateStr) {
+  const d = new Date(String(dateStr || '').slice(0, 10) + 'T00:00:00Z');
+  return isFinite(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : null;
+}
+
 /* ---------------- lookups ---------------- */
 
 function songBySlug(slug) {
@@ -247,6 +268,38 @@ function renderArtist(html, artist) {
   let body = '<h1>' + escHtml(name) + '</h1>';
   if (artist.name_he) body += '<p lang="he" dir="rtl">' + escHtml(artist.name_he) + '</p>';
   if (artist.bio) body += '<p>' + escHtml(artist.bio).replace(/\n/g, '<br>') + '</p>';
+
+  // ARTIST-2: mood chips, the stats strip, and the trophy shelf -- the three
+  // pieces that sit above the fold on the client render, so a crawler (and
+  // anyone with JS off) sees the same thing a visitor's first paint does.
+  // Honors/Success/Picks/Catalog/Listeners/Try-these stay client-only: they
+  // are either live-only (recommendations, comments) or simply not worth a
+  // crawler's attention the way the header and the trophy case are.
+  if (artist.mood_chips && artist.mood_chips.length) {
+    body += '<ul>' + artist.mood_chips.map((c) =>
+      '<li><a href="/listen?channel=' + escAttr(c.id) + '">' + escHtml(c.title) + '</a></li>',
+    ).join('') + '</ul>';
+  }
+  if (artist.stats) {
+    const st = artist.stats;
+    const since = monthYear(st.since);
+    body += '<ul>'
+      + '<li>' + (st.songs || 0) + ' songs</li>'
+      + '<li>' + (st.weeks_on_chart || 0) + ' weeks on the chart</li>'
+      + '<li>' + (st.hearts || 0) + ' hearts</li>'
+      + '<li>' + (st.comments || 0) + ' comments</li>'
+      + (since ? '<li>Since ' + since + '</li>' : '')
+      + '</ul>';
+  }
+  if (artist.badges && artist.badges.length) {
+    const trophies = artist.badges.map((b) => {
+      const fn = TROPHY_LABELS[b.badge];
+      const n = b.value == null ? 0 : b.value;
+      return (fn && n >= 1) ? '<li>' + escHtml(fn(n)) + '</li>' : '';
+    }).join('');
+    if (trophies) body += '<ul>' + trophies + '</ul>';
+  }
+
   if (mine.length) {
     body += '<ul>' + mine.map((s) =>
       '<li><a href="/song/' + escAttr(s.slug || '') + '">' + escHtml(s.title || s.title_translit || '') + '</a></li>'
