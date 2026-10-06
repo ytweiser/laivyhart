@@ -117,8 +117,8 @@ async function scenarioOwnerView(browser, port, r) {
 
   const d = await page.evaluate(() => ({
     editPageHref: document.querySelector('.artist-actions a[href="/settings"]')?.getAttribute('href'),
-    followButtonPresent: !!document.getElementById('artist-follow-btn'),
-    followCount: document.getElementById('artist-follow-count')?.textContent,
+    followButtonPresent: !!document.querySelector('#artist-follow-slot [data-follow-btn]'),
+    followCount: document.querySelector('#artist-follow-slot [data-follow-count]')?.textContent,
   }));
   r.check('"Edit page" link to /settings present for the owner', d.editPageHref === '/settings', d.editPageHref);
   r.check('no Follow button on your own page', d.followButtonPresent === false);
@@ -135,16 +135,16 @@ async function scenarioFollowSignedOut(browser, port, r) {
   await gotoArtist(page, port, 'nova-ash');
 
   const before = await page.evaluate(() => ({
-    hasButton: !!document.getElementById('artist-follow-btn'),
+    hasButton: !!document.querySelector('#artist-follow-slot [data-follow-btn]'),
     modalHidden: document.querySelector('.lv-modal-backdrop')?.hidden,
   }));
   r.check('Follow button present for a signed-out visitor', before.hasButton === true);
 
-  await page.click('#artist-follow-btn');
+  await page.click('#artist-follow-slot [data-follow-btn]');
   await page.waitForTimeout(150);
   const after = await page.evaluate(() => {
     const modal = document.querySelector('.lv-modal-backdrop');
-    return { modalHidden: modal ? modal.hidden : 'MISSING', stillNotFollowing: document.getElementById('artist-follow-btn')?.dataset.following };
+    return { modalHidden: modal ? modal.hidden : 'MISSING', stillNotFollowing: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following };
   });
   r.check('clicking Follow signed-out opens the sign-in modal', after.modalHidden === false, JSON.stringify(after));
   r.check('no optimistic state change before signing in', after.stillNotFollowing === 'false', after.stillNotFollowing);
@@ -161,19 +161,19 @@ async function scenarioFollowThirdParty(browser, port, r) {
   await gotoArtist(page, port, 'nova-ash');
 
   const initial = await page.evaluate(() => ({
-    text: document.getElementById('artist-follow-btn')?.textContent,
-    following: document.getElementById('artist-follow-btn')?.dataset.following,
-    count: document.getElementById('artist-follow-count')?.textContent,
+    text: document.querySelector('#artist-follow-slot [data-follow-btn]')?.textContent,
+    following: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following,
+    count: document.querySelector('#artist-follow-slot [data-follow-count]')?.textContent,
   }));
   r.check('starts as "Follow", not following', initial.text === 'Follow' && initial.following === 'false', JSON.stringify(initial));
   r.check('follower count shown (12)', (initial.count || '').startsWith('12'), initial.count);
 
-  await page.click('#artist-follow-btn');
+  await page.click('#artist-follow-slot [data-follow-btn]');
   await page.waitForTimeout(250);
   const toggled = await page.evaluate(() => ({
-    text: document.getElementById('artist-follow-btn')?.textContent,
-    following: document.getElementById('artist-follow-btn')?.dataset.following,
-    count: document.getElementById('artist-follow-count')?.textContent,
+    text: document.querySelector('#artist-follow-slot [data-follow-btn]')?.textContent,
+    following: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following,
+    count: document.querySelector('#artist-follow-slot [data-follow-count]')?.textContent,
   }));
   r.check('optimistic toggle to "Following"', toggled.text === 'Following' && toggled.following === 'true', JSON.stringify(toggled));
   r.check('count incremented (13)', (toggled.count || '').startsWith('13'), toggled.count);
@@ -191,12 +191,12 @@ async function scenarioFollowThirdParty(browser, port, r) {
     followArtistResult: { status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'You can follow or unfollow at most 60 artists per day.', code: 'P0001' }) },
   });
   await gotoArtist(page2, port, 'nova-ash');
-  await page2.click('#artist-follow-btn');
+  await page2.click('#artist-follow-slot [data-follow-btn]');
   await page2.waitForTimeout(250);
   const errored = await page2.evaluate(() => ({
-    errText: document.getElementById('artist-follow-err')?.textContent,
-    errHidden: document.getElementById('artist-follow-err')?.hidden,
-    reverted: document.getElementById('artist-follow-btn')?.dataset.following,
+    errText: document.querySelector('#artist-follow-slot [data-follow-err]')?.textContent,
+    errHidden: document.querySelector('#artist-follow-slot [data-follow-err]')?.hidden,
+    reverted: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following,
   }));
   r.check('daily-limit message shown inline', errored.errHidden === false && /at most 60/.test(errored.errText || ''), JSON.stringify(errored));
   r.check('button reverted to Follow on error', errored.reverted === 'false', errored.reverted);
@@ -261,8 +261,8 @@ async function scenarioEmptyArtist(browser, port, r) {
     honorsPresent: !!document.querySelector('[data-rail="honors"]'),
     successPresent: !!document.querySelector('[data-rail="success"]'),
     picksPresent: !!document.querySelector('[data-rail="picks"]'),
-    followBtnText: document.getElementById('artist-follow-btn')?.textContent,
-    followCount: document.getElementById('artist-follow-count')?.textContent,
+    followBtnText: document.querySelector('#artist-follow-slot [data-follow-btn]')?.textContent,
+    followCount: document.querySelector('#artist-follow-slot [data-follow-count]')?.textContent,
     bodyBroken: (document.querySelector('.artist-wrap')?.textContent || '').match(/undefined|NaN/),
   }));
   r.check('header renders', d.name === 'Brand New Artist', d.name);

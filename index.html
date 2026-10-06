@@ -3739,13 +3739,30 @@ function renderNow(){
      titles and above the chips, which are unchanged. */
   const nowArtist = document.getElementById('now-artist');
   if(nowArtist){
+    const oldSlot = nowArtist.querySelector('[data-follow-slot]');
+    if(oldSlot){ FOLLOW_ROOTS.delete(oldSlot); FOLLOW_ROOT_CONFIG.delete(oldSlot); }
     const a = artistOf(s);
     if(!a){ nowArtist.innerHTML = ''; }
     else {
       const av = a.avatar_url
         ? `<img class="now-artist-av" src="${escHtml(cdnImg(a.avatar_url, 56))}" data-raw="${escHtml(a.avatar_url)}" onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="28" height="28">`
         : `<span class="now-artist-av is-initial" aria-hidden="true">${escHtml((artistName(a).trim()[0] || '?').toUpperCase())}</span>`;
-      nowArtist.innerHTML = `<span class="now-artist-by">by</span> <a class="artist-link now-artist-row" href="${escHtml(artistHref(a))}">${av}<span class="now-artist-name">${artistNameHTML(a)}</span></a>`;
+      // FOLLOW-2: shared on the song page too -- /song/:slug renders through
+      // this same #now-artist row (one client renderer for both routes).
+      // Own song: skip the slot entirely -- no button, no reserved gap,
+      // decided synchronously so there is nothing to pop in or shift later.
+      const artistId = s.artist_id;
+      const meNow = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
+      const isOwnSong = !!(meNow && artistId && meNow.id === artistId);
+      const slotHTML = isOwnSong ? '' : `<span class="follow-pill-slot" data-follow-slot></span>`;
+      nowArtist.innerHTML = `<span class="now-artist-by">by</span> <a class="artist-link now-artist-row" href="${escHtml(artistHref(a))}">${av}<span class="now-artist-name">${artistNameHTML(a)}</span></a>${slotHTML}`;
+      if(!isOwnSong){
+        mountFollowWidget(nowArtist.querySelector('[data-follow-slot]'), {
+          mode: 'compact', trackName: 'now-playing',
+          getArtistId: () => artistId,
+          getOwnerUserId: () => artistId,
+        });
+      }
     }
   }
 
@@ -5655,13 +5672,32 @@ async function loadArtistStats(a){
   }catch(e){ return null; }
 }
 
-/* ARTIST-3: follower_count (public) and, for a signed-in non-owner, whether
-   THEY already follow this artist (artist_follows self-select RLS -- a
-   listener can only ever read their own follow rows, so "are they following
-   artist X" is the one question that RLS answers for free). */
-async function loadFollowerCount(a){
+/* ============================================================
+   FOLLOW-2: the one shared Follow component. Mounted three places --
+   the artist page header (mode 'full': button + count, or just the count
+   for the owner), the song/now-playing "by <artist>" line, and the
+   mini-player if it fits (both 'compact': a small pill, no count, no
+   button at all on the viewer's own song).
+
+   State: FOLLOWED_IDS is the signed-in visitor's own followed-artist ids,
+   read ONCE per session (one bulk artist_follows select under their own
+   RLS) and cached, so mounting a dozen compact pills while browsing never
+   costs a query each -- only the very first mount (or a sign-in/out) pays
+   for it. follower_count stays a live per-artist read (mode 'full' only;
+   compact mode never shows a count at all).
+
+   A toggle anywhere calls syncFollowRoots(), which updates every OTHER
+   mounted root currently pointed at the same artist (e.g. the song page's
+   pill and the mini-player's pill for the same playing song) without
+   re-fetching anything. FOLLOW_ROOTS/FOLLOW_ROOT_CONFIG track every live
+   mount so a laivy:auth event (sign in, sign out, or returning from the
+   sign-in redirect) can re-render all of them against the real state.
+   ============================================================ */
+function followerWord(n){ return n === 1 ? 'follower' : 'followers'; }
+
+async function loadFollowerCount(artistId){
   try{
-    const { data, error } = await supabaseClient.rpc('follower_count', { p_artist_id: a.id });
+    const { data, error } = await supabaseClient.rpc('follower_count', { p_artist_id: artistId });
     if(error) throw error;
     if(typeof data === 'number') return data;
   }catch(e){ console.warn('[laivy] follower_count failed; using artists.json.', e && e.message); }
@@ -5669,34 +5705,167 @@ async function loadFollowerCount(a){
     const res = await fetch('/artists.json', { cache: 'no-cache' });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const rows = await res.json();
-    const hit = (rows || []).find(x => x.id === a.id
-      || (a.handle && String(x.handle).toLowerCase() === String(a.handle).toLowerCase()));
+    const hit = (rows || []).find(x => x.id === artistId);
     return (hit && typeof hit.follower_count === 'number') ? hit.follower_count : 0;
   }catch(e){ return 0; }
 }
-async function loadIsFollowing(meId, artistId){
-  if(!meId) return false;
-  try{
-    const { data, error } = await supabaseClient.from('artist_follows')
-      .select('artist_id').eq('follower_user_id', meId).eq('artist_id', artistId).maybeSingle();
-    if(error) throw error;
-    return !!data;
-  }catch(e){ return false; }   // outage: defaults to "not following"; a real toggle corrects it
-}
-function followerWord(n){ return n === 1 ? 'follower' : 'followers'; }
 
-// The header's Follow slot. Owner: a plain count, no button (step 14).
-// Everyone else: Follow/Following + the count beside it (step 12).
-function followWidgetHTML(isOwner, followerCount, following){
-  if(isOwner){
-    return `<span class="follow-count" id="artist-follow-count">${followerCount} ${followerWord(followerCount)}</span>`;
-  }
-  return `<div class="follow-widget">
-      <button class="home-primary-btn ${following ? 'outlined' : 'filled'}" type="button" id="artist-follow-btn" data-following="${following ? 'true' : 'false'}">${following ? 'Following' : 'Follow'}</button>
-      <span class="follow-count" id="artist-follow-count">${followerCount} ${followerWord(followerCount)}</span>
-    </div>
-    <p class="follow-err" id="artist-follow-err" hidden></p>`;
+let followedIdsPromise = null, followedIdsForUser = null;
+function resetFollowedIdsCache(){ followedIdsPromise = null; followedIdsForUser = null; }
+async function loadFollowedIds(){
+  const me = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
+  if(!me){ resetFollowedIdsCache(); return new Set(); }
+  if(followedIdsPromise && followedIdsForUser === me.id) return followedIdsPromise;
+  followedIdsForUser = me.id;
+  followedIdsPromise = (async () => {
+    try{
+      const { data, error } = await supabaseClient.from('artist_follows')
+        .select('artist_id').eq('follower_user_id', me.id);
+      if(error) throw error;
+      return new Set((data || []).map(r => r.artist_id));
+    }catch(e){ return new Set(); }   // outage: defaults to "following nothing"; a real toggle still works
+  })();
+  return followedIdsPromise;
 }
+
+function setFollowButtonState(btn, following){
+  btn.textContent = following ? 'Following' : 'Follow';
+  btn.dataset.following = String(following);
+  btn.classList.toggle('is-following', following);
+  if(btn.classList.contains('home-primary-btn')){
+    btn.classList.toggle('filled', !following);
+    btn.classList.toggle('outlined', following);
+  }
+}
+
+function followWidgetHTML(mode, isOwner, followerCount, following){
+  if(isOwner) return mode === 'full'
+    ? `<span class="follow-count" data-follow-count>${followerCount} ${followerWord(followerCount)}</span>`
+    : '';
+  if(mode === 'full'){
+    return `<div class="follow-widget">
+        <button class="home-primary-btn ${following ? 'outlined' : 'filled'}" type="button" data-follow-btn data-following="${following ? 'true' : 'false'}">${following ? 'Following' : 'Follow'}</button>
+        <span class="follow-count" data-follow-count>${followerCount} ${followerWord(followerCount)}</span>
+      </div>
+      <p class="follow-err" data-follow-err hidden></p>`;
+  }
+  return `<button class="follow-pill ${following ? 'is-following' : ''}" type="button" data-follow-btn data-following="${following ? 'true' : 'false'}">${following ? 'Following' : 'Follow'}</button>
+    <p class="follow-err is-compact" data-follow-err hidden></p>`;
+}
+
+const FOLLOW_ROOTS = new Set();
+const FOLLOW_ROOT_CONFIG = new WeakMap();
+
+// `config.getArtistId()`/`getOwnerUserId()` are functions, not raw values,
+// so a re-render (auth change, or the song changing under a reused root)
+// always reads whatever is current rather than what was true at mount time.
+// Compact pills (song page/now-playing) mount before their state is known --
+// the slot's reserved width is what keeps that from shifting the layout
+// (step 6). The artist page already has its follower count/following state
+// from its own pre-paint batch, so it calls mountFollowWidgetWithState
+// instead and paints synchronously, keeping the existing "never pops in"
+// behavior that page had before the component was shared.
+function mountFollowWidget(root, config){
+  if(!root) return;
+  FOLLOW_ROOTS.add(root);
+  FOLLOW_ROOT_CONFIG.set(root, config);
+  renderFollowWidgetNow(root, config);
+}
+
+function mountFollowWidgetWithState(root, config, state){
+  if(!root) return;
+  FOLLOW_ROOTS.add(root);
+  FOLLOW_ROOT_CONFIG.set(root, config);
+  paintFollowWidget(root, config, state);
+}
+
+async function renderFollowWidgetNow(root, config){
+  const artistId = config.getArtistId();
+  if(!artistId){ root.innerHTML = ''; delete root.dataset.followArtist; return; }
+  const me = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
+  const ownerId = config.getOwnerUserId ? config.getOwnerUserId() : artistId;
+  const isOwner = !!(me && ownerId && me.id === ownerId);
+
+  const [followerCount, following] = await Promise.all([
+    config.mode === 'full' ? loadFollowerCount(artistId) : Promise.resolve(null),
+    (!isOwner && me) ? loadFollowedIds().then(s => s.has(artistId)) : Promise.resolve(false),
+  ]);
+  if(config.getArtistId() !== artistId) return;   // the song/artist moved on while this was in flight
+  paintFollowWidget(root, config, { isOwner, followerCount, following });
+}
+
+function paintFollowWidget(root, config, { isOwner, followerCount, following }){
+  const artistId = config.getArtistId();
+  if(!artistId){ root.innerHTML = ''; delete root.dataset.followArtist; return; }
+  const me = (window.laivy && window.laivy.auth && window.laivy.auth.user) || null;
+
+  const html = followWidgetHTML(config.mode, isOwner, followerCount, following);
+  root.innerHTML = html;
+  root.dataset.followArtist = artistId;
+  root.classList.toggle('is-empty', !html.trim());   // own song/page: no button, no reserved gap either
+
+  const btn = root.querySelector('[data-follow-btn]');
+  if(!btn) return;
+  btn.addEventListener('click', async () => {
+    if(!me){
+      laivyTrack('follow_signin', { artist_id: artistId, from: config.trackName || config.mode });
+      if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: location.pathname });
+      return;
+    }
+    const errEl = root.querySelector('[data-follow-err]');
+    const wasFollowing = btn.dataset.following === 'true';
+    const nextOn = !wasFollowing;
+    btn.disabled = true;
+    if(errEl) errEl.hidden = true;
+    setFollowButtonState(btn, nextOn);
+    try{
+      const { data, error } = await supabaseClient.rpc('follow_artist', { p_artist_id: artistId, p_on: nextOn });
+      if(error) throw error;
+      laivyTrack('follow_toggle', { artist_id: artistId, on: nextOn, from: config.trackName || config.mode });
+      // Keep the cached followed-ids set (loadFollowedIds) in step too, not
+      // just the currently mounted buttons -- a widget mounted AFTER this
+      // toggle (e.g. landing on the artist page next) reads that cache, and
+      // it must already know, not just whatever roots happened to be on
+      // screen at toggle time.
+      loadFollowedIds().then(s => { if(nextOn) s.add(artistId); else s.delete(artistId); });
+      syncFollowRoots(artistId, nextOn, typeof data === 'number' ? data : null);
+    }catch(err){
+      setFollowButtonState(btn, wasFollowing);
+      if(errEl){ errEl.textContent = (err && err.message) || 'Could not update that.'; errEl.hidden = false; }
+    }finally{
+      btn.disabled = false;
+    }
+  });
+}
+
+// Every OTHER mounted root for the SAME artist updates in step, without a
+// re-fetch -- the song page's pill and the mini-player's pill can both be
+// showing the same playing song's artist at once.
+function syncFollowRoots(artistId, following, newCount){
+  for(const root of FOLLOW_ROOTS){
+    if(!root.isConnected){ FOLLOW_ROOTS.delete(root); continue; }
+    if(root.dataset.followArtist !== artistId) continue;
+    const btn = root.querySelector('[data-follow-btn]');
+    if(btn) setFollowButtonState(btn, following);
+    if(newCount != null){
+      const countEl = root.querySelector('[data-follow-count]');
+      if(countEl) countEl.textContent = `${newCount} ${followerWord(newCount)}`;
+    }
+  }
+}
+
+// Sign in, sign out, or landing back from the sign-in redirect: the cached
+// followed-ids set is stale (or was never loaded for this user), and every
+// mounted button needs to show the REAL state, not whatever it guessed
+// while signed out.
+window.addEventListener('laivy:auth', () => {
+  resetFollowedIdsCache();
+  for(const root of Array.from(FOLLOW_ROOTS)){
+    if(!root.isConnected){ FOLLOW_ROOTS.delete(root); continue; }
+    const config = FOLLOW_ROOT_CONFIG.get(root);
+    if(config) renderFollowWidgetNow(root, config);
+  }
+});
 
 // Ordered by position; skips a pick whose song is not approved (SONGS holds
 // approved songs only, so a miss there already means "not approved").
@@ -5985,8 +6154,8 @@ async function renderArtistPage(handle){
     loadArtistBadges(a.id, a.handle),
     loadArtistPicksRows(a),
     loadArtistChartWeeks(mine.map(s => s.id)),
-    loadFollowerCount(a),
-    (!isOwner && me) ? loadIsFollowing(me.id, a.id) : Promise.resolve(false),
+    loadFollowerCount(a.id),
+    (!isOwner && me) ? loadFollowedIds().then(s => s.has(a.id)) : Promise.resolve(false),
   ]);
   if(token !== artistPageToken) return;
 
@@ -6009,7 +6178,7 @@ async function renderArtistPage(handle){
           ${bioHTML ? `<p class="artist-bio">${bioHTML}</p>` : ''}
           ${moodChipsHTML(moodChips)}
           <div class="artist-actions">
-            <div class="artist-follow-slot" id="artist-follow-slot">${followWidgetHTML(isOwner, followerCount, following)}</div>
+            <div class="artist-follow-slot" id="artist-follow-slot"></div>
             ${mine.length ? `<button class="home-primary-btn filled" type="button" id="artist-playall">Play all</button>` : ''}
             ${mine.length > 1 ? `<button class="home-primary-btn outlined" type="button" id="artist-shuffle">Shuffle</button>` : ''}
             <button class="home-primary-btn outlined" type="button" id="artist-share">Share</button>
@@ -6105,43 +6274,18 @@ async function renderArtistPage(handle){
     }catch(e){ /* the visitor cancelled the sheet */ }
   });
 
-  // Follow: signed-out opens sign-in with next=this page (openUploadOrSignIn's
-  // own pattern for /upload), so the visitor lands right back here and sees
-  // their REAL state -- it does not auto-resume the click, same as Upload.
-  // Signed-in: optimistic toggle, revert + show follow_artist's own message
-  // (self-follow, daily limit) inline on error.
-  const followBtn = document.getElementById('artist-follow-btn');
-  if(followBtn) followBtn.addEventListener('click', async () => {
-    if(!me){
-      laivyTrack('artist_follow_signin', { handle: a.handle });
-      if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: location.pathname });
-      return;
-    }
-    const countEl = document.getElementById('artist-follow-count');
-    const errEl = document.getElementById('artist-follow-err');
-    const wasFollowing = followBtn.dataset.following === 'true';
-    const nextOn = !wasFollowing;
-    followBtn.disabled = true;
-    if(errEl) errEl.hidden = true;
-    followBtn.textContent = nextOn ? 'Following' : 'Follow';
-    followBtn.dataset.following = String(nextOn);
-    followBtn.classList.toggle('filled', !nextOn);
-    followBtn.classList.toggle('outlined', nextOn);
-    try{
-      const { data, error } = await supabaseClient.rpc('follow_artist', { p_artist_id: a.id, p_on: nextOn });
-      if(error) throw error;
-      if(countEl && typeof data === 'number') countEl.textContent = `${data} ${followerWord(data)}`;
-      laivyTrack('artist_follow_toggle', { handle: a.handle, on: nextOn });
-    }catch(err){
-      followBtn.textContent = wasFollowing ? 'Following' : 'Follow';
-      followBtn.dataset.following = String(wasFollowing);
-      followBtn.classList.toggle('filled', !wasFollowing);
-      followBtn.classList.toggle('outlined', wasFollowing);
-      if(errEl){ errEl.textContent = (err && err.message) || 'Could not update that.'; errEl.hidden = false; }
-    }finally{
-      followBtn.disabled = false;
-    }
-  });
+  // Follow: shared component (FOLLOW-2). Signed-out opens sign-in with
+  // next=this page (openUploadOrSignIn's own pattern for /upload), so the
+  // visitor lands right back here and sees their REAL state -- it does not
+  // auto-resume the click, same as Upload. Signed-in: optimistic toggle,
+  // revert + show follow_artist's own message (self-follow, daily limit)
+  // inline on error. State is already known (fetched in the batch above),
+  // so this paints synchronously -- no pop-in on the artist page.
+  mountFollowWidgetWithState(document.getElementById('artist-follow-slot'), {
+    mode: 'full', trackName: 'artist_page',
+    getArtistId: () => a.id,
+    getOwnerUserId: () => a.id,
+  }, { isOwner, followerCount, following });
 
   // Mood chips: the mood's own radio (startChannelRadio via goChannel), not a
   // hard navigation -- same behavior a homepage mood-strip tap gets.

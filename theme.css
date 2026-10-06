@@ -729,6 +729,28 @@ body{
 .follow-count{ font-family:var(--font-ui); font-size:0.85rem; color:var(--text-dim); }
 .follow-err{ font-family:var(--font-ui); font-size:0.8rem; color:var(--accent-1); margin:0; max-width:22rem; }
 
+/* FOLLOW-2: compact pill for the song page / now-playing "by <artist>" line.
+   Sized to match .badge-pill (index.html's own <style> block) so it sits
+   beside "#1 this week"/"New" without shouting. The slot reserves "Following"
+   width (its widest state) up front so the async mount never shifts the row. */
+.follow-pill-slot{ display:inline-flex; align-items:center; min-width:4.6rem; min-height:1.5rem; vertical-align:middle; }
+.follow-pill-slot.is-empty{ min-width:0; min-height:0; }
+.follow-pill{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:0.22rem 0.55rem; border-radius:999px;
+  background:rgba(var(--accent-2-rgb),0.10);
+  border:1px solid rgba(var(--accent-2-rgb),0.26);
+  color:var(--text); cursor:pointer;
+  font-family:var(--font-ui); font-size:0.68rem; font-weight:600;
+  letter-spacing:0.03em; white-space:nowrap;
+}
+.follow-pill.is-following{ background:rgba(var(--accent-2-rgb),0.20); }
+.follow-pill:disabled{ opacity:0.6; cursor:default; }
+.follow-err.is-compact{ font-size:0.72rem; max-width:14rem; }
+@media (max-width:410px){
+  .follow-pill{ font-size:0.64rem; }
+}
+
 /* Five tiles, always rendered (0 shows as 0 -- no "hide a zero" logic). No
    raw play count ever appears here, same house rule BADGE-1/2 already keep:
    the strip is songs/weeks/hearts/comments/since, never plays. */
