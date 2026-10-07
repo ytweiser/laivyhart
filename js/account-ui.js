@@ -75,7 +75,7 @@ function buildModal() {
       </div>
 
       <p class="lv-modal-foot">
-        By continuing you agree to our <a href="/terms">Terms and Privacy</a>.
+        By continuing you agree to the <a href="/terms">Terms</a> and <a href="/privacy.html">Privacy Policy</a>.
       </p>
     </div>`;
   document.body.appendChild(modal);

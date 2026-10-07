@@ -1,0 +1,154 @@
+<!-- DRAFT for owner legal review -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-S2RJQEGV45"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-S2RJQEGV45');
+</script>
+<title>Privacy Policy &middot; Laivy Hart</title>
+<meta name="description" content="Privacy policy for laivyhart.com.">
+<!-- Default skin (Part B): royal + dark on every first visit, regardless of
+     system colour-scheme; a persisted choice still wins. Must come before the
+     bootstrap script below so that script can find and correct it pre-paint. -->
+<meta name="theme-color" content="#0A0C1A">
+<script>
+  /* Same pre-paint theme bootstrap as every other page. */
+  (function(){
+    var DEFAULT_THEME = 'dark', DEFAULT_COLOR = 'royal';
+    var BG = {
+      'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+      'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+      'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+      'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+    };
+    try{
+      var t = localStorage.getItem('laivy-theme');
+      if(t !== 'light' && t !== 'dark'){ t = DEFAULT_THEME; }
+      document.documentElement.setAttribute('data-theme', t);
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = DEFAULT_COLOR; }
+      document.documentElement.setAttribute('data-color', c);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', BG[c + '-' + t] || BG['royal-dark']);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+      document.documentElement.setAttribute('data-color', DEFAULT_COLOR);
+    }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700&family=Frank+Ruhl+Libre:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="/theme.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<script src="/js/supabase-client.js"></script>
+<style>
+  /* Matches terms.html's reading column. The prose is intentionally narrow:
+     a privacy policy is read, not scanned. */
+  body{ background:var(--bg); color:var(--text); }
+  .terms-wrap{ max-width:44rem; margin:0 auto; padding:1.4rem 1.5rem 6rem; }
+  .terms-wrap h1{ font-family:var(--font-display); font-weight:600; font-size:2rem; margin:1.2rem 0 0.3rem; }
+  .terms-wrap h2{ font-family:var(--font-display); font-weight:600; font-size:1.2rem; margin:2rem 0 0.4rem; }
+  .terms-wrap p, .terms-wrap li{ font-family:var(--font-ui); font-size:1rem; line-height:1.72; color:var(--text); }
+  .terms-wrap ul{ padding-left:1.4rem; margin:0.4rem 0; }
+  .terms-wrap p.updated{ color:var(--text-dim); font-size:0.88rem; margin-top:0; }
+  .terms-he{ color:var(--text-dim); font-family:var(--font-heb); }
+  .terms-note{ margin-top:2.4rem; padding-top:1.2rem; border-top:1px solid var(--chip-border);
+               color:var(--text-faint); font-size:0.88rem; }
+  .terms-foot{ margin-top:2.5rem; color:var(--text-faint); font-size:0.85rem; }
+  .terms-foot a{ color:var(--accent-3); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="logo-link" href="/">
+    <picture>
+      <source type="image/webp" srcset="/brand/wordmark.webp">
+      <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+    </picture>
+  </a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/listen">Songs</a>
+    <a href="/about.html">About</a>
+    <div id="account-slot"></div>
+  </nav>
+</div>
+
+<main class="terms-wrap">
+  <h1>Privacy Policy</h1>
+  <p class="terms-he" dir="rtl" lang="he">מדיניות פרטיות</p>
+
+  <p class="updated">Privacy Policy, Laivy Hart. Version v1, last updated 7 October 2026.</p>
+
+  <p>Laivy Hart (laivyhart.com, "the Site," "we," "us") is a music platform for original songs. This policy explains what information we collect, why we collect it, and the choices you have. It should be read together with our <a href="/terms">Terms of Use</a>.</p>
+
+  <h2>1. Who we are</h2>
+  <p>Laivy Hart is the Site described in our Terms. You can reach us about any privacy question at hello@laivyhart.com.</p>
+
+  <h2>2. What we collect, and why</h2>
+  <p>Account and sign-in. When you create an account, we store your email address, which identifies your account and lets us send you a sign-in link. If you sign in with Google, we receive your name from Google and use it to set your initial display name; we do not pull your Google photo or any other Google profile data.</p>
+  <p>Artist profile. If you set up an artist profile, we store your handle, display name (and its Hebrew form, if you provide one), bio, and an avatar image, if you choose to upload one. Internal flags such as your role and onboarding state are stored so the Site works correctly for you; these are not shown to other people.</p>
+  <p>Content you submit. If you upload a song, we store the audio file, a cover image if you provide one, the lyrics (original and, if you provide one, a translation), and metadata such as title, language, proposed tags, and proposed channels.</p>
+  <p>Activity on the Site. We store the things you do while using the Site: the heart ("love") and the "the words" / "the music" reactions you give a song, your star ratings of a song's words and music, the songs you follow or an artist's picks, your artist follows, and any comment you post under a song. A comment can be posted without an account; if you choose to add a name or city to it, that is stored with the comment and shown publicly next to it.</p>
+  <p>Usage and analytics. We log a song play as a timestamp against the song, with no link to who played it, so we can show play counts; these raw play records are deleted after 90 days (aggregate counts are kept). Separately, we use Google Analytics to understand how the Site is used, such as pages viewed, songs played, searches, likes, shares, and similar interactions. This runs through a Google Analytics ID embedded on every page.</p>
+  <p>Local storage on your device. Your browser's local storage holds things like your light/dark and color theme, your liked and loved songs, playlists you build, your sort preference, cached song durations, and a small queue of analytics events waiting to be sent. This data stays on your device; it is not something we can read or retrieve.</p>
+
+  <h2>3. What's public and what's private</h2>
+  <p>Public: your display name, avatar, bio, handle, published songs and their lyrics, your picks, your follower count, and any comment you post (along with the optional name or city you add to it).</p>
+  <p>Private: your email address, the list of artists you follow, and any song still in draft or awaiting review.</p>
+
+  <h2>4. Service providers</h2>
+  <p>We use a small number of providers to run the Site. They can only use what we send them to provide their service to us, not for their own purposes.</p>
+  <ul>
+    <li><strong>Supabase</strong> &ndash; our database, authentication (including Google sign-in and email sign-in links), and row-level access rules.</li>
+    <li><strong>Cloudflare</strong> (R2 storage and a Worker) &ndash; stores and serves uploaded audio and cover images, and sends our internal daily operations email.</li>
+    <li><strong>Vercel</strong> &ndash; hosts the Site.</li>
+    <li><strong>Resend</strong> &ndash; delivers a daily operations email to the Site owner (signups, review queue, pending comments); it is not used to email users.</li>
+    <li><strong>Google</strong> &ndash; Google Sign-In, and Google Analytics (via Google Tag Manager) for usage analytics.</li>
+    <li><strong>wsrv.nl</strong> &ndash; an image-resizing proxy used to serve avatars and cover images at the right size.</li>
+    <li><strong>ImprovMX</strong> &ndash; forwards mail sent to hello@laivyhart.com to the owner's inbox.</li>
+  </ul>
+
+  <h2>5. Cookies and local storage</h2>
+  <p>We do not use advertising cookies. Google Analytics may set its own cookies to distinguish visitors; you can control this through your browser's cookie settings or a Google Analytics opt-out tool. As described above, we also use your browser's local storage for preferences and features that make the Site work the way you left it. None of that local storage is sent to us, except the analytics events mentioned in section 2.</p>
+
+  <h2>6. How long we keep data</h2>
+  <p>Raw play records are purged after 90 days. We keep your account and content for as long as your account exists. If you delete your account, your public profile and songs come down from the Site; some data may be retained afterward as required by law or for legitimate business purposes such as backups, records of prior consent, and abuse prevention.</p>
+
+  <h2>7. Your choices</h2>
+  <p>You can edit your profile and avatar from your settings at any time, and delete any song you've uploaded. You can delete your account from the danger zone on your My page, or by emailing hello@laivyhart.com. You can also email us at any time to request a copy of the data we hold about you.</p>
+
+  <h2>8. Age</h2>
+  <p>As in our Terms, you must be at least 13 years old to hold an account, and at least 18 years old to upload or submit content.</p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>We may update this policy from time to time by posting a new version with a new date. Continued use of the Site after a change is acceptance of the update.</p>
+
+  <p class="terms-note">This document is a draft prepared for the Site owner's review and revision and is not legal advice.</p>
+
+  <p class="terms-foot">
+    Effective 7 October 2026.
+    &middot; See also our <a href="/terms">Terms of Use</a>.
+    &middot; <a href="/">Back to Laivy Hart</a>
+  </p>
+</main>
+
+<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/account-ui.js"></script>
+</body>
+</html>

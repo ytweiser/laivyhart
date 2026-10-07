@@ -33,6 +33,9 @@ async function main() {
 
     const songPage = await import('./specs/song-page.spec.mjs');
     results.push(await songPage.run(browser, PORT));
+
+    const legalPages = await import('./specs/legal-pages.spec.mjs');
+    results.push(await legalPages.run(PORT));
   } finally {
     await browser.close();
     server.close();
