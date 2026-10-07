@@ -118,7 +118,7 @@
     <li><strong>Supabase</strong> &ndash; our database, authentication (including Google sign-in and email sign-in links), and row-level access rules.</li>
     <li><strong>Cloudflare</strong> (R2 storage and a Worker) &ndash; stores and serves uploaded audio and cover images, and sends our internal daily operations email.</li>
     <li><strong>Vercel</strong> &ndash; hosts the Site.</li>
-    <li><strong>Resend</strong> &ndash; delivers a daily operations email to the Site owner (signups, review queue, pending comments); it is not used to email users.</li>
+    <li><strong>Resend</strong> &ndash; Supabase triggers Resend to send your sign-in emails (magic links and confirmations) to you on behalf of Laivy Hart; Resend also delivers a daily operations email to the Site owner (signups, review queue, pending comments).</li>
     <li><strong>Google</strong> &ndash; Google Sign-In, and Google Analytics (via Google Tag Manager) for usage analytics.</li>
     <li><strong>wsrv.nl</strong> &ndash; an image-resizing proxy used to serve avatars and cover images at the right size.</li>
     <li><strong>ImprovMX</strong> &ndash; forwards mail sent to hello@laivyhart.com to the owner's inbox.</li>

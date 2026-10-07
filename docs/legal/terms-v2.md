@@ -25,13 +25,13 @@ Laivy Hart (laivyhart.com, "the Site," "we," "us") is a music platform for origi
 
 7. No warranty; limitation of liability. The Site is provided "as is" and "as available," without warranties of any kind, express or implied, including fitness for a particular purpose, non-infringement, availability, or accuracy. To the fullest extent permitted by law, Laivy Hart is not liable for any indirect, incidental, special, consequential, or punitive damages, or for lost data, lost content, lost profits, or lost opportunities, arising from or related to the Site or Your Content, and our total liability for any claim is limited to the greater of the amount you paid us in the twelve months before the claim (if any) or fifty US dollars.
 
-8. Privacy. We store your email address and sign-in identity to operate your account, the content and metadata you submit, and usage analytics to understand how the Site is used. We do not sell your personal information. We use third-party providers (hosting, storage, email, analytics) who process data on our behalf. You may delete your account from your settings, which removes your public profile and takes your songs off the Site; some data may be retained as required by law or for legitimate business purposes such as backups, records of prior consent, and abuse prevention.
+8. Privacy. We store your email address and sign-in identity to operate your account, the content and metadata you submit, and usage analytics to understand how the Site is used. We do not sell your personal information. We use third-party providers (hosting, storage, email, analytics) who process data on our behalf. You may delete your account from your settings, which removes your public profile and takes your songs off the Site; some data may be retained as required by law or for legitimate business purposes such as backups, records of prior consent, and abuse prevention. See our full Privacy Policy at /privacy.html for details.
 
 9. Conduct. Do not attempt to circumvent submission limits, review, or security; do not scrape or bulk-download the Site; do not interfere with the Site's operation; do not upload content on behalf of someone else without authority.
 
 10. Changes; termination. We may change these Terms at any time by posting a new version with a new date; continued use after a change is acceptance. We may end or suspend the Site or your access at any time. Sections 2 through 7 survive termination.
 
-11. Governing law and disputes. These Terms are governed by the laws of [JURISDICTION], without regard to conflict-of-law rules, and any dispute will be brought exclusively in the courts of [JURISDICTION]. [Owner to complete.]
+11. Governing law and disputes. These Terms are governed by the laws of the State of New York, without regard to its conflict-of-laws rules. Any dispute will be brought exclusively in the state and federal courts located in New York County, New York, and each party consents to the personal jurisdiction of those courts.
 
 12. Contact. hello@laivyhart.com.
 

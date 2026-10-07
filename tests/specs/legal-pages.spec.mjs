@@ -29,5 +29,11 @@ export async function run(port) {
   const termsHtml = await (await fetch(`${base}/terms.html`)).text();
   r.check('terms.html privacy section links to /privacy.html', /href="\/privacy\.html"/.test(termsHtml));
 
+  // LEGAL-2: no unfilled [PLACEHOLDER]-style bracket should remain in either
+  // legal page (an all-caps bracketed word, e.g. the old [JURISDICTION]).
+  const PLACEHOLDER_RE = /\[[A-Z]+\]/;
+  r.check('terms.html has no [ALL-CAPS] placeholder left', !PLACEHOLDER_RE.test(termsHtml), (termsHtml.match(PLACEHOLDER_RE) || [])[0]);
+  r.check('privacy.html has no [ALL-CAPS] placeholder left', !PLACEHOLDER_RE.test(privacyHtml), (privacyHtml.match(PLACEHOLDER_RE) || [])[0]);
+
   return r;
 }
