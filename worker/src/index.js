@@ -206,6 +206,153 @@ export function uploadKeyFor(kind, sub, id, ext) {
 }
 
 /* ============================================================
+   ACT-1: activity ingest (POST /event).
+
+   Accepts a small batch of client-side events and inserts them into
+   activity_events (sql/020) through the REST API using the SERVICE ROLE key
+   -- the one secret this Worker already holds for the daily report, reused
+   here rather than adding a second. The key never leaves this file.
+
+   Identity: an Authorization Bearer token, if present, is verified with the
+   SAME JWKS code /upload/avatar already uses, and `user_id` comes ONLY from
+   that verified `sub`. A user_id in the request body is never read. An
+   invalid or missing token is not an error -- the batch is just recorded
+   anonymous, tied to the device_id the caller sent instead.
+
+   Location: request.cf (city/region/country) ONLY. The client IP and
+   CF-Connecting-IP are never read, stored, or logged here, by design --
+   search this file for "ip" and there is nothing to find.
+
+   Never blocks on errors: a malformed batch, an unknown event type, or a
+   failed insert all still end in a quick 204. Analytics is not a feature
+   that gets to break the page that feeds it.
+   ============================================================ */
+export const ACTIVITY_EVENT_TYPES = [
+  'page_view', 'play_start', 'play_25', 'play_50', 'play_75', 'play_complete',
+  'heart', 'unheart', 'rate', 'comment', 'follow', 'unfollow', 'share', 'search',
+  'sign_in', 'sign_up', 'upload_submit', 'dedication', 'idea_submit', 'idea_heart',
+];
+const ACTIVITY_EVENT_TYPE_SET = new Set(ACTIVITY_EVENT_TYPES);
+
+export const ACTIVITY_MAX_EVENTS = 25;
+export const ACTIVITY_MAX_BYTES = 16 * 1024;
+const ACTIVITY_META_MAX_KEYS = 10;
+const ACTIVITY_STRING_MAX = 200;
+const ACTIVITY_SEARCH_QUERY_MAX = 100;
+const ACTIVITY_UUID_RE = /^[0-9a-f-]{36}$/i;
+
+/* Keeps meta flat, small, and string-safe. Anything that is not a string,
+   number, boolean or null is dropped rather than stored -- there is no
+   nested-object or array shape a caller needs here, and accepting one would
+   let an arbitrarily large value through a cap written for strings. */
+export function trimMeta(meta) {
+  const out = {};
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return out;
+  const keys = Object.keys(meta).slice(0, ACTIVITY_META_MAX_KEYS);
+  for (const k of keys) {
+    let v = meta[k];
+    if (typeof v === 'string') {
+      const cap = k === 'query' ? ACTIVITY_SEARCH_QUERY_MAX : ACTIVITY_STRING_MAX;
+      v = v.slice(0, cap);
+    } else if (!(typeof v === 'number' || typeof v === 'boolean' || v === null)) {
+      continue; // nested object/array/undefined: dropped, not stored
+    }
+    out[k] = v;
+  }
+  return out;
+}
+
+/* One raw event from the client -> a row-shaped object, or null if the type
+   is not one of the allowed ones. Unknown types are DROPPED, not errors, so
+   an older cached page sending a retired type never fails a whole batch. */
+export function sanitizeEvent(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const type = raw.type;
+  if (typeof type !== 'string' || !ACTIVITY_EVENT_TYPE_SET.has(type)) return null;
+  const song_id = typeof raw.song_id === 'string' && ACTIVITY_UUID_RE.test(raw.song_id) ? raw.song_id : null;
+  const artist_id = typeof raw.artist_id === 'string' && ACTIVITY_UUID_RE.test(raw.artist_id) ? raw.artist_id : null;
+  const page = typeof raw.page === 'string' ? raw.page.slice(0, ACTIVITY_STRING_MAX) : null;
+  return { event_type: type, song_id, artist_id, page, meta: trimMeta(raw.meta) };
+}
+
+/* The full handler, pulled out of fetch() so tests can call it directly with
+   a stub fetchImpl instead of standing up a real Worker + real Supabase. */
+export async function handleActivityEvent(request, env, ctx, fetchImpl = fetch) {
+  const origin = request.headers.get('Origin');
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
+
+  // Identity, verified -- never trusted from the body. An invalid or absent
+  // token simply leaves user_id null; that is not a failure of this request.
+  let userId = null;
+  const hdr = request.headers.get('Authorization') || '';
+  const jwt = hdr.startsWith('Bearer ') ? hdr.slice(7) : hdr;
+  if (jwt) {
+    try { userId = await verifySupabaseJwt(jwt, env); }
+    catch (e) { userId = null; }
+  }
+
+  const empty204 = () => new Response(null, { status: 204, headers: corsHeaders(origin) });
+
+  // Measure what actually arrived, not a header someone can lie about, and
+  // reject an oversized body outright rather than parsing it.
+  let bytes;
+  try { bytes = new Uint8Array(await request.arrayBuffer()); }
+  catch (e) { return empty204(); }
+  if (bytes.byteLength === 0 || bytes.byteLength > ACTIVITY_MAX_BYTES) return empty204();
+
+  let body;
+  try { body = JSON.parse(new TextDecoder().decode(bytes)); }
+  catch (e) { return empty204(); }
+  if (!body || typeof body !== 'object') return empty204();
+
+  const device_id = typeof body.device_id === 'string' ? body.device_id.slice(0, 200) : null;
+  const session_id = typeof body.session_id === 'string' ? body.session_id.slice(0, 200) : null;
+  if (!device_id || !Array.isArray(body.events) || !body.events.length) return empty204();
+
+  // Location from request.cf ONLY. No IP, ever -- see the block comment above.
+  const cf = request.cf || {};
+  const city = typeof cf.city === 'string' ? cf.city : null;
+  const region = typeof cf.region === 'string' ? cf.region : null;
+  const country = typeof cf.country === 'string' ? cf.country : null;
+
+  const rows = [];
+  for (const raw of body.events.slice(0, ACTIVITY_MAX_EVENTS)) {
+    const ev = sanitizeEvent(raw);
+    if (!ev) continue; // unknown type or malformed: dropped, not an error
+    rows.push({
+      user_id: userId,
+      device_id,
+      session_id,
+      event_type: ev.event_type,
+      song_id: ev.song_id,
+      artist_id: ev.artist_id,
+      meta: ev.meta,
+      page: ev.page,
+      city, region, country,
+    });
+  }
+
+  if (rows.length && env.SUPABASE_SERVICE_ROLE_KEY) {
+    const insert = fetchImpl(SUPABASE_URL + '/rest/v1/activity_events', {
+      method: 'POST',
+      headers: {
+        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(rows),
+    }).catch((e) => console.error('activity insert failed:', e && e.message));
+    // Never block the response on the insert: respond 204 now, let the write
+    // finish in the background. ctx is absent in a direct unit-test call, so
+    // this falls back to awaiting it there instead of losing the write.
+    if (ctx && ctx.waitUntil) ctx.waitUntil(insert); else await insert;
+  }
+
+  return empty204();
+}
+
+/* ============================================================
    1B-3: the daily report.
 
    Two ways in, one pipeline:
@@ -338,12 +485,21 @@ export default {
       .catch((e) => console.error('daily report failed:', e && e.message)));
   },
 
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin');
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
+
+    /* --- /event: activity ingest. No admin token, no artist JWT required --
+       an anonymous visitor logs activity too. Checked before the PUT/POST
+       method gate below (which would otherwise also accept PUT here) and
+       before the UPLOAD_TOKEN gate, for the same reason /upload/avatar is. */
+    if (new URL(request.url).pathname === '/event') {
+      return handleActivityEvent(request, env, ctx);
+    }
+
     if (request.method !== 'PUT' && request.method !== 'POST') {
       return json({ error: 'Method not allowed' }, 405, origin);
     }

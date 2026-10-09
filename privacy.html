@@ -106,6 +106,7 @@
   <p>Content you submit. If you upload a song, we store the audio file, a cover image if you provide one, the lyrics (original and, if you provide one, a translation), and metadata such as title, language, proposed tags, and proposed channels.</p>
   <p>Activity on the Site. We store the things you do while using the Site: the heart ("love") and the "the words" / "the music" reactions you give a song, your star ratings of a song's words and music, the songs you follow or an artist's picks, your artist follows, and any comment you post under a song. A comment can be posted without an account; if you choose to add a name or city to it, that is stored with the comment and shown publicly next to it.</p>
   <p>Usage and analytics. We log a song play as a timestamp against the song, with no link to who played it, so we can show play counts; these raw play records are deleted after 90 days (aggregate counts are kept). Separately, we use Google Analytics to understand how the Site is used, such as pages viewed, songs played, searches, likes, shares, and similar interactions. This runs through a Google Analytics ID embedded on every page.</p>
+  <p>Activity on the site, such as which songs are played and how far, hearts, ratings, comments, follows, shares and searches. When you are signed in this is linked to your account; when you are not, it is linked to a random device identifier stored in your browser. We record your approximate city and country from your connection, never your full IP address. Only the site owner can see this activity; other members cannot. Detailed activity is kept for 12 months, after which only anonymous daily totals remain.</p>
   <p>Local storage on your device. Your browser's local storage holds things like your light/dark and color theme, your liked and loved songs, playlists you build, your sort preference, cached song durations, and a small queue of analytics events waiting to be sent. This data stays on your device; it is not something we can read or retrieve.</p>
 
   <h2>3. What's public and what's private</h2>
@@ -149,6 +150,7 @@
 </main>
 
 <script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/activity.js"></script>
 <script type="module" src="/js/account-ui.js"></script>
 </body>
 </html>

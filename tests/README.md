@@ -70,6 +70,25 @@ any failure.
   generated import shims (Node's ESM loader requires an explicit
   `with { type: 'json' }` attribute this repo's actual bundler target does
   not; no logic is changed, just that attribute added).
+- `specs/song-page.spec.mjs` — `/song/:slug`: the compact Follow pill
+  (signed-out/signed-in/error/own-song), and a 390px layout check.
+- `specs/legal-pages.spec.mjs` — `/privacy.html` returns 200 and is linked
+  from the homepage footer, the sign-in modal and `terms.html`; neither legal
+  page has a leftover `[ALL-CAPS]` placeholder.
+- `specs/rating.spec.mjs` — the words/music star ratings: signed-out gets the
+  sign-in prompt (not an age-gate message), a one-minute-old account can
+  still rate, the reflection invite copy, and the heart label/count spacing
+  at 390px.
+- `specs/activity.spec.mjs` — `js/activity.js` (ACT-1), exercised through the
+  real song page with `lib/stub-activity.mjs` intercepting `POST /event`:
+  `laivy-no-track` and Global Privacy Control both suppress everything,
+  queueing/flush shape, and play milestones firing once each (not on seek
+  spam).
+- `specs/worker-activity.spec.mjs` — the Worker's `POST /event` route
+  (ACT-1), exercised directly in Node against the real
+  `worker/src/index.js`: caps (25 events, 16 KB, meta trimming), unknown
+  event types dropped, the JWT-verification path (valid and invalid tokens),
+  and a static check that no IP header is ever read.
 
 ## Adding a scenario
 

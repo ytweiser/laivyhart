@@ -28,6 +28,13 @@ function track(name, params) {
   } catch (e) { /* analytics is best effort */ }
 }
 
+// ACT-1: the first-party activity log (js/activity.js), separate from GA4
+// above. Self-guarding the same way track() is.
+function logActivity(type, opts) {
+  try { if (window.laivy && window.laivy.activity) window.laivy.activity.log(type, opts); }
+  catch (e) { /* activity logging is best effort, same as analytics */ }
+}
+
 function el(tag, cls, html) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -957,8 +964,9 @@ function onAuth() {
     if (lastUserId !== undefined) {
       const method = (user.app_metadata && user.app_metadata.provider) === 'google' ? 'google' : 'email';
       track('sign_in', { method });
+      logActivity('sign_in', { meta: { method } });
       const fresh = user.created_at && (Date.now() - Date.parse(user.created_at) < 60000);
-      if (fresh) track('sign_up', { method });
+      if (fresh) { track('sign_up', { method }); logActivity('sign_up', { meta: { method } }); }
     }
     if (artist && artist.onboarded === false) showOnboarding();
   }

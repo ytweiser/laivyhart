@@ -2669,6 +2669,11 @@ let manualPos = 0;
 const railScrolledThisSession = new Set(); // home_rail_scroll: once per rail
 let idleTimer = null;
 let playCounted = false;
+// ACT-1 play milestones, reset per song exactly like playCounted so each is
+// logged once per play, not on seek spam. Keyed by the four thresholds
+// below 100%; "complete" is its own flag, set from the 'ended' event rather
+// than a 100% timeupdate frame, which may never fire.
+let playMilestones = { p25:false, p50:false, p75:false, complete:false };
 
 const audioEl = document.getElementById('audio-el');
 const ambient = document.getElementById('ambient');
@@ -3895,6 +3900,7 @@ function loadSong(idx, keepRailQueue){
   if(!keepRailQueue) manualQueue = null; // a non-rail pick ends any "Play all"
   langView = 'orig';
   playCounted = false;
+  playMilestones = { p25:false, p50:false, p75:false, complete:false };
   renderNow();
   if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
@@ -3958,6 +3964,20 @@ audioEl.addEventListener('timeupdate', () => {
   document.getElementById('scrub').value = Math.round(frac * 1000);
   document.getElementById('t-elapsed').textContent = fmtTime(audioEl.currentTime);
   document.getElementById('t-remaining').textContent = '-' + fmtTime(dur - audioEl.currentTime);
+  // ACT-1: real-progress play milestones, once each per play (reset in
+  // loadSong). Checked in order so a seek straight past 50% to 90% still
+  // logs 25 and 50 on this same tick, never just the highest one reached.
+  if(currentIdx !== null && SONGS[currentIdx]){
+    const s = SONGS[currentIdx];
+    const fire = (key, type) => {
+      if(playMilestones[key]) return;
+      playMilestones[key] = true;
+      logActivity(type, { song_id: s.id, artist_id: s.artist_id });
+    };
+    if(frac >= 0.25) fire('p25', 'play_25');
+    if(frac >= 0.50) fire('p50', 'play_50');
+    if(frac >= 0.75) fire('p75', 'play_75');
+  }
 });
 document.getElementById('scrub').addEventListener('input', (e) => {
   const dur = audioEl.duration;
@@ -3976,9 +3996,15 @@ audioEl.addEventListener('play', () => {
     song_title: s.title || s.title_translit || '',
     song_transliteration: s.title_translit || ''
   });
+  logActivity('play_start', { song_id: s.id, artist_id: s.artist_id });
 });
 audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(false); });
 audioEl.addEventListener('ended', () => {
+  if(!playMilestones.complete && currentIdx !== null && SONGS[currentIdx]){
+    playMilestones.complete = true;
+    const s = SONGS[currentIdx];
+    logActivity('play_complete', { song_id: s.id, artist_id: s.artist_id });
+  }
   playCounted = false;
   if(mode !== 'manual') advanceQueue();
   else railAdvance();
@@ -4101,6 +4127,15 @@ function laivyTrack(name, params){
   }catch(_){ /* analytics is best effort */ }
 }
 
+/* ACT-1: the first-party activity log (js/activity.js), separate from GA4
+   above. Self-guarding the same way laivyTrack is -- window.laivy.activity
+   checks laivy-no-track/GPC itself -- so every call site below just calls
+   this unconditionally, right next to the matching laivyTrack call. */
+function logActivity(type, opts){
+  try{ if(window.laivy && window.laivy.activity) window.laivy.activity.log(type, opts); }
+  catch(_){ /* activity logging is best effort, same as analytics */ }
+}
+
 /* ============================================================
    Likes (per-visitor heart, remembered in this browser)
    The global count lives on songs.like_count; which songs THIS
@@ -4144,6 +4179,7 @@ async function toggleLike(songId){
     kind: 'song',
     on: liked ? 'on' : 'off'
   });
+  logActivity(liked ? 'heart' : 'unheart', { song_id: songId, artist_id: s.artist_id });
   // Queue the tap so a Supabase outage can't drop it; the authoritative count
   // is reconciled when the event is successfully sent. Local state already
   // reflects the tap, so the heart stays instant either way.
@@ -4372,6 +4408,7 @@ document.addEventListener('click', async (e) => {
     });
     if(error) throw error;
     laivyTrack('rate', { song_id: s.id, facet, score });
+    logActivity('rate', { song_id: s.id, artist_id: s.artist_id, meta: { kind: facet, stars: score } });
     // Fold the new score into the local aggregate so the average can appear
     // without a reload once the threshold is crossed.
     const nKey = 'rating_' + facet + '_n', sKey = 'rating_' + facet + '_sum';
@@ -4653,6 +4690,7 @@ document.getElementById('comment-form').addEventListener('submit', async (e) => 
   bodyEl.value = '';
   status.textContent = 'Thanks! Your comment is awaiting approval.';
   status.className = 'comment-status ok';
+  logActivity('comment', { song_id: song.id, artist_id: song.artist_id });
 });
 // Compact-until-focused: expand on focus, re-collapse when the visitor
 // leaves an empty form (keeps the panel calm but always inviting).
@@ -4972,6 +5010,7 @@ searchEl.addEventListener('input', (e) => {
   searchTrackTimer = setTimeout(() => {
     const q = normalizeForSearch(searchTerm);
     if(q.length >= 2) laivyTrack('search', { query: q, result_count: visibleOrder().length });
+    if(q.length >= 2) logActivity('search', { meta: { query: q, results: visibleOrder().length } });
   }, 600);
 });
 
@@ -5326,6 +5365,8 @@ function songShareUrl(s){
     const url = songShareUrl(s);
     const title = s.title || s.title_translit || 'Laivy Hart';
     laivyTrack('song_share', { song_id: s.id, song_title: title });
+    const shareChannel = navigator.share ? 'native' : (navigator.clipboard && navigator.clipboard.writeText ? 'copy' : 'prompt');
+    logActivity('share', { song_id: s.id, artist_id: s.artist_id, meta: { channel: shareChannel } });
     /* "Title, by Artist, on Laivy Hart". Not special-cased for the owner: it
        reads oddly today only because the artist IS the site. The matching OG
        title is injected by the middleware in 1A-5; this is the client text. */
@@ -5356,6 +5397,7 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
   btn.addEventListener('click', async () => {
     const native = !!navigator.share;
     laivyTrack('site_share', { method: native ? 'native' : 'copy' });
+    logActivity('share', { meta: { channel: native ? 'native' : 'copy' } });
     if(native){
       try{ await navigator.share({ title: SITE_SHARE_TITLE, text: SITE_SHARE_TEXT, url: SITE_SHARE_URL }); }
       catch(e){ /* the visitor dismissed the sheet */ }
@@ -5502,6 +5544,7 @@ function navigate(next){
   history.pushState({ route: next }, '', routePath(next));
   showPage(next);
   laivyTrack('page_view', { route: next });
+  logActivity('page_view', { page: routePath(next) });
 }
 window.addEventListener('popstate', () => {
   const r = routeFromPath();
@@ -5514,6 +5557,7 @@ window.addEventListener('popstate', () => {
     if(idx >= 0 && idx !== currentIdx) loadSong(idx, false);
   }
   laivyTrack('page_view', { route: r });
+  logActivity('page_view', { page: location.pathname });
 });
 
 // Homepage "Find a song": go to /listen with a category active (?cat) or a tag
@@ -5523,6 +5567,7 @@ function goListenWithParam(kind, value){
   history.pushState({ route: 'listen' }, '', '/listen?' + kind + '=' + encodeURIComponent(value));
   showPage('listen');
   laivyTrack('page_view', { route: 'listen' });
+  logActivity('page_view', { page: location.pathname });
   applyListenParams();
 }
 // Homepage mood strip -> /listen?channel=<id>, list filtered to that channel
@@ -5538,6 +5583,7 @@ function goChannel(id){
   history.pushState({ route: 'listen' }, '', '/listen?channel=' + encodeURIComponent(id));
   showPage('listen');
   if(!wasListen) laivyTrack('page_view', { route: 'listen' });
+  if(!wasListen) logActivity('page_view', { page: location.pathname });
   switchTab('songs');
   startChannelRadio(id);
 }
@@ -5590,6 +5636,7 @@ function initRoute(){
       showPage(r);
       if(r === 'home' || r === 'listen') applyListenParams();
       laivyTrack('page_view', { route: r });
+      logActivity('page_view', { page: next });
     };
     // Whichever comes first: auth settling, or a timeout so a failed exchange
     // still lands the visitor somewhere sensible instead of hanging.
@@ -5832,6 +5879,7 @@ function paintFollowWidget(root, config, { isOwner, followerCount, following }){
       const { data, error } = await supabaseClient.rpc('follow_artist', { p_artist_id: artistId, p_on: nextOn });
       if(error) throw error;
       laivyTrack('follow_toggle', { artist_id: artistId, on: nextOn, from: config.trackName || config.mode });
+      logActivity(nextOn ? 'follow' : 'unfollow', { artist_id: artistId });
       // Keep the cached followed-ids set (loadFollowedIds) in step too, not
       // just the currently mounted buttons -- a widget mounted AFTER this
       // toggle (e.g. landing on the artist page next) reads that cache, and
@@ -6458,6 +6506,7 @@ flushEventQueue();
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->
 <script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/activity.js"></script>
 <script type="module" src="/js/media-utils.js"></script>
 <script type="module" src="/js/upload.js"></script>
 <script type="module" src="/js/account-ui.js"></script>

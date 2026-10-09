@@ -703,7 +703,13 @@ export async function renderUploadPage(container, songId) {
         showErrors(out);
         return;
       }
-      if (out.status === 'submitted') { done = true; renderSubmitted(container); return; }
+      if (out.status === 'submitted') {
+        done = true;
+        try { if (window.laivy && window.laivy.activity) window.laivy.activity.log('upload_submit', { song_id: out.id }); }
+        catch (e) { /* activity logging is best effort */ }
+        renderSubmitted(container);
+        return;
+      }
       replacing = { audio: false, cover: false };
       paintAudio(); paintCover();
       msg.className = 'u-msg is-ok';

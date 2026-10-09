@@ -39,6 +39,9 @@ async function main() {
 
     const rating = await import('./specs/rating.spec.mjs');
     results.push(await rating.run(browser, PORT));
+
+    const activity = await import('./specs/activity.spec.mjs');
+    results.push(await activity.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();
@@ -47,6 +50,9 @@ async function main() {
   // Node-only, no browser/server needed.
   const middleware = await import('./specs/middleware.spec.mjs');
   results.push(await middleware.run());
+
+  const workerActivity = await import('./specs/worker-activity.spec.mjs');
+  results.push(await workerActivity.run());
 
   const totalPassed = results.reduce((n, r) => n + r.passed, 0);
   const totalFailed = results.reduce((n, r) => n + r.failed, 0);
