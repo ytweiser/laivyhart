@@ -132,19 +132,19 @@ async function scenarioSuccessShareActions(browser, port, r) {
   }));
   r.check('sent request carries the right payload', shareCalls[0] && shareCalls[0].p_recipient_name === 'Mom' && shareCalls[0].p_occasion === 'birthday' && shareCalls[0].p_is_anonymous === false, JSON.stringify(shareCalls[0]));
   r.check('switches to the success pane', after.formHidden === true && after.successHidden === false, JSON.stringify(after));
-  r.check('the view link points at the real dedication page', after.viewLink === 'https://www.laivyhart.com/d/ABCD2345', after.viewLink);
+  r.check('the view link points at the real dedication page', after.viewLink === 'https://laivyhart.com/d/ABCD2345', after.viewLink);
   r.check('WhatsApp and Copy actions are both present', after.waVisible && after.copyVisible, JSON.stringify(after));
 
   await page.click('#dedicate-whatsapp');
   await page.waitForTimeout(100);
   const opened = await page.evaluate(() => window.__opened[0]);
-  const expectedText = 'I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://www.laivyhart.com/d/ABCD2345';
+  const expectedText = 'I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://laivyhart.com/d/ABCD2345';
   r.check('WhatsApp opens wa.me with the exact expected text, URL-encoded', opened === 'https://wa.me/?text=' + encodeURIComponent(expectedText), opened);
 
   await page.click('#dedicate-copy');
   await page.waitForTimeout(100);
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  r.check('Copy link copies the dedication URL', copied === 'https://www.laivyhart.com/d/ABCD2345', copied);
+  r.check('Copy link copies the dedication URL', copied === 'https://laivyhart.com/d/ABCD2345', copied);
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

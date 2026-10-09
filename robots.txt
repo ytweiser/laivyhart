@@ -4,4 +4,4 @@ Disallow: /admin.html
 Disallow: /auth/
 Disallow: /settings
 
-Sitemap: https://www.laivyhart.com/sitemap.xml
+Sitemap: https://laivyhart.com/sitemap.xml

@@ -965,10 +965,10 @@ async function renderFollowing(container, user) {
    newest first. Open goes to the real /d/<code> page; Remove calls
    remove_my_dedication(), the sender's own removal path -- the same RPC
    the dedication page itself could call, just reached from here instead.
-   DED_OCCASION_LABEL/DED_SHARE_ORIGIN are duplicated from index.html: this
+   DED_OCCASION_LABEL/SITE_ORIGIN are duplicated from index.html: this
    module and that page share no import, the same reasoning TROPHY_LABELS
    already documents in middleware.js. */
-const DED_SHARE_ORIGIN = 'https://www.laivyhart.com';
+const SITE_ORIGIN = 'https://laivyhart.com';
 const DED_OCCASION_LABEL = {
   birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
   bar_bat_mitzvah: 'Bar or Bat Mitzvah', new_baby: 'New baby',
@@ -1006,7 +1006,7 @@ async function renderMyDedications(container) {
 
     host.querySelectorAll('[data-ded-copy]').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const url = DED_SHARE_ORIGIN + '/d/' + encodeURIComponent(btn.dataset.dedCopy);
+        const url = SITE_ORIGIN + '/d/' + encodeURIComponent(btn.dataset.dedCopy);
         try { await navigator.clipboard.writeText(url); }
         catch (e) { window.prompt('Copy this link:', url); }
       });

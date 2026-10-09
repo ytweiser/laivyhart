@@ -5572,17 +5572,17 @@ function laivyToast(msg){
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-// Always share the canonical www link: that is the domain the edge middleware
-// runs on (the bare domain 308-redirects to it), so crawlers get the injected
-// per-song preview directly instead of relying on redirect-following.
-const SHARE_ORIGIN = 'https://www.laivyhart.com';
+// CANON-1: laivyhart.com (no www) is the one canonical address; Vercel
+// 308-redirects www to it, and this is the single origin every share/OG/
+// canonical link in this file reads.
+const SITE_ORIGIN = 'https://laivyhart.com';
 /* The canonical URL is /song/<slug>. The legacy /?song=<id> form stays as the
    fallback for a song that somehow has no slug; the middleware 301s it anyway,
    so an old link already in someone's chat history still lands. */
 function songShareUrl(s){
   return s && s.slug
-    ? SHARE_ORIGIN + '/song/' + encodeURIComponent(s.slug)
-    : SHARE_ORIGIN + '/?song=' + encodeURIComponent(s.id);
+    ? SITE_ORIGIN + '/song/' + encodeURIComponent(s.slug)
+    : SITE_ORIGIN + '/?song=' + encodeURIComponent(s.id);
 }
 (function(){
   const btn = document.getElementById('now-share-btn');
@@ -5614,10 +5614,8 @@ function songShareUrl(s){
   });
 })();
 
-// Share the SITE. The bare domain on purpose: it is the link people read, say
-// and type. (Song links use the www form instead, so the edge middleware can
-// hand crawlers the per-song preview without a redirect hop.)
-const SITE_SHARE_URL = 'https://laivyhart.com';
+// Share the SITE. SITE_ORIGIN (defined above) is also the bare link people
+// read, say and type, so it is reused as-is with no path appended.
 const SITE_SHARE_TITLE = 'Laivy Hart';
 const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
 (function(){
@@ -5628,18 +5626,18 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
     laivyTrack('site_share', { method: native ? 'native' : 'copy' });
     logActivity('share', { meta: { channel: native ? 'native' : 'copy' } });
     if(native){
-      try{ await navigator.share({ title: SITE_SHARE_TITLE, text: SITE_SHARE_TEXT, url: SITE_SHARE_URL }); }
+      try{ await navigator.share({ title: SITE_SHARE_TITLE, text: SITE_SHARE_TEXT, url: SITE_ORIGIN }); }
       catch(e){ /* the visitor dismissed the sheet */ }
       return;
     }
     if(navigator.clipboard && navigator.clipboard.writeText){
       try{
-        await navigator.clipboard.writeText(SITE_SHARE_URL);
+        await navigator.clipboard.writeText(SITE_ORIGIN);
         laivyToast('Link copied');
         return;
       }catch(e){ /* blocked or denied: fall through to the prompt */ }
     }
-    window.prompt('Copy this link:', SITE_SHARE_URL);
+    window.prompt('Copy this link:', SITE_ORIGIN);
   });
 })();
 
@@ -5661,7 +5659,7 @@ function dedOccasionLabel(occasion, occasionOther){
   return occasion === 'other' ? (occasionOther || 'Other') : (DED_OCCASION_LABEL[occasion] || occasion);
 }
 function dedSenderLine(name){ return name ? `from ${name}` : 'from someone'; }
-function dedShareUrl(code){ return SHARE_ORIGIN + '/d/' + encodeURIComponent(code); }
+function dedShareUrl(code){ return SITE_ORIGIN + '/d/' + encodeURIComponent(code); }
 
 let dedicateSong = null; // the song this open sheet is for
 

@@ -69,6 +69,9 @@ async function main() {
   const workerActivity = await import('./specs/worker-activity.spec.mjs');
   results.push(await workerActivity.run());
 
+  const canonicalOrigin = await import('./specs/canonical-origin.spec.mjs');
+  results.push(await canonicalOrigin.run());
+
   const totalPassed = results.reduce((n, r) => n + r.passed, 0);
   const totalFailed = results.reduce((n, r) => n + r.failed, 0);
   console.log(`\n${'='.repeat(50)}`);

@@ -116,6 +116,13 @@ any failure.
   someone", never a name), a removed-or-unknown code (identical "no longer
   available" message either way), the Play button handing off to the real
   player, and 1280px/390px rendering.
+- `specs/canonical-origin.spec.mjs` (CANON-1): a filesystem scan over every
+  file this site serves or produces at build time (skipping `tests/` and
+  `worker/`, the two places that intentionally keep both the bare and www
+  hosts), asserting none of them contain the old `https://www.laivyhart.com`
+  form. The canonical-tag and og:url checks for `/`, `/song/:slug`,
+  `/artist/:handle` and `/d/:code` live in `middleware.spec.mjs` instead,
+  next to the rest of that route's SSR checks.
 
 ## Adding a scenario
 

@@ -43,6 +43,9 @@ export async function run() {
 
     r.check('title includes the artist name', /Nova Ash/.test((html.match(/<title>([^<]*)<\/title>/) || [])[1] || ''));
     r.check('description falls back sensibly (no bio set)', desc === 'Original songs on Laivy Hart.', desc);
+    // CANON-1: laivyhart.com (no www) is the one canonical address.
+    r.check('canonical uses the bare domain, no www', (html.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/artist/nova-ash', (html.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
+    r.check('og:url uses the bare domain, no www', (html.match(/<meta property="og:url" content="([^"]*)">/) || [])[1] === 'https://laivyhart.com/artist/nova-ash', (html.match(/<meta property="og:url" content="([^"]*)">/) || [])[1]);
     r.check('JSON-LD is a MusicGroup with a track list', ld['@type'] === 'MusicGroup' && Array.isArray(ld.track) && ld.track.length === 6, JSON.stringify(ld['@type']));
 
     // ARTIST-3 step 14/16: follower_count flows into the SSR body.
@@ -81,7 +84,17 @@ export async function run() {
       const p = await decide3('/artist/does-not-exist', new URLSearchParams());
       return { kind: p.kind, tag: p.tag };
     })())) === JSON.stringify({ kind: 'render', tag: 'artist-404' }));
-    r.check('home route unaffected', (await decide3('/', new URLSearchParams())).tag === 'home');
+    const homePlan = await decide3('/', new URLSearchParams());
+    r.check('home route unaffected', homePlan.tag === 'home');
+    const homeHtml = homePlan.fn(shell);
+    r.check('home canonical uses the bare domain, no www', (homeHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/', (homeHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
+
+    // ---- CANON-1: /song/<slug>'s canonical and og:url. ----
+    const songPlan = await decide('/song/supernova-a000', new URLSearchParams());
+    r.check('decide() renders the song route', songPlan && songPlan.kind === 'render' && songPlan.tag === 'song', JSON.stringify(songPlan && { kind: songPlan.kind, tag: songPlan.tag }));
+    const songHtml = songPlan.fn(shell);
+    r.check('song canonical uses the bare domain, no www', (songHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/song/supernova-a000', (songHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
+    r.check('song og:url uses the bare domain, no www', (songHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1] === 'https://laivyhart.com/song/supernova-a000', (songHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1]);
 
     // ---- DED-2: /d/<code>, the one route with no build-time snapshot --
     // it fetches dedications_public live, so a stub fetchImpl stands in. ----
@@ -101,6 +114,8 @@ export async function run() {
     r.check('og:title matches', (namedHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'A song for Mom', namedHtml.match(/og:title[^>]*/)?.[0]);
     r.check('og:description carries the occasion and the start of the message', /On their birthday.*Love you so much/.test((namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1] || ''), (namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1]);
     r.check('og:image uses the cover via the wsrv.nl transform', (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]?.includes('wsrv.nl'), (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]);
+    r.check('dedication canonical uses the bare domain, no www', (namedHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/d/ABCD2345', (namedHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
+    r.check('dedication og:url uses the bare domain, no www', (namedHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1] === 'https://laivyhart.com/d/ABCD2345', (namedHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1]);
     r.check('noindex is present (dedication pages are personal)', /name="robots" content="noindex"/.test(namedHtml));
     const namedSsr = (namedHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
     r.check('SSR body shows the real sender name', /From Tzvi/.test(namedSsr), namedSsr);

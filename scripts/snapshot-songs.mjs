@@ -491,7 +491,7 @@ await writeChart();
    sitemap.xml + robots.txt
 
    vercel.json sets outputDirectory ".", so the repo root IS the served root
-   and both files land at https://www.laivyhart.com/<name>.
+   and both files land at https://laivyhart.com/<name>.
 
    lastmod: songs have no updated_at, so reviewed_at (when the song became
    public) is the honest signal, falling back to created_at. Priorities are
@@ -501,7 +501,7 @@ await writeChart();
    Only approved songs with a slug, and only artists that artists_public
    returned (which already excludes suspended and deleted), ever appear.
    ------------------------------------------------------------ */
-const SITE = 'https://www.laivyhart.com';
+const SITE = 'https://laivyhart.com';
 
 function xmlEscape(v) {
   return String(v == null ? '' : v)

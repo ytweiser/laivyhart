@@ -38,7 +38,7 @@ export const config = {
   matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*'],
 };
 
-const SITE = 'https://www.laivyhart.com';
+const SITE = 'https://laivyhart.com';
 const SITE_NAME = 'Laivy Hart';
 const DEFAULT_OG_IMAGE = 'https://laivyhart.com/og-image.png';
 const DEFAULT_DESC = 'Original songs. Sometimes stories, sometimes prayers.';
