@@ -36,6 +36,9 @@ async function main() {
 
     const legalPages = await import('./specs/legal-pages.spec.mjs');
     results.push(await legalPages.run(PORT));
+
+    const rating = await import('./specs/rating.spec.mjs');
+    results.push(await rating.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();

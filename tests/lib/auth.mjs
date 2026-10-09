@@ -30,11 +30,16 @@ function fakeJwt(payload) {
 
 /**
  * Must be called BEFORE page.goto (it's an addInitScript, so it only takes
- * effect on navigations after this call). `user` is { id, email }.
+ * effect on navigations after this call). `user` is { id, email, createdAt }.
+ * `createdAt` defaults to 30 days ago (an established account); pass a recent
+ * Date (e.g. `new Date(Date.now() - 60000)`) to simulate a brand-new signup --
+ * POLISH-1 removed the 48-hour rating age gate, so this is how that scenario
+ * is exercised here.
  */
 export async function signInAs(page, user) {
   const now = Math.floor(Date.now() / 1000);
   const accessToken = fakeJwt({ sub: user.id, email: user.email, aud: 'authenticated', role: 'authenticated', exp: now + 3600, iat: now });
+  const createdAt = user.createdAt || new Date(Date.now() - 30 * 86400000);
   const session = {
     access_token: accessToken,
     token_type: 'bearer',
@@ -45,7 +50,7 @@ export async function signInAs(page, user) {
       id: user.id, aud: 'authenticated', role: 'authenticated', email: user.email,
       email_confirmed_at: new Date().toISOString(),
       app_metadata: { provider: 'email' }, user_metadata: {},
-      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+      created_at: createdAt.toISOString(),
       updated_at: new Date().toISOString(),
     },
   };

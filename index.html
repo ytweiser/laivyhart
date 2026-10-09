@@ -1398,6 +1398,12 @@
     .loves-row{gap:1.6rem;}
     .love-ic{width:56px; height:56px;}
     .love-ic svg{width:1.7rem; height:1.7rem;}
+    /* The label and its count sit flush against the button's own box here,
+       so the focus outline (outline-offset:3px) has almost no room around
+       them at this width. A little padding on the button and the label gives
+       both real breathing space instead of crowding the outline. */
+    .love-btn{padding:0.05rem 0.3rem 0.3rem;}
+    .love-label{padding:0 0.2rem;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame with
        pinned controls and a capped reflections zone. Sections just stack and
        flow so the PAGE scrolls to reveal the like heart, the reflection form,
@@ -1605,7 +1611,7 @@
       <div class="comments-wrap hidden" id="comments-wrap">
         <div class="reflect-invite">
           <div class="reflect-title">Share a reflection</div>
-          <div class="reflect-sub">This song stir something in you? Leave a few words. A single line is plenty.</div>
+          <div class="reflect-sub">Did this song stir something in you? Leave a few words. A single line is plenty.</div>
         </div>
         <form class="comment-form is-collapsed" id="comment-form">
           <textarea id="comment-body" class="comment-textarea" placeholder="Write your reflection here…" maxlength="1000" aria-label="Your comment"></textarea>
@@ -4070,10 +4076,11 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) flush
 
 // Testing escape hatch: when localStorage 'laivy-no-track' === '1', every
 // tracking path — GA4 events and the increment_play_count / toggle_like /
-// toggle_love RPCs — is a no-op, so browser verification never reaches the
-// database or analytics. NOTE: the guard sits at the top of each toggle, so
-// with the flag on the three loves do not visibly toggle either.
-// See the README "Testing" section.
+// toggle_love / rate_song RPCs — is a no-op, so browser verification never
+// reaches the database or analytics. NOTE: the guard sits AFTER the optimistic
+// local update in each toggle, not before it, so the three loves and the
+// rating stars still visibly change on screen with the flag on -- only the
+// outbound call is skipped. See the README "Testing" section.
 function noTrack(){ try{ return localStorage.getItem('laivy-no-track') === '1'; }catch(e){ return false; } }
 
 function incrementPlay(songId){
@@ -4334,9 +4341,9 @@ function ratingMessage(text, bad){
 
 /* One delegated handler for every star. Signed out opens the sign-in modal;
    otherwise rate_song() is called and ITS message is what the visitor sees --
-   "You cannot rate your own song", the age gate, and so on. The stars are
-   deliberately not pre-disabled for those two cases: a disabled control that
-   does not say why is worse than a tap that explains. */
+   "You cannot rate your own song" and so on. The stars are deliberately not
+   pre-disabled for the signed-out case: a disabled control that does not say
+   why is worse than a tap that explains. */
 document.addEventListener('click', async (e) => {
   const star = e.target.closest && e.target.closest('.star');
   if(!star) return;
@@ -4351,12 +4358,14 @@ document.addEventListener('click', async (e) => {
     if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
     return;
   }
-  if(noTrack()) return;
-
   ratingMessage('');
   const prev = myRatings[s.id + ':' + facet] || 0;
   myRatings[s.id + ':' + facet] = score;     // optimistic, like the heart
   paintRatings();
+  // Do-not-track stops here, exactly like the heart: the stars have already
+  // updated on screen, which is what a test needs to be able to check, and
+  // only the RPC that would reach the real database is skipped.
+  if(noTrack()) return;
   try{
     const { error } = await supabaseClient.rpc('rate_song', {
       p_song: s.id, p_facet: facet, p_score: score,
