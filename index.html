@@ -728,6 +728,24 @@
   .home-hero2.is-solo .hero-tile{max-height:372px;}
   .hero-title.disp{font-family:var(--font-display);}
 
+  /* ACT-2: the public Pulse box. A short, live-feeling strip of recent plays
+     and hearts, no numbers, no identity -- see public_pulse() (sql/021_pulse.sql). */
+  .pulse-box{margin:1.6rem 0 2rem; padding:16px 18px; background:var(--bg-2);
+    border:1px solid var(--chip-border); border-radius:var(--radius-sm);}
+  .pulse-box-h{font-family:var(--font-ui); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--text-faint); margin:0 0 0.7rem;}
+  .pulse-box-list{display:flex; flex-direction:column; gap:0.65rem;}
+  .pulse-box-item{display:flex; align-items:center; gap:0.65rem;}
+  .pulse-box-thumb{width:38px; height:38px; border-radius:7px; object-fit:cover; flex-shrink:0; background:var(--chip-bg);}
+  .pulse-box-text{font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); line-height:1.35;}
+  .pulse-box-text strong{color:var(--text); font-weight:500;}
+  .pulse-box-when{color:var(--text-faint); font-size:0.78rem; margin-left:0.3rem;}
+  .pulse-box-empty{font-family:var(--font-ui); font-size:0.85rem; color:var(--text-faint); font-style:italic;}
+  @media (max-width:719.98px){
+    .pulse-box{padding:14px 15px;}
+    .pulse-box-text{font-size:0.84rem;}
+  }
+
   /* Rails: serif header + a quiet "Play all", then a snap-scrolling row of
      landscape (3:2) cards. The scroll track bleeds to the page edge, but the
      first card snaps flush to the content edge (scroll-padding = page padding). */
@@ -2722,8 +2740,8 @@ const SHOW_TAG_CLOUD = false;
    invitation they cannot accept. Read live at boot from the public-read
    site_settings table; falls back to the build-time settings.json, then to
    these defaults, so an outage can never turn the switch ON by accident. */
-const PUBLIC_SETTING_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart'];
-let PUBLIC_SETTINGS = { contribute_cta_enabled: false, honors_min_weeks_on_chart: 4 };
+const PUBLIC_SETTING_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart', 'pulse_public_enabled'];
+let PUBLIC_SETTINGS = { contribute_cta_enabled: false, honors_min_weeks_on_chart: 4, pulse_public_enabled: false };
 
 function applyPublicSettings(rows){
   for(const r of rows || []){
@@ -2744,6 +2762,81 @@ async function loadPublicSettings(){
     if(res.ok){ const rows = await res.json(); if(Array.isArray(rows)) applyPublicSettings(rows); }
   }catch(e){ /* defaults stand */ }
 }
+
+/* ============================================================
+   ACT-2: the public Pulse box. Off by default (pulse_public_enabled,
+   seeded false in sql/021_pulse.sql); the owner flips it on when ready.
+   Until then, an admin can still see it by adding ?preview=pulse to the
+   homepage URL while signed in -- everyone else gets nothing rendered and
+   nothing fetched, on or off the preview query param.
+   ============================================================ */
+// Captured once, now, from the URL the visitor actually loaded: initRoute()
+// (called later in boot) rewrites the visible address with history.replaceState
+// for a plain home visit, dropping any query param it does not recognize --
+// re-reading location.search later would always see that already-stripped URL.
+const PULSE_PREVIEW_REQUESTED = (function(){
+  try{ return new URLSearchParams(location.search).get('preview') === 'pulse'; }
+  catch(e){ return false; }
+})();
+function pulsePreviewRequested(){ return PULSE_PREVIEW_REQUESTED; }
+function isSignedInAdmin(){
+  return !!(window.laivy && window.laivy.auth && window.laivy.auth.artist && window.laivy.auth.artist.role === 'admin');
+}
+function pulseBoxVisible(){
+  return PUBLIC_SETTINGS.pulse_public_enabled === true || (pulsePreviewRequested() && isSignedInAdmin());
+}
+
+function pulseBoxItemHTML(item){
+  const where = [item.city, item.country].filter(Boolean).join(', ');
+  const verb = item.event_type === 'heart' ? 'just hearted' : 'just played';
+  const thumb = item.cover_url ? cdnImg(item.cover_url, 76) : '/icon-192.png';
+  const when = item.minutes_ago < 1 ? 'just now' : `${item.minutes_ago} min ago`;
+  return `<div class="pulse-box-item">
+      <img class="pulse-box-thumb" src="${escHtml(thumb)}" alt="" width="38" height="38" loading="lazy">
+      <span class="pulse-box-text">${where ? `Someone in ${escHtml(where)} ` : 'Someone '}${verb}
+        <strong>${escHtml(item.song_title || '')}</strong><span class="pulse-box-when">${when}</span></span>
+    </div>`;
+}
+
+let pulseBoxTimer = null;
+async function refreshPulseBox(){
+  const host = document.getElementById('pulse-box-list');
+  if(!host) return; // navigated away: stop quietly, no need to cancel the timer loudly
+  try{
+    const { data, error } = await supabaseClient.rpc('public_pulse', { p_limit: 8 });
+    if(error || !Array.isArray(data) || !data.length){
+      host.innerHTML = '<div class="pulse-box-empty">Nothing in the last 24 hours yet.</div>';
+    } else {
+      host.innerHTML = data.map(pulseBoxItemHTML).join('');
+    }
+  }catch(e){
+    host.innerHTML = '<div class="pulse-box-empty">Nothing in the last 24 hours yet.</div>';
+  }
+  schedulePulseBoxRefresh();
+}
+function schedulePulseBoxRefresh(){
+  clearTimeout(pulseBoxTimer);
+  pulseBoxTimer = setTimeout(() => {
+    if(!document.getElementById('pulse-box-list') || document.hidden) return;
+    refreshPulseBox();
+  }, 60000);
+}
+function pulseBoxHTML(){
+  if(!pulseBoxVisible()) return '';
+  return `<section class="pulse-box" aria-live="polite">
+      <h2 class="pulse-box-h">Pulse</h2>
+      <div class="pulse-box-list" id="pulse-box-list"><div class="pulse-box-empty">Loading&hellip;</div></div>
+    </section>`;
+}
+
+// The preview flag depends on admin status, which is not known synchronously
+// at first paint (auth resolves after a round trip) -- re-render once it is,
+// but only while still on the homepage and only for the preview case; the
+// real switch (pulse_public_enabled) is already known at boot and needs no
+// such re-render.
+window.addEventListener('laivy:auth', () => {
+  if(route === 'home' && pulsePreviewRequested()) renderHomepage();
+});
 
 // The shared tag cloud: alphabetical, two sizes by frequency. Used by the
 // homepage "Find a song" section and by /listen. Kept in the file, not
@@ -3598,6 +3691,7 @@ function renderHomepage(){
 
   let html = '';
   if(hero) html += heroHTML(hero, idxOf.get(hero.id), "This week's #1 song");   // always weekly wording
+  html += pulseBoxHTML();
   // The strip sits directly under the weekly rail, so it is the first thing
   // below the chart rather than a footer afterthought.
   html += rails.map(sec =>
@@ -3612,6 +3706,7 @@ function renderHomepage(){
   if(SHOW_TAG_CLOUD) html += findASongHTML();
   html += contributeCtaHTML();
   el.innerHTML = html;
+  if(pulseBoxVisible()) refreshPulseBox();
 
   const cta = el.querySelector('#contribute-btn');
   if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));

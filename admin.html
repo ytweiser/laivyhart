@@ -371,6 +371,48 @@
   .charts-table .c-rank{width:2rem; color:var(--text-faint); text-align:right;}
   .charts-table .c-title{color:var(--text);}
   .charts-table .c-plays{width:5rem; text-align:right; color:var(--text-dim);}
+  /* Pulse (ACT-2) */
+  .pulse-range{display:flex; gap:0.4rem; margin-bottom:1.2rem;}
+  .pulse-range button{
+    font-family:var(--font-ui); font-size:0.75rem; padding:0.4rem 0.85rem; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:none; color:var(--text-dim);
+  }
+  .pulse-range button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .pulse-tiles{display:grid; grid-template-columns:repeat(auto-fill, minmax(9rem, 1fr)); gap:0.7rem; margin-bottom:1.6rem; max-width:52rem;}
+  .pulse-tile{border:1px solid var(--line); border-radius:12px; padding:0.8rem 0.9rem;}
+  .pulse-tile-n{font-family:var(--font-display); font-size:1.6rem; font-weight:600; color:var(--text);}
+  .pulse-tile-label{font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin-top:0.15rem;}
+  .pulse-section{margin-bottom:1.8rem;}
+  .pulse-section h3{font-family:var(--font-ui); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;
+    color:var(--text-faint); margin:0 0 0.6rem;}
+  .pulse-feed-list{display:flex; flex-direction:column; gap:0.1rem; max-width:44rem;}
+  .pulse-feed-item{padding:0.5rem 0; border-bottom:1px solid var(--line); font-size:0.9rem; color:var(--text-dim);}
+  .pulse-feed-item strong{color:var(--text); cursor:pointer;}
+  .pulse-feed-item strong:hover{color:var(--accent-2);}
+  .pulse-feed-item .pulse-song-link{color:var(--accent-2); cursor:pointer;}
+  .pulse-feed-item .pulse-song-link:hover{text-decoration:underline;}
+  .pulse-feed-item .pulse-when{color:var(--text-faint); font-size:0.78rem;}
+  .pulse-list{max-width:44rem;}
+  .pulse-list-row{display:flex; justify-content:space-between; gap:0.8rem; padding:0.5rem 0;
+    border-bottom:1px solid var(--line); font-size:0.9rem;}
+  .pulse-list-row .pll-name{color:var(--text); cursor:pointer;}
+  .pulse-list-row .pll-name:hover{color:var(--accent-2);}
+  .pulse-list-row .pll-meta{color:var(--text-faint); font-size:0.78rem;}
+  .pulse-funnel{display:flex; flex-direction:column; gap:0.35rem; max-width:30rem; margin-bottom:1rem;}
+  .pulse-funnel-row{display:flex; align-items:center; gap:0.6rem; font-size:0.82rem;}
+  .pulse-funnel-label{width:5.5rem; color:var(--text-dim); flex-shrink:0;}
+  .pulse-funnel-bar-wrap{flex:1; background:var(--chip-bg); border-radius:6px; height:0.6rem; overflow:hidden;}
+  .pulse-funnel-bar{height:100%; background:var(--accent-grad);}
+  .pulse-funnel-n{width:3rem; text-align:right; color:var(--text-faint);}
+  .pulse-back{font-family:var(--font-ui); font-size:0.78rem; color:var(--accent-2); cursor:pointer; margin-bottom:1rem; display:inline-block;}
+  .pulse-ret-table{width:100%; max-width:40rem; border-collapse:collapse; font-size:0.85rem;}
+  .pulse-ret-table th{text-align:right; color:var(--text-faint); font-size:0.72rem; padding:0.3rem 0.5rem;}
+  .pulse-ret-table th:first-child, .pulse-ret-table td:first-child{text-align:left;}
+  .pulse-ret-table td{padding:0.3rem 0.5rem; border-bottom:1px solid var(--line); text-align:right; color:var(--text-dim);}
+  @media (max-width:640px){
+    .pulse-tiles{grid-template-columns:repeat(auto-fill, minmax(7.5rem, 1fr));}
+    .pulse-list-row{flex-direction:column; gap:0.1rem;}
+  }
 </style>
 </head>
 <body>
@@ -396,6 +438,7 @@
     <button class="logout-btn" id="comments-btn" style="display:none;">Comments</button>
     <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
     <button class="logout-btn" id="artists-btn" style="display:none;">Artists</button>
+    <button class="logout-btn" id="pulse-btn" style="display:none;">Pulse</button>
     <span class="since-visit" id="since-visit"></span>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
@@ -536,6 +579,7 @@ async function checkSession(){
     document.getElementById('publish-btn').style.display = 'inline-block';
     document.getElementById('charts-btn').style.display = 'inline-block';
     document.getElementById('artists-btn').style.display = 'inline-block';
+    document.getElementById('pulse-btn').style.display = 'inline-block';
     await loadSongs();
     await loadArtists();
     paintSinceVisit();
@@ -552,6 +596,7 @@ async function checkSession(){
     document.getElementById('publish-btn').style.display = 'none';
     document.getElementById('charts-btn').style.display = 'none';
     document.getElementById('artists-btn').style.display = 'none';
+    document.getElementById('pulse-btn').style.display = 'none';
   }
 }
 
@@ -1970,6 +2015,7 @@ async function moderateComment(act, id){
   Chart history (read-only): daily top-10 snapshots.
 --------------------------------------------------------- */
 document.getElementById('charts-btn').addEventListener('click', showCharts);
+document.getElementById('pulse-btn').addEventListener('click', showPulse);
 
 async function showCharts(){
   currentSong = null;
@@ -2043,6 +2089,286 @@ async function deleteSong(){
   await loadChannels();
   renderChannelManager();
   renderForm();
+}
+
+/* ============================================================
+   Pulse (ACT-2): the activity dashboard. Every read goes through a
+   pulse_* SECURITY DEFINER function (sql/021_pulse.sql) -- nothing here
+   reads activity_events/activity_daily directly, and every function refuses
+   a non-admin regardless of what this UI shows or hides.
+   ============================================================ */
+let pulseRangeKey = '7d';
+let pulseFeedTimer = null;
+
+function pulseRangeBounds(key){
+  const to = new Date();
+  const from = new Date(to);
+  if(key === 'today'){ from.setUTCHours(0, 0, 0, 0); }
+  else if(key === '30d'){ from.setTime(to.getTime() - 30 * 86400000); }
+  else { from.setTime(to.getTime() - 7 * 86400000); } // '7d', the default
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function pulseTimeAgo(iso){
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if(min < 1) return 'just now';
+  if(min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if(hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+const PULSE_VERB = {
+  page_view: 'viewed a page', play_start: 'played', play_25: 'kept listening to',
+  play_50: 'kept listening to', play_75: 'kept listening to', play_complete: 'finished',
+  heart: 'hearted', unheart: 'unhearted', rate: 'rated', comment: 'commented on',
+  follow: 'followed an artist', unfollow: 'unfollowed an artist', share: 'shared',
+  search: 'searched', sign_in: 'signed in', sign_up: 'signed up', upload_submit: 'submitted a song',
+  dedication: 'sent a dedication', idea_submit: 'submitted an idea', idea_heart: 'liked an idea',
+};
+
+// "Sarah K. in Atlanta, US played My Perfect World · 2 min ago" / "Visitor in
+// Haifa, IL hearted Asking for 1". The name and the song (when there is one)
+// are both click targets into their own drilldown.
+function pulseFeedLineHTML(e){
+  const who = e.user_id
+    ? `<strong data-pulse-open="member" data-id="${escAttr(e.user_id)}">${escHtml(e.display_name || 'Member')}</strong>`
+    : `<strong data-pulse-open="visitor" data-id="${escAttr(e.device_id)}">Visitor</strong>`;
+  const where = (e.city || e.country) ? ` in ${escHtml([e.city, e.country].filter(Boolean).join(', '))}` : '';
+  const verb = PULSE_VERB[e.event_type] || e.event_type;
+  let what = '';
+  if(e.event_type === 'search'){
+    const q = e.meta && e.meta.query;
+    what = q ? ` for &ldquo;${escHtml(q)}&rdquo;` : '';
+  } else if(e.song_title){
+    what = ` <span class="pulse-song-link" data-pulse-open="song" data-id="${escAttr(e.song_id)}">${escHtml(e.song_title)}</span>`;
+  }
+  return `<div class="pulse-feed-item">${who}${where} ${escHtml(verb)}${what} <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`;
+}
+
+// Delegated click handler, shared by the overview and both drilldowns, so a
+// name or song reached from anywhere in Pulse opens the same way.
+function pulseDrilldownClick(e){
+  const t = e.target.closest('[data-pulse-open]');
+  if(!t) return;
+  const kind = t.dataset.pulseOpen, id = t.dataset.id;
+  if(!id) return;
+  if(kind === 'song') showPulseSong(id);
+  else if(kind === 'member') showPulseMember(id, false);
+  else if(kind === 'visitor') showPulseMember(id, true);
+}
+
+async function showPulse(){
+  clearTimeout(pulseFeedTimer);
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Pulse</h2>
+      <button class="logout-btn" id="pulse-refresh" type="button">Refresh</button>
+    </div>
+    <div class="pulse-range" id="pulse-range">
+      <button type="button" data-range="today">Today</button>
+      <button type="button" data-range="7d">7 days</button>
+      <button type="button" data-range="30d">30 days</button>
+    </div>
+    <div class="pulse-tiles" id="pulse-tiles"><div class="mod-empty">Loading&hellip;</div></div>
+    <div class="pulse-section"><h3>Live feed</h3>
+      <div class="pulse-feed-list" id="pulse-feed-list"><div class="mod-empty">Loading&hellip;</div></div>
+    </div>
+    <div class="pulse-section"><h3>Top songs</h3>
+      <div class="pulse-list" id="pulse-top-songs"><div class="mod-empty">Loading&hellip;</div></div>
+    </div>
+    <div class="pulse-section"><h3>Top listeners</h3>
+      <div class="pulse-list" id="pulse-top-listeners"><div class="mod-empty">Loading&hellip;</div></div>
+    </div>
+    <div class="pulse-section"><h3>Top cities</h3>
+      <div class="pulse-list" id="pulse-top-cities"><div class="mod-empty">Loading&hellip;</div></div>
+    </div>
+    <div class="pulse-section"><h3>Retention</h3>
+      <div id="pulse-retention"><div class="mod-empty">Loading&hellip;</div></div>
+    </div>`;
+
+  document.getElementById('pulse-refresh').addEventListener('click', () => {
+    loadPulseSummary(); loadPulseFeed(); loadPulseTopListeners(); loadPulseRetention();
+  });
+  document.getElementById('pulse-range').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.range === pulseRangeKey);
+    b.addEventListener('click', () => {
+      pulseRangeKey = b.dataset.range;
+      document.getElementById('pulse-range').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      loadPulseSummary();
+      loadPulseTopListeners();
+    });
+  });
+  area.addEventListener('click', pulseDrilldownClick);
+
+  loadPulseSummary();
+  loadPulseFeed();
+  loadPulseTopListeners();
+  loadPulseRetention();
+  schedulePulseFeedRefresh();
+}
+
+// Self-clearing: a plain setTimeout chain (not setInterval) that checks, on
+// each tick, whether the feed is still the thing on screen and the browser
+// tab is still visible, rather than needing every OTHER admin view to know
+// to cancel a Pulse timer when the admin navigates away.
+function schedulePulseFeedRefresh(){
+  clearTimeout(pulseFeedTimer);
+  pulseFeedTimer = setTimeout(() => {
+    if(!document.getElementById('pulse-feed-list') || document.hidden) return;
+    loadPulseFeed();
+    schedulePulseFeedRefresh();
+  }, 30000);
+}
+
+async function loadPulseSummary(){
+  const host = document.getElementById('pulse-tiles');
+  if(!host) return;
+  const { from, to } = pulseRangeBounds(pulseRangeKey);
+  const { data, error } = await supabaseClient.rpc('pulse_summary', { p_from: from, p_to: to });
+  const songsHost = document.getElementById('pulse-top-songs');
+  const citiesHost = document.getElementById('pulse-top-cities');
+  if(error){
+    host.innerHTML = `<div class="mod-empty">Error loading Pulse: ${escHtml(error.message)}</div>`;
+    return;
+  }
+  const tiles = [
+    ['Listeners', data.listeners], ['Members active', data.members_active], ['New members', data.new_members],
+    ['Plays', data.plays], ['Completion rate', (data.completion_rate || 0) + '%'],
+    ['Hearts', data.hearts], ['Ratings', data.ratings], ['Comments', data.comments],
+    ['Follows', data.follows], ['Shares', data.shares], ['Searches', data.searches],
+  ];
+  host.innerHTML = tiles.map(([label, n]) => `
+    <div class="pulse-tile"><div class="pulse-tile-n">${n}</div><div class="pulse-tile-label">${escHtml(label)}</div></div>`
+  ).join('');
+
+  const songs = data.top_songs || [];
+  songsHost.innerHTML = songs.length ? songs.map(s => `
+    <div class="pulse-list-row">
+      <span class="pll-name" data-pulse-open="song" data-id="${escAttr(s.song_id)}">${escHtml(s.title)}</span>
+      <span class="pll-meta">${s.plays} plays &middot; ${s.completion_rate}% complete</span>
+    </div>`).join('') : '<div class="mod-empty">No plays in this range.</div>';
+
+  const cities = data.top_cities || [];
+  citiesHost.innerHTML = cities.length ? cities.map(c => `
+    <div class="pulse-list-row"><span class="pll-name">${escHtml(c.city)}</span><span class="pll-meta">${c.n}</span></div>`
+  ).join('') : '<div class="mod-empty">No located activity in this range.</div>';
+}
+
+async function loadPulseFeed(){
+  const host = document.getElementById('pulse-feed-list');
+  if(!host) return;
+  const { data, error } = await supabaseClient.rpc('pulse_feed', { p_limit: 40 });
+  if(error){ host.innerHTML = `<div class="mod-empty">Error loading the feed: ${escHtml(error.message)}</div>`; return; }
+  host.innerHTML = (data && data.length) ? data.map(pulseFeedLineHTML).join('') : '<div class="mod-empty">Nothing yet.</div>';
+}
+
+async function loadPulseTopListeners(){
+  const host = document.getElementById('pulse-top-listeners');
+  if(!host) return;
+  const { from, to } = pulseRangeBounds(pulseRangeKey);
+  const { data, error } = await supabaseClient.rpc('pulse_top_listeners', { p_from: from, p_to: to, p_limit: 20 });
+  if(error){ host.innerHTML = `<div class="mod-empty">Error: ${escHtml(error.message)}</div>`; return; }
+  host.innerHTML = (data && data.length) ? data.map(l => `
+    <div class="pulse-list-row">
+      <span class="pll-name" data-pulse-open="${l.kind === 'member' ? 'member' : 'visitor'}"
+        data-id="${escAttr(l.kind === 'member' ? l.user_id : l.device_id)}">${escHtml(l.display_name)}</span>
+      <span class="pll-meta">${l.plays} plays &middot; ${l.hearts} hearts${l.last_city ? ' &middot; ' + escHtml(l.last_city) : ''}</span>
+    </div>`).join('') : '<div class="mod-empty">No listeners in this range.</div>';
+}
+
+async function loadPulseRetention(){
+  const host = document.getElementById('pulse-retention');
+  if(!host) return;
+  const { data, error } = await supabaseClient.rpc('pulse_retention', { p_weeks: 8 });
+  if(error){ host.innerHTML = `<div class="mod-empty">Error: ${escHtml(error.message)}</div>`; return; }
+  if(!data || !data.length){ host.innerHTML = '<div class="mod-empty">Not enough history yet.</div>'; return; }
+  host.innerHTML = `<table class="pulse-ret-table"><thead><tr>
+      <th>Week</th><th>New devices</th><th>Back next week</th><th>New members</th><th>Back next week</th>
+    </tr></thead><tbody>${data.map(w => `
+      <tr><td>${escHtml(w.week_start)}</td><td>${w.new_devices}</td><td>${w.device_retention_pct}%</td>
+        <td>${w.new_members}</td><td>${w.member_retention_pct}%</td></tr>`).join('')}</tbody></table>`;
+}
+
+async function showPulseSong(songId){
+  clearTimeout(pulseFeedTimer);
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `<span class="pulse-back" id="pulse-back">&larr; Back to Pulse</span>
+    <div class="mod-head"><h2>Song drilldown</h2></div>
+    <div id="pulse-song-body"><div class="mod-empty">Loading&hellip;</div></div>`;
+  document.getElementById('pulse-back').addEventListener('click', showPulse);
+  area.addEventListener('click', pulseDrilldownClick);
+
+  const { from, to } = pulseRangeBounds(pulseRangeKey);
+  const { data, error } = await supabaseClient.rpc('pulse_song', { p_song_id: songId, p_from: from, p_to: to });
+  const body = document.getElementById('pulse-song-body');
+  if(error){ body.innerHTML = `<div class="mod-empty">Error: ${escHtml(error.message)}</div>`; return; }
+
+  const f = data.funnel || {};
+  const maxN = Math.max(1, f.start || 0);
+  const bar = (label, n) => `<div class="pulse-funnel-row"><span class="pulse-funnel-label">${label}</span>
+    <span class="pulse-funnel-bar-wrap"><span class="pulse-funnel-bar" style="width:${Math.round(100 * (n || 0) / maxN)}%"></span></span>
+    <span class="pulse-funnel-n">${n || 0}</span></div>`;
+  const members = (data.listeners && data.listeners.members) || [];
+  body.innerHTML = `
+    <div class="pulse-funnel">
+      ${bar('Started', f.start)}${bar('25%', f.p25)}${bar('50%', f.p50)}${bar('75%', f.p75)}${bar('Finished', f.complete)}
+    </div>
+    <div class="pulse-tiles">
+      <div class="pulse-tile"><div class="pulse-tile-n">${data.hearts || 0}</div><div class="pulse-tile-label">Hearts</div></div>
+      <div class="pulse-tile"><div class="pulse-tile-n">${data.ratings || 0}</div><div class="pulse-tile-label">Ratings</div></div>
+      <div class="pulse-tile"><div class="pulse-tile-n">${(data.listeners && data.listeners.visitor_count) || 0}</div><div class="pulse-tile-label">Visitors</div></div>
+    </div>
+    <div class="pulse-section"><h3>Members who listened</h3>
+      <div class="pulse-list">${members.length ? members.map(m => `
+        <div class="pulse-list-row"><span class="pll-name" data-pulse-open="member" data-id="${escAttr(m.user_id)}">${escHtml(m.display_name || 'Member')}</span></div>`
+      ).join('') : '<div class="mod-empty">None.</div>'}</div>
+    </div>
+    <div class="pulse-section"><h3>Cities</h3>
+      <div class="pulse-list">${(data.cities || []).length ? data.cities.map(c => `
+        <div class="pulse-list-row"><span class="pll-name">${escHtml(c.city)}</span><span class="pll-meta">${c.n}</span></div>`
+      ).join('') : '<div class="mod-empty">None.</div>'}</div>
+    </div>`;
+}
+
+async function showPulseMember(id, isVisitor){
+  clearTimeout(pulseFeedTimer);
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `<span class="pulse-back" id="pulse-back">&larr; Back to Pulse</span>
+    <div class="mod-head"><h2>${isVisitor ? 'Visitor history' : 'Member history'}</h2></div>
+    <div id="pulse-member-body"><div class="mod-empty">Loading&hellip;</div></div>`;
+  document.getElementById('pulse-back').addEventListener('click', showPulse);
+  area.addEventListener('click', pulseDrilldownClick);
+
+  const { data, error } = isVisitor
+    ? await supabaseClient.rpc('pulse_member', { p_device_id: id, p_limit: 200 })
+    : await supabaseClient.rpc('pulse_member', { p_user_id: id, p_limit: 200 });
+  const body = document.getElementById('pulse-member-body');
+  if(error){ body.innerHTML = `<div class="mod-empty">Error: ${escHtml(error.message)}</div>`; return; }
+
+  const t = data.totals || {};
+  const tiles = [['Plays', t.plays], ['Completes', t.completes], ['Hearts', t.hearts]];
+  if(t.ratings !== undefined) tiles.push(['Ratings', t.ratings]);
+  if(t.follows !== undefined) tiles.push(['Follows', t.follows]);
+  body.innerHTML = `
+    <div class="mod-meta">${escHtml(data.display_name || 'Visitor')}${data.email ? ' &middot; ' + escHtml(data.email) : ''}</div>
+    <div class="pulse-tiles">${tiles.map(([label, n]) => `
+      <div class="pulse-tile"><div class="pulse-tile-n">${n || 0}</div><div class="pulse-tile-label">${escHtml(label)}</div></div>`
+    ).join('')}</div>
+    <div class="pulse-section"><h3>History</h3>
+      <div class="pulse-feed-list">${(data.events || []).length ? data.events.map(e => `
+        <div class="pulse-feed-item">${escHtml(PULSE_VERB[e.event_type] || e.event_type)}${e.song_title
+          ? ` <span class="pulse-song-link" data-pulse-open="song" data-id="${escAttr(e.song_id)}">${escHtml(e.song_title)}</span>` : ''}
+          <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`
+      ).join('') : '<div class="mod-empty">No history.</div>'}</div>
+    </div>`;
 }
 </script>
 

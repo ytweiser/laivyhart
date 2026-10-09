@@ -88,7 +88,15 @@ any failure.
   (ACT-1), exercised directly in Node against the real
   `worker/src/index.js`: caps (25 events, 16 KB, meta trimming), unknown
   event types dropped, the JWT-verification path (valid and invalid tokens),
-  and a static check that no IP header is ever read.
+  a static check that no IP header is ever read, and (ACT-2) the daily
+  email's "Yesterday on Laivy Hart" section.
+- `specs/admin-pulse.spec.mjs` — the admin Pulse tab (ACT-2), signed in as an
+  admin with every `pulse_*` RPC stubbed: overview tiles/feed/top lists/
+  retention, and the song, member and visitor drilldowns.
+- `specs/homepage-pulse.spec.mjs` — the public Pulse box (ACT-2): absent and
+  nothing fetched with the switch off, present and rendering lines with the
+  switch on, and the admin-only `?preview=pulse` override (present for an
+  admin, still absent for a signed-in non-admin).
 
 ## Adding a scenario
 

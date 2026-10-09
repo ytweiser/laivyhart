@@ -450,8 +450,28 @@ export function formatReport(r) {
   L.push(`Chart (${r.chart && r.chart.chart_date ? r.chart.chart_date : 'no snapshot yet'})`);
   for (const c of chart) L.push(`  ${String(c.rank).padStart(2)}. ${c.title}`);
   L.push('');
-  L.push('— sent by the Laivy Hart report job');
+  L.push(formatYesterday(r.yesterday));
+  L.push('');
+  L.push('sent by the Laivy Hart report job');
   return { subject, text: L.join('\n') };
+}
+
+/* ACT-2: "Yesterday on Laivy Hart", from build_daily_report()'s own
+   `yesterday` key (sql/021_pulse.sql). Unlike the rest of this report, these
+   are raw numbers, not positions -- the Pulse feature's whole point is to
+   show the owner what actually happened, and this email is theirs alone. */
+function formatYesterday(y) {
+  y = y || {};
+  const n = (x) => Number(x || 0);
+  const L = [];
+  L.push(`Yesterday on Laivy Hart (${y.date || 'unknown date'})`);
+  L.push(`  Listeners: ${n(y.listeners)}  ·  Members active: ${n(y.members_active)}  ·  New members: ${n(y.new_members)}`);
+  L.push(`  Plays: ${n(y.plays)}  ·  Completion rate: ${n(y.completion_rate)}%`);
+  const songs = Array.isArray(y.top_songs) ? y.top_songs : [];
+  L.push(`  Top songs: ${songs.length ? songs.map((s) => `${s.title} (${n(s.plays)})`).join(', ') : 'none'}`);
+  const cities = Array.isArray(y.top_cities) ? y.top_cities : [];
+  L.push(`  Top cities: ${cities.length ? cities.map((c) => `${c.city} (${n(c.n)})`).join(', ') : 'none'}`);
+  return L.join('\n');
 }
 
 export async function sendReportEmail(env, subject, text, fetchImpl = fetch) {

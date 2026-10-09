@@ -198,5 +198,27 @@ export async function run() {
     r.check('user_id falls back to anonymous (null)', rows[0].user_id === null, rows[0].user_id);
   }
 
+  // --- ACT-2: the daily email's new "Yesterday on Laivy Hart" section ----
+  r.section('formatReport() renders the Yesterday on Laivy Hart section');
+  {
+    const report = W.formatReport({
+      generated_at: new Date().toISOString(),
+      signups: { count: 0, list: [] }, review_queue: { count: 0, list: [] },
+      pending_comments: 0, proposed_tags_new: [], anomalies: {}, chart: {},
+      yesterday: {
+        date: '2026-10-08', listeners: 42, members_active: 7, new_members: 2,
+        plays: 55, completion_rate: 61.3,
+        top_songs: [{ title: 'Supernova', plays: 20 }, { title: 'Low Light', plays: 15 }],
+        top_cities: [{ city: 'Atlanta', n: 18 }, { city: 'Haifa', n: 9 }],
+      },
+    });
+    const t = report.text;
+    r.check('has the section heading with the date', t.includes('Yesterday on Laivy Hart (2026-10-08)'), t);
+    r.check('shows listeners, members active and new members', t.includes('Listeners: 42') && t.includes('Members active: 7') && t.includes('New members: 2'), t);
+    r.check('shows plays and completion rate', t.includes('Plays: 55') && t.includes('Completion rate: 61.3%'), t);
+    r.check('shows top songs with their play counts', t.includes('Supernova (20)') && t.includes('Low Light (15)'), t);
+    r.check('shows top cities with their counts', t.includes('Atlanta (18)') && t.includes('Haifa (9)'), t);
+  }
+
   return r;
 }

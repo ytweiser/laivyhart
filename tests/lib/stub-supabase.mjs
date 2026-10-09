@@ -37,6 +37,23 @@ export function buildFixtureResponses(overrides) {
     selfArtistRow: null,        // js/auth.js's loadSelfFlags() self-scoped `artists` row; null = signed out/non-artist fallback
     reviews: [],                // My songs' rejection-reason lookup
     artistPicksInsertError: null, // {status, message} -- the trigger's own words (cap, unpublished song)
+    // ACT-2 (Pulse). isAdmin defaults false so every EXISTING scenario keeps
+    // the prior catch-all behavior (admin.html's checkSession() sees it as
+    // not-admin) unless a Pulse scenario opts in explicitly.
+    isAdmin: false,
+    // Zeroed, not null: the real RPCs always return a shaped jsonb object
+    // (never null), so these match that contract rather than defensive-
+    // coding admin.html against a response shape that cannot occur.
+    pulseSummary: {
+      listeners: 0, members_active: 0, new_members: 0, plays: 0, completes: 0, completion_rate: 0,
+      hearts: 0, ratings: 0, comments: 0, follows: 0, shares: 0, searches: 0,
+      top_songs: [], top_cities: [],
+    },
+    pulseFeed: [], pulseTopListeners: [], pulseRetention: [],
+    pulseSong: { funnel: { start: 0, p25: 0, p50: 0, p75: 0, complete: 0 }, hearts: 0, ratings: 0,
+      cities: [], listeners: { members: [], visitor_count: 0 } },
+    pulseMember: { display_name: null, email: null, totals: {}, events: [] },
+    publicPulse: [],             // public_pulse() RPC, read by the homepage box
   };
   return { ...base, ...(overrides || {}) };
 }
@@ -230,6 +247,19 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       return fulfill(Math.max(0, current + (on ? 1 : -1)));
     }
     if (url.includes('/rest/v1/rpc/swap_my_pick_positions')) { notify('rpc:swap_my_pick_positions'); return fulfill(null); }
+
+    // ACT-2 (Pulse). pulse_member has two overloads (p_user_id uuid /
+    // p_device_id text), both reached through the same RPC name -- the
+    // fixture does not need to tell them apart, a scenario sets one
+    // pulseMember shape per test.
+    if (url.includes('/rest/v1/rpc/is_admin')) { notify('rpc:is_admin'); return fulfill(F2.isAdmin === true); }
+    if (url.includes('/rest/v1/rpc/pulse_summary')) { notify('rpc:pulse_summary'); return fulfill(F2.pulseSummary); }
+    if (url.includes('/rest/v1/rpc/pulse_feed')) { notify('rpc:pulse_feed'); return fulfill(F2.pulseFeed); }
+    if (url.includes('/rest/v1/rpc/pulse_top_listeners')) { notify('rpc:pulse_top_listeners'); return fulfill(F2.pulseTopListeners); }
+    if (url.includes('/rest/v1/rpc/pulse_retention')) { notify('rpc:pulse_retention'); return fulfill(F2.pulseRetention); }
+    if (url.includes('/rest/v1/rpc/pulse_song')) { notify('rpc:pulse_song'); return fulfill(F2.pulseSong); }
+    if (url.includes('/rest/v1/rpc/pulse_member')) { notify('rpc:pulse_member'); return fulfill(F2.pulseMember); }
+    if (url.includes('/rest/v1/rpc/public_pulse')) { notify('rpc:public_pulse'); return fulfill(F2.publicPulse); }
 
     // Anything else (ratings, submission_events, auth token refresh, ...):
     // a harmless empty success, so an unexpected call never hangs the page.

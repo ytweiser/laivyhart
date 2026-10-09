@@ -42,6 +42,12 @@ async function main() {
 
     const activity = await import('./specs/activity.spec.mjs');
     results.push(await activity.run(browser, PORT));
+
+    const adminPulse = await import('./specs/admin-pulse.spec.mjs');
+    results.push(await adminPulse.run(browser, PORT));
+
+    const homepagePulse = await import('./specs/homepage-pulse.spec.mjs');
+    results.push(await homepagePulse.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();
