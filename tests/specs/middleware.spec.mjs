@@ -33,7 +33,7 @@ export async function run() {
     const { decide } = await import(mwPath);
     const shell = readFileSync(join(ROOT, 'index.html'), 'utf8');
 
-    const plan = decide('/artist/nova-ash', new URLSearchParams());
+    const plan = await decide('/artist/nova-ash', new URLSearchParams());
     r.check('decide() renders the artist route', plan && plan.kind === 'render' && plan.tag === 'artist', JSON.stringify(plan && { kind: plan.kind, tag: plan.tag }));
     const html = plan.fn(shell);
 
@@ -71,17 +71,59 @@ export async function run() {
     const mwPath3 = join(scratch, 'middleware-shim-bio.mjs');
     writeFileSync(mwPath3, shimmed2);
     const { decide: decide3 } = await import(mwPath3);
-    const html3 = decide3('/artist/nova-ash', new URLSearchParams()).fn(shell);
+    const html3 = (await decide3('/artist/nova-ash', new URLSearchParams())).fn(shell);
     const desc3 = (html3.match(/<meta name="description" content="([^"]*)">/) || [])[1];
     const ssr3 = (html3.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
     r.check('description uses the bio once set', desc3 === 'Songs about staying up too late.', desc3);
     r.check('SSR body renders the bio with a <br> for the line break', ssr3.includes('<p>Songs about staying up too late.<br>Written in one sitting.</p>'), ssr3.slice(0, 300));
 
-    r.check('unknown handle -> noindex, no crash', JSON.stringify((() => {
-      const p = decide3('/artist/does-not-exist', new URLSearchParams());
+    r.check('unknown handle -> noindex, no crash', JSON.stringify((await (async () => {
+      const p = await decide3('/artist/does-not-exist', new URLSearchParams());
       return { kind: p.kind, tag: p.tag };
-    })()) === JSON.stringify({ kind: 'render', tag: 'artist-404' }));
-    r.check('home route unaffected', decide3('/', new URLSearchParams()).tag === 'home');
+    })())) === JSON.stringify({ kind: 'render', tag: 'artist-404' }));
+    r.check('home route unaffected', (await decide3('/', new URLSearchParams())).tag === 'home');
+
+    // ---- DED-2: /d/<code>, the one route with no build-time snapshot --
+    // it fetches dedications_public live, so a stub fetchImpl stands in. ----
+    const namedFetch = async () => ({
+      ok: true,
+      json: async () => ([{
+        code: 'ABCD2345', song_id: 'song-1', song_title: 'Supernova', song_slug: 'supernova-a000',
+        cover_url: 'https://example.com/cover.jpg', recipient_name: 'Mom', occasion: 'birthday',
+        occasion_other: null, message: 'Love you so much, happy birthday to the best mom!',
+        sender_name: 'Tzvi', created_at: new Date().toISOString(),
+      }]),
+    });
+    const namedPlan = await decide('/d/ABCD2345', new URLSearchParams(), namedFetch);
+    r.check('renders (not a redirect) for a live dedication', namedPlan.kind === 'render' && namedPlan.tag === 'dedication', JSON.stringify(namedPlan));
+    const namedHtml = namedPlan.fn(shell);
+    r.check('title is "A song for Mom | Laivy Hart"', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1] === 'A song for Mom | Laivy Hart', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1]);
+    r.check('og:title matches', (namedHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'A song for Mom', namedHtml.match(/og:title[^>]*/)?.[0]);
+    r.check('og:description carries the occasion and the start of the message', /On their birthday.*Love you so much/.test((namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1] || ''), (namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1]);
+    r.check('og:image uses the cover via the wsrv.nl transform', (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]?.includes('wsrv.nl'), (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]);
+    r.check('noindex is present (dedication pages are personal)', /name="robots" content="noindex"/.test(namedHtml));
+    const namedSsr = (namedHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
+    r.check('SSR body shows the real sender name', /From Tzvi/.test(namedSsr), namedSsr);
+
+    const anonFetch = async () => ({
+      ok: true,
+      json: async () => ([{
+        code: 'ANON1111', song_id: 'song-1', song_title: 'Supernova', song_slug: 'supernova-a000',
+        cover_url: null, recipient_name: 'Dad', occasion: 'in_memory', occasion_other: null,
+        message: null, sender_name: null, created_at: new Date().toISOString(),
+      }]),
+    });
+    const anonPlan = await decide('/d/ANON1111', new URLSearchParams(), anonFetch);
+    const anonHtml = anonPlan.fn(shell);
+    const anonSsr = (anonHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
+    r.check('anonymous: no sender name anywhere in the rendered HTML', !/Tzvi/.test(anonHtml) && /From someone/.test(anonSsr), anonSsr);
+    r.check('still noindex', /name="robots" content="noindex"/.test(anonHtml));
+
+    const missingFetch = async () => ({ ok: true, json: async () => [] });
+    const missingPlan = await decide('/d/NOPE0000', new URLSearchParams(), missingFetch);
+    r.check('an unknown (or removed -- dedications_public hides those identically) code -> noindex, not a crash', missingPlan.kind === 'render' && missingPlan.tag === 'dedication-404', JSON.stringify(missingPlan));
+    const missingHtml = missingPlan.fn(shell);
+    r.check('noindex on the missing-dedication shell too', /name="robots" content="noindex"/.test(missingHtml));
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }

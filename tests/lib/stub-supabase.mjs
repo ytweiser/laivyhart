@@ -59,6 +59,10 @@ export function buildFixtureResponses(overrides) {
     // admin_remove_dedication's error path; null means a plain success.
     adminDedications: [],
     adminRemoveDedicationResult: null,
+    myDedications: [],
+    removeMyDedicationResult: null,
+    createDedicationResult: 'NEWCODE1', // the code create_dedication() returns, or a full fulfill() object for the error path
+    dedicationsPublic: [],       // dedications_public rows: the strip (filtered by song_id) and /d/<code> (filtered by code) both read this
   };
   return { ...base, ...(overrides || {}) };
 }
@@ -289,6 +293,38 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       if (row) { row.status = 'removed'; row.removed_by = 'admin'; row.removed_reason = reason || null; }
       return fulfill(null);
     }
+
+    // DED-2.
+    if (url.includes('/rest/v1/dedications_public')) {
+      notify('dedicationsPublic');
+      const params = new URL(url).searchParams;
+      const list = F2.dedicationsPublic;
+      if (params.has('code')) {
+        const code = (params.get('code') || '').replace(/^eq\./, '');
+        return fulfill(list.find((d) => d.code === code) || null);
+      }
+      if (params.has('song_id')) {
+        const songId = (params.get('song_id') || '').replace(/^eq\./, '');
+        return fulfill(list.filter((d) => d.song_id === songId));
+      }
+      return fulfill(list);
+    }
+    if (url.includes('/rest/v1/rpc/create_dedication')) {
+      notify('rpc:create_dedication');
+      if (F2.createDedicationResult && typeof F2.createDedicationResult === 'object') {
+        return route.fulfill(F2.createDedicationResult);
+      }
+      return fulfill(F2.createDedicationResult);
+    }
+    if (url.includes('/rest/v1/rpc/remove_my_dedication')) {
+      notify('rpc:remove_my_dedication');
+      if (F2.removeMyDedicationResult) return route.fulfill(F2.removeMyDedicationResult);
+      const code = rpcParam(req, 'p_code');
+      const row = F2.myDedications.find((d) => d.code === code);
+      if (row) { row.status = 'removed'; }
+      return fulfill(null);
+    }
+    if (url.includes('/rest/v1/rpc/my_dedications')) { notify('rpc:my_dedications'); return fulfill(F2.myDedications); }
 
     // Anything else (ratings, submission_events, auth token refresh, ...):
     // a harmless empty success, so an unexpected call never hangs the page.

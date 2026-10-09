@@ -1296,7 +1296,7 @@
   /* ---------- Share, pinned to the far right of the transport row ----------
      Row 2 holds prev/play/next on the left and Share on the right, nothing
      else; the three loves are their own row beneath. */
-  .dock-react{display:flex; align-items:center; margin-left:auto;}
+  .dock-react{display:flex; align-items:center; gap:0.6rem; margin-left:auto;}
   .dock-react.hidden{display:none;}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
@@ -1310,6 +1310,55 @@
   .share-invite:hover .share-invite-ic{transform:translateY(-2px); filter:brightness(1.06); box-shadow:0 10px 24px rgba(var(--accent-1-rgb),0.45);}
   .share-invite:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:14px;}
   .share-invite-ic svg{width:1.5rem; height:1.5rem;}
+
+  /* ---------- DED-2: the Dedicate sheet ----------
+     A centered modal on desktop; the media query below turns the same
+     backdrop/sheet into a bottom sheet on phones. */
+  .ded-modal-backdrop{
+    position:fixed; inset:0; z-index:220; display:flex; align-items:center; justify-content:center;
+    padding:1.2rem; background:rgba(0,0,0,0.55); backdrop-filter:blur(3px);
+  }
+  .ded-modal-backdrop[hidden]{display:none;}
+  .ded-sheet{
+    position:relative; width:100%; max-width:26rem; max-height:88vh; overflow:auto;
+    padding:1.5rem 1.4rem 1.3rem; border-radius:18px;
+    background:var(--bg-2); border:1px solid var(--glass-border);
+    box-shadow:0 24px 70px rgba(0,0,0,0.45); color:var(--text);
+  }
+  .ded-sheet-title{font-family:var(--font-display); font-weight:600; font-size:1.25rem; margin:0 0 0.9rem; color:var(--text);}
+  .ded-optional{color:var(--text-faint); font-weight:400;}
+  .ded-counter{font-family:var(--font-ui); font-size:0.74rem; color:var(--text-faint); text-align:right; margin-top:0.25rem;}
+  .ded-checkbox-row{
+    display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.9rem;
+    font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); cursor:pointer;
+  }
+  .ded-checkbox-row input{margin-top:0.2rem;}
+  .ded-preview{
+    margin-top:1rem; padding:0.7rem 0.85rem; border-radius:12px; background:var(--chip-bg);
+    border:1px solid var(--chip-border); font-family:var(--font-display); font-style:italic;
+    font-size:0.92rem; color:var(--text-dim); line-height:1.5; min-height:1.4em;
+  }
+  #dedicate-submit{margin-top:1.1rem;}
+  .ded-share-actions{display:flex; flex-direction:column; gap:0.6rem; margin:1rem 0;}
+  @media (max-width:560px){
+    .ded-modal-backdrop{align-items:flex-end; padding:0;}
+    .ded-sheet{max-width:none; max-height:85vh; border-radius:18px 18px 0 0; padding:1.4rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));}
+  }
+
+  /* DED-2: the Dedications strip, under the ratings. */
+  .dedications-strip{margin-top:1.1rem; padding-top:0.9rem; border-top:1px solid var(--chip-border);}
+  .dedications-strip.hidden{display:none;}
+  .dedications-strip-h{font-family:var(--font-ui); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.07em;
+    color:var(--text-faint); margin-bottom:0.6rem;}
+  .dedications-strip-list{display:flex; flex-direction:column; gap:0.45rem; margin-bottom:0.7rem;}
+  .dedications-strip-card{display:block; text-decoration:none; font-family:var(--font-ui); font-size:0.88rem;
+    color:var(--text-dim); padding:0.1rem 0;}
+  .dedications-strip-card strong{color:var(--text); font-weight:500;}
+  .dedications-strip-card:hover{color:var(--accent-2);}
+  .dedications-strip-cta{
+    background:none; border:none; padding:0; cursor:pointer; color:var(--accent-3);
+    font-family:var(--font-ui); font-size:0.85rem; text-decoration:underline;
+  }
 
   /* ---------- Reflections (comments): a warm, prominent invitation ---------- */
   /* No border here: .engage already draws the single divider that separates
@@ -1590,8 +1639,13 @@
         <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <!-- Share: alone on the right of the transport row -->
+        <!-- Share + Dedicate: on the right of the transport row -->
         <div class="dock-react hidden" id="dock-react">
+          <button class="share-invite" id="now-dedicate-btn" type="button" aria-label="Dedicate this song">
+            <span class="share-invite-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
+            </span>
+          </button>
           <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
             <span class="share-invite-ic" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
@@ -1611,6 +1665,15 @@
             <span class="love-label">the song <span class="love-count">0</span></span>
           </button>
         </div>
+      </div>
+
+      <!-- DED-2: the latest dedications of this song, hidden when there are
+           none. Lives under the ratings, outside .loves (which hides itself
+           entirely when no song is playing; this needs its own guard). -->
+      <div class="dedications-strip hidden" id="dedications-strip">
+        <div class="dedications-strip-h">Dedications</div>
+        <div class="dedications-strip-list" id="dedications-strip-list"></div>
+        <button class="dedications-strip-cta" id="dedications-strip-cta" type="button">Dedicate this song</button>
       </div>
     </div>
 
@@ -1797,6 +1860,64 @@
     <div class="picker-foot">
       <span class="pl-count" id="picker-count"></span>
       <button class="pl-mini primary" id="picker-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- DED-2: the Dedicate sheet. A centered modal on desktop, a bottom sheet
+     on phones (media query in the stylesheet, same backdrop markup either
+     way). Two panes: the form, then success with the three share actions. -->
+<div class="ded-modal-backdrop" id="dedicate-modal" hidden>
+  <div class="ded-sheet" role="dialog" aria-modal="true" aria-labelledby="dedicate-title">
+    <button class="lv-modal-x" id="dedicate-close" type="button" aria-label="Close">&times;</button>
+
+    <div data-ded-pane="form">
+      <h2 class="ded-sheet-title" id="dedicate-title">Dedicate <span id="dedicate-song-title"></span></h2>
+
+      <label class="lv-label" for="dedicate-recipient">Who is it for?</label>
+      <input class="lv-input" id="dedicate-recipient" type="text" maxlength="60"
+             placeholder="Mom, Sarah, my chavrusa..." autocomplete="off">
+
+      <label class="lv-label" for="dedicate-occasion">Occasion</label>
+      <select class="lv-input" id="dedicate-occasion">
+        <option value="birthday">Birthday</option>
+        <option value="wedding">Wedding</option>
+        <option value="anniversary">Anniversary</option>
+        <option value="bar_bat_mitzvah">Bar or Bat Mitzvah</option>
+        <option value="new_baby">New baby</option>
+        <option value="refuah_shleimah">Refuah shleimah</option>
+        <option value="in_memory">In memory of</option>
+        <option value="thank_you">Thank you</option>
+        <option value="just_because">Just because</option>
+        <option value="other">Other</option>
+      </select>
+      <input class="lv-input" id="dedicate-occasion-other" type="text" maxlength="40"
+             placeholder="Describe the occasion" hidden autocomplete="off">
+
+      <label class="lv-label" for="dedicate-message">Message <span class="ded-optional">(optional)</span></label>
+      <textarea class="lv-input lv-textarea ded-message" id="dedicate-message" maxlength="280"
+                placeholder="A few words..." aria-label="Message (optional)"></textarea>
+      <div class="ded-counter" id="dedicate-counter">280 characters left</div>
+
+      <label class="ded-checkbox-row">
+        <input type="checkbox" id="dedicate-anonymous">
+        Keep my name private (shows as &ldquo;Someone&rdquo;)
+      </label>
+
+      <div class="ded-preview" id="dedicate-preview"></div>
+      <p class="lv-err" id="dedicate-err" hidden></p>
+      <button class="lv-btn filled" id="dedicate-submit" type="button">Dedicate this song</button>
+    </div>
+
+    <div data-ded-pane="success" hidden>
+      <h2 class="ded-sheet-title">Your dedication is live.</h2>
+      <p class="lv-modal-sub" id="dedicate-success-sub"></p>
+      <div class="ded-share-actions">
+        <button class="lv-btn filled" id="dedicate-whatsapp" type="button">Send on WhatsApp</button>
+        <button class="lv-btn outlined" id="dedicate-copy" type="button">Copy link</button>
+        <button class="lv-btn outlined" id="dedicate-native-share" type="button" hidden>Share</button>
+      </div>
+      <a class="quiet-link" id="dedicate-view-link" href="#">View your dedication page &rarr;</a>
     </div>
   </div>
 </div>
@@ -4000,6 +4121,7 @@ function loadSong(idx, keepRailQueue){
   if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
   loadComments();
+  loadDedicationsStrip();
   paintRatings();
   loadMyRatings(SONGS[idx] && SONGS[idx].id).then(paintRatings);
   playCurrent();
@@ -5522,6 +5644,202 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
 })();
 
 /* ============================================================
+   DED-2: dedicate a song. Friendly labels for the strip/preview (matching
+   the dropdown's own option text); the hero-style phrase ("On their
+   birthday") is used only on the dedication page itself, further down.
+   Both maps are also duplicated in middleware.js, which runs in a separate
+   edge runtime with no shared module between the two (same reasoning as
+   TROPHY_LABELS there).
+   ============================================================ */
+const DED_OCCASION_LABEL = {
+  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
+  bar_bat_mitzvah: 'Bar or Bat Mitzvah', new_baby: 'New baby',
+  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory of',
+  thank_you: 'Thank you', just_because: 'Just because', other: null,
+};
+function dedOccasionLabel(occasion, occasionOther){
+  return occasion === 'other' ? (occasionOther || 'Other') : (DED_OCCASION_LABEL[occasion] || occasion);
+}
+function dedSenderLine(name){ return name ? `from ${name}` : 'from someone'; }
+function dedShareUrl(code){ return SHARE_ORIGIN + '/d/' + encodeURIComponent(code); }
+
+let dedicateSong = null; // the song this open sheet is for
+
+function openDedicateModal(){
+  if(currentIdx === null || !SONGS[currentIdx]) return;
+  const s = SONGS[currentIdx];
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  if(!signedIn){
+    if(window.laivy && window.laivy.accountUI){
+      window.laivy.accountUI.openModal({
+        next: location.pathname,
+        reason: 'Sign in to dedicate this song',
+      });
+    }
+    return;
+  }
+  dedicateSong = s;
+  const modal = document.getElementById('dedicate-modal');
+  modal.querySelector('#dedicate-song-title').textContent = s.title || s.title_translit || '';
+  modal.querySelector('[data-ded-pane="form"]').hidden = false;
+  modal.querySelector('[data-ded-pane="success"]').hidden = true;
+  document.getElementById('dedicate-recipient').value = '';
+  document.getElementById('dedicate-occasion').value = 'birthday';
+  document.getElementById('dedicate-occasion-other').value = '';
+  document.getElementById('dedicate-occasion-other').hidden = true;
+  document.getElementById('dedicate-message').value = '';
+  document.getElementById('dedicate-anonymous').checked = false;
+  document.getElementById('dedicate-err').hidden = true;
+  document.getElementById('dedicate-submit').disabled = false;
+  dedUpdatePreview();
+  modal.hidden = false;
+  setTimeout(() => { try{ document.getElementById('dedicate-recipient').focus(); }catch(e){} }, 30);
+}
+function closeDedicateModal(){ document.getElementById('dedicate-modal').hidden = true; }
+
+function dedMySenderName(){
+  const artist = window.laivy && window.laivy.auth && window.laivy.auth.artist;
+  return (artist && (artist.display_name || artist.handle)) || null;
+}
+function dedUpdatePreview(){
+  const recipient = document.getElementById('dedicate-recipient').value.trim();
+  const occasion = document.getElementById('dedicate-occasion').value;
+  const occasionOther = document.getElementById('dedicate-occasion-other').value.trim();
+  const anon = document.getElementById('dedicate-anonymous').checked;
+  const label = dedOccasionLabel(occasion, occasionOther);
+  const from = anon ? 'from Someone' : dedSenderLine(dedMySenderName());
+  const preview = document.getElementById('dedicate-preview');
+  preview.textContent = recipient
+    ? `For ${recipient} · ${label} · ${from}`
+    : `Who is it for? · ${label} · ${from}`;
+}
+
+(function(){
+  const modal = document.getElementById('dedicate-modal');
+  if(!modal) return;
+  document.getElementById('dedicate-close').addEventListener('click', closeDedicateModal);
+  modal.addEventListener('click', (e) => { if(e.target === modal) closeDedicateModal(); });
+  document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && !modal.hidden) closeDedicateModal(); });
+
+  const occasionSel = document.getElementById('dedicate-occasion');
+  const occasionOther = document.getElementById('dedicate-occasion-other');
+  occasionSel.addEventListener('change', () => {
+    occasionOther.hidden = occasionSel.value !== 'other';
+    dedUpdatePreview();
+  });
+  document.getElementById('dedicate-recipient').addEventListener('input', dedUpdatePreview);
+  occasionOther.addEventListener('input', dedUpdatePreview);
+  document.getElementById('dedicate-anonymous').addEventListener('change', dedUpdatePreview);
+
+  const msgEl = document.getElementById('dedicate-message');
+  const counterEl = document.getElementById('dedicate-counter');
+  msgEl.addEventListener('input', () => {
+    counterEl.textContent = `${280 - msgEl.value.length} characters left`;
+  });
+
+  function showDedErr(text){
+    const el = document.getElementById('dedicate-err');
+    el.textContent = text; el.hidden = !text;
+  }
+
+  document.getElementById('dedicate-submit').addEventListener('click', async () => {
+    if(!dedicateSong) return;
+    const recipient = document.getElementById('dedicate-recipient').value.trim();
+    const occasion = occasionSel.value;
+    const other = occasionOther.value.trim();
+    const message = msgEl.value.trim();
+    const anonymous = document.getElementById('dedicate-anonymous').checked;
+    showDedErr('');
+    if(!recipient){ showDedErr('Please say who this is for.'); return; }
+    if(recipient.length > 60){ showDedErr('That name is a bit long -- 60 characters or fewer.'); return; }
+    if(occasion === 'other' && !other){ showDedErr('Describe the occasion in a few words.'); return; }
+    if(message.length > 280){ showDedErr('That message is a bit long -- 280 characters or fewer.'); return; }
+
+    const btn = document.getElementById('dedicate-submit');
+    btn.disabled = true;
+    try{
+      const { data: code, error } = await supabaseClient.rpc('create_dedication', {
+        p_song_id: dedicateSong.id,
+        p_recipient_name: recipient,
+        p_occasion: occasion,
+        p_occasion_other: occasion === 'other' ? other : null,
+        p_message: message || null,
+        p_is_anonymous: anonymous,
+      });
+      if(error) throw error;
+      dedShowSuccess(dedicateSong, code);
+      loadDedicationsStrip();
+    }catch(err){
+      showDedErr((err && err.message) || 'Could not send that dedication right now.');
+    }finally{
+      btn.disabled = false;
+    }
+  });
+})();
+
+function dedShowSuccess(song, code){
+  const modal = document.getElementById('dedicate-modal');
+  modal.querySelector('[data-ded-pane="form"]').hidden = true;
+  const pane = modal.querySelector('[data-ded-pane="success"]');
+  pane.hidden = false;
+
+  const url = dedShareUrl(code);
+  const title = song.title || song.title_translit || 'this song';
+  const waText = `I dedicated a song to you on Laivy Hart: ${title}. Listen here: ${url}`;
+  modal.querySelector('#dedicate-success-sub').textContent = `For this song's page, share the link below.`;
+  modal.querySelector('#dedicate-view-link').href = url;
+
+  const waBtn = document.getElementById('dedicate-whatsapp');
+  waBtn.onclick = () => {
+    logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_whatsapp' } });
+    window.open('https://wa.me/?text=' + encodeURIComponent(waText), '_blank', 'noopener');
+  };
+  const copyBtn = document.getElementById('dedicate-copy');
+  copyBtn.onclick = async () => {
+    logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_copy' } });
+    try{ await navigator.clipboard.writeText(url); laivyToast('Link copied'); }
+    catch(e){ window.prompt('Copy this link:', url); }
+  };
+  const nativeBtn = document.getElementById('dedicate-native-share');
+  nativeBtn.hidden = !navigator.share;
+  nativeBtn.onclick = () => {
+    logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_native' } });
+    navigator.share({ title: `A song for ${document.getElementById('dedicate-recipient').value.trim()}`, text: waText, url })
+      .catch(() => { /* dismissed */ });
+  };
+}
+
+(function(){
+  const btn = document.getElementById('now-dedicate-btn');
+  if(btn) btn.addEventListener('click', openDedicateModal);
+  const stripBtn = document.getElementById('dedications-strip-cta');
+  if(stripBtn) stripBtn.addEventListener('click', openDedicateModal);
+})();
+
+/* The latest 5 dedications of the currently playing song. Hidden entirely
+   when there are none, same guarding style as the comments feed. */
+async function loadDedicationsStrip(){
+  const strip = document.getElementById('dedications-strip');
+  if(!strip) return;
+  if(currentIdx === null || !SONGS[currentIdx]){ strip.classList.add('hidden'); return; }
+  const song = SONGS[currentIdx];
+  const reqId = song.id;
+  const { data, error } = await supabaseClient
+    .from('dedications_public')
+    .select('code, recipient_name, occasion, occasion_other, sender_name, created_at')
+    .eq('song_id', reqId)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  if(currentIdx === null || SONGS[currentIdx].id !== reqId) return; // switched songs mid-flight
+  if(error || !data || !data.length){ strip.classList.add('hidden'); return; }
+  strip.classList.remove('hidden');
+  document.getElementById('dedications-strip-list').innerHTML = data.map((d) => `
+    <a class="dedications-strip-card" href="/d/${encodeURIComponent(d.code)}">
+      For <strong>${escHtml(d.recipient_name)}</strong> &middot; ${escHtml(dedOccasionLabel(d.occasion, d.occasion_other))} &middot; ${escHtml(dedSenderLine(d.sender_name))}
+    </a>`).join('');
+}
+
+/* ============================================================
    Cover lightbox: tap the now-playing banner to see the full,
    uncropped cover image. List thumbnails are unaffected.
    ============================================================ */
@@ -5573,6 +5891,12 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
 let route = 'home';
 const ARTIST_PATH_RE = /^\/artist\/([^\/]+)\/?$/;
 const SONG_PATH_RE   = /^\/song\/([^\/]+)\/?$/;
+const D_PATH_RE       = /^\/d\/([^\/]+)\/?$/;
+function dedicationCodeFromPath(){
+  const m = D_PATH_RE.exec(location.pathname);
+  if(!m) return null;
+  try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; }
+}
 function songSlugFromPath(){
   const m = SONG_PATH_RE.exec(location.pathname);
   if(!m) return null;
@@ -5594,6 +5918,7 @@ function routeFromPath(){
   if(p === '/upload')   return 'upload';
   if(p === '/auth/callback') return 'callback';
   if(ARTIST_PATH_RE.test(p)) return 'artist';
+  if(D_PATH_RE.test(p)) return 'dedication';
   if(SONG_PATH_RE.test(p)) return 'listen';   // a song page IS the listen view
   return 'home';
 }
@@ -5613,14 +5938,18 @@ function showPage(next){
   // document: both hide the two song pages rather than navigating away, so the
   // player and all app state survive a trip through sign-in.
   const artistRoot = document.getElementById('artist-root');
+  const dedicationRoot = document.getElementById('dedication-root');
   document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
   document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
   if(settings) settings.classList.toggle('hidden', next !== 'settings' && next !== 'callback');
   const uploadRoot = document.getElementById('upload-root');
   if(uploadRoot) uploadRoot.classList.toggle('hidden', next !== 'upload');
   if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
+  if(dedicationRoot) dedicationRoot.classList.toggle('hidden', next !== 'dedication');
   if(next === 'artist'){
     renderArtistPage(artistHandleFromPath());
+  } else if(next === 'dedication'){
+    renderDedicationPage(dedicationCodeFromPath());
   } else if(next === 'upload'){
     // ?song=<id> edits an existing one. RLS scopes it to the caller's own.
     let songParam = null;
@@ -5755,6 +6084,7 @@ function initRoute(){
   if(location.pathname === '/settings'){ showPage('settings'); return; }
   if(location.pathname === '/upload'){ showPage('upload'); return; }
   if(ARTIST_PATH_RE.test(location.pathname)){ showPage('artist'); return; }
+  if(D_PATH_RE.test(location.pathname)){ showPage('dedication'); return; }
 
   /* /song/<slug> is the canonical song URL. The song is LOADED, not played:
      a browser blocks autoplay without a gesture, so starting playback here
@@ -6276,6 +6606,89 @@ function wireArtistCardClicks(scope, a){
   });
 }
 
+/* ============================================================
+   DED-2: the dedication page, /d/<code>. Hero-style occasion phrasing here
+   is deliberately different from the strip's/preview's friendly label
+   (DED_OCCASION_LABEL): this is the one place that reads like a sentence
+   rather than a tag. middleware.js duplicates this same map for its own
+   server-rendered OG description (separate edge runtime, no shared module).
+   ============================================================ */
+const DED_OCCASION_PHRASE = {
+  birthday: 'On their birthday', wedding: 'For their wedding', anniversary: 'For their anniversary',
+  bar_bat_mitzvah: 'For their bar or bat mitzvah', new_baby: 'For their new baby',
+  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
+  thank_you: 'As a thank you', just_because: 'Just because', other: null,
+};
+function dedOccasionPhrase(occasion, occasionOther){
+  return occasion === 'other' ? (occasionOther || 'A special occasion') : (DED_OCCASION_PHRASE[occasion] || occasion);
+}
+
+let dedicationPageToken = 0;
+async function renderDedicationPage(code){
+  const root = document.getElementById('dedication-root');
+  if(!root) return;
+  const token = ++dedicationPageToken;
+  root.innerHTML = `<div class="ded-page"><p class="ded-page-loading">Loading&hellip;</p></div>`;
+  if(!code){ renderDedicationMissing(root); return; }
+
+  const { data, error } = await supabaseClient
+    .from('dedications_public')
+    .select('code, song_id, song_title, song_slug, cover_url, recipient_name, occasion, occasion_other, message, sender_name, created_at')
+    .eq('code', code)
+    .maybeSingle();
+  if(token !== dedicationPageToken) return;
+  if(error || !data){ renderDedicationMissing(root); return; }
+
+  const d = data;
+  const phrase = dedOccasionPhrase(d.occasion, d.occasion_other);
+  const from = d.sender_name ? `From ${escHtml(d.sender_name)}` : 'From someone';
+  const cover = d.cover_url ? cdnImg(d.cover_url, 640) : '/icon-512.png';
+
+  root.innerHTML = `
+    <div class="ded-page">
+      <img class="ded-page-cover" src="${escHtml(cover)}" data-raw="${escHtml(d.cover_url || '')}"
+           onerror="this.onerror=null;if(this.dataset.raw)this.src=this.dataset.raw;" alt="" width="320" height="320">
+      <h1 class="ded-page-for">For ${escHtml(d.recipient_name)}</h1>
+      <div class="ded-page-occasion">${escHtml(phrase)}</div>
+      ${d.message ? `<p class="ded-page-message">&ldquo;${escHtml(d.message)}&rdquo;</p>` : ''}
+      <div class="ded-page-from">${from}</div>
+      <div class="ded-page-song">${escHtml(d.song_title || '')}</div>
+      <button class="home-primary-btn filled ded-page-play" type="button" id="ded-page-play-btn">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        Play
+      </button>
+      <a class="quiet-link ded-page-link" href="/song/${escHtml(d.song_slug || '')}">Go to the full song page</a>
+      <div class="ded-page-cta">
+        <p>Dedicate a song to someone you love.</p>
+        <a class="home-primary-btn outlined" id="ded-page-cta-link" href="/listen">Browse the catalog</a>
+      </div>
+    </div>`;
+
+  const playBtn = document.getElementById('ded-page-play-btn');
+  if(playBtn) playBtn.addEventListener('click', () => {
+    history.pushState({ route: 'listen' }, '', '/listen');
+    showPage('listen');
+    playSongById(d.song_id);
+  });
+  const ctaLink = document.getElementById('ded-page-cta-link');
+  if(ctaLink) ctaLink.addEventListener('click', (e) => {
+    const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+    if(signedIn) return; // plain link to /listen
+    e.preventDefault();
+    if(window.laivy && window.laivy.accountUI){
+      window.laivy.accountUI.openModal({ next: '/listen' });
+    }
+  });
+}
+
+function renderDedicationMissing(root){
+  root.innerHTML = `
+    <div class="ded-page ded-page-missing">
+      <h1>This dedication is no longer available</h1>
+      <p><a class="quiet-link" href="/">Back to Laivy Hart</a></p>
+    </div>`;
+}
+
 async function renderArtistPage(handle){
   const root = document.getElementById('artist-root');
   if(!root) return;
@@ -6609,6 +7022,8 @@ flushEventQueue();
 <div id="upload-root" class="hidden"></div>
 <!-- Public artist page, /artist/<handle>. Another sibling view. -->
 <div id="artist-root" class="hidden"></div>
+<!-- DED-2: a dedication page, /d/<code>. Another sibling view. -->
+<div id="dedication-root" class="hidden"></div>
 
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->

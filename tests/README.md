@@ -103,6 +103,19 @@ any failure.
   anonymous tag (shown even though the admin sees the real sender name), the
   Live/Removed/All filters, and the remove-with-reason flow, including its
   error path.
+- `specs/dedicate.spec.mjs`, the Dedicate button, sheet and success state
+  (DED-2): signed-out opens sign-in with the reason and returns to the song;
+  client-side form validation (empty recipient, "Other" with no description)
+  never reaches `create_dedication`; a successful submission shows the three
+  share actions with the exact expected WhatsApp text/link and a working
+  Copy link (real clipboard permission granted); a server rejection shows
+  inline without faking success; the song page's Dedications strip shows
+  named/anonymous senders and hides entirely with none; 390px layout.
+- `specs/dedication-page.spec.mjs`, `/d/<code>` client-rendered from
+  `dedications_public`: a live named dedication, an anonymous one ("From
+  someone", never a name), a removed-or-unknown code (identical "no longer
+  available" message either way), the Play button handing off to the real
+  player, and 1280px/390px rendering.
 
 ## Adding a scenario
 

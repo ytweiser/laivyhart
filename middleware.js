@@ -35,13 +35,20 @@ export const config = {
   // Middleware runs before rewrites, so these are the real request paths.
   // index.html, songs.json and every static asset are deliberately absent, so
   // the internal fetches below cannot re-enter this function.
-  matcher: ['/', '/song/:path*', '/artist/:path*'],
+  matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*'],
 };
 
 const SITE = 'https://www.laivyhart.com';
 const SITE_NAME = 'Laivy Hart';
 const DEFAULT_OG_IMAGE = 'https://laivyhart.com/og-image.png';
 const DEFAULT_DESC = 'Original songs. Sometimes stories, sometimes prayers.';
+
+// DED-2: /d/<code> is not in either build-time snapshot -- a dedication can
+// be created at any moment, independent of a deploy -- so this is the one
+// route that reads live from Supabase instead. Publishable values only,
+// identical to config.js; the service role key must never appear here.
+const DED_SUPABASE_URL = 'https://tshkrghrgokplakktvik.supabase.co';
+const DED_SUPABASE_ANON_KEY = 'sb_publishable_nvhaOpLWBxZxo7X7tRtCWw_QhQ82dV4';
 
 /* Crawlers (WhatsApp especially) silently drop large og:images, and the raw
    covers are multi-megabyte PNGs. This is the same wsrv.nl transform the site
@@ -337,12 +344,96 @@ function renderHome(html) {
   return upsertCanonical(html, SITE + '/');
 }
 
+/* DED-2: hero-style occasion phrasing for the OG description, matching
+   index.html's own DED_OCCASION_PHRASE exactly (duplicated: separate edge
+   runtime, no shared module, same reasoning as TROPHY_LABELS above). */
+const DED_OCCASION_PHRASE = {
+  birthday: 'On their birthday', wedding: 'For their wedding', anniversary: 'For their anniversary',
+  bar_bat_mitzvah: 'For their bar or bat mitzvah', new_baby: 'For their new baby',
+  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
+  thank_you: 'As a thank you', just_because: 'Just because', other: null,
+};
+function dedOccasionPhrase(occasion, occasionOther) {
+  return occasion === 'other' ? (occasionOther || 'A special occasion') : (DED_OCCASION_PHRASE[occasion] || occasion);
+}
+
+// A plain fetch against dedications_public (anon-readable, 022_dedications.sql):
+// only the columns this page needs. Never user_id, device_id or meta -- that
+// view has no such columns to ask for in the first place. fetchImpl is
+// injectable so this is testable without a real network call.
+async function fetchDedication(code, fetchImpl) {
+  if (!code) return null;
+  try {
+    const url = DED_SUPABASE_URL + '/rest/v1/dedications_public'
+      + '?code=eq.' + encodeURIComponent(code)
+      + '&select=code,song_id,song_title,song_slug,cover_url,recipient_name,occasion,occasion_other,message,sender_name,created_at';
+    const res = await fetchImpl(url, {
+      headers: { apikey: DED_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + DED_SUPABASE_ANON_KEY },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length ? rows[0] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Personal and ephemeral: noindex always, regardless of status. Anonymous
+   stays anonymous here on purpose -- sender_name is already null for those
+   rows (dedications_public itself nulls it), so there is nothing to show
+   even if this function wanted to. */
+function renderDedication(html, d) {
+  const canonical = SITE + '/d/' + encodeURIComponent(d.code);
+  const pageTitle = 'A song for ' + d.recipient_name;
+  const phrase = dedOccasionPhrase(d.occasion, d.occasion_other);
+  const snippet = d.message ? firstSentence(d.message, 120) : '';
+  const desc = phrase + (snippet ? ': "' + snippet + '"' : '') + '. A dedication on ' + SITE_NAME + '.';
+  const image = cdnImage(d.cover_url, 1200) || DEFAULT_OG_IMAGE;
+
+  html = setTitle(html, escAttr(pageTitle + ' | ' + SITE_NAME));
+  html = upsertMeta(html, 'name', 'description', escAttr(desc));
+  html = upsertCanonical(html, escAttr(canonical));
+  html = setMeta(html, 'property', 'og:title', escAttr(pageTitle));
+  html = setMeta(html, 'property', 'og:description', escAttr(desc));
+  html = setMeta(html, 'property', 'og:url', escAttr(canonical));
+  html = setMeta(html, 'property', 'og:image', escAttr(image));
+  html = setMeta(html, 'property', 'og:type', 'website');
+  html = setMeta(html, 'name', 'twitter:title', escAttr(pageTitle));
+  html = setMeta(html, 'name', 'twitter:description', escAttr(desc));
+  html = setMeta(html, 'name', 'twitter:image', escAttr(image));
+  html = setMeta(html, 'name', 'twitter:card', 'summary_large_image');
+  if (d.cover_url) {
+    html = html
+      .replace(/\s*<meta property="og:image:width" content="[^"]*">/, '')
+      .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
+  }
+
+  let body = '<h1>For ' + escHtml(d.recipient_name) + '</h1>';
+  body += '<p>' + escHtml(phrase) + '</p>';
+  if (d.message) body += '<p>&ldquo;' + escHtml(d.message) + '&rdquo;</p>';
+  body += '<p>' + (d.sender_name ? 'From ' + escHtml(d.sender_name) : 'From someone') + '</p>';
+  if (d.song_title) {
+    body += '<p><a href="/song/' + escAttr(d.song_slug || '') + '">' + escHtml(d.song_title) + '</a></p>';
+  }
+  html = injectSsr(html, body);
+
+  // Dedication pages are personal, not catalog content: never indexed,
+  // live or removed alike.
+  return addNoindex(html);
+}
+
 /* ------------------------------------------------------------
    The routing decision, split out from the request plumbing so it can be
    exercised directly in tests without a Vercel runtime.
    Returns { kind: 'redirect', location } | { kind: 'render', fn } | null.
+
+   async because of one route: /d/<code> has no build-time snapshot to read
+   synchronously, so it fetches dedications_public live. Every other route
+   still resolves synchronously underneath; awaiting a non-promise is a
+   no-op, so this is not a behavior change for them. fetchImpl is injectable
+   so a test never needs a real network call.
    ------------------------------------------------------------ */
-export function decide(pathname, searchParams) {
+export async function decide(pathname, searchParams, fetchImpl = fetch) {
   // Legacy share link. Everything already sent to WhatsApp keeps landing.
   if (pathname === '/') {
     const id = searchParams && searchParams.get('song');
@@ -376,6 +467,16 @@ export function decide(pathname, searchParams) {
     return { kind: 'render', fn: (h) => renderArtist(h, artist), tag: 'artist' };
   }
 
+  m = /^\/d\/([^/]+)\/?$/.exec(pathname);
+  if (m) {
+    let code; try { code = decodeURIComponent(m[1]); } catch (e) { code = m[1]; }
+    const dedication = await fetchDedication(code, fetchImpl);
+    // Unknown or removed (dedications_public only ever returns a live one
+    // for an approved song) -- noindex, same as any other 404 here.
+    if (!dedication) return { kind: 'render', fn: addNoindex, tag: 'dedication-404' };
+    return { kind: 'render', fn: (h) => renderDedication(h, dedication), tag: 'dedication' };
+  }
+
   return null;
 }
 
@@ -384,7 +485,7 @@ export default async function middleware(request) {
   try { url = new URL(request.url); } catch (e) { return; }
 
   let plan = null;
-  try { plan = decide(url.pathname, url.searchParams); }
+  try { plan = await decide(url.pathname, url.searchParams); }
   catch (e) { return; }                       // malformed snapshot: serve the shell
   if (!plan) return;
 

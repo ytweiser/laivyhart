@@ -619,6 +619,10 @@ export function renderSettings(container) {
       <div id="lv-following-list"><p class="lv-hint">Loading&hellip;</p></div>
 
       <hr class="lv-rule">
+      <h2 class="lv-section-h">My dedications</h2>
+      <div id="lv-dedications-list"><p class="lv-hint">Loading&hellip;</p></div>
+
+      <hr class="lv-rule">
       <h2 class="lv-danger-h">Delete my account</h2>
       <p class="lv-hint">This removes your profile and takes your songs off the site. It cannot be undone.</p>
       <input class="lv-input" data-confirm type="text" placeholder="Type DELETE to confirm" dir="ltr">
@@ -633,6 +637,7 @@ export function renderSettings(container) {
   renderMySongs(container, artist);
   if (artist && artist.is_artist) renderMyPicks(container, artist);
   renderFollowing(container, user);
+  renderMyDedications(container);
 
   container.querySelector('[data-act="save"]').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
@@ -952,6 +957,82 @@ async function renderFollowing(container, user) {
     });
   } catch (e) {
     host.innerHTML = `<p class="lv-hint">Could not load your Following list right now.</p>`;
+  }
+}
+
+/* ---------------- My dedications (DED-2) ----------------
+   my_dedications() (sql/022_dedications.sql): the sender's own, any status,
+   newest first. Open goes to the real /d/<code> page; Remove calls
+   remove_my_dedication(), the sender's own removal path -- the same RPC
+   the dedication page itself could call, just reached from here instead.
+   DED_OCCASION_LABEL/DED_SHARE_ORIGIN are duplicated from index.html: this
+   module and that page share no import, the same reasoning TROPHY_LABELS
+   already documents in middleware.js. */
+const DED_SHARE_ORIGIN = 'https://www.laivyhart.com';
+const DED_OCCASION_LABEL = {
+  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
+  bar_bat_mitzvah: 'Bar or Bat Mitzvah', new_baby: 'New baby',
+  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory of',
+  thank_you: 'Thank you', just_because: 'Just because', other: null,
+};
+function dedOccasionLabel(occasion, occasionOther) {
+  return occasion === 'other' ? (occasionOther || 'Other') : (DED_OCCASION_LABEL[occasion] || occasion);
+}
+function fmtDedDate(iso) {
+  try { return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  catch (e) { return ''; }
+}
+
+async function renderMyDedications(container) {
+  const host = container.querySelector('#lv-dedications-list');
+  if (!host) return;
+  try {
+    const { data, error } = await supabase.rpc('my_dedications');
+    if (error) throw error;
+    if (!data || !data.length) { host.innerHTML = `<p class="lv-hint">You haven't dedicated a song yet.</p>`; return; }
+    host.innerHTML = data.map((d) => `
+      <div class="lv-ded-row" data-code="${esc(d.code)}">
+        <div class="lv-ded-main">
+          <span class="lv-ded-recipient">For ${esc(d.recipient_name)}</span>
+          <span class="lv-ded-meta">${esc(dedOccasionLabel(d.occasion, d.occasion_other))} &middot; ${esc(d.song_title || '')} &middot; ${esc(fmtDedDate(d.created_at))}</span>
+        </div>
+        <span class="lv-ded-status${d.status === 'removed' ? ' is-removed' : ''}">${d.status === 'removed' ? 'Removed' : 'Live'}</span>
+        <div class="lv-ded-actions">
+          ${d.status === 'live' ? `<a class="lv-btn outlined" href="/d/${encodeURIComponent(d.code)}" target="_blank" rel="noopener">Open</a>` : ''}
+          ${d.status === 'live' ? `<button type="button" class="lv-btn outlined" data-ded-copy="${esc(d.code)}">Copy link</button>` : ''}
+          ${d.status === 'live' ? `<button type="button" class="lv-btn outlined" data-ded-remove="${esc(d.code)}">Remove</button>` : ''}
+        </div>
+      </div>`).join('');
+
+    host.querySelectorAll('[data-ded-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const url = DED_SHARE_ORIGIN + '/d/' + encodeURIComponent(btn.dataset.dedCopy);
+        try { await navigator.clipboard.writeText(url); }
+        catch (e) { window.prompt('Copy this link:', url); }
+      });
+    });
+    host.querySelectorAll('[data-ded-remove]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!window.confirm('Remove this dedication? This cannot be undone.')) return;
+        btn.disabled = true;
+        try {
+          const { error } = await supabase.rpc('remove_my_dedication', { p_code: btn.dataset.dedRemove });
+          if (error) throw error;
+          const row = btn.closest('.lv-ded-row');
+          if (row) {
+            const statusEl = row.querySelector('.lv-ded-status');
+            statusEl.textContent = 'Removed';
+            statusEl.classList.add('is-removed');
+            row.querySelector('.lv-ded-actions').innerHTML = '';
+          }
+        } catch (e) {
+          alert('Could not remove: ' + (e && e.message));
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (e) {
+    host.innerHTML = `<p class="lv-hint">Could not load your dedications right now.</p>`;
   }
 }
 

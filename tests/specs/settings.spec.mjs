@@ -16,6 +16,7 @@ export async function run(browser, port) {
   await scenarioMyPicksReorder(browser, port, r);
   await scenarioBio(browser, port, r);
   await scenarioFollowing(browser, port, r);
+  await scenarioMyDedications(browser, port, r);
   return r;
 }
 
@@ -271,6 +272,51 @@ async function scenarioFollowing(browser, port, r) {
     emptyText: document.getElementById('lv-following-list')?.textContent,
   }));
   r.check('Unfollow removes the row and shows the empty state', after.rows === 0 && /not following anyone yet/.test(after.emptyText || ''), JSON.stringify(after));
+
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioMyDedications(browser, port, r) {
+  r.section('My dedications (DED-2): list, Open/Copy link, Remove');
+  const page = await newPage(browser);
+  const errors = collectErrors(page);
+  await signInAs(page, F.SESSION_USERS.NOVA);
+  const SONG = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA);
+  await wireSupabaseStubs(page, {
+    selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH],
+    myDedications: [
+      { code: 'LIVE0001', created_at: new Date().toISOString(), status: 'live', song_id: SONG.id, song_title: SONG.title, song_slug: SONG.slug, recipient_name: 'Mom', occasion: 'birthday', occasion_other: null, message: 'Love you', is_anonymous: false },
+      { code: 'GONE0002', created_at: new Date(Date.now() - 86400000).toISOString(), status: 'removed', song_id: SONG.id, song_title: SONG.title, song_slug: SONG.slug, recipient_name: 'Dad', occasion: 'thank_you', occasion_other: null, message: null, is_anonymous: true },
+    ],
+  });
+  await gotoSettings(page, port);
+  await page.waitForFunction(() => {
+    const el = document.getElementById('lv-dedications-list');
+    return el && !/Loading/.test(el.textContent);
+  }, { timeout: 10000 });
+
+  const d = await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('.lv-ded-row'));
+    return rows.map((row) => ({
+      recipient: row.querySelector('.lv-ded-recipient')?.textContent,
+      status: row.querySelector('.lv-ded-status')?.textContent,
+      hasOpen: !!row.querySelector('a[href^="/d/"]'),
+      hasRemove: !!row.querySelector('[data-ded-remove]'),
+    }));
+  });
+  r.check('lists both dedications', d.length === 2, JSON.stringify(d));
+  r.check('the live one shows "For Mom" and status Live with Open/Remove', d[0].recipient === 'For Mom' && d[0].status === 'Live' && d[0].hasOpen && d[0].hasRemove, JSON.stringify(d[0]));
+  r.check('the removed one shows status Removed with no actions', d[1].status === 'Removed' && !d[1].hasOpen && !d[1].hasRemove, JSON.stringify(d[1]));
+
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.click('.lv-ded-row[data-code="LIVE0001"] [data-ded-remove]');
+  await page.waitForTimeout(250);
+  const afterRemove = await page.evaluate(() => {
+    const row = document.querySelector('.lv-ded-row[data-code="LIVE0001"]');
+    return { status: row?.querySelector('.lv-ded-status')?.textContent, actionsEmpty: row?.querySelector('.lv-ded-actions')?.children.length === 0 };
+  });
+  r.check('removing updates the row to Removed with no actions, in place', afterRemove.status === 'Removed' && afterRemove.actionsEmpty === true, JSON.stringify(afterRemove));
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

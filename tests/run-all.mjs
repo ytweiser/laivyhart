@@ -51,6 +51,12 @@ async function main() {
 
     const adminDedications = await import('./specs/admin-dedications.spec.mjs');
     results.push(await adminDedications.run(browser, PORT));
+
+    const dedicate = await import('./specs/dedicate.spec.mjs');
+    results.push(await dedicate.run(browser, PORT));
+
+    const dedicationPage = await import('./specs/dedication-page.spec.mjs');
+    results.push(await dedicationPage.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();

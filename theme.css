@@ -659,6 +659,18 @@ body{
 .lv-following-name:hover{ color:var(--accent-2); }
 .lv-following-unfollow{ width:auto; margin-top:0; padding:0.35rem 0.8rem; font-size:0.8rem; flex-shrink:0; }
 
+/* My dedications (DED-2) */
+.lv-ded-row{ display:flex; align-items:center; gap:0.7rem; padding:0.7rem 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.lv-ded-row:last-child{ border-bottom:none; }
+.lv-ded-main{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:0.1rem; }
+.lv-ded-recipient{ font-family:var(--font-ui); font-weight:600; font-size:0.92rem; color:var(--text); }
+.lv-ded-meta{ font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint); }
+.lv-ded-status{ font-family:var(--font-ui); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em;
+  color:var(--accent-3); flex-shrink:0; }
+.lv-ded-status.is-removed{ color:var(--text-faint); }
+.lv-ded-actions{ display:flex; gap:0.4rem; flex-wrap:wrap; }
+.lv-ded-actions .lv-btn{ width:auto; margin-top:0; padding:0.35rem 0.8rem; font-size:0.8rem; flex-shrink:0; }
+
 /* ============================================================
    Public artist page (/artist/<handle>), 1A-3.
    Built from theme tokens like everything else, so it follows the palette and
@@ -990,4 +1002,36 @@ body{
   /* Still a 44px target on a phone: 1.85rem of glyph + 0.33rem each side. */
   .star{ padding:0.45rem; }
   .star-ic{ width:1.85rem; height:1.85rem; }
+}
+
+/* ============================================================
+   DED-2: the dedication page (/d/<code>). A short, personal, single-column
+   page -- no play counts, no rail of other songs, just this one dedication.
+   ============================================================ */
+.ded-page{ max-width:28rem; margin:0 auto; padding:2.4rem 1.5rem 6rem; text-align:center; }
+.ded-page-loading{ color:var(--text-dim); font-family:var(--font-ui); padding:3rem 0; }
+.ded-page-missing{ padding-top:4rem; }
+.ded-page-missing h1{ font-family:var(--font-display); font-weight:600; font-size:1.6rem; margin:0 0 0.6rem; }
+.ded-page-cover{
+  width:220px; height:220px; border-radius:16px; object-fit:cover; display:block; margin:0 auto 1.4rem;
+  border:1px solid var(--glass-border); box-shadow:0 16px 40px rgba(0,0,0,0.35);
+}
+.ded-page-for{ font-family:var(--font-display); font-weight:600; font-size:1.9rem; margin:0 0 0.3rem; color:var(--text); }
+.ded-page-occasion{ font-family:var(--font-ui); font-size:0.95rem; color:var(--text-dim); margin-bottom:1.1rem; }
+.ded-page-message{
+  font-family:var(--font-display); font-style:italic; font-size:1.15rem; line-height:1.55;
+  color:var(--text); margin:0 0 1rem; white-space:pre-line;
+}
+.ded-page-from{ font-family:var(--font-ui); font-size:0.88rem; color:var(--text-faint); margin-bottom:0.3rem; }
+.ded-page-song{ font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--accent-2); margin-bottom:1.6rem; }
+.ded-page-play{ margin:0 auto; width:auto; padding:0.8rem 1.8rem; }
+.ded-page-play svg{ width:1.1rem; height:1.1rem; }
+.ded-page-link{ display:block; margin-top:0.9rem; }
+.ded-page-cta{ margin-top:3rem; padding-top:1.6rem; border-top:1px solid var(--chip-border); }
+.ded-page-cta p{ font-family:var(--font-display); font-style:italic; color:var(--text-dim); margin:0 0 0.9rem; }
+.ded-page-cta .home-primary-btn{ width:auto; margin:0 auto; }
+@media (max-width:560px){
+  .ded-page{ padding:1.8rem 1.1rem 5rem; }
+  .ded-page-cover{ width:180px; height:180px; }
+  .ded-page-for{ font-size:1.6rem; }
 }

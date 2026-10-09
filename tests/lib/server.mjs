@@ -27,6 +27,7 @@ const MIME = {
 function rewrite(pathname) {
   if (/^\/artist\/[^/.]+\/?$/.test(pathname)) return '/index.html';
   if (/^\/song\/[^/.]+\/?$/.test(pathname)) return '/index.html';
+  if (/^\/d\/[^/.]+\/?$/.test(pathname)) return '/index.html';
   if (['/listen', '/settings', '/upload', '/auth/callback'].includes(pathname)) return '/index.html';
   if (pathname === '/about') return '/about.html';
   if (pathname === '/terms') return '/terms.html';

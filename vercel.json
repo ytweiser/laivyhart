@@ -42,6 +42,14 @@
     {
       "source": "/song/:slug([^/.]+)/",
       "destination": "/index.html"
+    },
+    {
+      "source": "/d/:code([^/.]+)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/d/:code([^/.]+)/",
+      "destination": "/index.html"
     }
   ]
 }
