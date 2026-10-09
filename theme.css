@@ -906,6 +906,8 @@ body{
 }
 .now-artist-name{ font-family:var(--font-ui); font-size:0.88rem; }
 .now-artist-row:hover .now-artist-name{ color:var(--accent-2); }
+/* SONG-1: "Idea by [name]", shown only when songs.idea_credit is set. */
+.now-idea-credit{ margin-top:0.3rem; font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint); font-style:italic; }
 
 @media (max-width:900px){
   .row-artist{ max-width:5.5rem; }

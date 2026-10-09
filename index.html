@@ -1605,6 +1605,10 @@
         </div>
       </div>
       <div class="now-artist" id="now-artist"></div>
+      <!-- SONG-1: songs.idea_credit (sql/024_song_ideas.sql), set once at
+           release and never re-derived -- "Idea by Mom", or "Idea by
+           Anonymous" when the submitter asked to stay anonymous. -->
+      <div class="now-idea-credit hidden" id="now-idea-credit"></div>
       <!-- BADGE-2: the expansive set. /song/<slug> IS this panel, so this one
            element serves both the now-playing dock and the song page. -->
       <div class="now-badges" id="now-badges"></div>
@@ -2401,6 +2405,8 @@ const BADGE_ICONS = {
   most_talked:         '<path d="M20.2 11.6a7.4 7.4 0 0 1-7.4 7.4H9.4L5 21.8v-4.2a7.4 7.4 0 0 1 4.4-13.4h3.4a7.4 7.4 0 0 1 7.4 7.4z"/>',
   // sparkle
   new:                 '<path d="M11 3.6l1.7 4.6 4.6 1.7-4.6 1.7L11 16.2 9.3 11.6 4.7 9.9l4.6-1.7z"/><path d="M18 15.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>',
+  // lightbulb, for a submitted idea that became a song (SONG-1)
+  idea_made_into_song: '<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.4.3.6.8.6 1.2v.5h6v-.5c0-.4.2-.9.6-1.2A6 6 0 0 0 12 3z"/>',
 };
 
 const BADGE_LABELS = {
@@ -2471,6 +2477,7 @@ const TROPHY_LABELS = {
   best_words:          (n) => `Best words: ${n} song${n === 1 ? '' : 's'}`,
   best_music:          (n) => `Best music: ${n} song${n === 1 ? '' : 's'}`,
   was_most_loved:      (n) => `Was most loved: ${n} song${n === 1 ? '' : 's'}`,
+  idea_made_into_song: (n) => n === 1 ? 'Idea made into a song' : `${n} ideas made into songs`,
 };
 
 /* One read for the page's artist, live first and artists.json second -- the
@@ -3945,6 +3952,7 @@ function renderNow(){
     nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
     const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
+    const nicIdle = document.getElementById('now-idea-credit'); if(nicIdle) nicIdle.classList.add('hidden');
     dockReact.classList.add('hidden');
     paintLoves();
     paintRatings();
@@ -4044,6 +4052,17 @@ function renderNow(){
 
   const nowBadges = document.getElementById('now-badges');
   if(nowBadges) nowBadges.innerHTML = badgeStripHTML(s, 'full');
+
+  const ideaCredit = document.getElementById('now-idea-credit');
+  if(ideaCredit){
+    if(s.idea_credit){
+      ideaCredit.textContent = 'Idea by ' + s.idea_credit;
+      ideaCredit.classList.remove('hidden');
+    } else {
+      ideaCredit.textContent = '';
+      ideaCredit.classList.add('hidden');
+    }
+  }
 
 
   // Tags: small, quiet, clickable chips under the categories. Only when present.

@@ -441,6 +441,38 @@
   }
   .ded-actions button:hover{border-color:#ff9aa9; color:#ff9aa9;}
   .ded-actions button:disabled{opacity:0.5; cursor:default;}
+  /* Your Song (SONG-1) */
+  .si-head-row{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem; margin-bottom:0.8rem;}
+  .si-week{font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim);}
+  .si-week.is-over{color:#ff9aa9;}
+  .si-filters{display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.6rem;}
+  .si-filters button{
+    font-family:var(--font-ui); font-size:0.75rem; padding:0.4rem 0.85rem; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:none; color:var(--text-dim);
+  }
+  .si-filters button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .si-sort{display:flex; gap:0.4rem; margin-bottom:1.2rem;}
+  .si-sort button{
+    font-family:var(--font-ui); font-size:0.72rem; padding:0.3rem 0.7rem; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:none; color:var(--text-faint);
+  }
+  .si-sort button.active{border-color:var(--accent-2); color:var(--accent-2);}
+  .si-item{border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.9rem; max-width:48rem;}
+  .si-text{font-size:0.92rem; line-height:1.55; color:var(--text); white-space:pre-line; margin-bottom:0.5rem;}
+  .si-meta{display:flex; align-items:center; gap:0.5rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin-bottom:0.6rem; flex-wrap:wrap;}
+  .si-anon-tag{font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; color:#fff;
+    background:var(--accent-grad); border-radius:999px; padding:0.1rem 0.55rem;}
+  .si-status-tag{font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim);
+    border:1px solid var(--line); border-radius:999px; padding:0.1rem 0.55rem;}
+  .si-actions{display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;}
+  .si-actions button, .si-actions select{
+    font-family:var(--font-ui); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:0.45rem 0.95rem; border-radius:10px; cursor:pointer;
+    border:1px solid var(--chip-border); background:var(--chip-bg); color:var(--text-dim);
+  }
+  .si-actions button:hover{border-color:#ff9aa9; color:#ff9aa9;}
+  .si-actions button:disabled{opacity:0.5; cursor:default;}
+  .si-release-picker{display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -468,6 +500,7 @@
     <button class="logout-btn" id="artists-btn" style="display:none;">Artists</button>
     <button class="logout-btn" id="pulse-btn" style="display:none;">Pulse</button>
     <button class="logout-btn" id="dedications-btn" style="display:none;">Dedications</button>
+    <button class="logout-btn" id="songideas-btn" style="display:none;">Your Song</button>
     <span class="since-visit" id="since-visit"></span>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
@@ -610,6 +643,7 @@ async function checkSession(){
     document.getElementById('artists-btn').style.display = 'inline-block';
     document.getElementById('pulse-btn').style.display = 'inline-block';
     document.getElementById('dedications-btn').style.display = 'inline-block';
+    document.getElementById('songideas-btn').style.display = 'inline-block';
     await loadSongs();
     await loadArtists();
     paintSinceVisit();
@@ -628,6 +662,7 @@ async function checkSession(){
     document.getElementById('artists-btn').style.display = 'none';
     document.getElementById('pulse-btn').style.display = 'none';
     document.getElementById('dedications-btn').style.display = 'none';
+    document.getElementById('songideas-btn').style.display = 'none';
   }
 }
 
@@ -2048,6 +2083,7 @@ async function moderateComment(act, id){
 document.getElementById('charts-btn').addEventListener('click', showCharts);
 document.getElementById('pulse-btn').addEventListener('click', showPulse);
 document.getElementById('dedications-btn').addEventListener('click', showDedications);
+document.getElementById('songideas-btn').addEventListener('click', showYourSong);
 
 async function showCharts(){
   currentSong = null;
@@ -2500,6 +2536,186 @@ async function removeDedication(code, btn){
   const { error } = await supabaseClient.rpc('admin_remove_dedication', { p_code: code, p_reason: reason || null });
   if(error){ alert('Could not remove: ' + error.message); btn.disabled = false; return; }
   await loadDedications();
+}
+
+/* ============================================================
+   Your Song (SONG-1): song idea moderation. Every read goes through
+   admin_list_song_ideas()/admin_week_picks(); every write through
+   admin_set_song_idea_status() (sql/024_song_ideas.sql). Neither is
+   reachable by a non-admin regardless of what this UI shows or hides.
+   ============================================================ */
+const SI_STATUS_LABEL = {
+  received: 'Received', picked: 'Picked', in_studio: 'In the studio',
+  released: 'Released', not_picked: 'Not picked', withdrawn: 'Withdrawn',
+};
+function siTimeAgo(iso){
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if(min < 1) return 'just now';
+  if(min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if(hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+let songIdeasFilter = 'received';
+let songIdeasSort = 'newest';
+let songIdeasCache = [];
+
+async function showYourSong(){
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Your Song</h2>
+      <button class="logout-btn" id="si-refresh" type="button">Refresh</button>
+    </div>
+    <div class="si-head-row">
+      <span class="si-week" id="si-week-count">This week&rsquo;s picks: &hellip;</span>
+    </div>
+    <div class="si-filters" id="si-filters">
+      <button type="button" data-status="received">Received</button>
+      <button type="button" data-status="picked">Picked</button>
+      <button type="button" data-status="in_studio">In the studio</button>
+      <button type="button" data-status="released">Released</button>
+      <button type="button" data-status="not_picked">Not picked</button>
+      <button type="button" data-status="">All</button>
+    </div>
+    <div class="si-sort" id="si-sort">
+      <button type="button" data-sort="newest">Newest</button>
+      <button type="button" data-sort="most_hearts">Most hearts</button>
+    </div>
+    <div id="si-list"><div class="mod-empty">Loading&hellip;</div></div>`;
+
+  document.getElementById('si-refresh').addEventListener('click', () => { loadYourSong(); loadWeekPicksHeader(); });
+  document.getElementById('si-filters').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === songIdeasFilter);
+    b.addEventListener('click', () => {
+      songIdeasFilter = b.dataset.status;
+      document.getElementById('si-filters').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      loadYourSong();
+    });
+  });
+  document.getElementById('si-sort').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === songIdeasSort);
+    b.addEventListener('click', () => {
+      songIdeasSort = b.dataset.sort;
+      document.getElementById('si-sort').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      loadYourSong();
+    });
+  });
+
+  await Promise.all([loadYourSong(), loadWeekPicksHeader()]);
+}
+
+async function loadWeekPicksHeader(){
+  const el = document.getElementById('si-week-count');
+  if(!el) return;
+  const { data, error } = await supabaseClient.rpc('admin_week_picks', { p_week: null });
+  if(error){ el.textContent = 'This week’s picks: unknown'; el.classList.remove('is-over'); return; }
+  const n = (data || []).length;
+  el.classList.toggle('is-over', n > 3);
+  // A gentle note past 3, never a block -- the owner can pick as many as they like.
+  el.textContent = `This week’s picks: ${n} of 3` + (n > 3 ? ' (more than the usual three)' : '');
+}
+
+async function loadYourSong(){
+  const host = document.getElementById('si-list');
+  if(!host) return;
+  host.innerHTML = '<div class="mod-empty">Loading&hellip;</div>';
+  const { data, error } = await supabaseClient.rpc('admin_list_song_ideas', {
+    p_status: songIdeasFilter || null, p_sort: songIdeasSort, p_limit: 100, p_before: null,
+  });
+  if(error){ host.innerHTML = `<div class="mod-empty">Error loading song ideas: ${escHtml(error.message)}</div>`; return; }
+  songIdeasCache = data || [];
+  if(!songIdeasCache.length){ host.innerHTML = '<div class="mod-empty">No song ideas here.</div>'; return; }
+
+  host.innerHTML = songIdeasCache.map(songIdeaItemHTML).join('');
+  host.querySelectorAll('[data-si-copy]').forEach(btn => {
+    btn.addEventListener('click', () => copySongIdeaText(btn.dataset.siCopy, btn));
+  });
+  host.querySelectorAll('[data-si-pick]').forEach(btn => {
+    btn.addEventListener('click', () => setSongIdeaStatus(btn.dataset.siPick, 'picked', null));
+  });
+  host.querySelectorAll('[data-si-studio]').forEach(btn => {
+    btn.addEventListener('click', () => setSongIdeaStatus(btn.dataset.siStudio, 'in_studio', null));
+  });
+  host.querySelectorAll('[data-si-notpicked]').forEach(btn => {
+    btn.addEventListener('click', () => setSongIdeaStatus(btn.dataset.siNotpicked, 'not_picked', null));
+  });
+  host.querySelectorAll('[data-si-release]').forEach(btn => {
+    btn.addEventListener('click', () => showReleasePicker(btn.dataset.siRelease));
+  });
+}
+
+function songIdeaItemHTML(i){
+  const creditName = i.credit_name || i.submitter_name || 'their name';
+  const creditLine = i.is_anonymous
+    ? `${escHtml(creditName)} <span class="si-anon-tag">Anonymous</span>`
+    : escHtml(creditName);
+  // released/withdrawn are terminal: nothing left to decide here.
+  const canAct = i.status !== 'released' && i.status !== 'withdrawn';
+  return `<div class="si-item">
+      <div class="si-text">${escHtml(i.idea_text)}</div>
+      <div class="si-meta">
+        <span>${escHtml(i.submitter_name || 'Unknown')} &middot; ${escHtml(i.submitter_email || '')}</span>
+        <span>Credit: ${creditLine}</span>
+        <span>&hearts; ${i.hearts_count || 0}</span>
+        <span class="si-status-tag">${escHtml(SI_STATUS_LABEL[i.status] || i.status)}</span>
+        ${i.released_song_title ? `<span>&rarr; ${escHtml(i.released_song_title)}</span>` : ''}
+        <span>&middot; ${siTimeAgo(i.created_at)}</span>
+      </div>
+      <div class="si-actions" data-si-actions="${escAttr(i.id)}">
+        <button type="button" data-si-copy="${escAttr(i.id)}">Copy</button>
+        ${canAct ? `<button type="button" data-si-pick="${escAttr(i.id)}" ${i.status === 'picked' ? 'disabled' : ''}>Pick</button>` : ''}
+        ${canAct ? `<button type="button" data-si-studio="${escAttr(i.id)}" ${i.status === 'in_studio' ? 'disabled' : ''}>In the studio</button>` : ''}
+        ${canAct ? `<button type="button" data-si-release="${escAttr(i.id)}">Released</button>` : ''}
+        ${canAct ? `<button type="button" data-si-notpicked="${escAttr(i.id)}" ${i.status === 'not_picked' ? 'disabled' : ''}>Not this week</button>` : ''}
+      </div>
+    </div>`;
+}
+
+async function copySongIdeaText(id, btn){
+  const idea = songIdeasCache.find(x => x.id === id);
+  const text = idea ? idea.idea_text : '';
+  try{
+    await navigator.clipboard.writeText(text);
+    const old = btn.textContent; btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = old; }, 1200);
+  }catch(e){ window.prompt('Copy this idea:', text); }
+}
+
+async function setSongIdeaStatus(id, status, releasedSongId){
+  const { error } = await supabaseClient.rpc('admin_set_song_idea_status', {
+    p_id: id, p_status: status, p_released_song_id: releasedSongId || null,
+  });
+  if(error){ alert('Could not update: ' + error.message); return; }
+  await Promise.all([loadYourSong(), loadWeekPicksHeader()]);
+}
+
+// "Released" needs a song chosen first -- an inline picker swapped into that
+// item's own actions row, not a separate modal, matching how this admin page
+// never pops up more than a plain window.prompt elsewhere.
+function showReleasePicker(id){
+  const actions = document.querySelector(`[data-si-actions="${id}"]`);
+  if(!actions) return;
+  const approved = (songs || []).filter(s => s.status === 'approved')
+    .slice().sort((a, b) => (a.title_translit || a.title || '').localeCompare(b.title_translit || b.title || ''));
+  actions.innerHTML = `
+    <span class="si-release-picker">
+      <select data-si-release-select>
+        <option value="">Choose the song&hellip;</option>
+        ${approved.map(s => `<option value="${escAttr(s.id)}">${escHtml(s.title_translit || s.title)}</option>`).join('')}
+      </select>
+      <button type="button" data-si-release-confirm>Confirm</button>
+      <button type="button" data-si-release-cancel>Cancel</button>
+    </span>`;
+  actions.querySelector('[data-si-release-cancel]').addEventListener('click', () => loadYourSong());
+  actions.querySelector('[data-si-release-confirm]').addEventListener('click', async () => {
+    const songId = actions.querySelector('[data-si-release-select]').value;
+    if(!songId){ alert('Choose the song this idea became.'); return; }
+    await setSongIdeaStatus(id, 'released', songId);
+  });
 }
 </script>
 

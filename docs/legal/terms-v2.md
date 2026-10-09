@@ -7,7 +7,7 @@
 > An artist's acceptance is stamped on `artists.terms_version` /
 > `artists.terms_accepted_at` when they submit a song.
 
-Terms of Use and Privacy, Laivy Hart. Version v2, last updated 24 September 2026.
+Terms of Use and Privacy, Laivy Hart. Version v2, last updated 9 October 2026.
 
 Laivy Hart (laivyhart.com, "the Site," "we," "us") is a music platform for original songs. By creating an account, uploading content, or using the Site, you agree to these Terms. If you do not agree, do not use the Site.
 
@@ -34,5 +34,7 @@ Laivy Hart (laivyhart.com, "the Site," "we," "us") is a music platform for origi
 11. Governing law and disputes. These Terms are governed by the laws of the State of New York, without regard to its conflict-of-laws rules. Any dispute will be brought exclusively in the state and federal courts located in New York County, New York, and each party consents to the personal jurisdiction of those courts.
 
 12. Contact. hello@laivyhart.com.
+
+13. Idea submissions. If you submit a song idea, you grant Laivy Hart a perpetual, worldwide, royalty-free license to use, adapt, and publish the idea and any words you submit with it, with or without modification. We owe no payment for an idea, are under no obligation to use it, and you have no right to approve or reject the song that may result. Any song Laivy Hart makes from an idea belongs to Laivy Hart, with credit given to you as you chose when submitting, including anonymously if you asked for that. Laivy Hart may create songs on similar themes from any source, including other members' ideas, whether or not related to yours. By submitting an idea, you confirm it is yours to share and that it contains nothing unlawful.
 
 This document is a draft prepared for the Site owner's review and revision and is not legal advice.

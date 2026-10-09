@@ -57,6 +57,9 @@ async function main() {
 
     const dedicationPage = await import('./specs/dedication-page.spec.mjs');
     results.push(await dedicationPage.run(browser, PORT));
+
+    const adminSongIdeas = await import('./specs/admin-song-ideas.spec.mjs');
+    results.push(await adminSongIdeas.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();

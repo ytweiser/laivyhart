@@ -211,6 +211,14 @@ export async function run() {
         top_songs: [{ title: 'Supernova', plays: 20 }, { title: 'Low Light', plays: 15 }],
         top_cities: [{ city: 'Atlanta', n: 18 }, { city: 'Haifa', n: 9 }],
       },
+      song_ideas: {
+        count: 2,
+        list: [
+          { excerpt: 'A song about staying up all night talking.', credit: 'Nova Ash' },
+          { excerpt: 'Something about the first snow of the year.', credit: 'Anonymous' },
+        ],
+        waiting_to_pick: 5,
+      },
     });
     const t = report.text;
     r.check('has the section heading with the date', t.includes('Yesterday on Laivy Hart (2026-10-08)'), t);
@@ -218,6 +226,39 @@ export async function run() {
     r.check('shows plays and completion rate', t.includes('Plays: 55') && t.includes('Completion rate: 61.3%'), t);
     r.check('shows top songs with their play counts', t.includes('Supernova (20)') && t.includes('Low Light (15)'), t);
     r.check('shows top cities with their counts', t.includes('Atlanta (18)') && t.includes('Haifa (9)'), t);
+  }
+
+  // --- SONG-1: the daily email's "Song ideas yesterday" section ----
+  r.section('formatReport() renders the Song ideas yesterday section');
+  {
+    const report = W.formatReport({
+      generated_at: new Date().toISOString(),
+      signups: { count: 0, list: [] }, review_queue: { count: 0, list: [] },
+      pending_comments: 0, proposed_tags_new: [], anomalies: {}, chart: {}, yesterday: {},
+      song_ideas: {
+        count: 2,
+        list: [
+          { excerpt: 'A song about staying up all night talking.', credit: 'Nova Ash' },
+          { excerpt: 'Something about the first snow of the year.', credit: 'Anonymous' },
+        ],
+        waiting_to_pick: 5,
+      },
+    });
+    const t = report.text;
+    r.check('shows the count', t.includes('Song ideas yesterday: 2'), t);
+    r.check('shows each excerpt with its credit', t.includes('"A song about staying up all night talking." (Nova Ash)')
+      && t.includes('"Something about the first snow of the year." (Anonymous)'), t);
+    r.check('shows how many are still waiting to be picked', t.includes('Waiting to pick: 5'), t);
+  }
+
+  r.section('formatReport() does not crash when song_ideas is absent (an older report shape)');
+  {
+    const report = W.formatReport({
+      generated_at: new Date().toISOString(),
+      signups: { count: 0, list: [] }, review_queue: { count: 0, list: [] },
+      pending_comments: 0, proposed_tags_new: [], anomalies: {}, chart: {}, yesterday: {},
+    });
+    r.check('falls back to zero, not a crash', report.text.includes('Song ideas yesterday: 0') && report.text.includes('Waiting to pick: 0'), report.text);
   }
 
   // --- FIX-4: a non-2xx REST response is no longer silently swallowed ----

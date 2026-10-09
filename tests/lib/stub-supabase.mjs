@@ -63,6 +63,12 @@ export function buildFixtureResponses(overrides) {
     removeMyDedicationResult: null,
     createDedicationResult: 'NEWCODE1', // the code create_dedication() returns, or a full fulfill() object for the error path
     dedicationsPublic: [],       // dedications_public rows: the strip (filtered by song_id) and /d/<code> (filtered by code) both read this
+    // SONG-1. adminSetSongIdeaStatusResult: a full fulfill() object to force
+    // admin_set_song_idea_status's error path; null means a plain success
+    // that actually mutates the in-memory songIdeasState (see below).
+    adminSongIdeas: [],
+    adminWeekPicks: [],
+    adminSetSongIdeaStatusResult: null,
   };
   return { ...base, ...(overrides || {}) };
 }
@@ -116,6 +122,10 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
   // itself -- a static fixture can't reflect that, so this one table gets a
   // real, in-memory, per-page-load mutable copy instead.
   let picksState = F2.artistPicks.map((p) => ({ id: p.id || `pick-auto-${pickAutoId++}`, ...p }));
+  // SONG-1: the one admin-mutated table here besides artist_picks -- Pick/
+  // Studio/Released/Not this week all have to show up on the very next
+  // admin_list_song_ideas() read, the same "mutate then re-read" shape.
+  let songIdeasState = F2.adminSongIdeas.map((i) => ({ ...i }));
 
   await page.route(`https://${SUPA_HOST}/**`, async (route) => {
     const req = route.request();
@@ -325,6 +335,36 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       return fulfill(null);
     }
     if (url.includes('/rest/v1/rpc/my_dedications')) { notify('rpc:my_dedications'); return fulfill(F2.myDedications); }
+
+    // SONG-1.
+    if (url.includes('/rest/v1/rpc/admin_list_song_ideas')) {
+      notify('rpc:admin_list_song_ideas');
+      const status = rpcParam(req, 'p_status');
+      const sort = rpcParam(req, 'p_sort') || 'newest';
+      let rows = status ? songIdeasState.filter((i) => i.status === status) : songIdeasState.slice();
+      rows = rows.slice().sort((a, b) => sort === 'most_hearts'
+        ? (b.hearts_count || 0) - (a.hearts_count || 0)
+        : new Date(b.created_at) - new Date(a.created_at));
+      return fulfill(rows);
+    }
+    if (url.includes('/rest/v1/rpc/admin_week_picks')) { notify('rpc:admin_week_picks'); return fulfill(F2.adminWeekPicks); }
+    if (url.includes('/rest/v1/rpc/admin_set_song_idea_status')) {
+      notify('rpc:admin_set_song_idea_status');
+      if (F2.adminSetSongIdeaStatusResult) return route.fulfill(F2.adminSetSongIdeaStatusResult);
+      const id = rpcParam(req, 'p_id');
+      const status = rpcParam(req, 'p_status');
+      const releasedSongId = rpcParam(req, 'p_released_song_id');
+      songIdeasState = songIdeasState.map((i) => {
+        if (i.id !== id) return i;
+        if (status === 'released') {
+          const song = F.SONGS_ROWS.find((s) => s.id === releasedSongId);
+          return { ...i, status, released_song_id: releasedSongId, released_song_title: song ? (song.title_translit || song.title) : null };
+        }
+        if (status === 'picked') return { ...i, status, picked_week: '2026-10-11' };
+        return { ...i, status };
+      });
+      return fulfill(null);
+    }
 
     // Anything else (ratings, submission_events, auth token refresh, ...):
     // a harmless empty success, so an unexpected call never hangs the page.

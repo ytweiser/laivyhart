@@ -276,6 +276,9 @@ try {
 for (const row of rows) {
   delete row.proposed_channels;
   delete row.proposed_tags;
+  // SONG-1: idea_id is an internal reference into the locked-down
+  // song_ideas table; idea_credit (the actual "Idea by [name]" text) stays.
+  delete row.idea_id;
 }
 
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');

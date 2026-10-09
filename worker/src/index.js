@@ -473,8 +473,26 @@ export function formatReport(r) {
   L.push('');
   L.push(formatYesterday(r.yesterday));
   L.push('');
+  L.push(formatSongIdeas(r.song_ideas));
+  L.push('');
   L.push('sent by the Laivy Hart report job');
   return { subject, text: L.join('\n') };
+}
+
+/* SONG-1: build_daily_report()'s own `song_ideas` key (sql/024_song_ideas.sql).
+   waiting_to_pick is a queue depth, not a 24-hour count -- it answers "how
+   many are sitting there right now", same as the review queue above. */
+function formatSongIdeas(si) {
+  si = si || {};
+  const n = (x) => Number(x || 0);
+  const list = Array.isArray(si.list) ? si.list : [];
+  const L = [];
+  L.push(`Song ideas yesterday: ${n(si.count)}`);
+  for (const i of list) {
+    L.push(`  - "${i.excerpt}" (${i.credit || 'Anonymous'})`);
+  }
+  L.push(`Waiting to pick: ${n(si.waiting_to_pick)}`);
+  return L.join('\n');
 }
 
 /* ACT-2: "Yesterday on Laivy Hart", from build_daily_report()'s own

@@ -141,6 +141,7 @@ const TROPHY_LABELS = {
   best_words: (n) => `Best words: ${n} song${n === 1 ? '' : 's'}`,
   best_music: (n) => `Best music: ${n} song${n === 1 ? '' : 's'}`,
   was_most_loved: (n) => `Was most loved: ${n} song${n === 1 ? '' : 's'}`,
+  idea_made_into_song: (n) => n === 1 ? 'Idea made into a song' : `${n} ideas made into songs`,
 };
 
 // "Sep 2026" from a plain "YYYY-MM-DD" -- artist_stats' `since` column, as
@@ -210,6 +211,9 @@ function renderSong(html, song) {
     ? '<a href="/artist/' + escAttr(artist.handle) + '">' + escHtml(artistName) + '</a>'
     : escHtml(artistName)) + '</p>';
   if (song.about) body += '<p>' + escHtml(song.about) + '</p>';
+  // SONG-1: songs.idea_credit, set once at release. "Anonymous" when the
+  // submitter asked to stay anonymous, same wording the client uses.
+  if (song.idea_credit) body += '<p>Idea by ' + escHtml(song.idea_credit) + '</p>';
   if (song.lyrics_original) {
     body += '<div' + (isHebrew(song.lyrics_original) ? ' lang="he" dir="rtl"' : ' lang="en" dir="ltr"') + '>'
           + escHtml(song.lyrics_original).replace(/\n/g, '<br>') + '</div>';

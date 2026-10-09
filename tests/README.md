@@ -88,8 +88,9 @@ any failure.
   (ACT-1), exercised directly in Node against the real
   `worker/src/index.js`: caps (25 events, 16 KB, meta trimming), unknown
   event types dropped, the JWT-verification path (valid and invalid tokens),
-  a static check that no IP header is ever read, and (ACT-2) the daily
-  email's "Yesterday on Laivy Hart" section.
+  a static check that no IP header is ever read, (ACT-2) the daily email's
+  "Yesterday on Laivy Hart" section, and (SONG-1) its "Song ideas yesterday"
+  section, including the no-crash fallback when that key is absent.
 - `specs/admin-pulse.spec.mjs` — the admin Pulse tab (ACT-2), signed in as an
   admin with every `pulse_*` RPC stubbed: overview tiles/feed/top lists/
   retention, and the song, member and visitor drilldowns.
@@ -116,6 +117,13 @@ any failure.
   someone", never a name), a removed-or-unknown code (identical "no longer
   available" message either way), the Play button handing off to the real
   player, and 1280px/390px rendering.
+- `specs/admin-song-ideas.spec.mjs` (SONG-1): the admin "Your Song" tab,
+  signed in as an admin with `admin_list_song_ideas`/`admin_week_picks`/
+  `admin_set_song_idea_status` stubbed: the list (idea text, submitter name
+  and email, credit and anonymous tag, hearts), the status filters, the
+  week-picks header (a gentle note past 3, not a block), the Pick/In the
+  studio/Not this week actions, the Released song picker (including the
+  refusal to confirm with nothing chosen), and the Copy button.
 - `specs/canonical-origin.spec.mjs` (CANON-1): a filesystem scan over every
   file this site serves or produces at build time (skipping `tests/` and
   `worker/`, the two places that intentionally keep both the bare and www
