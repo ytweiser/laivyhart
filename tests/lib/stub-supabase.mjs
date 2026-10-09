@@ -37,6 +37,7 @@ export function buildFixtureResponses(overrides) {
     selfArtistRow: null,        // js/auth.js's loadSelfFlags() self-scoped `artists` row; null = signed out/non-artist fallback
     reviews: [],                // My songs' rejection-reason lookup
     artistPicksInsertError: null, // {status, message} -- the trigger's own words (cap, unpublished song)
+    rateSongResult: null,        // FIX-3: a full fulfill() object to force rate_song's error-revert path
     // ACT-2 (Pulse). isAdmin defaults false so every EXISTING scenario keeps
     // the prior catch-all behavior (admin.html's checkSession() sees it as
     // not-admin) unless a Pulse scenario opts in explicitly.
@@ -247,6 +248,13 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       return fulfill(Math.max(0, current + (on ? 1 : -1)));
     }
     if (url.includes('/rest/v1/rpc/swap_my_pick_positions')) { notify('rpc:swap_my_pick_positions'); return fulfill(null); }
+    if (url.includes('/rest/v1/rpc/rate_song')) {
+      notify('rpc:rate_song');
+      // FIX-3: a scenario testing the error-revert path sets this to a full
+      // Playwright fulfill() object, the same shape followArtistResult uses.
+      if (F2.rateSongResult) return route.fulfill(F2.rateSongResult);
+      return fulfill(null);
+    }
 
     // ACT-2 (Pulse). pulse_member has two overloads (p_user_id uuid /
     // p_device_id text), both reached through the same RPC name -- the

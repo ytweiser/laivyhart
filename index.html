@@ -4462,12 +4462,17 @@ function paintRatings(){
   host.appendChild(msg);
 }
 
+let ratingMessageTimer = null;
 function ratingMessage(text, bad){
   const el = document.getElementById('rating-msg');
+  clearTimeout(ratingMessageTimer);
   if(!el) return;
   el.textContent = text;
   el.className = 'rating-msg' + (bad ? ' is-bad' : '');
   el.hidden = !text;
+  // FIX-3: a shown message (the server's own rejection reason) clears itself
+  // after a few seconds rather than sitting there until the next tap.
+  if(text) ratingMessageTimer = setTimeout(() => ratingMessage(''), 5000);
 }
 
 /* One delegated handler for every star. Signed out opens the sign-in modal;
@@ -4486,7 +4491,14 @@ document.addEventListener('click', async (e) => {
 
   const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
   if(!signedIn){
-    if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal();
+    // FIX-3: no optimistic change at all here -- the stars stay exactly as
+    // they were. The modal explains why and returns here after sign-in.
+    if(window.laivy && window.laivy.accountUI){
+      window.laivy.accountUI.openModal({
+        next: location.pathname,
+        reason: 'Sign in to rate the words and the music',
+      });
+    }
     return;
   }
   ratingMessage('');

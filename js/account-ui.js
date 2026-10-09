@@ -59,6 +59,7 @@ function buildModal() {
       <button class="lv-modal-x" type="button" aria-label="Close">&times;</button>
       <h2 class="lv-modal-title" id="lv-signin-title">Sign in to Laivy Hart</h2>
       <p class="lv-modal-sub" dir="rtl" lang="he">התחברות ללייvi הארט</p>
+      <p class="lv-modal-reason" data-reason hidden></p>
 
       <div class="lv-pane" data-pane="form">
         <label class="lv-label" for="lv-email">Email <span dir="rtl" lang="he">אימייל</span></label>
@@ -136,6 +137,10 @@ let modalNext = null;
 export function openModal(opts) {
   modalNext = (opts && typeof opts.next === 'string') ? opts.next : null;
   const m = buildModal();
+  const reasonEl = m.querySelector('[data-reason]');
+  const reason = (opts && typeof opts.reason === 'string') ? opts.reason : '';
+  reasonEl.textContent = reason;
+  reasonEl.hidden = !reason;
   m.querySelector('[data-pane="form"]').hidden = false;
   m.querySelector('[data-pane="sent"]').hidden = true;
   m.querySelector('[data-err]').hidden = true;

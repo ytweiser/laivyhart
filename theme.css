@@ -558,6 +558,11 @@ body{
   font-family:var(--font-display); font-weight:600; margin:0 0 0.15rem; font-size:1.3rem; color:var(--text);
 }
 .lv-modal-sub{ margin:0 0 1rem; color:var(--text-dim); font-size:0.9rem; }
+/* FIX-3: the one-line reason a gated action opened this modal for (e.g. "Sign
+   in to rate the words and the music"). Hidden with no inline style attribute
+   needed -- the [hidden] attribute set in JS is enough. */
+.lv-modal-reason{ margin:0 0 1rem; padding:0.55rem 0.75rem; border-radius:10px;
+  background:var(--chip-bg); border:1px solid var(--chip-border); color:var(--text); font-size:0.88rem; }
 
 .lv-label{ display:block; margin:0.8rem 0 0.3rem; font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim); }
 .lv-label span{ opacity:0.75; }
