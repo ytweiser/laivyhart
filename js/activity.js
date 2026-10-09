@@ -85,12 +85,29 @@ async function accessToken() {
   } catch (e) { return null; }
 }
 
-/* `urgent`: the page is going away (pagehide, or visibilitychange to hidden).
-   sendBeacon is the right tool there, but it cannot carry a custom header, so
-   a signed-in visitor's last beacon of a visit goes out anonymous rather than
-   being skipped; every other flush goes through fetch and carries the token
-   when there is one. Never throws: analytics is never allowed to break the
-   page, loud failures included. */
+/* `urgent`: the page is actually being torn down (pagehide only -- see the
+   wiring below). sendBeacon is the right tool there, but it cannot carry a
+   custom header, so a signed-in visitor's last beacon of a visit goes out
+   anonymous rather than being skipped; every other flush goes through fetch
+   and carries the token when there is one.
+
+   FIX-4: the beacon's Blob MUST be sent as text/plain, not application/json.
+   application/json is not a CORS-safelisted content type, and this request
+   is cross-origin (the site to the Worker's own workers.dev domain);
+   sendBeacon cannot run a preflight, so a JSON-typed beacon is silently
+   dropped or blocked by the browser rather than ever reaching the Worker.
+   The body is still the same JSON string; only the declared type changes,
+   and the Worker parses the body as JSON regardless of what it is told the
+   content type is.
+
+   A fetch failure (including a non-2xx response) is retried once, and
+   logged to the console if the retry fails too -- never silently dropped.
+   Never throws beyond that: analytics is never allowed to break the page. */
+async function sendOnce(headers, body) {
+  const res = await fetch(ENDPOINT, { method: 'POST', headers, body, keepalive: true });
+  if (!res.ok) throw new Error('activity flush HTTP ' + res.status);
+}
+
 export async function flush(urgent) {
   if (noTrack()) { queue = []; return; }
   if (!queue.length) return;
@@ -100,7 +117,7 @@ export async function flush(urgent) {
 
   if (urgent && typeof navigator !== 'undefined' && navigator.sendBeacon) {
     try {
-      const blob = new Blob([body], { type: 'application/json' });
+      const blob = new Blob([body], { type: 'text/plain' });
       if (navigator.sendBeacon(ENDPOINT, blob)) return;
     } catch (e) { /* fall through to fetch keepalive */ }
   }
@@ -110,16 +127,26 @@ export async function flush(urgent) {
     const token = await accessToken();
     if (token) headers.Authorization = 'Bearer ' + token;
   } catch (e) { /* send anonymous rather than drop the batch */ }
+
   try {
-    await fetch(ENDPOINT, { method: 'POST', headers, body, keepalive: true });
-  } catch (e) { /* best effort; nothing to retry onto -- see README Testing */ }
+    await sendOnce(headers, body);
+  } catch (e) {
+    try {
+      await sendOnce(headers, body);
+    } catch (e2) {
+      console.error('[laivy] activity flush failed twice, dropping this batch:', e2 && e2.message);
+    }
+  }
 }
 
 setInterval(() => flush(false), FLUSH_MS);
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(true); });
+  // Not urgent: the tab is only hidden, not necessarily gone, so this still
+  // goes through fetch+keepalive like the periodic timer, not sendBeacon.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) flush(false); });
 }
 if (typeof window !== 'undefined') {
+  // The one truly urgent case: the page is being torn down right now.
   window.addEventListener('pagehide', () => flush(true));
 }
 

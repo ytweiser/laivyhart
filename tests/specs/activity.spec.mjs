@@ -14,11 +14,16 @@
    here ever leaves the sandbox regardless: stub-activity.mjs intercepts the
    endpoint either way, and Supabase is stubbed as always.
    ============================================================ */
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { newPage, collectErrors } from '../lib/browser.mjs';
 import { wireSupabaseStubs } from '../lib/stub-supabase.mjs';
 import { wireActivityStub } from '../lib/stub-activity.mjs';
 import { makeReporter } from '../lib/report.mjs';
 import * as F from '../fixtures.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const SLUG = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA).slug;
 
@@ -58,8 +63,11 @@ export async function run(browser, port) {
   const r = makeReporter('activity.spec.mjs');
   await scenarioNoTrackSendsNothing(browser, port, r);
   await scenarioGPCSendsNothing(browser, port, r);
+  await scenarioGPCFalseStillSends(browser, port, r);
   await scenarioQueueAndFlushShape(browser, port, r);
   await scenarioPlayMilestonesOnceEach(browser, port, r);
+  await scenarioBeaconContentType(browser, port, r);
+  await scenarioEndpointUrl(r);
   return r;
 }
 
@@ -91,6 +99,26 @@ async function scenarioGPCSendsNothing(browser, port, r) {
   await page.evaluate(() => window.laivy.activity.log('heart', { song_id: 'x' }));
   await forceFlush(page);
   r.check('no /event call with GPC on, even though no-track is off', calls.length === 0, calls.length);
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioGPCFalseStillSends(browser, port, r) {
+  r.section('FIX-4: GPC present but false (not the bare existence of the property) still sends -- Chrome incognito does not set it at all, but this guards the stricter case too');
+  const page = await newPage(browser);
+  await clearNoTrack(page);
+  await page.addInitScript(() => {
+    try { Object.defineProperty(window.navigator, 'globalPrivacyControl', { value: false, configurable: true }); } catch (e) {}
+  });
+  const errors = collectErrors(page);
+  await wireSupabaseStubs(page);
+  const calls = await wireActivityStub(page);
+  await gotoSong(page, port);
+  const gpcSeen = await page.evaluate(() => navigator.globalPrivacyControl);
+  r.check('globalPrivacyControl is present and false, not merely absent', gpcSeen === false, gpcSeen);
+  await page.evaluate(() => window.laivy.activity.log('heart', { song_id: 'x' }));
+  await forceFlush(page);
+  r.check('the event still sends -- the check is === true, not "in navigator"', calls.length === 1, calls.length);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -176,4 +204,40 @@ async function scenarioPlayMilestonesOnceEach(browser, port, r) {
   r.check('play_complete fired exactly once', countOf('play_complete') === 1, countOf('play_complete'));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
+}
+
+async function scenarioBeaconContentType(browser, port, r) {
+  r.section('FIX-4: the pagehide beacon is sent as text/plain, never application/json');
+  const page = await newPage(browser);
+  await clearNoTrack(page);
+  const errors = collectErrors(page);
+  await wireSupabaseStubs(page);
+  const calls = await wireActivityStub(page);
+  await gotoSong(page, port);
+
+  await page.evaluate(() => window.laivy.activity.log('heart', { song_id: 'x' }));
+  // Exercises the real sendBeacon call path (urgent=true), exactly as the
+  // real pagehide listener does -- not the fetch+keepalive path.
+  await page.evaluate(() => window.laivy.activity.flush(true));
+  await page.waitForTimeout(200);
+
+  r.check('the beacon reached the endpoint', calls.length === 1, calls.length);
+  r.check(
+    'sent as text/plain, not application/json (a JSON content type is not CORS-safelisted and sendBeacon cannot preflight)',
+    calls[0] && calls[0].headers['content-type'] === 'text/plain',
+    calls[0] && calls[0].headers['content-type']
+  );
+  r.check('the body is still valid JSON underneath the text/plain label', !!(calls[0] && calls[0].body && Array.isArray(calls[0].body.events)), calls[0] && calls[0].body);
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioEndpointUrl(r) {
+  r.section('FIX-4: the endpoint is the real deployed Worker, not a placeholder or localhost');
+  const src = readFileSync(join(ROOT, 'js', 'activity.js'), 'utf8');
+  const m = src.match(/const ENDPOINT = '([^']+)'/);
+  r.check('ENDPOINT constant is present', !!m, src.slice(0, 200));
+  const url = m && m[1];
+  r.check('points at the real laivyhart-audio-upload Worker', url === 'https://laivyhart-audio-upload.ytweiser-399.workers.dev/event', url);
+  r.check('not localhost or a placeholder', !/localhost|127\.0\.0\.1|YOUR_|example\.com|TODO/i.test(url || ''), url);
 }

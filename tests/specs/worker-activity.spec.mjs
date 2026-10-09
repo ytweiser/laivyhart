@@ -220,5 +220,49 @@ export async function run() {
     r.check('shows top cities with their counts', t.includes('Atlanta (18)') && t.includes('Haifa (9)'), t);
   }
 
+  // --- FIX-4: a non-2xx REST response is no longer silently swallowed ----
+  r.section('FIX-4: a failed insert (non-2xx) is logged with status and body, not just swallowed');
+  {
+    const env = { SUPABASE_SERVICE_ROLE_KEY: 'svc' };
+    const ctx = makeCtx();
+    const failFetch = async () => ({ ok: false, status: 400, text: async () => '{"message":"column \\"nope\\" does not exist"}' });
+    const req = postEvent({ body: { device_id: 'device-fail', session_id: 's', events: [{ type: 'page_view' }] } });
+
+    const logged = [];
+    const realError = console.error;
+    console.error = (...args) => logged.push(args.join(' '));
+    try {
+      const res = await W.handleActivityEvent(req, env, ctx, failFetch);
+      await Promise.all(ctx.waited);
+      r.check('still responds 204 (never blocks the client on a failed insert)', res.status === 204, res.status);
+      r.check('logs the REST status', logged.some((l) => l.includes('400')), logged);
+      r.check('logs the REST response body', logged.some((l) => l.includes('does not exist')), logged);
+    } finally {
+      console.error = realError;
+    }
+  }
+
+  r.section('FIX-4: a missing SUPABASE_SERVICE_ROLE_KEY is logged clearly, not silent');
+  {
+    const env = {}; // no SUPABASE_SERVICE_ROLE_KEY
+    const ctx = makeCtx();
+    const calls = [];
+    const fetchImpl = async (url, opts) => { calls.push({ url, opts }); return { ok: true, text: async () => '[]' }; };
+    const req = postEvent({ body: { device_id: 'device-nokey', session_id: 's', events: [{ type: 'page_view' }] } });
+
+    const logged = [];
+    const realError = console.error;
+    console.error = (...args) => logged.push(args.join(' '));
+    try {
+      const res = await W.handleActivityEvent(req, env, ctx, fetchImpl);
+      await Promise.all(ctx.waited);
+      r.check('still responds 204', res.status === 204, res.status);
+      r.check('no insert is attempted without the key', calls.length === 0, calls.length);
+      r.check('logs that the key is not set', logged.some((l) => /SUPABASE_SERVICE_ROLE_KEY/.test(l)), logged);
+    } finally {
+      console.error = realError;
+    }
+  }
+
   return r;
 }

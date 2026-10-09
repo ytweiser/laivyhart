@@ -332,21 +332,42 @@ export async function handleActivityEvent(request, env, ctx, fetchImpl = fetch) 
     });
   }
 
-  if (rows.length && env.SUPABASE_SERVICE_ROLE_KEY) {
-    const insert = fetchImpl(SUPABASE_URL + '/rest/v1/activity_events', {
-      method: 'POST',
-      headers: {
-        apikey: env.SUPABASE_SERVICE_ROLE_KEY,
-        Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(rows),
-    }).catch((e) => console.error('activity insert failed:', e && e.message));
-    // Never block the response on the insert: respond 204 now, let the write
-    // finish in the background. ctx is absent in a direct unit-test call, so
-    // this falls back to awaiting it there instead of losing the write.
-    if (ctx && ctx.waitUntil) ctx.waitUntil(insert); else await insert;
+  if (rows.length) {
+    // FIX-4: a missing secret is not silence -- it is a clear line in
+    // `wrangler tail`, same as the daily report already does for the same key.
+    if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('activity insert skipped: SUPABASE_SERVICE_ROLE_KEY is not set');
+    } else {
+      const insert = (async () => {
+        try {
+          const res = await fetchImpl(SUPABASE_URL + '/rest/v1/activity_events', {
+            method: 'POST',
+            headers: {
+              apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify(rows),
+          });
+          // FIX-4: fetch only REJECTS on a network-level failure, never on a
+          // non-2xx response -- a bad column, a wrong/expired key, or an RLS
+          // rejection all came back as a resolved response with an error
+          // status, and the old .catch()-only version never saw any of them.
+          // No IP, no tokens in this line, only the REST status and body.
+          if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            console.error('activity insert failed:', res.status, text.slice(0, 500));
+          }
+        } catch (e) {
+          console.error('activity insert failed:', e && e.message);
+        }
+      })();
+      // Never block the response on the insert: respond 204 now, let the write
+      // finish in the background. ctx is absent in a direct unit-test call, so
+      // this falls back to awaiting it there instead of losing the write.
+      if (ctx && ctx.waitUntil) ctx.waitUntil(insert); else await insert;
+    }
   }
 
   return empty204();
