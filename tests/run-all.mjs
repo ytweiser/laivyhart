@@ -48,6 +48,9 @@ async function main() {
 
     const homepagePulse = await import('./specs/homepage-pulse.spec.mjs');
     results.push(await homepagePulse.run(browser, PORT));
+
+    const adminDedications = await import('./specs/admin-dedications.spec.mjs');
+    results.push(await adminDedications.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();

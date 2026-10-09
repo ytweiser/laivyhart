@@ -413,6 +413,34 @@
     .pulse-tiles{grid-template-columns:repeat(auto-fill, minmax(7.5rem, 1fr));}
     .pulse-list-row{flex-direction:column; gap:0.1rem;}
   }
+  /* Dedications (DED-1) */
+  .ded-filters{display:flex; gap:0.4rem; margin-bottom:1.2rem;}
+  .ded-filters button{
+    font-family:var(--font-ui); font-size:0.75rem; padding:0.4rem 0.85rem; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:none; color:var(--text-dim);
+  }
+  .ded-filters button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .ded-item{border:1px solid var(--line); border-radius:14px; padding:1rem 1.1rem; margin-bottom:0.9rem; max-width:44rem;}
+  .ded-item.is-removed{opacity:0.6;}
+  .ded-song{font-family:var(--font-display); font-style:italic; color:var(--accent-2); font-size:0.95rem; margin-bottom:0.3rem;}
+  .ded-recipient{font-size:0.98rem; color:var(--text); margin-bottom:0.25rem;}
+  .ded-recipient strong{font-weight:600;}
+  .ded-occasion{font-family:var(--font-ui); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.04em;
+    color:var(--text-faint); margin-left:0.4rem;}
+  .ded-message{font-size:0.92rem; line-height:1.5; color:var(--text-dim); white-space:pre-line; margin:0.4rem 0 0.6rem;}
+  .ded-meta{display:flex; align-items:center; gap:0.5rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint); margin-bottom:0.7rem; flex-wrap:wrap;}
+  .ded-anon-tag{font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; color:#fff;
+    background:var(--accent-grad); border-radius:999px; padding:0.1rem 0.55rem;}
+  .ded-removed-tag{font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim);
+    border:1px solid var(--line); border-radius:999px; padding:0.1rem 0.55rem;}
+  .ded-actions{display:flex; gap:0.5rem; flex-wrap:wrap;}
+  .ded-actions button{
+    font-family:var(--font-ui); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:0.45rem 0.95rem; border-radius:10px; cursor:pointer;
+    border:1px solid var(--chip-border); background:var(--chip-bg); color:var(--text-dim);
+  }
+  .ded-actions button:hover{border-color:#ff9aa9; color:#ff9aa9;}
+  .ded-actions button:disabled{opacity:0.5; cursor:default;}
 </style>
 </head>
 <body>
@@ -439,6 +467,7 @@
     <button class="logout-btn" id="charts-btn" style="display:none;">Charts</button>
     <button class="logout-btn" id="artists-btn" style="display:none;">Artists</button>
     <button class="logout-btn" id="pulse-btn" style="display:none;">Pulse</button>
+    <button class="logout-btn" id="dedications-btn" style="display:none;">Dedications</button>
     <span class="since-visit" id="since-visit"></span>
     <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">◐</button>
     <button class="logout-btn" id="logout-btn" style="display:none;">Log out</button>
@@ -580,6 +609,7 @@ async function checkSession(){
     document.getElementById('charts-btn').style.display = 'inline-block';
     document.getElementById('artists-btn').style.display = 'inline-block';
     document.getElementById('pulse-btn').style.display = 'inline-block';
+    document.getElementById('dedications-btn').style.display = 'inline-block';
     await loadSongs();
     await loadArtists();
     paintSinceVisit();
@@ -597,6 +627,7 @@ async function checkSession(){
     document.getElementById('charts-btn').style.display = 'none';
     document.getElementById('artists-btn').style.display = 'none';
     document.getElementById('pulse-btn').style.display = 'none';
+    document.getElementById('dedications-btn').style.display = 'none';
   }
 }
 
@@ -2016,6 +2047,7 @@ async function moderateComment(act, id){
 --------------------------------------------------------- */
 document.getElementById('charts-btn').addEventListener('click', showCharts);
 document.getElementById('pulse-btn').addEventListener('click', showPulse);
+document.getElementById('dedications-btn').addEventListener('click', showDedications);
 
 async function showCharts(){
   currentSong = null;
@@ -2369,6 +2401,105 @@ async function showPulseMember(id, isVisitor){
           <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`
       ).join('') : '<div class="mod-empty">No history.</div>'}</div>
     </div>`;
+}
+
+/* ============================================================
+   Dedications (DED-1): admin moderation. Every read goes through
+   admin_list_dedications(); removal through admin_remove_dedication()
+   (sql/022_dedications.sql). Neither is reachable by a non-admin regardless
+   of what this UI shows or hides.
+   ============================================================ */
+const DED_OCCASION_LABEL = {
+  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
+  bar_bat_mitzvah: 'Bar/Bat Mitzvah', new_baby: 'New baby',
+  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
+  thank_you: 'Thank you', just_because: 'Just because', other: 'Other',
+};
+function dedOccasionText(d){
+  return d.occasion === 'other' ? (d.occasion_other || 'Other') : (DED_OCCASION_LABEL[d.occasion] || d.occasion);
+}
+function dedTimeAgo(iso){
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if(min < 1) return 'just now';
+  if(min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if(hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+let dedicationsFilter = 'live';
+
+async function showDedications(){
+  currentSong = null;
+  renderList();
+  const area = document.getElementById('form-area');
+  area.innerHTML = `
+    <div class="mod-head">
+      <h2>Dedications</h2>
+      <button class="logout-btn" id="ded-refresh" type="button">Refresh</button>
+    </div>
+    <div class="ded-filters" id="ded-filters">
+      <button type="button" data-status="live">Live</button>
+      <button type="button" data-status="removed">Removed</button>
+      <button type="button" data-status="">All</button>
+    </div>
+    <div id="ded-list"><div class="mod-empty">Loading&hellip;</div></div>`;
+
+  document.getElementById('ded-refresh').addEventListener('click', loadDedications);
+  document.getElementById('ded-filters').querySelectorAll('button').forEach(b => {
+    b.classList.toggle('active', b.dataset.status === dedicationsFilter);
+    b.addEventListener('click', () => {
+      dedicationsFilter = b.dataset.status;
+      document.getElementById('ded-filters').querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      loadDedications();
+    });
+  });
+
+  await loadDedications();
+}
+
+async function loadDedications(){
+  const host = document.getElementById('ded-list');
+  if(!host) return;
+  host.innerHTML = '<div class="mod-empty">Loading&hellip;</div>';
+  const { data, error } = await supabaseClient.rpc('admin_list_dedications', {
+    p_status: dedicationsFilter || null, p_limit: 100, p_before: null,
+  });
+  if(error){ host.innerHTML = `<div class="mod-empty">Error loading dedications: ${escHtml(error.message)}</div>`; return; }
+  if(!data || !data.length){ host.innerHTML = '<div class="mod-empty">No dedications here.</div>'; return; }
+
+  host.innerHTML = data.map(dedicationItemHTML).join('');
+  host.querySelectorAll('[data-ded-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeDedication(btn.dataset.dedRemove, btn));
+  });
+}
+
+function dedicationItemHTML(d){
+  const senderLabel = d.is_anonymous
+    ? `${escHtml(d.sender_name || 'Unknown')} <span class="ded-anon-tag">Anonymous</span>`
+    : escHtml(d.sender_name || 'Unknown');
+  return `<div class="ded-item${d.status === 'removed' ? ' is-removed' : ''}">
+      <div class="ded-song">${escHtml(d.song_title || '(song removed)')}</div>
+      <div class="ded-recipient">For <strong>${escHtml(d.recipient_name)}</strong><span class="ded-occasion">${escHtml(dedOccasionText(d))}</span></div>
+      ${d.message ? `<div class="ded-message">${escHtml(d.message)}</div>` : ''}
+      <div class="ded-meta">
+        <span>From ${senderLabel}</span>
+        <span>&middot; ${dedTimeAgo(d.created_at)}</span>
+        ${d.status === 'removed' ? `<span class="ded-removed-tag">Removed${d.removed_by ? ' by ' + escHtml(d.removed_by) : ''}${d.removed_reason ? ': ' + escHtml(d.removed_reason) : ''}</span>` : ''}
+      </div>
+      <div class="ded-actions">
+        ${d.status === 'live' ? `<button type="button" data-ded-remove="${escAttr(d.code)}">Remove</button>` : ''}
+      </div>
+    </div>`;
+}
+
+async function removeDedication(code, btn){
+  const reason = window.prompt('Reason for removing this dedication (shown only to admins):');
+  if(reason === null) return; // cancelled
+  btn.disabled = true;
+  const { error } = await supabaseClient.rpc('admin_remove_dedication', { p_code: code, p_reason: reason || null });
+  if(error){ alert('Could not remove: ' + error.message); btn.disabled = false; return; }
+  await loadDedications();
 }
 </script>
 

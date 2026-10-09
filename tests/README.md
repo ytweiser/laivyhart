@@ -97,6 +97,12 @@ any failure.
   nothing fetched with the switch off, present and rendering lines with the
   switch on, and the admin-only `?preview=pulse` override (present for an
   admin, still absent for a signed-in non-admin).
+- `specs/admin-dedications.spec.mjs` — the admin Dedications tab (DED-1),
+  signed in as an admin with `admin_list_dedications`/`admin_remove_dedication`
+  stubbed: the list (song, recipient, occasion, message, sender, time), the
+  anonymous tag (shown even though the admin sees the real sender name), the
+  Live/Removed/All filters, and the remove-with-reason flow, including its
+  error path.
 
 ## Adding a scenario
 

@@ -55,6 +55,10 @@ export function buildFixtureResponses(overrides) {
       cities: [], listeners: { members: [], visitor_count: 0 } },
     pulseMember: { display_name: null, email: null, totals: {}, events: [] },
     publicPulse: [],             // public_pulse() RPC, read by the homepage box
+    // DED-1. adminRemoveDedicationResult: a full fulfill() object to force
+    // admin_remove_dedication's error path; null means a plain success.
+    adminDedications: [],
+    adminRemoveDedicationResult: null,
   };
   return { ...base, ...(overrides || {}) };
 }
@@ -268,6 +272,23 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     if (url.includes('/rest/v1/rpc/pulse_song')) { notify('rpc:pulse_song'); return fulfill(F2.pulseSong); }
     if (url.includes('/rest/v1/rpc/pulse_member')) { notify('rpc:pulse_member'); return fulfill(F2.pulseMember); }
     if (url.includes('/rest/v1/rpc/public_pulse')) { notify('rpc:public_pulse'); return fulfill(F2.publicPulse); }
+
+    // DED-1.
+    if (url.includes('/rest/v1/rpc/admin_list_dedications')) {
+      notify('rpc:admin_list_dedications');
+      const status = rpcParam(req, 'p_status');
+      const rows = status ? F2.adminDedications.filter((d) => d.status === status) : F2.adminDedications;
+      return fulfill(rows);
+    }
+    if (url.includes('/rest/v1/rpc/admin_remove_dedication')) {
+      notify('rpc:admin_remove_dedication');
+      if (F2.adminRemoveDedicationResult) return route.fulfill(F2.adminRemoveDedicationResult);
+      const code = rpcParam(req, 'p_code');
+      const reason = rpcParam(req, 'p_reason');
+      const row = F2.adminDedications.find((d) => d.code === code);
+      if (row) { row.status = 'removed'; row.removed_by = 'admin'; row.removed_reason = reason || null; }
+      return fulfill(null);
+    }
 
     // Anything else (ratings, submission_events, auth token refresh, ...):
     // a harmless empty success, so an unexpected call never hangs the page.
