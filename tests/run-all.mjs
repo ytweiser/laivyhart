@@ -64,6 +64,7 @@ const SPECS = [
   { name: 'worker-activity', path: './specs/worker-activity.spec.mjs', kind: 'none' },
   { name: 'worker-geo', path: './specs/worker-geo.spec.mjs', kind: 'none' },
   { name: 'canonical-origin', path: './specs/canonical-origin.spec.mjs', kind: 'none' },
+  { name: 'grants-audit', path: './specs/grants-audit.spec.mjs', kind: 'none' },
   { name: 'worker-song-idea-notify', path: './specs/worker-song-idea-notify.spec.mjs', kind: 'none' },
 ];
 

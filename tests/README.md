@@ -296,6 +296,20 @@ over a narrower range.
   `dedication-occasions.spec.mjs` (the same fix at the `dedLine()` level,
   directly), and `middleware.spec.mjs` (the SSR `og:description` for the
   same empty-box case).
+- `specs/grants-audit.spec.mjs` (1B-4): the standing audit against grant
+  drift. Replays every `sql/*.sql` migration in order (`lib/grants-model.mjs`)
+  to compute the current EXECUTE grant state of every function in public,
+  purely from the committed SQL text -- no live database connection or
+  credentials, deliberately, since this project's own rule is that a
+  service-role key lives only in the Worker. Fails if any function is
+  anon-callable without being on `tests/sql/anon-allowlist.txt`, if an
+  allowlisted function has quietly lost anon access, or if any SECURITY
+  DEFINER function is missing `search_path`. What it cannot see: two live
+  functions (`delete_category`, `rename_category`) with no `create function`
+  anywhere in `sql/` at all -- not in this project's migration history,
+  so nothing for a text-based model to find; locked down live by
+  `028_hardening.sql` regardless, and flagged in that migration's own
+  report, not something a static check over committed files ever could be.
 
 ## Adding a scenario
 

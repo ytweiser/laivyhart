@@ -1,0 +1,19 @@
+# 1B-4: every function in public that the anon role may execute, one per
+# line, with a one-line reason. tests/specs/grants-audit.spec.mjs fails the
+# suite if the live/committed grant state makes ANY function anon-callable
+# that isn't listed here, or if a listed one stops being anon-callable
+# (catches both directions of drift).
+#
+# Add a new one here in the SAME commit that grants it to anon -- see
+# CLAUDE.md's rule on re-applying grants after a drop+recreate.
+
+artist_stats            # artist page stats, shown to signed-out visitors too
+badge_setting           # called from song_badges' own select list, a public view (the badge shelf on every song card) -- caught live by the Node anon-key check, not by grep alone
+follower_count          # follower count, shown to signed-out visitors too
+increment_play_count    # anyone can play a song without an account
+public_pulse            # the homepage Pulse box, public by design (021_pulse.sql)
+public_ticker           # the homepage/listen ticker band, public by design (026_public_ticker.sql)
+recommend_for_artist    # artist page recommendations, shown to signed-out visitors too
+song_idea_credit        # called from song_ideas_board, a public view (/your-song/ideas) -- confirmed empirically that revoking anon here breaks that view's own SELECT, not just a direct RPC call
+toggle_like             # the heart, usable per-device without an account
+toggle_love             # "the three loves", usable per-device without an account
