@@ -6,5 +6,9 @@
   {
     "key": "honors_min_weeks_on_chart",
     "value": 4
+  },
+  {
+    "key": "your_song_nav_enabled",
+    "value": true
   }
 ]

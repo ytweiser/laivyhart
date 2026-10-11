@@ -11,12 +11,12 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeReporter } from '../lib/report.mjs';
-import * as W from '../../worker/src/index.js';
+import { loadWorker } from '../lib/load-worker.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const EXPECTED_ROW_KEYS = [
-  'artist_id', 'city', 'country', 'device_id', 'event_type', 'meta',
+  'artist_id', 'city', 'country', 'display_city', 'display_country', 'device_id', 'event_type', 'meta',
   'page', 'region', 'session_id', 'song_id', 'user_id',
 ].sort();
 
@@ -58,6 +58,7 @@ async function makeSignedJwt(sub) {
 
 export async function run() {
   const r = makeReporter('worker-activity.spec.mjs');
+  const W = await loadWorker();
 
   // --- static: the IP is never even read, let alone stored -----------------
   r.section('no IP field anywhere in the source');

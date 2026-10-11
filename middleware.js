@@ -355,7 +355,7 @@ function renderHome(html) {
    matches the page's own hero/subline exactly, so a share preview reads the
    same thing the page says. */
 const YOUR_SONG_TITLE = 'Your idea. Our music.';
-const YOUR_SONG_DESC = 'Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.';
+const YOUR_SONG_DESC = 'Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.';
 function renderYourSong(html) {
   const canonical = SITE + '/your-song';
   html = setTitle(html, escAttr(YOUR_SONG_TITLE + ' | ' + SITE_NAME));

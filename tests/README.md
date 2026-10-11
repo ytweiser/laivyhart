@@ -231,6 +231,35 @@ over a narrower range.
   form. The canonical-tag and og:url checks for `/`, `/song/:slug`,
   `/artist/:handle` and `/d/:code` live in `middleware.spec.mjs` instead,
   next to the rest of that route's SSR checks.
+- `specs/worker-geo.spec.mjs` (HOME-1): `worker/src/geo.js`'s
+  `resolveDisplayLocation()`, exercised directly (no browser): real
+  coordinates resolve to the nearest decent-size (population >= 100,000)
+  city (a Giv'at Shmuel-area point lands on a Tel Aviv-metro city, a US
+  suburb lands on a nearby large city, a city already on the list resolves
+  to itself), missing coordinates fall back through `cf.city` then
+  `cf.region` then country alone, and the module never reads or returns a
+  latitude, longitude or IP.
+- `specs/homepage-ticker.spec.mjs` (HOME-1): the ticker band on `/` and
+  `/listen` -- real `public_ticker()` rows render linked with
+  display_city/display_country, padding kicks in under 6 real items
+  (recent releases, then "#1 this week"), the band hides entirely with
+  nothing to show at all, hover (CSS) and touch (a JS pause class) both
+  stop the scroll, `prefers-reduced-motion` renders static and fades
+  through one item at a time, and no identity field ever reaches the DOM.
+- `specs/homepage-get-involved.spec.mjs` (HOME-1): the homepage "Get
+  involved" box beside the #1 song -- three actions render only when
+  `contribute_cta_enabled` is on (same gate as before), "Send a song idea"
+  links to `/your-song`, and "Dedicate a song" opens the sign-in modal
+  (with the right reason and a `next` that carries a `dedicate=1` marker)
+  when signed out or the song picker (search, Recent, Popular) when signed
+  in, handing a chosen song straight to the existing dedicate sheet. Also
+  covers the signed-out round trip through `/auth/callback?next=/?dedicate=1`
+  reopening the picker automatically once signed in.
+- `specs/your-song-nav.spec.mjs` (HOME-1): "Your Song" in the main nav for
+  everyone (`site_settings.your_song_nav_enabled`, now on), signed in and
+  out, and that the switch itself still works if ever turned back off; plus
+  a static sweep confirming the old "we pick three" wording is gone from
+  `your-song.html`, `admin.html` and `middleware.js`.
 
 ## Adding a scenario
 

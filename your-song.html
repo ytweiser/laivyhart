@@ -12,7 +12,7 @@
   gtag('config', 'G-S2RJQEGV45');
 </script>
 <title>Your idea. Our music. &middot; Laivy Hart</title>
-<meta name="description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta name="description" content="Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.">
 <meta name="theme-color" content="#0A0C1A">
 <script>
   (function(){
@@ -48,7 +48,7 @@
 <meta name="apple-mobile-web-app-title" content="Laivy Hart">
 <meta property="og:site_name" content="Laivy Hart">
 <meta property="og:title" content="Your idea. Our music.">
-<meta property="og:description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta property="og:description" content="Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.">
 <meta property="og:url" content="https://laivyhart.com/your-song">
 <meta property="og:type" content="website">
 <meta property="og:image" content="https://laivyhart.com/og-image.png">
@@ -56,7 +56,7 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Your idea. Our music.">
-<meta name="twitter:description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta name="twitter:description" content="Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.">
 <meta name="twitter:image" content="https://laivyhart.com/og-image.png">
 <script src="/pwa.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -194,7 +194,7 @@
     <div class="ys-hero">
       <div class="ys-kicker">Your Song</div>
       <h1 class="ys-title">Your idea. Our music.</h1>
-      <p class="ys-sub">Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.</p>
+      <p class="ys-sub">Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.</p>
       <button class="lv-btn filled" id="ys-hero-cta" type="button" style="width:auto; padding:0.8rem 2rem;">Share your idea</button>
     </div>
 
@@ -204,7 +204,7 @@
 
     <div class="ys-steps">
       <div class="ys-step"><div class="ys-step-n">1</div><p>Share your idea.</p></div>
-      <div class="ys-step"><div class="ys-step-n">2</div><p>We pick three every week.</p></div>
+      <div class="ys-step"><div class="ys-step-n">2</div><p>We pick one every week.</p></div>
       <div class="ys-step"><div class="ys-step-n">3</div><p>Your song goes live on Laivy Hart, credited to you.</p></div>
     </div>
 
@@ -255,7 +255,7 @@
     </div>
 
     <div class="ys-section">
-      <h2>This week</h2>
+      <h2>This week's pick</h2>
       <p class="ys-countdown" id="ys-countdown"></p>
       <div id="ys-picks"></div>
     </div>
@@ -479,8 +479,8 @@
   (function(){
     const n = daysUntilSunday();
     document.getElementById('ys-countdown').textContent = n === 0
-      ? "Picks happen today."
-      : `${n} day${n === 1 ? '' : 's'} until this week's picks.`;
+      ? "The pick happens today."
+      : `${n} day${n === 1 ? '' : 's'} until this week's pick.`;
   })();
 
   async function loadWeekPicks(){
@@ -492,7 +492,7 @@
         .in('status', ['picked', 'in_studio'])
         .order('created_at', { ascending: false });
       if(error || !data || !data.length) return;
-      host.innerHTML = `<p class="ded-sheet-title" style="font-size:1rem;">This week's picks</p>` + data.map((d) => `
+      host.innerHTML = `<p class="ded-sheet-title" style="font-size:1rem;">This week's pick</p>` + data.map((d) => `
         <div class="ys-pick-row">
           <p class="ys-pick-text">&ldquo;${escHtml(d.idea_text)}&rdquo;</p>
           <div class="ys-pick-credit">${escHtml(d.credit)}</div>

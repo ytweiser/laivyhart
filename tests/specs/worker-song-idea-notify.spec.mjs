@@ -9,7 +9,7 @@
    reads, the Resend send) goes through the injectable fetchImpl.
    ============================================================ */
 import { makeReporter } from '../lib/report.mjs';
-import * as W from '../../worker/src/index.js';
+import { loadWorker } from '../lib/load-worker.mjs';
 
 function b64url(bytes) {
   const bin = typeof bytes === 'string' ? bytes : Buffer.from(bytes).toString('binary');
@@ -69,7 +69,7 @@ function makeFetchImpl(fixture, resendCalls) {
   };
 }
 
-async function withStubbedJwks(jwks, fn) {
+async function withStubbedJwks(W, jwks, fn) {
   W.__resetJwksCacheForTests();
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
@@ -81,6 +81,7 @@ async function withStubbedJwks(jwks, fn) {
 
 export async function run() {
   const r = makeReporter('worker-song-idea-notify.spec.mjs');
+  const W = await loadWorker();
   const ADMIN_SUB = 'aaaaaaaa-1111-4aaa-8aaa-aaaaaaaaaaaa';
   const MEMBER_SUB = 'bbbbbbbb-2222-4bbb-8bbb-bbbbbbbbbbbb';
   const env = { SUPABASE_SERVICE_ROLE_KEY: 'svc', RESEND_API_KEY: 'resend-key' };
@@ -102,7 +103,7 @@ export async function run() {
   r.section('rejects a verified, non-admin caller');
   {
     const { token, jwks } = await makeSignedJwt(MEMBER_SUB);
-    await withStubbedJwks(jwks, async () => {
+    await withStubbedJwks(W, jwks, async () => {
       const resendCalls = [];
       const fetchImpl = makeFetchImpl({ adminRow: { role: 'artist', status: 'active' } }, resendCalls);
       const res = await W.handleSongIdeaNotify(notifyReq({ idea_id: 'cccccccc-0000-4ccc-8ccc-cccccccccc01', event: 'picked' }, token), env, makeCtx(), fetchImpl);
@@ -116,7 +117,7 @@ export async function run() {
   r.section('"picked": sends the right subject, with the idea excerpt, skipped when notify_email is false');
   {
     const { token, jwks } = await makeSignedJwt(ADMIN_SUB);
-    await withStubbedJwks(jwks, async () => {
+    await withStubbedJwks(W, jwks, async () => {
       const resendCalls = [];
       const fetchImpl = makeFetchImpl({
         adminRow: { role: 'admin', status: 'active' },
@@ -146,7 +147,7 @@ export async function run() {
   r.section('"released": sends the right subject, with the song link and "Idea by" credit');
   {
     const { token, jwks } = await makeSignedJwt(ADMIN_SUB);
-    await withStubbedJwks(jwks, async () => {
+    await withStubbedJwks(W, jwks, async () => {
       const resendCalls = [];
       const fetchImpl = makeFetchImpl({
         adminRow: { role: 'admin', status: 'active' },

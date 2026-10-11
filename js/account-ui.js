@@ -193,11 +193,12 @@ async function readContributeSwitch() {
   return false;
 }
 
-/* SONG-2: the main-nav "Your Song" link, gated by site_settings.
-   your_song_nav_enabled -- seeded false for now (the feature is reachable
-   through the footer and this same account slot's chip menu already; this
-   switch is for turning on a louder, permanent nav placement later). Same
-   read-then-conditionally-render shape as readContributeSwitch above. */
+/* SONG-2/HOME-1: the main-nav "Your Song" link, gated by site_settings.
+   your_song_nav_enabled -- off at first (the feature was reachable through
+   the footer and this same account slot's chip menu already), switched on
+   for everyone as part of HOME-1. The switch itself stays, in case it is
+   ever useful to turn the nav placement off again without a code change.
+   Same read-then-conditionally-render shape as readContributeSwitch above. */
 let yourSongNavOn = false;
 async function readYourSongNavSwitch() {
   const norm = (v) => {

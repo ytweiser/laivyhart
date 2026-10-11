@@ -103,25 +103,26 @@ async function scenarioListAndFilters(browser, port, r) {
 }
 
 async function scenarioWeekCounter(browser, port, r) {
-  r.section('Your Song tab: the week-picks header counts, with a gentle warning past 3, not a block');
+  r.section('Your Song tab: the week-picks header counts, with a gentle warning past 1, not a block (HOME-1: one pick per week)');
   const { page, errors } = await openYourSong(browser, port, {
-    adminWeekPicks: [{ id: 'p1' }, { id: 'p2' }],
+    adminWeekPicks: [{ id: 'p1' }],
   });
   const under = await page.evaluate(() => ({
     text: document.getElementById('si-week-count')?.textContent,
     isOver: document.getElementById('si-week-count')?.classList.contains('is-over'),
   }));
-  r.check('shows "2 of 3" and no warning class under the cap', under.text.includes('2') && under.text.includes('3') && under.isOver === false, under);
+  r.check('shows "1 of 1" and no warning class at the usual one pick', under.text.includes('1 of 1'), under);
+  r.check('no warning class at the usual one pick', under.isOver === false, under);
   await page.close();
 
   const { page: page2, errors: errors2 } = await openYourSong(browser, port, {
-    adminWeekPicks: [{ id: 'p1' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }],
+    adminWeekPicks: [{ id: 'p1' }, { id: 'p2' }],
   });
   const over = await page2.evaluate(() => ({
     text: document.getElementById('si-week-count')?.textContent,
     isOver: document.getElementById('si-week-count')?.classList.contains('is-over'),
   }));
-  r.check('past 3, a gentle warning shows (not a block -- the tab still renders and works)', over.text.includes('4') && over.isOver === true, over);
+  r.check('past 1, a gentle warning shows (not a block -- the tab still renders and works)', over.text.includes('2') && over.isOver === true, over);
   r.check('no console/page errors', errors.length === 0 && errors2.length === 0, [...errors, ...errors2].join(' | '));
   await page2.close();
 }

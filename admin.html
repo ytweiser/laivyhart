@@ -2576,7 +2576,7 @@ async function showYourSong(){
       <button class="logout-btn" id="si-refresh" type="button">Refresh</button>
     </div>
     <div class="si-head-row">
-      <span class="si-week" id="si-week-count">This week&rsquo;s picks: &hellip;</span>
+      <span class="si-week" id="si-week-count">This week&rsquo;s pick: &hellip;</span>
     </div>
     <div class="si-filters" id="si-filters">
       <button type="button" data-status="received">Received</button>
@@ -2617,11 +2617,11 @@ async function loadWeekPicksHeader(){
   const el = document.getElementById('si-week-count');
   if(!el) return;
   const { data, error } = await supabaseClient.rpc('admin_week_picks', { p_week: null });
-  if(error){ el.textContent = 'This week’s picks: unknown'; el.classList.remove('is-over'); return; }
+  if(error){ el.textContent = 'This week’s pick: unknown'; el.classList.remove('is-over'); return; }
   const n = (data || []).length;
-  el.classList.toggle('is-over', n > 3);
-  // A gentle note past 3, never a block -- the owner can pick as many as they like.
-  el.textContent = `This week’s picks: ${n} of 3` + (n > 3 ? ' (more than the usual three)' : '');
+  el.classList.toggle('is-over', n > 1);
+  // A gentle note past 1, never a block -- the owner can pick as many as they like.
+  el.textContent = `This week’s pick: ${n} of 1` + (n > 1 ? ' (more than the usual one)' : '');
 }
 
 async function loadYourSong(){

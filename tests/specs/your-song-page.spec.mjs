@@ -45,7 +45,7 @@ async function scenarioRendersAllSections(browser, port, r) {
     faqCount: document.querySelectorAll('.ys-faq-item').length,
   }));
   r.check('hero title is exact', d.heroTitle === 'Your idea. Our music.', d.heroTitle);
-  r.check('hero subline is exact', d.heroSub === "Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.", d.heroSub);
+  r.check('hero subline is exact', d.heroSub === "Send us your song idea. Every week we choose one and turn it into a real song, with your name on it.", d.heroSub);
   r.check('three "how it works" steps', d.stepCount === 3, d.stepCount);
   r.check('box heading is exact', d.boxHeading === "What's your song idea?", d.boxHeading);
   r.check('the countdown renders something', d.hasCountdown === true, d.hasCountdown);

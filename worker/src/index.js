@@ -22,6 +22,8 @@
    it for the details.
    ============================================================ */
 
+import { resolveDisplayLocation } from './geo.js';
+
 const PUBLIC_BASE = 'https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev';
 
 // Origins allowed to call this Worker from a browser. Any localhost/127.0.0.1
@@ -314,6 +316,12 @@ export async function handleActivityEvent(request, env, ctx, fetchImpl = fetch) 
   const city = typeof cf.city === 'string' ? cf.city : null;
   const region = typeof cf.region === 'string' ? cf.region : null;
   const country = typeof cf.country === 'string' ? cf.country : null;
+  // HOME-1: a decent-size city (population >= 100,000) safe to say out loud
+  // in the public ticker, derived from cf.latitude/cf.longitude -- never
+  // the raw coordinates themselves, which resolveDisplayLocation() never
+  // returns. city/region/country above are unchanged and still exist only
+  // for the owner's own Pulse dashboard.
+  const { display_city, display_country } = resolveDisplayLocation(cf);
 
   const rows = [];
   for (const raw of body.events.slice(0, ACTIVITY_MAX_EVENTS)) {
@@ -329,6 +337,7 @@ export async function handleActivityEvent(request, env, ctx, fetchImpl = fetch) 
       meta: ev.meta,
       page: ev.page,
       city, region, country,
+      display_city, display_country,
     });
   }
 

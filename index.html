@@ -114,6 +114,35 @@
   /* content sits above the ambient wash */
   .panel > *:not(.ambient){position:relative; z-index:1;}
 
+  /* HOME-1: the ticker band, above both routes' own topbar. Scrolling mode
+     is one long track, duplicated once so the loop seam is invisible;
+     reduced-motion mode shows one item at a time instead (JS swaps which
+     li has .is-shown, a plain class toggle -- the sitewide
+     prefers-reduced-motion rule already collapses any transition on it to
+     near-zero, which is fine: an instant swap is still not scrolling). */
+  .ticker-band{
+    position:relative; z-index:3; overflow:hidden; white-space:nowrap;
+    background:var(--bg-2); border-bottom:1px solid var(--line);
+    padding:0.45rem 0;
+  }
+  .ticker-track{display:inline-flex; align-items:center; gap:2.5rem; padding-left:2.5rem;
+    animation:ticker-scroll 55s linear infinite;
+  }
+  .ticker-band:hover .ticker-track, .ticker-band.is-paused .ticker-track{animation-play-state:paused;}
+  .ticker-band.is-static .ticker-track{animation:none; display:block; padding-left:0;}
+  .ticker-item{
+    font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim); text-decoration:none;
+    display:inline-flex; align-items:center; gap:0.4rem;
+  }
+  .ticker-band.is-static .ticker-item{
+    display:none; padding:0 1.2rem; white-space:normal; text-align:center; justify-content:center;
+    transition:opacity 0.4s var(--ease);
+  }
+  .ticker-band.is-static .ticker-item.is-shown{display:flex;}
+  .ticker-item:hover{color:var(--text);}
+  .ticker-item strong{color:var(--text); font-weight:600;}
+  @keyframes ticker-scroll{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
   /* ---------- LEFT: now playing ---------- */
   .now{padding:1.3rem 1.5rem;}
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap;}
@@ -718,6 +747,21 @@
      The italic and smaller size already keep it secondary to the heading. */
   .hero-callout-sub{font-family:var(--font-display); font-style:italic; font-size:1.02rem; color:var(--text); margin:0;}
   .hero-callout .home-primary-btn{margin-top:0.35rem;}
+  /* HOME-1: "Get involved" replaces the single upload invitation here --
+     three equal actions sharing the tile's own height, stacked (there is
+     no width in this column for anything else). */
+  .hero-callout.get-involved{justify-content:stretch;}
+  .gi-actions{display:flex; flex-direction:column; gap:0.6rem; width:100%; flex:1; justify-content:space-evenly;}
+  .gi-action{
+    display:flex; align-items:flex-start; gap:0.7rem; width:100%; text-align:left;
+    background:none; border:none; cursor:pointer; padding:0.4rem 0; color:inherit; text-decoration:none;
+    font-family:inherit;
+  }
+  .gi-icon{width:1.5rem; height:1.5rem; flex-shrink:0; color:var(--accent-2); margin-top:0.15rem;}
+  .gi-text{display:flex; flex-direction:column; gap:0.15rem; min-width:0;}
+  .gi-text strong{font-family:var(--font-display); font-weight:600; font-size:1rem; color:var(--text);}
+  .gi-text small{font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim); line-height:1.4;}
+  .gi-action:hover .gi-text strong{color:var(--accent-2);}
   /* The phone rule gives every .home-primary-btn flex:1 1 0 for the main row;
      inside the callout's column that would stretch the button vertically. */
   .home-hero2 .home-primary-btn{flex:0 0 auto;}
@@ -1240,6 +1284,12 @@
   .picker-title{font-family:var(--font-display); font-size:1.05rem;}
   .picker-title span{font-style:italic; color:var(--accent-2);}
   #picker-search{margin-bottom:0.7rem; flex-shrink:0;}
+  .picker-tabs{display:flex; gap:0.4rem; margin-bottom:0.6rem; flex-shrink:0;}
+  .picker-tabs .picker-tab{
+    font-family:var(--font-ui); font-size:0.78rem; color:var(--text-dim); background:none;
+    border:1px solid var(--chip-border); border-radius:999px; padding:0.3rem 0.75rem; cursor:pointer;
+  }
+  .picker-tabs .picker-tab.is-active{background:var(--accent-grad); border-color:transparent; color:#fff;}
   .picker-list{flex:1; min-height:0; overflow-y:auto;}
   .pick{display:flex; align-items:center; gap:0.7rem; padding:0.55rem 0.35rem; border-bottom:1px solid var(--line); cursor:pointer;}
   .pick:hover{background:var(--glass-hi);}
@@ -1551,6 +1601,12 @@
 </style>
 </head>
 <body>
+
+<!-- HOME-1: shared across /listen and / (the only two routes it shows on),
+     so it lives above both route containers rather than inside either. -->
+<div class="ticker-band hidden" id="ticker-band" aria-label="Recent activity on Laivy Hart">
+  <div class="ticker-track" id="ticker-track"></div>
+</div>
 
 <div class="app hidden" id="page-listen">
 
@@ -1866,6 +1922,24 @@
       <span class="pl-count" id="picker-count"></span>
       <button class="pl-mini primary" id="picker-done">Done</button>
     </div>
+  </div>
+</div>
+
+<!-- HOME-1: "Dedicate a song" from the homepage's Get involved box, with
+     no song already playing -- search the catalog, or tap from Recent or
+     Popular. Picking a song hands off to the existing dedicate sheet. -->
+<div class="picker-overlay hidden" id="dedicate-picker-overlay">
+  <div class="picker glass">
+    <div class="picker-head">
+      <div class="picker-title">Dedicate a song</div>
+      <button class="icon-btn" id="dedicate-picker-close" aria-label="Close">&times;</button>
+    </div>
+    <input class="search" id="dedicate-picker-search" type="text" placeholder="Search songs" aria-label="Search songs">
+    <div class="picker-tabs" id="dedicate-picker-tabs">
+      <button class="picker-tab is-active" data-tab="recent" type="button">Recent</button>
+      <button class="picker-tab" data-tab="popular" type="button">Popular</button>
+    </div>
+    <div class="picker-list" id="dedicate-picker-list"></div>
   </div>
 </div>
 
@@ -3475,15 +3549,38 @@ function homepageSections(){
 // contribute callout alone beside it. No play or love counts. The callout
 // exists only when the switch is on AND there is a #1; with the switch off
 // the tile stands alone (.is-solo).
+// HOME-1: three equal ways to take part, replacing the single upload
+// invitation that used to be the whole box. Still gated by the same
+// contribute_cta_enabled switch as before -- that switch decides whether
+// this whole corner of the homepage exists at all; it says nothing about
+// which of the (now three) actions show once it is on.
 function heroCalloutHTML(){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
-  return `<section class="hero-callout" aria-labelledby="hero-callout-h">
-      <h3 class="hero-callout-h" id="hero-callout-h">Write your song and share it with the world.</h3>
-      <p class="hero-callout-sub">You could be next week's #1.</p>
-      <button class="home-primary-btn upload" id="hero-upload" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
-        <span data-label>${escHtml(contributeLabel())}</span>
-      </button>
+  return `<section class="hero-callout get-involved" aria-labelledby="hero-callout-h">
+      <h3 class="hero-callout-h" id="hero-callout-h">Get involved</h3>
+      <div class="gi-actions">
+        <button class="gi-action" id="gi-upload" type="button">
+          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+          <span class="gi-text">
+            <strong data-label>${escHtml(contributeLabel())}</strong>
+            <small>You could be next week's #1.</small>
+          </span>
+        </button>
+        <a class="gi-action" href="/your-song">
+          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.4.3.6.8.6 1.2v.5h6v-.5c0-.4.2-.9.6-1.2A6 6 0 0 0 12 3z"/></svg>
+          <span class="gi-text">
+            <strong>Send a song idea</strong>
+            <small>We pick one every week and turn it into a song.</small>
+          </span>
+        </a>
+        <button class="gi-action" id="gi-dedicate" type="button">
+          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
+          <span class="gi-text">
+            <strong>Dedicate a song</strong>
+            <small>Send a song to someone for any occasion.</small>
+          </span>
+        </button>
+      </div>
     </section>`;
 }
 // A stock site image is not a cover: the hero draws its own tile instead.
@@ -3550,7 +3647,7 @@ function contributeLabel(){
   return signedIn ? 'Upload a song' : 'Upload your song';
 }
 function applyContributeChrome(){
-  const btn = document.getElementById('hero-upload');
+  const btn = document.getElementById('gi-upload');
   if(btn) btn.querySelector('[data-label]').textContent = contributeLabel();
 }
 window.addEventListener('laivy:auth', applyContributeChrome);
@@ -3831,6 +3928,127 @@ function setupRailAffordances(scopeSel){
   }
 }
 
+/* ============================================================
+   HOME-1: the ticker band, shared across /listen and / -- see showPage()
+   for where it starts/stops. public_ticker() (sql/026_public_ticker.sql)
+   is the one data source; padding (recent releases, "#1 this week") uses
+   SONGS/badges already loaded client-side, never a second query, and only
+   kicks in when there are fewer than 6 real items. Independent of
+   site_settings.pulse_public_enabled -- that switch is for the larger
+   Pulse box only.
+   ============================================================ */
+let tickerTimer = null;
+let tickerStaticTimer = null;
+let tickerReducedMotion = false;
+try{ tickerReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+
+function tickerItemHTML(item){
+  return `<a class="ticker-item" href="/song/${escHtml(item.slug)}">${escHtml(item.text)}</a>`;
+}
+
+// public_ticker() rows -> { text, slug } ticker items. Dedications never
+// carry a recipient, sender or message here -- the RPC itself never
+// selects those columns, so there is nothing to leave out by accident.
+function tickerItemsFromRows(rows){
+  const items = [];
+  for(const r of (rows || [])){
+    if(!r.song_slug) continue;
+    const title = r.song_title || '';
+    let text;
+    if(r.kind === 'play' || r.kind === 'heart'){
+      const verb = r.kind === 'play' ? 'played' : 'hearted';
+      text = r.display_city ? `${title} · ${verb} in ${r.display_city}, ${r.display_country}`
+           : r.display_country ? `${title} · ${verb} in ${r.display_country}`
+           : `${title} · ${verb}`;
+    } else if(r.kind === 'dedication'){
+      text = `${title} · dedicated`;
+    } else if(r.kind === 'new_song'){
+      text = `New song: ${title}`;
+    } else continue;
+    items.push({ text, slug: r.song_slug });
+  }
+  return items;
+}
+
+function tickerPadding(existingSlugs, need){
+  const extra = [];
+  const seen = new Set(existingSlugs);
+  const byDate = SONGS.filter(s => s.slug && !seen.has(s.slug))
+    .slice().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  for(const s of byDate){
+    if(extra.length >= need) break;
+    extra.push({ text: `New song: ${s.title || s.title_translit || ''}`, slug: s.slug });
+    seen.add(s.slug);
+  }
+  if(extra.length < need){
+    const champ = SONGS.find(s => s.slug && !seen.has(s.slug) && (s.badges || []).some(b => b.badge === 'number_one_week'));
+    if(champ) extra.push({ text: `#1 this week: ${champ.title || champ.title_translit || ''}`, slug: champ.slug });
+  }
+  return extra;
+}
+
+function renderTickerDOM(items){
+  const band = document.getElementById('ticker-band');
+  const track = document.getElementById('ticker-track');
+  if(!band || !track) return;
+  clearInterval(tickerStaticTimer); tickerStaticTimer = null;
+  if(!items.length){ band.classList.add('hidden'); track.innerHTML = ''; return; }
+  band.classList.remove('hidden');
+  band.classList.toggle('is-static', tickerReducedMotion);
+  if(tickerReducedMotion){
+    track.innerHTML = items.map(tickerItemHTML).join('');
+    const nodes = Array.from(track.querySelectorAll('.ticker-item'));
+    let idx = 0;
+    nodes[0].classList.add('is-shown');
+    if(nodes.length > 1){
+      tickerStaticTimer = setInterval(() => {
+        nodes[idx].classList.remove('is-shown');
+        idx = (idx + 1) % nodes.length;
+        nodes[idx].classList.add('is-shown');
+      }, 4000);
+    }
+  } else {
+    // Duplicated once so the scroll loop (CSS translateX -50%) has no seam.
+    const html = items.map(tickerItemHTML).join('');
+    track.innerHTML = html + html;
+  }
+}
+
+async function loadTicker(){
+  try{
+    const { data, error } = await supabaseClient.rpc('public_ticker', { p_limit: 20 });
+    if(error) throw error;
+    let items = tickerItemsFromRows(data);
+    if(items.length < 6) items = items.concat(tickerPadding(items.map(i => i.slug), 6 - items.length));
+    renderTickerDOM(items);
+  }catch(e){
+    renderTickerDOM([]); // never show a broken band
+  }
+}
+
+function startTicker(){
+  loadTicker();
+  clearInterval(tickerTimer);
+  tickerTimer = setInterval(() => {
+    if(document.visibilityState === 'visible') loadTicker();
+  }, 2 * 60 * 1000);
+}
+function stopTicker(){
+  clearInterval(tickerTimer); tickerTimer = null;
+  clearInterval(tickerStaticTimer); tickerStaticTimer = null;
+  const band = document.getElementById('ticker-band');
+  if(band) band.classList.add('hidden');
+}
+
+(function(){
+  const band = document.getElementById('ticker-band');
+  if(!band) return;
+  // Hover is plain CSS (:hover); touch needs an explicit pause/resume since
+  // there is no sustained ":hover" on a touchscreen.
+  band.addEventListener('touchstart', () => band.classList.add('is-paused'), { passive: true });
+  band.addEventListener('touchend', () => band.classList.remove('is-paused'), { passive: true });
+})();
+
 function renderHomepage(){
   const el = document.getElementById('homepage');
   updateSiteBanner();
@@ -3858,8 +4076,10 @@ function renderHomepage(){
 
   const cta = el.querySelector('#contribute-btn');
   if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));
-  const heroUp = el.querySelector('#hero-upload');
+  const heroUp = el.querySelector('#gi-upload');
   if(heroUp) heroUp.addEventListener('click', () => openUploadOrSignIn('home_hero'));
+  const giDedicate = el.querySelector('#gi-dedicate');
+  if(giDedicate) giDedicate.addEventListener('click', () => openDedicationPicker());
   // The #1 title opens its song page without playing (as artist-page cards do).
   el.querySelectorAll('[data-hero-open]').forEach(a => a.addEventListener('click', (e) => {
     if(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e.button && e.button !== 0)) return;
@@ -5558,6 +5778,80 @@ document.getElementById('picker-done').addEventListener('click', closePicker);
 document.getElementById('picker-search').addEventListener('input', (e) => { pickerSearch = e.target.value; renderPickerList(); });
 
 /* ============================================================
+   HOME-1: "Dedicate a song" picker (homepage Get involved box). Same
+   overlay/list pattern as the playlist picker above, its own state so the
+   two never collide. Signed out: the sign-in modal's own `next` carries a
+   `dedicate=1` marker through the magic-link/OAuth round trip (which can
+   land in a different tab than the one that opened this), and the
+   /auth/callback handler below reopens the picker once signed in --
+   nothing kept in memory or sessionStorage, since neither survives that
+   round trip reliably.
+   ============================================================ */
+let dedicatePickerTab = 'recent', dedicatePickerSearch = '';
+const dedicatePickerOverlay = document.getElementById('dedicate-picker-overlay');
+
+function openDedicationPicker(){
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  if(!signedIn){
+    if(window.laivy && window.laivy.accountUI){
+      window.laivy.accountUI.openModal({
+        next: '/?dedicate=1',
+        reason: 'Sign in to dedicate a song',
+      });
+    }
+    return;
+  }
+  dedicatePickerTab = 'recent'; dedicatePickerSearch = '';
+  const si = document.getElementById('dedicate-picker-search');
+  si.value = '';
+  dedicatePickerOverlay.querySelectorAll('.picker-tab').forEach(b => b.classList.toggle('is-active', b.dataset.tab === 'recent'));
+  dedicatePickerOverlay.classList.remove('hidden');
+  renderDedicatePickerList();
+  si.focus();
+}
+function closeDedicationPicker(){ dedicatePickerOverlay.classList.add('hidden'); }
+function renderDedicatePickerList(){
+  const term = dedicatePickerSearch.trim().toLowerCase();
+  const list = document.getElementById('dedicate-picker-list');
+  let songs;
+  if(term){
+    songs = SONGS.filter(s => (s.title_translit + ' ' + s.title + ' ' + (s.categories || []).join(' ')).toLowerCase().includes(term));
+  } else if(dedicatePickerTab === 'popular'){
+    songs = SONGS.slice().sort((a, b) => (b.like_count - a.like_count) || (b.play_count - a.play_count));
+  } else {
+    songs = SONGS.slice().sort(byNewestThenTitle);
+  }
+  songs = songs.slice(0, 30);
+  list.innerHTML = songs.map(s => {
+    const heb = isHebrew(s);
+    const label = heb ? s.title : (s.title || s.title_translit);
+    return `<div class="pick" data-id="${escHtml(s.id)}">
+      <span class="pick-title ${heb?'':'en'}">${escHtml(label)}</span>
+    </div>`;
+  }).join('') || `<div class="muted">No songs match.</div>`;
+  list.querySelectorAll('.pick').forEach(el => {
+    el.addEventListener('click', () => {
+      const s = SONGS.find(x => x.id === el.dataset.id);
+      if(!s) return;
+      closeDedicationPicker();
+      openDedicateModalForSong(s);
+    });
+  });
+}
+dedicatePickerOverlay.addEventListener('click', (e) => { if(e.target === dedicatePickerOverlay) closeDedicationPicker(); });
+document.getElementById('dedicate-picker-close').addEventListener('click', closeDedicationPicker);
+document.getElementById('dedicate-picker-search').addEventListener('input', (e) => {
+  dedicatePickerSearch = e.target.value; renderDedicatePickerList();
+});
+document.getElementById('dedicate-picker-tabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('.picker-tab');
+  if(!btn) return;
+  dedicatePickerTab = btn.dataset.tab;
+  dedicatePickerOverlay.querySelectorAll('.picker-tab').forEach(b => b.classList.toggle('is-active', b === btn));
+  renderDedicatePickerList();
+});
+
+/* ============================================================
    Resizable lyrics box (drag handle). The chosen height is kept for
    THIS session only (sessionStorage); a fresh visit resets to default.
    ============================================================ */
@@ -5762,6 +6056,8 @@ function dedShareUrl(code){ return SITE_ORIGIN + '/d/' + encodeURIComponent(code
 
 let dedicateSong = null; // the song this open sheet is for
 
+// The now-playing panel's own "Dedicate" button: always the song that's
+// loaded, same sign-in gate as before.
 function openDedicateModal(){
   if(currentIdx === null || !SONGS[currentIdx]) return;
   const s = SONGS[currentIdx];
@@ -5775,6 +6071,14 @@ function openDedicateModal(){
     }
     return;
   }
+  openDedicateModalForSong(s);
+}
+
+// HOME-1: the homepage's "Dedicate a song" action reaches this directly,
+// for whichever song the picker chose -- not necessarily the one playing,
+// and the picker has already handled sign-in before getting here.
+function openDedicateModalForSong(s){
+  if(!s) return;
   dedicateSong = s;
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('#dedicate-song-title').textContent = s.title || s.title_translit || '';
@@ -6057,6 +6361,9 @@ function showPage(next){
   if(uploadRoot) uploadRoot.classList.toggle('hidden', next !== 'upload');
   if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
   if(dedicationRoot) dedicationRoot.classList.toggle('hidden', next !== 'dedication');
+  // HOME-1: the ticker band is a sibling of every route's own root, not
+  // nested in one, so it needs its own show/hide here.
+  if(next === 'home' || next === 'listen') startTicker(); else stopTicker();
   if(next === 'artist'){
     renderArtistPage(artistHandleFromPath());
   } else if(next === 'dedication'){
@@ -6184,6 +6491,13 @@ function initRoute(){
       if(r === 'home' || r === 'listen') applyListenParams();
       laivyTrack('page_view', { route: r });
       logActivity('page_view', { page: next });
+      // HOME-1: "Dedicate a song", signed out -> sign in -> straight back
+      // into the picker. Only once actually signed in (the 6s timeout can
+      // also reach here after a failed/abandoned sign-in).
+      if(next.includes('dedicate=1') && window.laivy && window.laivy.auth && window.laivy.auth.user){
+        history.replaceState({}, '', next.split('?')[0] || '/');
+        openDedicationPicker();
+      }
     };
     // Whichever comes first: auth settling, or a timeout so a failed exchange
     // still lands the visitor somewhere sensible instead of hanging.

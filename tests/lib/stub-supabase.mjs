@@ -55,6 +55,7 @@ export function buildFixtureResponses(overrides) {
       cities: [], listeners: { members: [], visitor_count: 0 } },
     pulseMember: { display_name: null, email: null, totals: {}, events: [] },
     publicPulse: [],             // public_pulse() RPC, read by the homepage box
+    publicTicker: [],            // HOME-1: public_ticker() RPC, read by the ticker band
     // DED-1. adminRemoveDedicationResult: a full fulfill() object to force
     // admin_remove_dedication's error path; null means a plain success.
     adminDedications: [],
@@ -194,7 +195,15 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     if (url.includes('/rest/v1/song_milestones')) { notify('songMilestones'); return fulfill(F2.songMilestones); }
     if (url.includes('/rest/v1/artist_badges')) { notify('artistBadges'); return fulfill(await filterRows(req, F2.artistBadges, 'artist_id')); }
     if (url.includes('/rest/v1/chart_snapshots')) { notify('chartSnapshots'); return fulfill(F2.chartSnapshots); }
-    if (url.includes('/rest/v1/site_settings')) { notify('siteSettings'); return fulfill(F2.siteSettings); }
+    // HOME-1: routed through filterRows (keyed on `key`, not `id`) so
+    // .eq('key','X').maybeSingle() callers (readContributeSwitch,
+    // readYourSongNavSwitch, the min_ratings read, ...) get a real single
+    // row/null instead of the whole fixture array -- which used to make
+    // every .maybeSingle() call here error "multiple rows" and silently
+    // fall through to the static settings.json file, ignoring whatever
+    // this fixture said. .in('key', [...]) bulk reads (loadPublicSettings)
+    // still get a filtered array, same as before.
+    if (url.includes('/rest/v1/site_settings')) { notify('siteSettings'); return fulfill(await filterRows(req, F2.siteSettings, 'key')); }
     if (url.includes('/rest/v1/comments')) { notify('comments'); return fulfill(F2.comments); }
     if (url.includes('/rest/v1/artist_picks')) {
       notify('artistPicks');
@@ -308,6 +317,7 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     if (url.includes('/rest/v1/rpc/pulse_song')) { notify('rpc:pulse_song'); return fulfill(F2.pulseSong); }
     if (url.includes('/rest/v1/rpc/pulse_member')) { notify('rpc:pulse_member'); return fulfill(F2.pulseMember); }
     if (url.includes('/rest/v1/rpc/public_pulse')) { notify('rpc:public_pulse'); return fulfill(F2.publicPulse); }
+    if (url.includes('/rest/v1/rpc/public_ticker')) { notify('rpc:public_ticker'); return fulfill(F2.publicTicker); }
 
     // DED-1.
     if (url.includes('/rest/v1/rpc/admin_list_dedications')) {
