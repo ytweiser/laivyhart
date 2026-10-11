@@ -3,8 +3,13 @@
    The one command: node run-all.mjs (or `npm test` from inside tests/).
 
    Starts the local static server, launches one shared headless browser, runs
-   every browser-based spec plus the Node-only middleware spec, and reports
-   combined pass/fail counts with a non-zero exit code on any failure.
+   every browser-based spec plus the Node-only specs, and reports combined
+   pass/fail counts with a non-zero exit code on any failure.
+
+   --only <names>: run just the named specs (comma-separated, matched against
+   each spec's short name below -- e.g. `node run-all.mjs --only your-song-page,idea-credit`).
+   Meant for iterating on one area while working on a prompt; see CLAUDE.md's
+   testing rules for when to use this versus the full run.
 
    Never touches the live site or anyone's real Chrome -- see lib/browser.mjs
    for exactly what's blocked and why.
@@ -14,81 +19,78 @@ import { serve } from './lib/server.mjs';
 
 const PORT = Number(process.env.LAIVY_TEST_PORT || 8743);
 
+// name: the short name --only matches against. kind: 'browser' (run(browser,
+// PORT)), 'port' (run(PORT), no browser instance needed but still wants the
+// static server), or 'none' (run(), no server or browser at all).
+const SPECS = [
+  { name: 'homepage', path: './specs/homepage.spec.mjs', kind: 'browser' },
+  { name: 'artist-page', path: './specs/artist-page.spec.mjs', kind: 'browser' },
+  { name: 'search', path: './specs/search.spec.mjs', kind: 'browser' },
+  { name: 'settings', path: './specs/settings.spec.mjs', kind: 'browser' },
+  { name: 'song-page', path: './specs/song-page.spec.mjs', kind: 'browser' },
+  { name: 'legal-pages', path: './specs/legal-pages.spec.mjs', kind: 'port' },
+  { name: 'rating', path: './specs/rating.spec.mjs', kind: 'browser' },
+  { name: 'activity', path: './specs/activity.spec.mjs', kind: 'browser' },
+  { name: 'admin-pulse', path: './specs/admin-pulse.spec.mjs', kind: 'browser' },
+  { name: 'homepage-pulse', path: './specs/homepage-pulse.spec.mjs', kind: 'browser' },
+  { name: 'admin-dedications', path: './specs/admin-dedications.spec.mjs', kind: 'browser' },
+  { name: 'dedicate', path: './specs/dedicate.spec.mjs', kind: 'browser' },
+  { name: 'dedication-page', path: './specs/dedication-page.spec.mjs', kind: 'browser' },
+  { name: 'dedication-occasions', path: './specs/dedication-occasions.spec.mjs', kind: 'browser' },
+  { name: 'admin-song-ideas', path: './specs/admin-song-ideas.spec.mjs', kind: 'browser' },
+  { name: 'your-song-page', path: './specs/your-song-page.spec.mjs', kind: 'browser' },
+  { name: 'your-song-ideas-board', path: './specs/your-song-ideas-board.spec.mjs', kind: 'browser' },
+  { name: 'idea-credit', path: './specs/idea-credit.spec.mjs', kind: 'browser' },
+  { name: 'middleware', path: './specs/middleware.spec.mjs', kind: 'none' },
+  { name: 'worker-activity', path: './specs/worker-activity.spec.mjs', kind: 'none' },
+  { name: 'canonical-origin', path: './specs/canonical-origin.spec.mjs', kind: 'none' },
+  { name: 'worker-song-idea-notify', path: './specs/worker-song-idea-notify.spec.mjs', kind: 'none' },
+];
+
+function parseOnly(argv) {
+  const i = argv.indexOf('--only');
+  if (i === -1) return null;
+  const arg = argv[i + 1] || '';
+  return arg.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 async function main() {
-  const server = await serve(PORT);
-  const browser = await launchBrowser();
-  const results = [];
-  try {
-    const homepage = await import('./specs/homepage.spec.mjs');
-    results.push(await homepage.run(browser, PORT));
+  const only = parseOnly(process.argv.slice(2));
+  const specs = only ? SPECS.filter((s) => only.includes(s.name)) : SPECS;
 
-    const artistPage = await import('./specs/artist-page.spec.mjs');
-    results.push(await artistPage.run(browser, PORT));
-
-    const search = await import('./specs/search.spec.mjs');
-    results.push(await search.run(browser, PORT));
-
-    const settings = await import('./specs/settings.spec.mjs');
-    results.push(await settings.run(browser, PORT));
-
-    const songPage = await import('./specs/song-page.spec.mjs');
-    results.push(await songPage.run(browser, PORT));
-
-    const legalPages = await import('./specs/legal-pages.spec.mjs');
-    results.push(await legalPages.run(PORT));
-
-    const rating = await import('./specs/rating.spec.mjs');
-    results.push(await rating.run(browser, PORT));
-
-    const activity = await import('./specs/activity.spec.mjs');
-    results.push(await activity.run(browser, PORT));
-
-    const adminPulse = await import('./specs/admin-pulse.spec.mjs');
-    results.push(await adminPulse.run(browser, PORT));
-
-    const homepagePulse = await import('./specs/homepage-pulse.spec.mjs');
-    results.push(await homepagePulse.run(browser, PORT));
-
-    const adminDedications = await import('./specs/admin-dedications.spec.mjs');
-    results.push(await adminDedications.run(browser, PORT));
-
-    const dedicate = await import('./specs/dedicate.spec.mjs');
-    results.push(await dedicate.run(browser, PORT));
-
-    const dedicationPage = await import('./specs/dedication-page.spec.mjs');
-    results.push(await dedicationPage.run(browser, PORT));
-
-    const dedicationOccasions = await import('./specs/dedication-occasions.spec.mjs');
-    results.push(await dedicationOccasions.run(browser, PORT));
-
-    const adminSongIdeas = await import('./specs/admin-song-ideas.spec.mjs');
-    results.push(await adminSongIdeas.run(browser, PORT));
-
-    const yourSongPage = await import('./specs/your-song-page.spec.mjs');
-    results.push(await yourSongPage.run(browser, PORT));
-
-    const yourSongIdeasBoard = await import('./specs/your-song-ideas-board.spec.mjs');
-    results.push(await yourSongIdeasBoard.run(browser, PORT));
-
-    const ideaCredit = await import('./specs/idea-credit.spec.mjs');
-    results.push(await ideaCredit.run(browser, PORT));
-  } finally {
-    await browser.close();
-    server.close();
+  if (only) {
+    const unknown = only.filter((n) => !SPECS.some((s) => s.name === n));
+    if (unknown.length) {
+      console.error(`Unknown spec name(s): ${unknown.join(', ')}`);
+      console.error(`Known names: ${SPECS.map((s) => s.name).join(', ')}`);
+      process.exit(1);
+    }
+    console.log(`--only: running ${specs.map((s) => s.name).join(', ')}`);
   }
 
-  // Node-only, no browser/server needed.
-  const middleware = await import('./specs/middleware.spec.mjs');
-  results.push(await middleware.run());
+  const results = [];
+  const needsServerOrBrowser = specs.some((s) => s.kind !== 'none');
 
-  const workerActivity = await import('./specs/worker-activity.spec.mjs');
-  results.push(await workerActivity.run());
+  if (needsServerOrBrowser) {
+    const server = await serve(PORT);
+    const browser = await launchBrowser();
+    try {
+      for (const s of specs) {
+        if (s.kind === 'none') continue;
+        const mod = await import(s.path);
+        results.push(s.kind === 'browser' ? await mod.run(browser, PORT) : await mod.run(PORT));
+      }
+    } finally {
+      await browser.close();
+      server.close();
+    }
+  }
 
-  const canonicalOrigin = await import('./specs/canonical-origin.spec.mjs');
-  results.push(await canonicalOrigin.run());
-
-  const workerSongIdeaNotify = await import('./specs/worker-song-idea-notify.spec.mjs');
-  results.push(await workerSongIdeaNotify.run());
+  for (const s of specs) {
+    if (s.kind !== 'none') continue;
+    const mod = await import(s.path);
+    results.push(await mod.run());
+  }
 
   const totalPassed = results.reduce((n, r) => n + r.passed, 0);
   const totalFailed = results.reduce((n, r) => n + r.failed, 0);
