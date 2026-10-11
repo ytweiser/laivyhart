@@ -161,7 +161,14 @@ over a narrower range.
   section, including the no-crash fallback when that key is absent.
 - `specs/admin-pulse.spec.mjs` — the admin Pulse tab (ACT-2), signed in as an
   admin with every `pulse_*` RPC stubbed: overview tiles/feed/top lists/
-  retention, and the song, member and visitor drilldowns.
+  retention, and the song, member and visitor drilldowns. PULSE-2:
+  `pulseProgressLabel()`/`pulseFeedVerbHTML()` (every furthest_pct branch),
+  the live feed and the member/visitor history both reading "finished" /
+  "listened to N%" for a listen (never the old "kept listening to"), and
+  two separate listens of the same song rendering as two distinct lines.
+  The SQL grouping itself (`_pulse_listen_rows()`, the 30-minute ticker/
+  Pulse-box collapse) is verified live against the project, not here --
+  this harness has no real Postgres to exercise it against.
 - `specs/homepage-pulse.spec.mjs` — the public Pulse box (ACT-2): absent and
   nothing fetched with the switch off, present and rendering lines with the
   switch on, and the admin-only `?preview=pulse` override (present for an

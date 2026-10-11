@@ -2186,24 +2186,45 @@ function pulseTimeAgo(iso){
   return `${Math.round(hr / 24)}d ago`;
 }
 
+// PULSE-2: play_25/50/75/play_complete no longer arrive as their own rows
+// at all -- pulse_feed/pulse_member fold a play_start and whatever progress
+// followed it into one "listen" row with a furthest_pct, so there is
+// nothing left to map those four event types to here.
 const PULSE_VERB = {
-  page_view: 'viewed a page', play_start: 'played', play_25: 'kept listening to',
-  play_50: 'kept listening to', play_75: 'kept listening to', play_complete: 'finished',
+  page_view: 'viewed a page', play_start: 'played',
   heart: 'hearted', unheart: 'unhearted', rate: 'rated', comment: 'commented on',
   follow: 'followed an artist', unfollow: 'unfollowed an artist', share: 'shared',
   search: 'searched', sign_in: 'signed in', sign_up: 'signed up', upload_submit: 'submitted a song',
   dedication: 'sent a dedication', idea_submit: 'submitted an idea', idea_heart: 'liked an idea',
 };
 
-// "Sarah K. in Atlanta, US played My Perfect World · 2 min ago" / "Visitor in
-// Haifa, IL hearted Asking for 1". The name and the song (when there is one)
-// are both click targets into their own drilldown.
+// PULSE-2: "finished" / "listened to 75%" / "listened to 50%" / "listened
+// to 25%" / "started" -- the furthest point reached inside one listen
+// (null/undefined/anything under 25 all read as "started", not just a
+// literal null, since furthest_pct's only populated values are 25/50/75/
+// 100 or null).
+function pulseProgressLabel(pct){
+  if(pct >= 100) return 'finished';
+  if(pct === 75) return 'listened to 75%';
+  if(pct === 50) return 'listened to 50%';
+  if(pct === 25) return 'listened to 25%';
+  return 'started';
+}
+// Shared by the live feed and the member/visitor history below: the verb,
+// plus a progress clause right after it for a listen (play_start) row.
+function pulseFeedVerbHTML(e){
+  const verb = escHtml(PULSE_VERB[e.event_type] || e.event_type);
+  return e.event_type === 'play_start' ? `${verb} &middot; ${pulseProgressLabel(e.furthest_pct)}` : verb;
+}
+
+// "Sarah K. in Atlanta, US played My Perfect World · finished · 2 min ago" /
+// "Visitor in Haifa, IL hearted Asking for 1". The name and the song (when
+// there is one) are both click targets into their own drilldown.
 function pulseFeedLineHTML(e){
   const who = e.user_id
     ? `<strong data-pulse-open="member" data-id="${escAttr(e.user_id)}">${escHtml(e.display_name || 'Member')}</strong>`
     : `<strong data-pulse-open="visitor" data-id="${escAttr(e.device_id)}">Visitor</strong>`;
   const where = (e.city || e.country) ? ` in ${escHtml([e.city, e.country].filter(Boolean).join(', '))}` : '';
-  const verb = PULSE_VERB[e.event_type] || e.event_type;
   let what = '';
   if(e.event_type === 'search'){
     const q = e.meta && e.meta.query;
@@ -2211,7 +2232,7 @@ function pulseFeedLineHTML(e){
   } else if(e.song_title){
     what = ` <span class="pulse-song-link" data-pulse-open="song" data-id="${escAttr(e.song_id)}">${escHtml(e.song_title)}</span>`;
   }
-  return `<div class="pulse-feed-item">${who}${where} ${escHtml(verb)}${what} <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`;
+  return `<div class="pulse-feed-item">${who}${where} ${pulseFeedVerbHTML(e)}${what} <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`;
 }
 
 // Delegated click handler, shared by the overview and both drilldowns, so a
@@ -2432,7 +2453,7 @@ async function showPulseMember(id, isVisitor){
     ).join('')}</div>
     <div class="pulse-section"><h3>History</h3>
       <div class="pulse-feed-list">${(data.events || []).length ? data.events.map(e => `
-        <div class="pulse-feed-item">${escHtml(PULSE_VERB[e.event_type] || e.event_type)}${e.song_title
+        <div class="pulse-feed-item">${pulseFeedVerbHTML(e)}${e.song_title
           ? ` <span class="pulse-song-link" data-pulse-open="song" data-id="${escAttr(e.song_id)}">${escHtml(e.song_title)}</span>` : ''}
           <span class="pulse-when">&middot; ${pulseTimeAgo(e.created_at)}</span></div>`
       ).join('') : '<div class="mod-empty">No history.</div>'}</div>
