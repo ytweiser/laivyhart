@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-S2RJQEGV45"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-S2RJQEGV45');
+</script>
+<title>The idea board &middot; Laivy Hart</title>
+<meta name="description" content="Song ideas members have sent in, out loud for everyone to see.">
+<meta name="theme-color" content="#0A0C1A">
+<script>
+  (function(){
+    var DEFAULT_THEME = 'dark', DEFAULT_COLOR = 'royal';
+    var BG = {
+      'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+      'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+      'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+      'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+    };
+    try{
+      var t = localStorage.getItem('laivy-theme');
+      if(t !== 'light' && t !== 'dark'){ t = DEFAULT_THEME; }
+      document.documentElement.setAttribute('data-theme', t);
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = DEFAULT_COLOR; }
+      document.documentElement.setAttribute('data-color', c);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', BG[c + '-' + t] || BG['royal-dark']);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+      document.documentElement.setAttribute('data-color', DEFAULT_COLOR);
+    }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Laivy Hart">
+<meta property="og:site_name" content="Laivy Hart">
+<meta property="og:title" content="The idea board">
+<meta property="og:description" content="Song ideas members have sent in, out loud for everyone to see.">
+<meta property="og:url" content="https://laivyhart.com/your-song/ideas">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://laivyhart.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The idea board">
+<meta name="twitter:description" content="Song ideas members have sent in, out loud for everyone to see.">
+<meta name="twitter:image" content="https://laivyhart.com/og-image.png">
+<script src="/pwa.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="/theme.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<script src="/js/supabase-client.js"></script>
+<style>
+  body{min-height:100vh; position:relative; overflow-x:hidden;}
+  .page-ambient{position:fixed; inset:0; z-index:0;}
+  .topbar{
+    position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;
+    padding:1.2rem 6vw; border-bottom:1px solid var(--line);
+  }
+  .topbar-right{display:flex; align-items:center; gap:1rem;}
+  main{position:relative; z-index:2; padding:5vh 6vw 10vh; display:flex; justify-content:center;}
+  article{width:100%; max-width:40rem;}
+
+  .yi-kicker{
+    font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:0.6rem;
+  }
+  .yi-title{font-family:var(--font-display); font-weight:600; font-size:clamp(2rem, 6vw, 2.8rem); margin:0 0 0.6rem;}
+  .yi-sub{font-family:var(--font-ui); font-size:0.95rem; color:var(--text-dim); margin:0 0 1.8rem;}
+
+  .yi-tabs{display:flex; gap:0.5rem; margin-bottom:1.6rem;}
+  .yi-tabs button{
+    font-family:var(--font-ui); font-size:0.78rem; padding:0.45rem 1rem; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:none; color:var(--text-dim);
+  }
+  .yi-tabs button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+
+  .yi-card{
+    border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.2rem; margin-bottom:1rem;
+    background:var(--bg-2);
+  }
+  .yi-text{
+    font-family:var(--font-display); font-style:italic; color:var(--text); line-height:1.55;
+    margin:0 0 0.6rem; font-size:1.02rem;
+  }
+  .yi-text.clamped{
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .yi-expand{
+    font-family:var(--font-ui); font-size:0.76rem; color:var(--accent-2); background:none; border:none;
+    cursor:pointer; padding:0; margin:0 0 0.6rem; display:none;
+  }
+  .yi-meta{display:flex; align-items:center; justify-content:space-between; gap:0.7rem; flex-wrap:wrap;}
+  .yi-credit{font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint);}
+  .yi-actions{display:flex; align-items:center; gap:1rem;}
+  .yi-heart{
+    display:inline-flex; align-items:center; gap:0.3rem; border:none; background:none; cursor:pointer;
+    font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim); padding:0;
+  }
+  .yi-heart svg{width:1.1rem; height:1.1rem; stroke:currentColor; fill:none; stroke-width:1.9;}
+  .yi-heart.is-on{color:#ff6b84;}
+  .yi-heart.is-on svg{fill:currentColor;}
+  .yi-made{font-family:var(--font-ui); font-size:0.8rem; color:var(--accent-2); text-decoration:none;}
+  .yi-empty{font-family:var(--font-ui); color:var(--text-faint); font-size:0.9rem;}
+</style>
+</head>
+<body>
+
+<div class="page-ambient ambient is-playing" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+</div>
+
+<div class="topbar">
+  <a class="logo logo-brand" href="/">
+    <picture>
+      <source type="image/webp" srcset="/brand/wordmark.webp">
+      <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+    </picture>
+  </a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/listen">Songs</a>
+    <a href="/about.html">About</a>
+    <div id="account-slot"></div>
+  </nav>
+  <div class="topbar-right">
+    <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
+    <div class="palette" role="group" aria-label="Color theme">
+      <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
+      <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
+      <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
+      <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
+    </div>
+    <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">&#9680;</button>
+  </div>
+</div>
+
+<main>
+  <article>
+    <div class="yi-kicker">Your Song</div>
+    <h1 class="yi-title">The idea board</h1>
+    <p class="yi-sub">Song ideas members have sent in. Heart the ones you love. <a href="/your-song">Send your own &rarr;</a></p>
+    <p style="margin:-0.6rem 0 1.4rem;">
+      <button id="yi-share-btn" type="button" style="border:none; background:none; cursor:pointer; color:var(--accent-2); font-family:var(--font-ui); font-size:0.82rem; padding:0;">Share this board</button>
+    </p>
+
+    <div class="yi-tabs" id="yi-tabs">
+      <button type="button" data-sort="newest">Newest</button>
+      <button type="button" data-sort="most_hearted">Most hearted</button>
+    </div>
+
+    <div id="yi-list"><p class="yi-empty">Loading&hellip;</p></div>
+
+    <a class="quiet-link back-link" href="/">&larr; Back to the jukebox</a>
+  </article>
+</main>
+
+<div class="ios-hint" id="ios-hint" hidden>
+  <span>Install: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</span>
+  <button class="ios-hint-close" type="button" aria-label="Dismiss">&times;</button>
+</div>
+
+<script>
+  const SUPABASE_URL = window.LAIVY_CONFIG.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = window.LAIVY_CONFIG.SUPABASE_ANON_KEY;
+  const supabaseClient = window.laivy.supabase;
+
+  function escHtml(str){ return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function logActivity(type, opts){
+    try{ if(window.laivy && window.laivy.activity) window.laivy.activity.log(type, opts); }catch(e){}
+  }
+
+  const THEME_COLOR_BG = {
+    'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+    'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+    'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+    'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+  };
+  function syncThemeColorMeta(){
+    const t = document.documentElement.getAttribute('data-theme');
+    const c = document.documentElement.getAttribute('data-color');
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute('content', THEME_COLOR_BG[c + '-' + t] || THEME_COLOR_BG['royal-dark']);
+  }
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('laivy-theme', next); }catch(e){}
+    syncThemeColorMeta();
+  });
+  (function(){
+    const COLORS = ['bordeaux', 'emerald', 'royal', 'gold'];
+    const swatches = document.querySelectorAll('.swatch');
+    function mark(name){
+      swatches.forEach(sw => {
+        const on = sw.dataset.color === name;
+        sw.classList.toggle('is-active', on);
+        sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    function apply(name){
+      if(COLORS.indexOf(name) === -1) name = 'royal';
+      document.documentElement.setAttribute('data-color', name);
+      try{ localStorage.setItem('laivy-color', name); }catch(e){}
+      mark(name);
+      syncThemeColorMeta();
+    }
+    swatches.forEach(sw => sw.addEventListener('click', () => apply(sw.dataset.color)));
+    const cur = document.documentElement.getAttribute('data-color');
+    mark(COLORS.indexOf(cur) === -1 ? 'royal' : cur);
+  })();
+
+  /* Page-specific share, same reasoning as your-song.html's own: separate
+     from pwa.js's generic site-share button, which always shares the
+     homepage, not this board. */
+  (function(){
+    const btn = document.getElementById('yi-share-btn');
+    if(!btn) return;
+    const url = 'https://laivyhart.com/your-song/ideas';
+    const shareData = { title: 'The idea board', text: 'Song ideas members have sent in on Laivy Hart.', url };
+    btn.addEventListener('click', () => {
+      const channel = navigator.share ? 'native' : (navigator.clipboard && navigator.clipboard.writeText ? 'copy' : 'prompt');
+      logActivity('share', { meta: { channel: 'idea_board_' + channel } });
+      if(navigator.share){
+        navigator.share(shareData).catch(() => {});
+      } else if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).catch(() => window.prompt('Copy this link:', url));
+      } else {
+        window.prompt('Copy this link:', url);
+      }
+    });
+  })();
+
+  /* Per-browser heart state, same pattern as the song heart (index.html's
+     LIKES_KEY): the server has no "did I heart this" column to read back
+     (song_ideas_board carries no user id, by design), so this is purely
+     this browser's own memory of which ideas it has already hearted, to
+     show a filled vs. outline heart. */
+  const YI_HEARTS_KEY = 'laivy-idea-hearts-v1';
+  function loadHeartedSet(){ try{ return new Set(JSON.parse(localStorage.getItem(YI_HEARTS_KEY)) || []); }catch(e){ return new Set(); } }
+  function saveHeartedSet(s){ try{ localStorage.setItem(YI_HEARTS_KEY, JSON.stringify([...s])); }catch(e){} }
+  let heartedSet = loadHeartedSet();
+
+  const HEART_ICON = '<path d="M12 20.2l-1.4-1.3C6.5 14.8 2.7 11.3 2.7 7.9 2.7 5.2 4.8 3.2 7.4 3.2c1.5 0 2.9.7 3.9 1.8h1.4c1-1.1 2.4-1.8 3.9-1.8 2.6 0 4.7 2 4.7 4.7 0 3.4-3.8 6.9-7.9 11z"/>';
+
+  function ideaCardHTML(d){
+    const made = d.released_song_slug
+      ? `<a class="yi-made" href="/song/${escHtml(d.released_song_slug)}">Made into a song &rarr;</a>`
+      : '';
+    const isOn = heartedSet.has(d.id);
+    return `<div class="yi-card" data-idea-id="${escHtml(d.id)}">
+        <p class="yi-text clamped" data-yi-text>${escHtml(d.idea_text)}</p>
+        <button class="yi-expand" type="button" data-yi-expand>Read more</button>
+        <div class="yi-meta">
+          <span class="yi-credit">${escHtml(d.credit)}</span>
+          <div class="yi-actions">
+            <button class="yi-heart${isOn ? ' is-on' : ''}" type="button" data-yi-heart aria-pressed="${isOn}">
+              <svg viewBox="0 0 24 24" aria-hidden="true">${HEART_ICON}</svg>
+              <span data-yi-count>${d.hearts_count || 0}</span>
+            </button>
+            ${made}
+          </div>
+        </div>
+      </div>`;
+  }
+
+  let currentSort = 'newest';
+
+  async function loadBoard(){
+    const host = document.getElementById('yi-list');
+    host.innerHTML = '<p class="yi-empty">Loading&hellip;</p>';
+    const { data, error } = await supabaseClient
+      .from('song_ideas_board')
+      .select('id, idea_text, credit, hearts_count, status, created_at, released_song_slug')
+      .order(currentSort === 'most_hearted' ? 'hearts_count' : 'created_at', { ascending: false });
+    if(error){ host.innerHTML = '<p class="yi-empty">Could not load the idea board right now.</p>'; return; }
+    if(!data || !data.length){ host.innerHTML = '<p class="yi-empty">No ideas on the board yet. Be the first.</p>'; return; }
+
+    host.innerHTML = data.map(ideaCardHTML).join('');
+
+    host.querySelectorAll('[data-yi-text]').forEach((el) => {
+      // Only offer "Read more" when the text actually overflows three lines.
+      if(el.scrollHeight > el.clientHeight + 2){
+        el.nextElementSibling.style.display = 'inline-block';
+      }
+    });
+    host.querySelectorAll('[data-yi-expand]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const textEl = btn.previousElementSibling;
+        const expanded = !textEl.classList.contains('clamped');
+        textEl.classList.toggle('clamped', expanded);
+        btn.textContent = expanded ? 'Read more' : 'Show less';
+      });
+    });
+    host.querySelectorAll('[data-yi-heart]').forEach((btn) => {
+      btn.addEventListener('click', () => toggleHeart(btn));
+    });
+  }
+
+  async function toggleHeart(btn){
+    const card = btn.closest('[data-idea-id]');
+    const id = card.dataset.ideaId;
+    const user = window.laivy && window.laivy.auth && window.laivy.auth.user;
+    if(!user){
+      if(window.laivy && window.laivy.accountUI){
+        window.laivy.accountUI.openModal({ next: '/your-song/ideas', reason: 'Sign in to heart a song idea' });
+      }
+      return;
+    }
+    const wasOn = heartedSet.has(id);
+    const countEl = btn.querySelector('[data-yi-count]');
+    const current = Number(countEl.textContent) || 0;
+    btn.disabled = true;
+    try{
+      const { error } = await supabaseClient.rpc('toggle_song_idea_heart', { p_id: id, p_on: !wasOn });
+      if(error) throw error;
+      // toggle_song_idea_heart() already logs idea_heart server-side
+      // (sql/024_song_ideas.sql) on an actual new heart -- not logged again here.
+      if(wasOn){ heartedSet.delete(id); countEl.textContent = Math.max(0, current - 1); }
+      else { heartedSet.add(id); countEl.textContent = current + 1; }
+      saveHeartedSet(heartedSet);
+      btn.classList.toggle('is-on', !wasOn);
+      btn.setAttribute('aria-pressed', String(!wasOn));
+    }catch(e){
+      window.alert((e && e.message) || 'Could not update that heart right now.');
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
+  document.getElementById('yi-tabs').querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.sort === currentSort);
+    b.addEventListener('click', () => {
+      currentSort = b.dataset.sort;
+      document.getElementById('yi-tabs').querySelectorAll('button').forEach((x) => x.classList.toggle('active', x === b));
+      loadBoard();
+    });
+  });
+
+  loadBoard();
+</script>
+
+<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/activity.js"></script>
+<script type="module" src="/js/account-ui.js"></script>
+</body>
+</html>

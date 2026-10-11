@@ -131,6 +131,31 @@ any failure.
   week-picks header (a gentle note past 3, not a block), the Pick/In the
   studio/Not this week actions, the Released song picker (including the
   refusal to confirm with nothing chosen), and the Copy button.
+- `specs/your-song-page.spec.mjs` (SONG-2): `/your-song` end to end --
+  every section renders (hero, three steps, the box, This week, FAQ); the
+  box copy has no topic examples (the placeholder and helper line checked
+  exactly); signed-out Submit opens sign-in and saves the typed text to
+  sessionStorage, restored (and cleared) on the next load; signed-in Submit
+  prefills the credit field and succeeds to the "Thank you" pane with both
+  links; "Made from your ideas" stays hidden with no credited song and
+  shows one once a song carries `idea_credit`; 1280px/390px rendering.
+- `specs/your-song-ideas-board.spec.mjs` (SONG-2): `/your-song/ideas` --
+  cards (idea text, credit, hearts, "Made into a song" when released) with
+  no user id anywhere in the markup, the Newest/Most hearted tabs actually
+  reordering, a signed-out heart opening sign-in instead of hearting, and a
+  signed-in heart toggling the count and the filled state both ways.
+- `specs/idea-credit.spec.mjs` (SONG-2): "Idea by [name]" on the song page
+  links to a real artist profile when the credit name exactly matches one
+  (`artists_public`), stays plain text for a credit with no match and
+  always for "Anonymous" (never even looked up), and the line is absent
+  entirely when the song carries no idea credit.
+- `specs/worker-song-idea-notify.spec.mjs` (SONG-2): the Worker's
+  `POST /notify/song-idea`, exercised directly against the real
+  `worker/src/index.js` the way `worker-activity.spec.mjs` exercises
+  `/event`: a non-POST method, a missing/invalid token, a verified
+  non-admin (403, no email sent), the "picked" and "released" subjects and
+  bodies (the song link and "Idea by" credit for "released"), and
+  `notify_email: false` skipping the send entirely.
 - `specs/canonical-origin.spec.mjs` (CANON-1): a filesystem scan over every
   file this site serves or produces at build time (skipping `tests/` and
   `worker/`, the two places that intentionally keep both the bare and www

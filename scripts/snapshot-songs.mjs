@@ -256,7 +256,7 @@ try {
 // never makes the snapshot's Honors list disagree with the live site's.
 let honorsMinWeeksOnChart = 4;
 try {
-  const PUBLIC_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart'];
+  const PUBLIC_KEYS = ['contribute_cta_enabled', 'honors_min_weeks_on_chart', 'your_song_nav_enabled'];
   const sres = await fetch(`${url}/rest/v1/site_settings?select=key,value&key=in.(${PUBLIC_KEYS.join(',')})`, { headers });
   if (!sres.ok) throw new Error(`HTTP ${sres.status}`);
   const srows = await sres.json();

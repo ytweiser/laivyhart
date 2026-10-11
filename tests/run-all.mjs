@@ -63,6 +63,15 @@ async function main() {
 
     const adminSongIdeas = await import('./specs/admin-song-ideas.spec.mjs');
     results.push(await adminSongIdeas.run(browser, PORT));
+
+    const yourSongPage = await import('./specs/your-song-page.spec.mjs');
+    results.push(await yourSongPage.run(browser, PORT));
+
+    const yourSongIdeasBoard = await import('./specs/your-song-ideas-board.spec.mjs');
+    results.push(await yourSongIdeasBoard.run(browser, PORT));
+
+    const ideaCredit = await import('./specs/idea-credit.spec.mjs');
+    results.push(await ideaCredit.run(browser, PORT));
   } finally {
     await browser.close();
     server.close();
@@ -77,6 +86,9 @@ async function main() {
 
   const canonicalOrigin = await import('./specs/canonical-origin.spec.mjs');
   results.push(await canonicalOrigin.run());
+
+  const workerSongIdeaNotify = await import('./specs/worker-song-idea-notify.spec.mjs');
+  results.push(await workerSongIdeaNotify.run());
 
   const totalPassed = results.reduce((n, r) => n + r.passed, 0);
   const totalFailed = results.reduce((n, r) => n + r.failed, 0);

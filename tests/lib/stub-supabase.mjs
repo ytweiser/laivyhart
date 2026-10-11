@@ -69,6 +69,16 @@ export function buildFixtureResponses(overrides) {
     adminSongIdeas: [],
     adminWeekPicks: [],
     adminSetSongIdeaStatusResult: null,
+    // SONG-2. songIdeasBoard: song_ideas_board rows (the public board and
+    // /your-song's "This week" list both read this). mySongIdeas: the
+    // sender's own, any status (My page). submitSongIdeaResult: the id
+    // submit_song_idea() returns, or a full fulfill() object for the error
+    // path. withdrawMySongIdeaResult/toggleSongIdeaHeartResult: likewise.
+    songIdeasBoard: [],
+    mySongIdeas: [],
+    submitSongIdeaResult: 'idea-new-0001',
+    withdrawMySongIdeaResult: null,
+    toggleSongIdeaHeartResult: null,
   };
   return { ...base, ...(overrides || {}) };
 }
@@ -82,16 +92,17 @@ function rpcParam(request, name) {
 // not an array -- real PostgREST honors that header; this stub has to too,
 // or `.maybeSingle()` callers (resolveArtist, loadArtist, checkHandle, ...)
 // silently get the wrong shape and read undefined properties off an array.
-// Filters on `id=eq.<x>` or `handle=eq./ilike.<x>` (ilike with no `%`
-// wildcard, which is how this codebase always calls it, is an exact
-// case-insensitive match); no matching param returns every row untouched
-// (the bulk "whole directory" callers want that).
+// Filters on `id=eq.<x>`, `handle=eq./ilike.<x>` or `display_name=ilike.<x>`
+// (ilike with no `%` wildcard, which is how this codebase always calls it,
+// is an exact case-insensitive match); no matching param returns every row
+// untouched (the bulk "whole directory" callers want that).
 async function filterRows(req, rows, idKey) {
   const key = idKey || 'id';
   const params = new URL(req.url()).searchParams;
   let out = rows;
   const idParam = params.get(key);
   const handleParam = params.get('handle');
+  const displayNameParam = params.get('display_name');
   if (idParam && idParam.startsWith('eq.')) {
     const id = idParam.slice(3);
     out = out.filter((r) => r[key] === id);
@@ -101,6 +112,9 @@ async function filterRows(req, rows, idKey) {
   } else if (handleParam) {
     const val = handleParam.replace(/^(eq|ilike)\./, '').toLowerCase();
     out = out.filter((r) => String(r.handle).toLowerCase() === val);
+  } else if (displayNameParam) {
+    const val = displayNameParam.replace(/^(eq|ilike)\./, '').toLowerCase();
+    out = out.filter((r) => String(r.display_name).toLowerCase() === val);
   }
   const accept = (await req.headerValue('accept').catch(() => null)) || '';
   if (accept.includes('vnd.pgrst.object')) return out[0] || null;
@@ -126,6 +140,9 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
   // Studio/Released/Not this week all have to show up on the very next
   // admin_list_song_ideas() read, the same "mutate then re-read" shape.
   let songIdeasState = F2.adminSongIdeas.map((i) => ({ ...i }));
+  // SONG-2: the board's hearts_count needs to visibly move when a test
+  // toggles a heart and re-reads the board, same "mutate then re-read" shape.
+  let songIdeasBoardState = F2.songIdeasBoard.map((i) => ({ ...i }));
 
   await page.route(`https://${SUPA_HOST}/**`, async (route) => {
     const req = route.request();
@@ -163,6 +180,11 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
           rows = rows.filter((s) => (s.title || '').toLowerCase().includes(term) || (s.title_translit || '').toLowerCase().includes(term));
         }
       }
+      // SONG-2: "Made from your ideas" (your-song.html) -- .not('idea_credit', 'is', null).
+      const ideaCreditFilter = params.get('idea_credit');
+      if (ideaCreditFilter === 'not.is.null') rows = rows.filter((s) => s.idea_credit != null);
+      const limitParam = params.get('limit');
+      if (limitParam && !isNaN(Number(limitParam))) rows = rows.slice(0, Number(limitParam));
       return fulfill(rows);
     }
     if (url.includes('/rest/v1/artists_public')) { notify('artistsPublic'); return fulfill(await filterRows(req, F2.artistsPublic)); }
@@ -362,6 +384,48 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
         }
         if (status === 'picked') return { ...i, status, picked_week: '2026-10-11' };
         return { ...i, status };
+      });
+      return fulfill(null);
+    }
+
+    // SONG-2.
+    if (url.includes('/rest/v1/song_ideas_board')) {
+      notify('songIdeasBoard');
+      const params = new URL(url).searchParams;
+      let rows = songIdeasBoardState.slice();
+      const order = params.get('order') || '';
+      if (order.startsWith('hearts_count')) rows.sort((a, b) => (b.hearts_count || 0) - (a.hearts_count || 0));
+      else rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const statusParam = params.get('status');
+      if (statusParam && statusParam.startsWith('in.')) {
+        const wanted = statusParam.slice(3).replace(/^\(|\)$/g, '').split(',');
+        rows = rows.filter((r) => wanted.includes(r.status));
+      }
+      return fulfill(rows);
+    }
+    if (url.includes('/rest/v1/rpc/submit_song_idea')) {
+      notify('rpc:submit_song_idea');
+      if (F2.submitSongIdeaResult && typeof F2.submitSongIdeaResult === 'object') return route.fulfill(F2.submitSongIdeaResult);
+      return fulfill(F2.submitSongIdeaResult);
+    }
+    if (url.includes('/rest/v1/rpc/my_song_ideas')) { notify('rpc:my_song_ideas'); return fulfill(F2.mySongIdeas); }
+    if (url.includes('/rest/v1/rpc/withdraw_my_song_idea')) {
+      notify('rpc:withdraw_my_song_idea');
+      if (F2.withdrawMySongIdeaResult) return route.fulfill(F2.withdrawMySongIdeaResult);
+      const id = rpcParam(req, 'p_id');
+      const row = F2.mySongIdeas.find((i) => i.id === id);
+      if (row) row.status = 'withdrawn';
+      return fulfill(null);
+    }
+    if (url.includes('/rest/v1/rpc/toggle_song_idea_heart')) {
+      notify('rpc:toggle_song_idea_heart');
+      if (F2.toggleSongIdeaHeartResult) return route.fulfill(F2.toggleSongIdeaHeartResult);
+      const id = rpcParam(req, 'p_id');
+      const on = rpcParam(req, 'p_on');
+      songIdeasBoardState = songIdeasBoardState.map((i) => {
+        if (i.id !== id) return i;
+        const delta = on ? 1 : -1;
+        return { ...i, hearts_count: Math.max(0, (i.hearts_count || 0) + delta) };
       });
       return fulfill(null);
     }

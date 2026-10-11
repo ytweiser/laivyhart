@@ -193,6 +193,43 @@ async function readContributeSwitch() {
   return false;
 }
 
+/* SONG-2: the main-nav "Your Song" link, gated by site_settings.
+   your_song_nav_enabled -- seeded false for now (the feature is reachable
+   through the footer and this same account slot's chip menu already; this
+   switch is for turning on a louder, permanent nav placement later). Same
+   read-then-conditionally-render shape as readContributeSwitch above. */
+let yourSongNavOn = false;
+async function readYourSongNavSwitch() {
+  const norm = (v) => {
+    if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) {} }
+    return v === true;
+  };
+  try {
+    if (supabase) {
+      const { data, error } = await supabase.from('site_settings')
+        .select('value').eq('key', 'your_song_nav_enabled').maybeSingle();
+      if (!error) return norm(data && data.value);
+    }
+  } catch (e) { /* fall through */ }
+  try {
+    const res = await fetch('/settings.json', { cache: 'no-cache' });
+    if (res.ok) {
+      const rows = await res.json();
+      const r = Array.isArray(rows) && rows.find((x) => x && x.key === 'your_song_nav_enabled');
+      return norm(r && r.value);
+    }
+  } catch (e) { /* defaults stand */ }
+  return false;
+}
+function yourSongNavLink() {
+  const a = el('a', 'nav-share', 'Your Song');
+  a.href = '/your-song';
+  if (location.pathname === '/your-song' || location.pathname === '/your-song/ideas') {
+    a.classList.add('is-current'); a.setAttribute('aria-current', 'page');
+  }
+  return a;
+}
+
 function shareLink(user) {
   // Signed in it is a plain link; signed out it opens the modal and the
   // sign-in lands on /upload rather than back here.
@@ -215,6 +252,7 @@ function renderSlot(slot) {
   if (openChipMenu) openChipMenu();
   slot.innerHTML = '';
   if (contributeOn) slot.appendChild(shareLink(user));
+  if (yourSongNavOn) slot.appendChild(yourSongNavLink());
 
   if (!user) {
     const a = el('button', 'lv-signin-link', 'Sign in or join');
@@ -250,6 +288,7 @@ function renderSlot(slot) {
     : '/settings';
   menu.innerHTML =
     `<a role="menuitem" href="${esc(myPage)}">My page</a>` +
+    `<a role="menuitem" href="/your-song">Your Song</a>` +
     `<a role="menuitem" href="/upload">Upload a song</a>` +
     `<a role="menuitem" href="/settings">Settings</a>` +
     (isAdmin() ? `<a role="menuitem" href="/admin.html">Admin</a>` : '') +
@@ -623,6 +662,10 @@ export function renderSettings(container) {
       <div id="lv-dedications-list"><p class="lv-hint">Loading&hellip;</p></div>
 
       <hr class="lv-rule">
+      <h2 class="lv-section-h">My song ideas</h2>
+      <div id="lv-song-ideas-list"><p class="lv-hint">Loading&hellip;</p></div>
+
+      <hr class="lv-rule">
       <h2 class="lv-danger-h">Delete my account</h2>
       <p class="lv-hint">This removes your profile and takes your songs off the site. It cannot be undone.</p>
       <input class="lv-input" data-confirm type="text" placeholder="Type DELETE to confirm" dir="ltr">
@@ -638,6 +681,7 @@ export function renderSettings(container) {
   if (artist && artist.is_artist) renderMyPicks(container, artist);
   renderFollowing(container, user);
   renderMyDedications(container);
+  renderMySongIdeas(container);
 
   container.querySelector('[data-act="save"]').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
@@ -1043,6 +1087,64 @@ async function renderMyDedications(container) {
   }
 }
 
+/* ---------------- My song ideas (SONG-2) ----------------
+   my_song_ideas() (sql/024_song_ideas.sql): the sender's own, any status,
+   newest first. Withdraw calls withdraw_my_song_idea(), blocked server-side
+   once released -- hidden here too, so the button is never offered for a
+   status it would just be refused on. */
+const SI_STATUS_WORD = {
+  received: 'Received', picked: 'Picked this week', in_studio: 'In the studio',
+  released: 'Released', not_picked: 'Not picked this time', withdrawn: 'Withdrawn',
+};
+async function renderMySongIdeas(container) {
+  const host = container.querySelector('#lv-song-ideas-list');
+  if (!host) return;
+  try {
+    const { data, error } = await supabase.rpc('my_song_ideas');
+    if (error) throw error;
+    if (!data || !data.length) { host.innerHTML = `<p class="lv-hint">You haven't sent a song idea yet.</p>`; return; }
+    host.innerHTML = data.map((i) => {
+      const canWithdraw = i.status !== 'released' && i.status !== 'withdrawn';
+      const releasedLink = (i.status === 'released' && i.released_song_slug)
+        ? ` <a href="/song/${esc(i.released_song_slug)}">${esc(i.released_song_title || 'Listen')}</a>` : '';
+      return `
+      <div class="lv-ded-row" data-id="${esc(i.id)}">
+        <div class="lv-ded-main">
+          <span class="lv-ded-recipient">${esc(i.idea_text)}</span>
+          <span class="lv-ded-meta">${esc(fmtDedDate(i.created_at))}</span>
+        </div>
+        <span class="lv-ded-status${i.status === 'withdrawn' ? ' is-removed' : ''}">${esc(SI_STATUS_WORD[i.status] || i.status)}${releasedLink}</span>
+        <div class="lv-ded-actions">
+          ${canWithdraw ? `<button type="button" class="lv-btn outlined" data-si-withdraw="${esc(i.id)}">Withdraw</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    host.querySelectorAll('[data-si-withdraw]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!window.confirm('Withdraw this song idea? This cannot be undone.')) return;
+        btn.disabled = true;
+        try {
+          const { error } = await supabase.rpc('withdraw_my_song_idea', { p_id: btn.dataset.siWithdraw });
+          if (error) throw error;
+          const row = btn.closest('.lv-ded-row');
+          if (row) {
+            const statusEl = row.querySelector('.lv-ded-status');
+            statusEl.textContent = 'Withdrawn';
+            statusEl.classList.add('is-removed');
+            row.querySelector('.lv-ded-actions').innerHTML = '';
+          }
+        } catch (e) {
+          alert('Could not withdraw: ' + (e && e.message));
+          btn.disabled = false;
+        }
+      });
+    });
+  } catch (e) {
+    host.innerHTML = `<p class="lv-hint">Could not load your song ideas right now.</p>`;
+  }
+}
+
 /* ---------------- wiring ---------------- */
 
 let lastUserId = undefined;
@@ -1074,6 +1176,7 @@ function onAuth() {
 window.addEventListener('laivy:auth', onAuth);
 renderAccountSlots();          // signed-out first, corrected on the first event
 readContributeSwitch().then((on) => { contributeOn = on; if (on) renderAccountSlots(); });
+readYourSongNavSwitch().then((on) => { yourSongNavOn = on; if (on) renderAccountSlots(); });
 if (authState().ready) onAuth();
 
 window.laivy = window.laivy || {};

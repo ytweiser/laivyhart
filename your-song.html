@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-S2RJQEGV45"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-S2RJQEGV45');
+</script>
+<title>Your idea. Our music. &middot; Laivy Hart</title>
+<meta name="description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta name="theme-color" content="#0A0C1A">
+<script>
+  (function(){
+    var DEFAULT_THEME = 'dark', DEFAULT_COLOR = 'royal';
+    var BG = {
+      'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+      'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+      'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+      'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+    };
+    try{
+      var t = localStorage.getItem('laivy-theme');
+      if(t !== 'light' && t !== 'dark'){ t = DEFAULT_THEME; }
+      document.documentElement.setAttribute('data-theme', t);
+      var c = localStorage.getItem('laivy-color');
+      if(['bordeaux','emerald','royal','gold'].indexOf(c) === -1){ c = DEFAULT_COLOR; }
+      document.documentElement.setAttribute('data-color', c);
+      var mc = document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', BG[c + '-' + t] || BG['royal-dark']);
+    }catch(e){
+      document.documentElement.setAttribute('data-theme', DEFAULT_THEME);
+      document.documentElement.setAttribute('data-color', DEFAULT_COLOR);
+    }
+  })();
+</script>
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Laivy Hart">
+<meta property="og:site_name" content="Laivy Hart">
+<meta property="og:title" content="Your idea. Our music.">
+<meta property="og:description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta property="og:url" content="https://laivyhart.com/your-song">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://laivyhart.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your idea. Our music.">
+<meta name="twitter:description" content="Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.">
+<meta name="twitter:image" content="https://laivyhart.com/og-image.png">
+<script src="/pwa.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="/theme.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/config.js"></script>
+<script src="/js/supabase-client.js"></script>
+<style>
+  body{min-height:100vh; position:relative; overflow-x:hidden;}
+  .page-ambient{position:fixed; inset:0; z-index:0;}
+  .topbar{
+    position:relative; z-index:2;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.6rem;
+    padding:1.2rem 6vw; border-bottom:1px solid var(--line);
+  }
+  .topbar-right{display:flex; align-items:center; gap:1rem;}
+
+  main{position:relative; z-index:2; padding:0 6vw 10vh; display:flex; justify-content:center;}
+  article{width:100%; max-width:40rem;}
+
+  /* ---- Hero ---- */
+  .ys-hero{padding:7vh 0 3rem; text-align:center;}
+  .ys-kicker{
+    font-family:var(--font-ui); font-size:0.72rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--text-faint); margin-bottom:1rem;
+  }
+  .ys-title{
+    font-family:var(--font-display); font-weight:600;
+    font-size:clamp(2.4rem, 7vw, 3.6rem); line-height:1.05; letter-spacing:-0.01em;
+    margin:0 0 1.1rem;
+  }
+  .ys-sub{
+    font-family:var(--font-ui); font-size:1.05rem; line-height:1.6; color:var(--text-dim);
+    max-width:32rem; margin:0 auto 1.8rem;
+  }
+
+  /* ---- How it works ---- */
+  .ys-steps{display:grid; grid-template-columns:repeat(3, 1fr); gap:1.2rem; margin:0 0 4rem;}
+  .ys-step{text-align:center;}
+  .ys-step-n{
+    width:2.2rem; height:2.2rem; border-radius:50%; margin:0 auto 0.7rem;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--accent-grad); color:#fff; font-family:var(--font-display); font-weight:600;
+  }
+  .ys-step p{font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); margin:0; line-height:1.5;}
+
+  /* ---- The box ---- */
+  .ys-box{
+    background:var(--bg-2); border:1px solid var(--glass-border); border-radius:18px;
+    padding:1.8rem 1.6rem; margin-bottom:3.5rem; box-shadow:0 16px 50px rgba(0,0,0,0.25);
+  }
+  .ys-box h2{font-family:var(--font-display); font-weight:600; font-size:1.4rem; margin:0 0 0.5rem;}
+  .ys-box-line{font-family:var(--font-ui); font-size:0.9rem; color:var(--text-dim); margin:0 0 1.2rem; line-height:1.5;}
+  .ys-credit-row{display:flex; gap:0.7rem; align-items:flex-end; flex-wrap:wrap;}
+  .ys-credit-row > div{flex:1 1 12rem;}
+  .ys-success h2{font-family:var(--font-display); font-weight:600; font-size:1.4rem; margin:0 0 0.6rem;}
+  .ys-success p{font-family:var(--font-ui); color:var(--text-dim); margin:0 0 1.2rem;}
+  .ys-success-links{display:flex; gap:1rem; flex-wrap:wrap;}
+  .ded-sheet-title{font-family:var(--font-display); font-weight:600; font-size:1.25rem; margin:0 0 0.9rem; color:var(--text);}
+  .ded-optional{color:var(--text-faint); font-weight:400;}
+  .ded-counter{font-family:var(--font-ui); font-size:0.74rem; color:var(--text-faint); text-align:right; margin-top:0.25rem;}
+  .ded-checkbox-row{
+    display:flex; align-items:flex-start; gap:0.5rem; margin-top:0.9rem;
+    font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); cursor:pointer;
+  }
+  .ded-checkbox-row input{margin-top:0.2rem;}
+  .ded-checkbox-row a{color:var(--accent-2);}
+
+  /* ---- This week ---- */
+  .ys-section{margin-bottom:3.5rem;}
+  .ys-section h2{font-family:var(--font-display); font-weight:600; font-size:1.3rem; margin:0 0 0.8rem;}
+  .ys-countdown{font-family:var(--font-ui); font-size:0.95rem; color:var(--text-dim); margin:0 0 1rem;}
+  .ys-pick-row{
+    border:1px solid var(--line); border-radius:12px; padding:0.9rem 1.1rem; margin-bottom:0.7rem;
+  }
+  .ys-pick-text{font-family:var(--font-display); font-style:italic; color:var(--text); margin:0 0 0.3rem; line-height:1.5;}
+  .ys-pick-credit{font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint);}
+
+  /* ---- Made from your ideas ---- */
+  .ys-made-grid{display:grid; grid-template-columns:repeat(2, 1fr); gap:0.9rem;}
+  .ys-made-card{
+    border:1px solid var(--line); border-radius:12px; padding:0.9rem; text-decoration:none; display:block; color:var(--text);
+  }
+  .ys-made-title{font-family:var(--font-display); font-weight:600; font-size:0.95rem; margin:0 0 0.2rem;}
+  .ys-made-credit{font-family:var(--font-ui); font-size:0.76rem; color:var(--text-faint);}
+
+  /* ---- FAQ ---- */
+  .ys-faq-item{border-bottom:1px solid var(--line); padding:0.9rem 0;}
+  .ys-faq-item summary{font-family:var(--font-ui); font-weight:600; font-size:0.95rem; cursor:pointer; color:var(--text);}
+  .ys-faq-item p{font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); margin:0.6rem 0 0; line-height:1.6;}
+
+  .ys-share-row{text-align:center; margin-top:-1rem; margin-bottom:3rem;}
+
+  @media (max-width:640px){
+    .ys-steps{grid-template-columns:1fr; gap:1.6rem;}
+    .ys-made-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="page-ambient ambient is-playing" aria-hidden="true">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+</div>
+
+<div class="topbar">
+  <a class="logo logo-brand" href="/">
+    <picture>
+      <source type="image/webp" srcset="/brand/wordmark.webp">
+      <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+    </picture>
+  </a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/">Home</a>
+    <a href="/listen">Songs</a>
+    <a href="/about.html">About</a>
+    <div id="account-slot"></div>
+  </nav>
+  <div class="topbar-right">
+    <button class="pill-btn accent" id="install-btn" type="button" hidden>Install App</button>
+    <div class="palette" role="group" aria-label="Color theme">
+      <button class="swatch bordeaux" data-color="bordeaux" type="button" aria-label="Bordeaux theme" title="Bordeaux"></button>
+      <button class="swatch emerald" data-color="emerald" type="button" aria-label="Emerald theme" title="Emerald"></button>
+      <button class="swatch royal" data-color="royal" type="button" aria-label="Royal Blue theme" title="Royal Blue"></button>
+      <button class="swatch gold" data-color="gold" type="button" aria-label="Gold theme" title="Gold"></button>
+    </div>
+    <button class="icon-btn" id="theme-toggle" aria-label="Toggle light and dark">&#9680;</button>
+  </div>
+</div>
+
+<main>
+  <article>
+    <div class="ys-hero">
+      <div class="ys-kicker">Your Song</div>
+      <h1 class="ys-title">Your idea. Our music.</h1>
+      <p class="ys-sub">Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.</p>
+      <button class="lv-btn filled" id="ys-hero-cta" type="button" style="width:auto; padding:0.8rem 2rem;">Share your idea</button>
+    </div>
+
+    <div class="ys-share-row">
+      <button class="quiet-link" id="ys-share-btn" type="button" style="border:none; background:none; cursor:pointer; font-family:var(--font-ui); font-size:0.85rem;">Share this page</button>
+    </div>
+
+    <div class="ys-steps">
+      <div class="ys-step"><div class="ys-step-n">1</div><p>Share your idea.</p></div>
+      <div class="ys-step"><div class="ys-step-n">2</div><p>We pick three every week.</p></div>
+      <div class="ys-step"><div class="ys-step-n">3</div><p>Your song goes live on Laivy Hart, credited to you.</p></div>
+    </div>
+
+    <div class="ys-box" id="idea-box">
+      <div data-ys-pane="form">
+        <h2>What's your song idea?</h2>
+        <p class="ys-box-line">Tell us in your own words. The more detail you give, the closer we get to your vision.</p>
+
+        <textarea class="lv-input lv-textarea" id="ys-text" maxlength="3000" rows="6"
+                  placeholder="Write as much or as little as you like." aria-label="Your song idea"></textarea>
+        <div class="ded-counter" id="ys-counter">3,000 characters left</div>
+
+        <div class="ys-credit-row">
+          <div>
+            <label class="lv-label" for="ys-credit">Credit me as</label>
+            <input class="lv-input" id="ys-credit" type="text" maxlength="60" placeholder="Your name" autocomplete="off">
+          </div>
+        </div>
+        <label class="ded-checkbox-row">
+          <input type="checkbox" id="ys-anon">
+          Keep me anonymous
+        </label>
+        <label class="ded-checkbox-row">
+          <input type="checkbox" id="ys-board" checked>
+          Show my idea on the idea board
+        </label>
+        <label class="ded-checkbox-row">
+          <input type="checkbox" id="ys-notify" checked>
+          Email me if my idea is picked and when the song is released
+        </label>
+        <label class="ded-checkbox-row">
+          <input type="checkbox" id="ys-agree">
+          I agree to the <a href="/terms#idea-submissions" target="_blank" rel="noopener">idea submissions terms</a>
+        </label>
+
+        <p class="lv-err" id="ys-err" hidden></p>
+        <button class="lv-btn filled" id="ys-submit" type="button" style="margin-top:1.2rem;">Submit</button>
+      </div>
+
+      <div data-ys-pane="success" hidden class="ys-success">
+        <h2>Thank you. Your idea is in.</h2>
+        <p>We read every idea. Check back any week to see what was picked.</p>
+        <div class="ys-success-links">
+          <a class="lv-btn outlined" style="width:auto;" href="/settings">My ideas</a>
+          <a class="lv-btn outlined" style="width:auto;" href="/your-song/ideas">The idea board</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="ys-section">
+      <h2>This week</h2>
+      <p class="ys-countdown" id="ys-countdown"></p>
+      <div id="ys-picks"></div>
+    </div>
+
+    <div class="ys-section hidden" id="ys-made-section">
+      <h2>Made from your ideas</h2>
+      <div class="ys-made-grid" id="ys-made-grid"></div>
+    </div>
+
+    <div class="ys-section">
+      <h2>Questions</h2>
+      <details class="ys-faq-item">
+        <summary>Is it free?</summary>
+        <p>Yes.</p>
+      </details>
+      <details class="ys-faq-item">
+        <summary>Who owns the song?</summary>
+        <p>Laivy Hart does. We make the song, but we always credit you the way you asked to be credited.</p>
+      </details>
+      <details class="ys-faq-item">
+        <summary>Will my name be on it?</summary>
+        <p>Yes, unless you ask to stay anonymous. Then it simply says "Anonymous".</p>
+      </details>
+      <details class="ys-faq-item">
+        <summary>What if my idea is not picked?</summary>
+        <p>It stays in the pool. We may still pick it a future week.</p>
+      </details>
+      <details class="ys-faq-item">
+        <summary>Can I keep my idea private?</summary>
+        <p>Yes, untick the board option.</p>
+      </details>
+    </div>
+
+    <a class="quiet-link back-link" href="/">&larr; Back to the jukebox</a>
+  </article>
+</main>
+
+<div class="ios-hint" id="ios-hint" hidden>
+  <span>Install: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>.</span>
+  <button class="ios-hint-close" type="button" aria-label="Dismiss">&times;</button>
+</div>
+
+<script>
+  const SUPABASE_URL = window.LAIVY_CONFIG.SUPABASE_URL;
+  const SUPABASE_ANON_KEY = window.LAIVY_CONFIG.SUPABASE_ANON_KEY;
+  const supabaseClient = window.laivy.supabase;
+
+  function escHtml(str){ return (str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function laivyTrack(name, params){
+    try{ if(typeof gtag === 'function') gtag('event', name, params || {}); }catch(e){}
+  }
+  function logActivity(type, opts){
+    try{ if(window.laivy && window.laivy.activity) window.laivy.activity.log(type, opts); }catch(e){}
+  }
+
+  const THEME_COLOR_BG = {
+    'bordeaux-dark':'#140810', 'bordeaux-light':'#F5ECEE',
+    'emerald-dark':'#08130F',  'emerald-light':'#ECF4F0',
+    'royal-dark':'#0A0C1A',    'royal-light':'#ECEEF7',
+    'gold-dark':'#14100A',     'gold-light':'#F5F0E4'
+  };
+  function syncThemeColorMeta(){
+    const t = document.documentElement.getAttribute('data-theme');
+    const c = document.documentElement.getAttribute('data-color');
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute('content', THEME_COLOR_BG[c + '-' + t] || THEME_COLOR_BG['royal-dark']);
+  }
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try{ localStorage.setItem('laivy-theme', next); }catch(e){}
+    syncThemeColorMeta();
+  });
+  (function(){
+    const COLORS = ['bordeaux', 'emerald', 'royal', 'gold'];
+    const swatches = document.querySelectorAll('.swatch');
+    function mark(name){
+      swatches.forEach(sw => {
+        const on = sw.dataset.color === name;
+        sw.classList.toggle('is-active', on);
+        sw.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+    }
+    function apply(name){
+      if(COLORS.indexOf(name) === -1) name = 'royal';
+      document.documentElement.setAttribute('data-color', name);
+      try{ localStorage.setItem('laivy-color', name); }catch(e){}
+      mark(name);
+      syncThemeColorMeta();
+    }
+    swatches.forEach(sw => sw.addEventListener('click', () => apply(sw.dataset.color)));
+    const cur = document.documentElement.getAttribute('data-color');
+    mark(COLORS.indexOf(cur) === -1 ? 'royal' : cur);
+  })();
+
+  document.getElementById('ys-hero-cta').addEventListener('click', () => {
+    document.getElementById('idea-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    laivyTrack('your_song_cta', {});
+  });
+
+  /* Page-specific share, separate from pwa.js's generic site-share button
+     (which always shares the homepage, not this page) -- native share or
+     clipboard fallback, with the same logActivity pairing site-share and
+     dedication sharing already use. */
+  (function(){
+    const btn = document.getElementById('ys-share-btn');
+    if(!btn) return;
+    const url = 'https://laivyhart.com/your-song';
+    const shareData = { title: 'Your idea. Our music.', text: 'Send us your song idea on Laivy Hart.', url };
+    btn.addEventListener('click', () => {
+      const channel = navigator.share ? 'native' : (navigator.clipboard && navigator.clipboard.writeText ? 'copy' : 'prompt');
+      logActivity('share', { meta: { channel: 'your_song_page_' + channel } });
+      if(navigator.share){
+        navigator.share(shareData).catch(() => {});
+      } else if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).catch(() => window.prompt('Copy this link:', url));
+      } else {
+        window.prompt('Copy this link:', url);
+      }
+    });
+  })();
+
+  /* ---------------- The box ---------------- */
+  const YS_DRAFT_KEY = 'laivy-your-song-draft';
+  const textEl = document.getElementById('ys-text');
+  const counterEl = document.getElementById('ys-counter');
+  const creditEl = document.getElementById('ys-credit');
+  const anonEl = document.getElementById('ys-anon');
+  const boardEl = document.getElementById('ys-board');
+  const notifyEl = document.getElementById('ys-notify');
+  const agreeEl = document.getElementById('ys-agree');
+  const errEl = document.getElementById('ys-err');
+  const submitBtn = document.getElementById('ys-submit');
+  const box = document.getElementById('idea-box');
+
+  function updateCounter(){
+    counterEl.textContent = `${(3000 - textEl.value.length).toLocaleString()} characters left`;
+  }
+  textEl.addEventListener('input', updateCounter);
+  updateCounter();
+
+  anonEl.addEventListener('change', () => { creditEl.disabled = anonEl.checked; });
+
+  // Sign-in never loses what was typed: restore any saved draft immediately,
+  // then clear it so a stale draft never lingers past this one restore.
+  (function(){
+    let saved = null;
+    try{ saved = JSON.parse(sessionStorage.getItem(YS_DRAFT_KEY) || 'null'); }catch(e){}
+    if(saved){
+      textEl.value = saved.text || '';
+      creditEl.value = saved.creditName || '';
+      anonEl.checked = !!saved.anon;
+      boardEl.checked = saved.board !== false;
+      notifyEl.checked = saved.notify !== false;
+      agreeEl.checked = !!saved.agree;
+      creditEl.disabled = anonEl.checked;
+      updateCounter();
+    }
+    try{ sessionStorage.removeItem(YS_DRAFT_KEY); }catch(e){}
+  })();
+
+  function applyAuthToForm(state){
+    if(state && state.user && state.artist && !creditEl.value){
+      creditEl.value = state.artist.display_name || state.artist.handle || '';
+    }
+  }
+  window.addEventListener('laivy:auth', (e) => applyAuthToForm(e.detail));
+  if(window.laivy && window.laivy.auth && window.laivy.auth.ready) applyAuthToForm(window.laivy.auth);
+
+  function showYsErr(text){ errEl.textContent = text; errEl.hidden = !text; }
+
+  submitBtn.addEventListener('click', async () => {
+    const text = textEl.value.trim();
+    const creditName = creditEl.value.trim();
+    const anon = anonEl.checked;
+    const board = boardEl.checked;
+    const notify = notifyEl.checked;
+    const agree = agreeEl.checked;
+    showYsErr('');
+
+    if(!text){ showYsErr('Please write your idea first.'); return; }
+    if(text.length > 3000){ showYsErr('That idea is a bit long -- 3,000 characters or fewer.'); return; }
+    if(!agree){ showYsErr('Please agree to the idea submissions terms.'); return; }
+
+    const user = window.laivy && window.laivy.auth && window.laivy.auth.user;
+    if(!user){
+      try{
+        sessionStorage.setItem(YS_DRAFT_KEY, JSON.stringify({ text, creditName, anon, board, notify, agree }));
+      }catch(e){}
+      if(window.laivy && window.laivy.accountUI){
+        window.laivy.accountUI.openModal({ next: '/your-song', reason: 'Sign in to send your idea' });
+      }
+      return;
+    }
+
+    submitBtn.disabled = true;
+    try{
+      const { error } = await supabaseClient.rpc('submit_song_idea', {
+        p_text: text,
+        p_credit_name: anon ? null : (creditName || null),
+        p_is_anonymous: anon,
+        p_show_on_board: board,
+        p_notify_email: notify,
+      });
+      if(error) throw error;
+      // submit_song_idea() already logs idea_submit server-side
+      // (sql/024_song_ideas.sql) -- logging it again here would double-count it.
+      box.querySelector('[data-ys-pane="form"]').hidden = true;
+      box.querySelector('[data-ys-pane="success"]').hidden = false;
+    }catch(err){
+      showYsErr((err && err.message) || 'Could not send your idea right now.');
+    }finally{
+      submitBtn.disabled = false;
+    }
+  });
+
+  /* ---------------- This week ---------------- */
+  function daysUntilSunday(){
+    return (7 - new Date().getDay()) % 7;
+  }
+  (function(){
+    const n = daysUntilSunday();
+    document.getElementById('ys-countdown').textContent = n === 0
+      ? "Picks happen today."
+      : `${n} day${n === 1 ? '' : 's'} until this week's picks.`;
+  })();
+
+  async function loadWeekPicks(){
+    const host = document.getElementById('ys-picks');
+    try{
+      const { data, error } = await supabaseClient
+        .from('song_ideas_board')
+        .select('id, idea_text, credit, status')
+        .in('status', ['picked', 'in_studio'])
+        .order('created_at', { ascending: false });
+      if(error || !data || !data.length) return;
+      host.innerHTML = `<p class="ded-sheet-title" style="font-size:1rem;">This week's picks</p>` + data.map((d) => `
+        <div class="ys-pick-row">
+          <p class="ys-pick-text">&ldquo;${escHtml(d.idea_text)}&rdquo;</p>
+          <div class="ys-pick-credit">${escHtml(d.credit)}</div>
+        </div>`).join('');
+    }catch(e){ /* the countdown alone is still useful */ }
+  }
+  loadWeekPicks();
+
+  /* ---------------- Made from your ideas ---------------- */
+  async function loadMadeFromIdeas(){
+    try{
+      const { data, error } = await supabaseClient
+        .from('songs')
+        .select('id, title, title_translit, slug, idea_credit')
+        .eq('status', 'approved')
+        .not('idea_credit', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      if(error || !data || !data.length) return;
+      document.getElementById('ys-made-section').classList.remove('hidden');
+      document.getElementById('ys-made-grid').innerHTML = data.map((s) => `
+        <a class="ys-made-card" href="/song/${escHtml(s.slug)}">
+          <div class="ys-made-title">${escHtml(s.title_translit || s.title)}</div>
+          <div class="ys-made-credit">Idea by ${escHtml(s.idea_credit)}</div>
+        </a>`).join('');
+    }catch(e){ /* section just stays hidden */ }
+  }
+  loadMadeFromIdeas();
+</script>
+
+<script type="module" src="/js/auth.js"></script>
+<script type="module" src="/js/activity.js"></script>
+<script type="module" src="/js/account-ui.js"></script>
+</body>
+</html>

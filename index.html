@@ -1837,6 +1837,7 @@
 
   <footer class="home-footer">
     <a class="quiet-link" href="/about.html">About</a>
+    <a class="quiet-link" href="/your-song">Your Song</a>
     <a class="quiet-link" href="/terms">Terms</a>
     <a class="quiet-link" href="/privacy.html">Privacy</a>
   </footer>
@@ -2651,7 +2652,9 @@ function mapSong(r){
     plays_7d: r.plays_7d || 0,
     like_count: r.like_count || 0,
     like_tune_count: r.like_tune_count || 0,
-    like_lyrics_count: r.like_lyrics_count || 0
+    like_lyrics_count: r.like_lyrics_count || 0,
+    // SONG-1/SONG-2: the "Idea by [name]" credit, frozen at release time.
+    idea_credit: r.idea_credit || null,
   };
 }
 function isHebrew(s){ return (s.language || 'Hebrew') === 'Hebrew'; }
@@ -3936,6 +3939,37 @@ function playRail(idxs){
 /* ============================================================
    Left column: now playing
    ============================================================ */
+/* SONG-2: "Idea by [name]", upgraded to a link when the credit name exactly
+   matches a real artist/member profile (artists_public, ilike with no
+   wildcard = exact case-insensitive match, this codebase's own convention
+   -- see stub-supabase.mjs). A credit name is free text the submitter chose
+   at submission time, not an identifier, so this is a best-effort match,
+   not a guarantee; it degrades to plain text whenever there is no exact
+   match, and always stays plain text for "Anonymous". Token-guarded against
+   switching songs mid-lookup, same pattern as artistPageToken. */
+let ideaCreditToken = 0;
+async function renderIdeaCredit(s){
+  const el = document.getElementById('now-idea-credit');
+  if(!el) return;
+  if(!s.idea_credit){ el.textContent = ''; el.classList.add('hidden'); return; }
+  const token = ++ideaCreditToken;
+  const label = 'Idea by ' + s.idea_credit;
+  el.textContent = label;
+  el.classList.remove('hidden');
+  if(s.idea_credit === 'Anonymous') return;
+  try{
+    const { data, error } = await supabaseClient
+      .from('artists_public')
+      .select('handle')
+      .ilike('display_name', s.idea_credit)
+      .limit(1)
+      .maybeSingle();
+    if(token !== ideaCreditToken) return;
+    if(!error && data && data.handle){
+      el.innerHTML = 'Idea by <a href="' + escHtml(artistHref(data)) + '">' + escHtml(s.idea_credit) + '</a>';
+    }
+  }catch(e){ /* plain text already shown */ }
+}
 function renderNow(){
   const empty = document.getElementById('now-empty');
   const orig = document.getElementById('lyrics-orig');
@@ -3969,7 +4003,8 @@ function renderNow(){
     nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
     const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
-    const nicIdle = document.getElementById('now-idea-credit'); if(nicIdle) nicIdle.classList.add('hidden');
+    const nicIdle = document.getElementById('now-idea-credit'); if(nicIdle){ nicIdle.classList.add('hidden'); nicIdle.innerHTML = ''; }
+    ideaCreditToken++; // invalidate any in-flight artist lookup from the song just left
     dockReact.classList.add('hidden');
     paintLoves();
     paintRatings();
@@ -4070,16 +4105,7 @@ function renderNow(){
   const nowBadges = document.getElementById('now-badges');
   if(nowBadges) nowBadges.innerHTML = badgeStripHTML(s, 'full');
 
-  const ideaCredit = document.getElementById('now-idea-credit');
-  if(ideaCredit){
-    if(s.idea_credit){
-      ideaCredit.textContent = 'Idea by ' + s.idea_credit;
-      ideaCredit.classList.remove('hidden');
-    } else {
-      ideaCredit.textContent = '';
-      ideaCredit.classList.add('hidden');
-    }
-  }
+  renderIdeaCredit(s);
 
 
   // Tags: small, quiet, clickable chips under the categories. Only when present.

@@ -35,7 +35,7 @@ export const config = {
   // Middleware runs before rewrites, so these are the real request paths.
   // index.html, songs.json and every static asset are deliberately absent, so
   // the internal fetches below cannot re-enter this function.
-  matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*'],
+  matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*', '/your-song'],
 };
 
 const SITE = 'https://laivyhart.com';
@@ -348,6 +348,25 @@ function renderHome(html) {
   return upsertCanonical(html, SITE + '/');
 }
 
+/* SONG-2: /your-song is its own static page (your-song.html, not
+   index.html), rewritten by vercel.json -- see shellPath on its plan below,
+   and the one spot in the default export that reads it, for why this is the
+   one route that does NOT fetch /index.html as its shell. The copy here
+   matches the page's own hero/subline exactly, so a share preview reads the
+   same thing the page says. */
+const YOUR_SONG_TITLE = 'Your idea. Our music.';
+const YOUR_SONG_DESC = 'Send us your song idea. Every week we choose three and turn them into real songs, with your name on them.';
+function renderYourSong(html) {
+  const canonical = SITE + '/your-song';
+  html = setTitle(html, escAttr(YOUR_SONG_TITLE + ' | ' + SITE_NAME));
+  html = upsertMeta(html, 'name', 'description', escAttr(YOUR_SONG_DESC));
+  html = upsertCanonical(html, escAttr(canonical));
+  html = setMeta(html, 'property', 'og:title', escAttr(YOUR_SONG_TITLE));
+  html = setMeta(html, 'property', 'og:description', escAttr(YOUR_SONG_DESC));
+  html = setMeta(html, 'property', 'og:url', escAttr(canonical));
+  return html;
+}
+
 /* DED-3: the same canonical headline/line table index.html keeps
    (duplicated: separate edge runtime, no shared module, same reasoning as
    TROPHY_LABELS above). bar_bat_mitzvah is absent on purpose -- see that
@@ -484,6 +503,10 @@ export async function decide(pathname, searchParams, fetchImpl = fetch) {
     return { kind: 'render', fn: renderHome, tag: 'home' };
   }
 
+  if (pathname === '/your-song') {
+    return { kind: 'render', fn: renderYourSong, tag: 'your-song', shellPath: '/your-song.html' };
+  }
+
   let m = /^\/song\/([^/]+)\/?$/.exec(pathname);
   if (m) {
     let slug; try { slug = decodeURIComponent(m[1]); } catch (e) { slug = m[1]; }
@@ -533,9 +556,12 @@ export default async function middleware(request) {
     });
   }
 
+  // Every route rewrites to /index.html except /your-song (its plan says so
+  // explicitly via shellPath) -- fetching the wrong shell would silently
+  // serve the jukebox app's own markup at another page's URL.
   let html;
   try {
-    const res = await fetch(new URL('/index.html', request.url));
+    const res = await fetch(new URL(plan.shellPath || '/index.html', request.url));
     if (!res.ok) return;
     html = await res.text();
   } catch (e) { return; }

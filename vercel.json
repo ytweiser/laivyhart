@@ -28,6 +28,14 @@
       "destination": "/about.html"
     },
     {
+      "source": "/your-song",
+      "destination": "/your-song.html"
+    },
+    {
+      "source": "/your-song/ideas",
+      "destination": "/your-song-ideas.html"
+    },
+    {
       "source": "/artist/:handle([^/.]+)",
       "destination": "/index.html"
     },

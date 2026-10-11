@@ -17,6 +17,7 @@ export async function run(browser, port) {
   await scenarioBio(browser, port, r);
   await scenarioFollowing(browser, port, r);
   await scenarioMyDedications(browser, port, r);
+  await scenarioMySongIdeas(browser, port, r);
   return r;
 }
 
@@ -317,6 +318,62 @@ async function scenarioMyDedications(browser, port, r) {
     return { status: row?.querySelector('.lv-ded-status')?.textContent, actionsEmpty: row?.querySelector('.lv-ded-actions')?.children.length === 0 };
   });
   r.check('removing updates the row to Removed with no actions, in place', afterRemove.status === 'Removed' && afterRemove.actionsEmpty === true, JSON.stringify(afterRemove));
+
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioMySongIdeas(browser, port, r) {
+  r.section('My song ideas (SONG-2): plain-word statuses, released link, and Withdraw');
+  const page = await newPage(browser);
+  const errors = collectErrors(page);
+  await signInAs(page, F.SESSION_USERS.NOVA);
+  const SONG = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA);
+  await wireSupabaseStubs(page, {
+    selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH],
+    mySongIdeas: [
+      { id: 'idea-received', idea_text: 'An idea about the sea.', created_at: new Date().toISOString(), status: 'received', picked_week: null, released_song_id: null, released_song_slug: null, released_song_title: null },
+      { id: 'idea-picked', idea_text: 'An idea about a quiet morning.', created_at: new Date(Date.now() - 86400000).toISOString(), status: 'picked', picked_week: '2026-10-11', released_song_id: null, released_song_slug: null, released_song_title: null },
+      { id: 'idea-studio', idea_text: 'An idea about coming home.', created_at: new Date(Date.now() - 2 * 86400000).toISOString(), status: 'in_studio', released_song_id: null, released_song_slug: null, released_song_title: null },
+      { id: 'idea-released', idea_text: 'An idea that became a real song.', created_at: new Date(Date.now() - 10 * 86400000).toISOString(), status: 'released', released_song_id: SONG.id, released_song_slug: SONG.slug, released_song_title: SONG.title },
+      { id: 'idea-notpicked', idea_text: 'An idea that was not chosen this time.', created_at: new Date(Date.now() - 5 * 86400000).toISOString(), status: 'not_picked', released_song_id: null, released_song_slug: null, released_song_title: null },
+    ],
+  });
+  await gotoSettings(page, port);
+  await page.waitForFunction(() => {
+    const el = document.getElementById('lv-song-ideas-list');
+    return el && !/Loading/.test(el.textContent);
+  }, { timeout: 10000 });
+
+  const d = await page.evaluate(() => {
+    const byId = (id) => document.querySelector(`#lv-song-ideas-list .lv-ded-row[data-id="${id}"]`);
+    const info = (id) => {
+      const row = byId(id);
+      return {
+        status: row?.querySelector('.lv-ded-status')?.textContent,
+        hasWithdraw: !!row?.querySelector('[data-si-withdraw]'),
+        link: row?.querySelector('a')?.getAttribute('href') || null,
+      };
+    };
+    return {
+      received: info('idea-received'), picked: info('idea-picked'), studio: info('idea-studio'),
+      released: info('idea-released'), notPicked: info('idea-notpicked'),
+    };
+  });
+  r.check('received -> "Received", with Withdraw', d.received.status === 'Received' && d.received.hasWithdraw === true, d.received);
+  r.check('picked -> "Picked this week", with Withdraw', d.picked.status.startsWith('Picked this week') && d.picked.hasWithdraw === true, d.picked);
+  r.check('in_studio -> "In the studio", with Withdraw', d.studio.status === 'In the studio' && d.studio.hasWithdraw === true, d.studio);
+  r.check('released -> "Released" with a link to the song, no Withdraw', d.released.status.startsWith('Released') && d.released.link === '/song/' + SONG.slug && d.released.hasWithdraw === false, d.released);
+  r.check('not_picked -> "Not picked this time", with Withdraw', d.notPicked.status === 'Not picked this time' && d.notPicked.hasWithdraw === true, d.notPicked);
+
+  await page.evaluate(() => { window.confirm = () => true; });
+  await page.click('#lv-song-ideas-list .lv-ded-row[data-id="idea-received"] [data-si-withdraw]');
+  await page.waitForTimeout(250);
+  const afterWithdraw = await page.evaluate(() => {
+    const row = document.querySelector('#lv-song-ideas-list .lv-ded-row[data-id="idea-received"]');
+    return { status: row?.querySelector('.lv-ded-status')?.textContent, actionsEmpty: row?.querySelector('.lv-ded-actions')?.children.length === 0 };
+  });
+  r.check('withdrawing updates the row to Withdrawn with no actions, in place', afterWithdraw.status === 'Withdrawn' && afterWithdraw.actionsEmpty === true, JSON.stringify(afterWithdraw));
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

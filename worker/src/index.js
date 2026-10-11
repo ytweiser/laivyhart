@@ -532,6 +532,156 @@ export async function runDailyReport(bearer, env, fetchImpl = fetch) {
   return { subject, queue: data.review_queue && data.review_queue.count, signups: data.signups && data.signups.count };
 }
 
+/* ============================================================
+   SONG-2: POST /notify/song-idea.
+
+   Admin-only. Given an idea id and an event ("picked" or "released"), reads
+   the idea and the submitter's email with the service role, and -- only
+   when notify_email is true -- sends a short email through Resend. The
+   admin tab calls this right after Pick and Released; see admin.html.
+
+   Identity is verified the same way every other admin-only Worker route
+   verifies it (the JWKS code above), but the admin CHECK itself uses the
+   service role directly against public.artists rather than calling the
+   is_admin() RPC with the caller's own token (the /report/send pattern):
+   this route already needs the service role for the data reads below (the
+   submitter's email is not something anon/authenticated can ever read),
+   so one credential does both the admin check and the data read, instead
+   of mixing two. is_admin() itself resolves auth.uid() from whichever JWT
+   makes the REST call, which would be null under the service role's own
+   token -- so this checks the verified `sub` directly instead, the exact
+   same role='admin' and status='active' test is_admin() makes.
+   ============================================================ */
+export function formatSongIdeaNotification(event, data) {
+  data = data || {};
+  if (event === 'picked') {
+    return {
+      subject: 'Your song idea was picked this week',
+      text: `Hi,\n\nGood news -- your song idea was picked this week:\n\n"${data.excerpt || ''}"\n\n`
+          + `We're turning it into a real song now. We'll email you again the moment it's released.\n\n`
+          + `The Laivy Hart team`,
+    };
+  }
+  const link = 'https://laivyhart.com/song/' + (data.songSlug || '');
+  return {
+    subject: 'Your song is live',
+    text: `Hi,\n\nYour song is live! "${data.songTitle || ''}" is now on Laivy Hart, credited as `
+        + `"Idea by ${data.credit || 'Anonymous'}".\n\nListen here: ${link}\n\nThe Laivy Hart team`,
+  };
+}
+
+export async function sendSongIdeaEmail(env, to, subject, text, fetchImpl = fetch) {
+  if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
+  const res = await fetchImpl('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: REPORT_FROM, to: [to], subject, text }),
+  });
+  const body = await res.text();
+  if (!res.ok) throw new Error('Resend HTTP ' + res.status + ': ' + body.slice(0, 200));
+  return body;
+}
+
+export async function handleSongIdeaNotify(request, env, ctx, fetchImpl = fetch) {
+  const origin = request.headers.get('Origin');
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
+
+  const hdr = request.headers.get('Authorization') || '';
+  const jwt = hdr.startsWith('Bearer ') ? hdr.slice(7) : hdr;
+  let sub;
+  try { sub = await verifySupabaseJwt(jwt, env); }
+  catch (e) { return json({ error: 'Unauthorized: ' + (e && e.message) }, 401, origin); }
+
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('song-idea notify: SUPABASE_SERVICE_ROLE_KEY not set');
+    return json({ error: 'Service role key not configured' }, 500, origin);
+  }
+  const svcHeaders = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY };
+
+  let adminRow;
+  try {
+    const res = await fetchImpl(SUPABASE_URL + '/rest/v1/artists?select=role,status&id=eq.' + sub, { headers: svcHeaders });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    adminRow = Array.isArray(rows) ? rows[0] : null;
+  } catch (e) {
+    console.error('song-idea notify: admin check failed', sub, e && e.message);
+    return json({ error: 'Could not verify admin status' }, 502, origin);
+  }
+  if (!adminRow || adminRow.role !== 'admin' || adminRow.status !== 'active') {
+    return json({ error: 'Only an admin can send this notification' }, 403, origin);
+  }
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'Invalid JSON body' }, 400, origin); }
+  const ideaId = body && body.idea_id;
+  const event = body && body.event;
+  if (typeof ideaId !== 'string' || !/^[0-9a-f-]{36}$/i.test(ideaId)) {
+    return json({ error: 'Missing or invalid idea_id' }, 400, origin);
+  }
+  if (event !== 'picked' && event !== 'released') {
+    return json({ error: 'event must be "picked" or "released"' }, 400, origin);
+  }
+
+  let idea;
+  try {
+    const res = await fetchImpl(
+      SUPABASE_URL + '/rest/v1/song_ideas?select=user_id,idea_text,credit_name,is_anonymous,notify_email,released_song_id&id=eq.' + ideaId,
+      { headers: svcHeaders },
+    );
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+    idea = Array.isArray(rows) ? rows[0] : null;
+  } catch (e) {
+    console.error('song-idea notify: could not read idea', ideaId, e && e.message);
+    return json({ error: 'Could not read that idea' }, 502, origin);
+  }
+  if (!idea) return json({ error: 'Idea not found' }, 404, origin);
+  if (!idea.notify_email) return json({ ok: true, skipped: 'notify_email is off' }, 200, origin);
+
+  let email;
+  try {
+    const res = await fetchImpl(SUPABASE_URL + '/auth/v1/admin/users/' + idea.user_id, { headers: svcHeaders });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const u = await res.json();
+    email = u && u.email;
+  } catch (e) {
+    console.error('song-idea notify: could not read submitter email', idea.user_id, e && e.message);
+    return json({ error: 'Could not read the submitter email' }, 502, origin);
+  }
+  if (!email) return json({ error: 'Submitter has no email on file' }, 502, origin);
+
+  const data = { excerpt: (idea.idea_text || '').slice(0, 160) };
+  if (event === 'released') {
+    let song;
+    try {
+      const res = await fetchImpl(
+        SUPABASE_URL + '/rest/v1/songs?select=title,title_translit,slug,idea_credit&id=eq.' + idea.released_song_id,
+        { headers: svcHeaders },
+      );
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = await res.json();
+      song = Array.isArray(rows) ? rows[0] : null;
+    } catch (e) {
+      console.error('song-idea notify: could not read the released song', idea.released_song_id, e && e.message);
+      return json({ error: 'Could not read the released song' }, 502, origin);
+    }
+    if (!song) return json({ error: 'Released song not found' }, 404, origin);
+    data.songTitle = song.title_translit || song.title;
+    data.songSlug = song.slug;
+    data.credit = song.idea_credit || (idea.is_anonymous ? 'Anonymous' : (idea.credit_name || 'Anonymous'));
+  }
+
+  const { subject, text } = formatSongIdeaNotification(event, data);
+  try {
+    await sendSongIdeaEmail(env, email, subject, text, fetchImpl);
+  } catch (e) {
+    console.error('song-idea notify: send failed', ideaId, event, e && e.message);
+    return json({ error: 'Email send failed: ' + (e && e.message) }, 502, origin);
+  }
+  return json({ ok: true, subject }, 200, origin);
+}
+
 export default {
   /* The 03:00 UTC cron (06:00 Jerusalem). See wrangler.toml [triggers]. */
   async scheduled(event, env, ctx) {
@@ -621,6 +771,11 @@ export default {
         // everything else as a 502 so the admin sees which side failed.
         return json({ error: m }, /Only an admin/.test(m) ? 403 : 502, origin);
       }
+    }
+
+    /* --- /notify/song-idea: the admin's Pick/Released email (SONG-2). --- */
+    if (new URL(request.url).pathname === '/notify/song-idea') {
+      return handleSongIdeaNotify(request, env, ctx);
     }
 
     /* --- /upload/audio and /upload/cover: contributors, JWT-authorized ---

@@ -2695,7 +2695,30 @@ async function setSongIdeaStatus(id, status, releasedSongId){
     p_id: id, p_status: status, p_released_song_id: releasedSongId || null,
   });
   if(error){ alert('Could not update: ' + error.message); return; }
+  if(status === 'picked' || status === 'released') notifySongIdea(id, status);
   await Promise.all([loadYourSong(), loadWeekPicksHeader()]);
+}
+
+// SONG-2: the Worker verifies the admin's own session token, checks is_admin
+// with the service role, then emails the submitter through Resend. Never
+// blocks the status change above on this -- a failed notification is logged
+// to the console here and to the Worker's own log there, not surfaced as an
+// alert over a change that already succeeded.
+async function notifySongIdea(id, event){
+  try{
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data && data.session && data.session.access_token;
+    if(!token) return;
+    const res = await fetch(`${R2_UPLOAD_URL}/notify/song-idea`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ idea_id: id, event }),
+    });
+    if(!res.ok){
+      const j = await res.json().catch(() => ({}));
+      console.warn('song idea notify failed:', j.error || res.status);
+    }
+  }catch(e){ console.warn('song idea notify failed:', e && e.message); }
 }
 
 // "Released" needs a song chosen first -- an inline picker swapped into that

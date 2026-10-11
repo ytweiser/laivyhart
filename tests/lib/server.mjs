@@ -31,6 +31,8 @@ function rewrite(pathname) {
   if (['/listen', '/settings', '/upload', '/auth/callback'].includes(pathname)) return '/index.html';
   if (pathname === '/about') return '/about.html';
   if (pathname === '/terms') return '/terms.html';
+  if (pathname === '/your-song') return '/your-song.html';
+  if (pathname === '/your-song/ideas') return '/your-song-ideas.html';
   return pathname;
 }
 
