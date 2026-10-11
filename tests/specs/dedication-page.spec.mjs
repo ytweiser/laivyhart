@@ -26,7 +26,7 @@ export async function run(browser, port) {
 }
 
 async function scenarioLive(browser, port, r) {
-  r.section('a live, named dedication renders the hero, occasion, message and sender');
+  r.section('a live, named dedication renders the headline, the line, the message and the sender line');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, {
@@ -38,18 +38,18 @@ async function scenarioLive(browser, port, r) {
   });
   await gotoDedication(page, port, 'ABCD2345');
   const d = await page.evaluate(() => ({
-    heading: document.querySelector('.ded-page-for')?.textContent,
-    occasion: document.querySelector('.ded-page-occasion')?.textContent,
+    headline: document.querySelector('.ded-page-headline')?.textContent,
+    line: document.querySelector('.ded-page-line')?.textContent,
     message: document.querySelector('.ded-page-message')?.textContent,
-    from: document.querySelector('.ded-page-from')?.textContent,
+    sender: document.querySelector('.ded-page-sender')?.textContent,
     song: document.querySelector('.ded-page-song')?.textContent,
     songLink: document.querySelector('.ded-page-link')?.getAttribute('href'),
     hasPlay: !!document.getElementById('ded-page-play-btn'),
   }));
-  r.check('"For Mom" in the hero', d.heading === 'For Mom', d.heading);
-  r.check('hero-style occasion phrase for birthday', d.occasion === 'On their birthday', d.occasion);
+  r.check('headline in the hero', d.headline === 'Happy birthday, Mom', d.headline);
+  r.check('the line underneath', d.line === 'A birthday song for Mom', d.line);
   r.check('message shown in quotes', d.message === '“Love you so much!”', d.message);
-  r.check('"From Tzvi"', d.from === 'From Tzvi', d.from);
+  r.check('sender line: "With love, Tzvi"', d.sender === 'With love, Tzvi', d.sender);
   r.check('song title shown', d.song === SONG.title, d.song);
   r.check('links to the full song page', d.songLink === '/song/' + SONG.slug, d.songLink);
   r.check('a big Play button is present', d.hasPlay === true);
@@ -58,7 +58,7 @@ async function scenarioLive(browser, port, r) {
 }
 
 async function scenarioAnonymous(browser, port, r) {
-  r.section('an anonymous dedication shows "From someone", never a name');
+  r.section('an anonymous in_memory dedication: "Dedicated by someone who cares", never a name');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, {
@@ -70,12 +70,14 @@ async function scenarioAnonymous(browser, port, r) {
   });
   await gotoDedication(page, port, 'ANON1111');
   const d = await page.evaluate(() => ({
-    from: document.querySelector('.ded-page-from')?.textContent,
-    occasion: document.querySelector('.ded-page-occasion')?.textContent,
+    headline: document.querySelector('.ded-page-headline')?.textContent,
+    sender: document.querySelector('.ded-page-sender')?.textContent,
+    line: document.querySelector('.ded-page-line')?.textContent,
     hasMessage: !!document.querySelector('.ded-page-message'),
   }));
-  r.check('"From someone", not a name', d.from === 'From someone', d.from);
-  r.check('hero-style phrase for in_memory', d.occasion === 'In memory', d.occasion);
+  r.check('in_memory headline: "In loving memory of Dad"', d.headline === 'In loving memory of Dad', d.headline);
+  r.check('anonymous in_memory sender line: "Dedicated by someone who cares"', d.sender === 'Dedicated by someone who cares', d.sender);
+  r.check('in_memory line: "A song in memory of Dad"', d.line === 'A song in memory of Dad', d.line);
   r.check('no message block when there is no message', d.hasMessage === false);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -143,7 +145,7 @@ async function scenarioViewports(browser, port, r) {
     });
     await gotoDedication(page, port, 'WIDE0001');
     const d = await page.evaluate(() => ({
-      heroVisible: !!document.querySelector('.ded-page-for'),
+      heroVisible: !!document.querySelector('.ded-page-headline'),
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     }));
     r.check(`hero renders at ${width}px`, d.heroVisible === true, width);

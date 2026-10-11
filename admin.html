@@ -2445,14 +2445,19 @@ async function showPulseMember(id, isVisitor){
    (sql/022_dedications.sql). Neither is reachable by a non-admin regardless
    of what this UI shows or hides.
    ============================================================ */
+// DED-3: short tag text only, same reasoning as account-ui.js's own copy.
+// bar_bat_mitzvah stays mapped for rows written before DED-3.
 const DED_OCCASION_LABEL = {
-  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
-  bar_bat_mitzvah: 'Bar/Bat Mitzvah', new_baby: 'New baby',
-  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
-  thank_you: 'Thank you', just_because: 'Just because', other: 'Other',
+  birthday: 'Birthday', engagement: 'Engagement', wedding: 'Wedding', anniversary: 'Anniversary',
+  bar_mitzvah: 'Bar Mitzvah', bat_mitzvah: 'Bat Mitzvah', bar_bat_mitzvah: 'Bar/Bat Mitzvah',
+  new_baby: 'New baby', bris: 'Bris', upsherin: 'Upsherin',
+  graduation: 'Graduation', siyum: 'Siyum', new_job: 'New job', new_home: 'New home',
+  aliyah: 'Aliyah', retirement: 'Retirement',
+  refuah_shleimah: 'Refuah shleimah', encouragement: 'Encouragement',
+  thank_you: 'Thank you', in_memory: 'In memory', just_because: 'Just because', other: 'Something else',
 };
 function dedOccasionText(d){
-  return d.occasion === 'other' ? (d.occasion_other || 'Other') : (DED_OCCASION_LABEL[d.occasion] || d.occasion);
+  return d.occasion === 'other' ? (d.occasion_other || 'Something else') : (DED_OCCASION_LABEL[d.occasion] || d.occasion);
 }
 function dedTimeAgo(iso){
   const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));

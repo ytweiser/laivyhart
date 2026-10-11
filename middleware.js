@@ -348,17 +348,49 @@ function renderHome(html) {
   return upsertCanonical(html, SITE + '/');
 }
 
-/* DED-2: hero-style occasion phrasing for the OG description, matching
-   index.html's own DED_OCCASION_PHRASE exactly (duplicated: separate edge
-   runtime, no shared module, same reasoning as TROPHY_LABELS above). */
-const DED_OCCASION_PHRASE = {
-  birthday: 'On their birthday', wedding: 'For their wedding', anniversary: 'For their anniversary',
-  bar_bat_mitzvah: 'For their bar or bat mitzvah', new_baby: 'For their new baby',
-  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
-  thank_you: 'As a thank you', just_because: 'Just because', other: null,
+/* DED-3: the same canonical headline/line table index.html keeps
+   (duplicated: separate edge runtime, no shared module, same reasoning as
+   TROPHY_LABELS above). bar_bat_mitzvah is absent on purpose -- see that
+   file's own comment; a row written before DED-3 would fall through to the
+   generic fallback below rather than crash. */
+const DED_OCCASION = {
+  birthday: (n) => ({ headline: `Happy birthday, ${n}`, line: `A birthday song for ${n}` }),
+  engagement: (n) => ({ headline: `Mazel tov, ${n}`, line: `A song for ${n}'s engagement` }),
+  wedding: (n) => ({ headline: `Mazel tov, ${n}`, line: `A wedding song for ${n}` }),
+  anniversary: (n) => ({ headline: `Happy anniversary, ${n}`, line: `An anniversary song for ${n}` }),
+  bar_mitzvah: (n) => ({ headline: `Mazel tov, ${n}`, line: `A Bar Mitzvah song for ${n}` }),
+  bat_mitzvah: (n) => ({ headline: `Mazel tov, ${n}`, line: `A Bat Mitzvah song for ${n}` }),
+  new_baby: (n) => ({ headline: `Welcome to the world, ${n}`, line: `A song to welcome ${n}` }),
+  bris: (n) => ({ headline: `Mazel tov, ${n}`, line: `A song for ${n}'s bris` }),
+  upsherin: (n) => ({ headline: `Mazel tov, ${n}`, line: `A song for ${n}'s upsherin` }),
+  graduation: (n) => ({ headline: `Congratulations, ${n}`, line: `A graduation song for ${n}` }),
+  siyum: (n) => ({ headline: `Mazel tov, ${n}`, line: `A song for ${n}'s siyum` }),
+  new_job: (n) => ({ headline: `Congratulations, ${n}`, line: `A song for ${n}'s new job` }),
+  new_home: (n) => ({ headline: `Mazel tov, ${n}`, line: `A song for ${n}'s new home` }),
+  aliyah: (n) => ({ headline: `Welcome home, ${n}`, line: `A song for ${n}'s aliyah` }),
+  retirement: (n) => ({ headline: `Congratulations, ${n}`, line: `A song for ${n}'s retirement` }),
+  refuah_shleimah: (n) => ({ headline: `Refuah shleimah, ${n}`, line: `A song wishing ${n} a refuah shleimah` }),
+  encouragement: (n) => ({ headline: `Stay strong, ${n}`, line: `A song to lift ${n}'s spirits` }),
+  thank_you: (n) => ({ headline: `Thank you, ${n}`, line: `A thank-you song for ${n}` }),
+  in_memory: (n) => ({ headline: `In loving memory of ${n}`, line: `A song in memory of ${n}` }),
+  just_because: (n) => ({ headline: `This one's for you, ${n}`, line: `A song for ${n}, just because` }),
 };
-function dedOccasionPhrase(occasion, occasionOther) {
-  return occasion === 'other' ? (occasionOther || 'A special occasion') : (DED_OCCASION_PHRASE[occasion] || occasion);
+function dedHeadline(occasion, name) {
+  const fn = DED_OCCASION[occasion];
+  return fn ? fn(name).headline : `This one's for you, ${name}`;
+}
+function dedLine(occasion, name, occasionOther) {
+  if (occasion === 'other') return 'A song for ' + name + ': ' + (occasionOther || '');
+  const fn = DED_OCCASION[occasion];
+  return fn ? fn(name).line : 'A song for ' + name;
+}
+function dedSenderLine(occasion, senderName) {
+  // sender_name is already null for an anonymous sender -- dedications_public
+  // nulls it itself -- so there is no separate "anonymous" flag to check here.
+  if (occasion === 'in_memory') {
+    return senderName ? 'Dedicated by ' + senderName : 'Dedicated by someone who cares';
+  }
+  return senderName ? 'With love, ' + senderName : 'With love, from someone who cares';
 }
 
 // A plain fetch against dedications_public (anon-readable, 022_dedications.sql):
@@ -388,21 +420,22 @@ async function fetchDedication(code, fetchImpl) {
    even if this function wanted to. */
 function renderDedication(html, d) {
   const canonical = SITE + '/d/' + encodeURIComponent(d.code);
-  const pageTitle = 'A song for ' + d.recipient_name;
-  const phrase = dedOccasionPhrase(d.occasion, d.occasion_other);
+  const headline = dedHeadline(d.occasion, d.recipient_name);
+  const line = dedLine(d.occasion, d.recipient_name, d.occasion_other);
+  const senderLine = dedSenderLine(d.occasion, d.sender_name);
   const snippet = d.message ? firstSentence(d.message, 120) : '';
-  const desc = phrase + (snippet ? ': "' + snippet + '"' : '') + '. A dedication on ' + SITE_NAME + '.';
+  const desc = line + (snippet ? ': "' + snippet + '"' : '') + '. A dedication on ' + SITE_NAME + '.';
   const image = cdnImage(d.cover_url, 1200) || DEFAULT_OG_IMAGE;
 
-  html = setTitle(html, escAttr(pageTitle + ' | ' + SITE_NAME));
+  html = setTitle(html, escAttr(headline + ' | ' + SITE_NAME));
   html = upsertMeta(html, 'name', 'description', escAttr(desc));
   html = upsertCanonical(html, escAttr(canonical));
-  html = setMeta(html, 'property', 'og:title', escAttr(pageTitle));
+  html = setMeta(html, 'property', 'og:title', escAttr(headline));
   html = setMeta(html, 'property', 'og:description', escAttr(desc));
   html = setMeta(html, 'property', 'og:url', escAttr(canonical));
   html = setMeta(html, 'property', 'og:image', escAttr(image));
   html = setMeta(html, 'property', 'og:type', 'website');
-  html = setMeta(html, 'name', 'twitter:title', escAttr(pageTitle));
+  html = setMeta(html, 'name', 'twitter:title', escAttr(headline));
   html = setMeta(html, 'name', 'twitter:description', escAttr(desc));
   html = setMeta(html, 'name', 'twitter:image', escAttr(image));
   html = setMeta(html, 'name', 'twitter:card', 'summary_large_image');
@@ -412,10 +445,10 @@ function renderDedication(html, d) {
       .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
   }
 
-  let body = '<h1>For ' + escHtml(d.recipient_name) + '</h1>';
-  body += '<p>' + escHtml(phrase) + '</p>';
+  let body = '<h1>' + escHtml(headline) + '</h1>';
+  body += '<p>' + escHtml(line) + '</p>';
   if (d.message) body += '<p>&ldquo;' + escHtml(d.message) + '&rdquo;</p>';
-  body += '<p>' + (d.sender_name ? 'From ' + escHtml(d.sender_name) : 'From someone') + '</p>';
+  body += '<p>' + escHtml(senderLine) + '</p>';
   if (d.song_title) {
     body += '<p><a href="/song/' + escAttr(d.song_slug || '') + '">' + escHtml(d.song_title) + '</a></p>';
   }

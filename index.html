@@ -1884,16 +1884,33 @@
 
       <label class="lv-label" for="dedicate-occasion">Occasion</label>
       <select class="lv-input" id="dedicate-occasion">
-        <option value="birthday">Birthday</option>
-        <option value="wedding">Wedding</option>
-        <option value="anniversary">Anniversary</option>
-        <option value="bar_bat_mitzvah">Bar or Bat Mitzvah</option>
-        <option value="new_baby">New baby</option>
-        <option value="refuah_shleimah">Refuah shleimah</option>
-        <option value="in_memory">In memory of</option>
-        <option value="thank_you">Thank you</option>
+        <optgroup label="Celebrations">
+          <option value="birthday">Birthday</option>
+          <option value="engagement">Engagement</option>
+          <option value="wedding">Wedding</option>
+          <option value="anniversary">Anniversary</option>
+          <option value="bar_mitzvah">Bar Mitzvah</option>
+          <option value="bat_mitzvah">Bat Mitzvah</option>
+          <option value="new_baby">New baby</option>
+          <option value="bris">Bris</option>
+          <option value="upsherin">Upsherin</option>
+        </optgroup>
+        <optgroup label="Milestones">
+          <option value="graduation">Graduation</option>
+          <option value="siyum">Siyum</option>
+          <option value="new_job">New job</option>
+          <option value="new_home">New home</option>
+          <option value="aliyah">Aliyah</option>
+          <option value="retirement">Retirement</option>
+        </optgroup>
+        <optgroup label="Support">
+          <option value="refuah_shleimah">Refuah shleimah</option>
+          <option value="encouragement">Encouragement</option>
+          <option value="thank_you">Thank you</option>
+          <option value="in_memory">In memory</option>
+        </optgroup>
         <option value="just_because">Just because</option>
-        <option value="other">Other</option>
+        <option value="other">Something else</option>
       </select>
       <input class="lv-input" id="dedicate-occasion-other" type="text" maxlength="40"
              placeholder="Describe the occasion" hidden autocomplete="off">
@@ -5661,23 +5678,60 @@ const SITE_SHARE_TEXT = 'Original songs. Sometimes stories, sometimes prayers.';
 })();
 
 /* ============================================================
-   DED-2: dedicate a song. Friendly labels for the strip/preview (matching
-   the dropdown's own option text); the hero-style phrase ("On their
-   birthday") is used only on the dedication page itself, further down.
-   Both maps are also duplicated in middleware.js, which runs in a separate
-   edge runtime with no shared module between the two (same reasoning as
-   TROPHY_LABELS there).
+   DED-3: one canonical phrase table (a dropdown label, a headline and a
+   sentence "line") per occasion, read by the form preview, the WhatsApp/
+   share text, the song-page strip and the dedication page below. The
+   sender line and the message placeholder are their own small functions
+   since both have exactly one special case (in_memory) rather than a
+   per-occasion override. This whole table is also duplicated in
+   middleware.js, which runs in a separate edge runtime with no shared
+   module (same reasoning as TROPHY_LABELS there). bar_bat_mitzvah (DED-1's
+   original key) is not here: create_dedication() no longer accepts it, so
+   no live form or page ever needs to phrase it, even though it still reads
+   back fine on the handful of rows written before DED-3.
    ============================================================ */
-const DED_OCCASION_LABEL = {
-  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
-  bar_bat_mitzvah: 'Bar or Bat Mitzvah', new_baby: 'New baby',
-  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory of',
-  thank_you: 'Thank you', just_because: 'Just because', other: null,
+const DED_OCCASION = {
+  birthday:        { group: 'Celebrations', label: 'Birthday',        headline: (n) => `Happy birthday, ${n}`,        line: (n) => `A birthday song for ${n}` },
+  engagement:      { group: 'Celebrations', label: 'Engagement',      headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A song for ${n}'s engagement` },
+  wedding:         { group: 'Celebrations', label: 'Wedding',         headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A wedding song for ${n}` },
+  anniversary:     { group: 'Celebrations', label: 'Anniversary',     headline: (n) => `Happy anniversary, ${n}`,     line: (n) => `An anniversary song for ${n}` },
+  bar_mitzvah:     { group: 'Celebrations', label: 'Bar Mitzvah',     headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A Bar Mitzvah song for ${n}` },
+  bat_mitzvah:     { group: 'Celebrations', label: 'Bat Mitzvah',     headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A Bat Mitzvah song for ${n}` },
+  new_baby:        { group: 'Celebrations', label: 'New baby',        headline: (n) => `Welcome to the world, ${n}`,  line: (n) => `A song to welcome ${n}` },
+  bris:            { group: 'Celebrations', label: 'Bris',            headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A song for ${n}'s bris` },
+  upsherin:        { group: 'Celebrations', label: 'Upsherin',        headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A song for ${n}'s upsherin` },
+  graduation:      { group: 'Milestones',   label: 'Graduation',      headline: (n) => `Congratulations, ${n}`,       line: (n) => `A graduation song for ${n}` },
+  siyum:           { group: 'Milestones',   label: 'Siyum',           headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A song for ${n}'s siyum` },
+  new_job:         { group: 'Milestones',   label: 'New job',         headline: (n) => `Congratulations, ${n}`,       line: (n) => `A song for ${n}'s new job` },
+  new_home:        { group: 'Milestones',   label: 'New home',        headline: (n) => `Mazel tov, ${n}`,             line: (n) => `A song for ${n}'s new home` },
+  aliyah:          { group: 'Milestones',   label: 'Aliyah',          headline: (n) => `Welcome home, ${n}`,          line: (n) => `A song for ${n}'s aliyah` },
+  retirement:      { group: 'Milestones',   label: 'Retirement',      headline: (n) => `Congratulations, ${n}`,       line: (n) => `A song for ${n}'s retirement` },
+  refuah_shleimah: { group: 'Support',      label: 'Refuah shleimah', headline: (n) => `Refuah shleimah, ${n}`,       line: (n) => `A song wishing ${n} a refuah shleimah` },
+  encouragement:   { group: 'Support',      label: 'Encouragement',   headline: (n) => `Stay strong, ${n}`,           line: (n) => `A song to lift ${n}'s spirits` },
+  thank_you:       { group: 'Support',      label: 'Thank you',       headline: (n) => `Thank you, ${n}`,             line: (n) => `A thank-you song for ${n}` },
+  in_memory:       { group: 'Support',      label: 'In memory',       headline: (n) => `In loving memory of ${n}`,    line: (n) => `A song in memory of ${n}` },
+  just_because:    { group: null,           label: 'Just because',   headline: (n) => `This one's for you, ${n}`,    line: (n) => `A song for ${n}, just because` },
+  other:           { group: null,           label: 'Something else', headline: (n) => `This one's for you, ${n}`,    line: (n, other) => `A song for ${n}: ${other || ''}` },
 };
-function dedOccasionLabel(occasion, occasionOther){
-  return occasion === 'other' ? (occasionOther || 'Other') : (DED_OCCASION_LABEL[occasion] || occasion);
+function dedHeadline(occasion, name){
+  const def = DED_OCCASION[occasion];
+  return def ? def.headline(name) : `This one's for you, ${name}`;
 }
-function dedSenderLine(name){ return name ? `from ${name}` : 'from someone'; }
+function dedLine(occasion, name, occasionOther){
+  const def = DED_OCCASION[occasion];
+  return def ? def.line(name, occasionOther) : `A song for ${name}`;
+}
+function dedSenderLine(occasion, senderName, isAnonymous){
+  const named = !isAnonymous && senderName;
+  if(occasion === 'in_memory'){
+    return named ? `Dedicated by ${senderName}` : 'Dedicated by someone who cares';
+  }
+  return named ? `With love, ${senderName}` : 'With love, from someone who cares';
+}
+function dedMessagePlaceholder(occasion, name){
+  const who = name || 'them';
+  return occasion === 'in_memory' ? `Share a memory of ${who} (optional)` : `Add a few words for ${who} (optional)`;
+}
 function dedShareUrl(code){ return SITE_ORIGIN + '/d/' + encodeURIComponent(code); }
 
 let dedicateSong = null; // the song this open sheet is for
@@ -5723,12 +5777,13 @@ function dedUpdatePreview(){
   const occasion = document.getElementById('dedicate-occasion').value;
   const occasionOther = document.getElementById('dedicate-occasion-other').value.trim();
   const anon = document.getElementById('dedicate-anonymous').checked;
-  const label = dedOccasionLabel(occasion, occasionOther);
-  const from = anon ? 'from Someone' : dedSenderLine(dedMySenderName());
-  const preview = document.getElementById('dedicate-preview');
-  preview.textContent = recipient
-    ? `For ${recipient} · ${label} · ${from}`
-    : `Who is it for? · ${label} · ${from}`;
+  const name = recipient || 'them';
+  // DED-3: "reads like the page" -- the line, then the sender line, each a
+  // full sentence, no tag-style middots here (those stayed on the strip).
+  const line = dedLine(occasion, name, occasionOther);
+  const senderLine = dedSenderLine(occasion, dedMySenderName(), anon);
+  document.getElementById('dedicate-preview').textContent = `${line}. ${senderLine}.`;
+  document.getElementById('dedicate-message').placeholder = dedMessagePlaceholder(occasion, recipient);
 }
 
 (function(){
@@ -5784,7 +5839,7 @@ function dedUpdatePreview(){
         p_is_anonymous: anonymous,
       });
       if(error) throw error;
-      dedShowSuccess(dedicateSong, code);
+      dedShowSuccess(dedicateSong, code, occasion, recipient);
       loadDedicationsStrip();
     }catch(err){
       showDedErr((err && err.message) || 'Could not send that dedication right now.');
@@ -5794,7 +5849,17 @@ function dedUpdatePreview(){
   });
 })();
 
-function dedShowSuccess(song, code){
+// DED-3: the WhatsApp/share text is addressed to the recipient and keyed
+// off the headline, except in_memory, which never calls the person "you"
+// since the text is addressed to whoever reads it, not to the departed.
+function dedShareText(occasion, name, songTitle, url){
+  if(occasion === 'in_memory'){
+    return `I dedicated a song in memory of ${name} on Laivy Hart: ${songTitle}. ${url}`;
+  }
+  return `${dedHeadline(occasion, name)}! I dedicated a song to you on Laivy Hart: ${songTitle}. Listen here: ${url}`;
+}
+
+function dedShowSuccess(song, code, occasion, recipient){
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('[data-ded-pane="form"]').hidden = true;
   const pane = modal.querySelector('[data-ded-pane="success"]');
@@ -5802,7 +5867,9 @@ function dedShowSuccess(song, code){
 
   const url = dedShareUrl(code);
   const title = song.title || song.title_translit || 'this song';
-  const waText = `I dedicated a song to you on Laivy Hart: ${title}. Listen here: ${url}`;
+  const name = recipient || 'them';
+  const waText = dedShareText(occasion, name, title, url);
+  const headline = dedHeadline(occasion, name);
   modal.querySelector('#dedicate-success-sub').textContent = `For this song's page, share the link below.`;
   modal.querySelector('#dedicate-view-link').href = url;
 
@@ -5821,7 +5888,7 @@ function dedShowSuccess(song, code){
   nativeBtn.hidden = !navigator.share;
   nativeBtn.onclick = () => {
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_native' } });
-    navigator.share({ title: `A song for ${document.getElementById('dedicate-recipient').value.trim()}`, text: waText, url })
+    navigator.share({ title: headline, text: waText, url })
       .catch(() => { /* dismissed */ });
   };
 }
@@ -5850,10 +5917,11 @@ async function loadDedicationsStrip(){
   if(currentIdx === null || SONGS[currentIdx].id !== reqId) return; // switched songs mid-flight
   if(error || !data || !data.length){ strip.classList.add('hidden'); return; }
   strip.classList.remove('hidden');
-  document.getElementById('dedications-strip-list').innerHTML = data.map((d) => `
-    <a class="dedications-strip-card" href="/d/${encodeURIComponent(d.code)}">
-      For <strong>${escHtml(d.recipient_name)}</strong> &middot; ${escHtml(dedOccasionLabel(d.occasion, d.occasion_other))} &middot; ${escHtml(dedSenderLine(d.sender_name))}
-    </a>`).join('');
+  document.getElementById('dedications-strip-list').innerHTML = data.map((d) => {
+    const line = dedLine(d.occasion, d.recipient_name, d.occasion_other);
+    const from = d.sender_name ? `from ${d.sender_name}` : 'from someone';
+    return `<a class="dedications-strip-card" href="/d/${encodeURIComponent(d.code)}">${escHtml(line)} &middot; ${escHtml(from)}</a>`;
+  }).join('');
 }
 
 /* ============================================================
@@ -6624,22 +6692,11 @@ function wireArtistCardClicks(scope, a){
 }
 
 /* ============================================================
-   DED-2: the dedication page, /d/<code>. Hero-style occasion phrasing here
-   is deliberately different from the strip's/preview's friendly label
-   (DED_OCCASION_LABEL): this is the one place that reads like a sentence
-   rather than a tag. middleware.js duplicates this same map for its own
-   server-rendered OG description (separate edge runtime, no shared module).
+   DED-3: the dedication page, /d/<code> -- headline in the hero, the line
+   underneath, the message in quotes, then the sender line, all from the
+   one DED_OCCASION table above. middleware.js renders the same shape into
+   its SSR body and OG tags (separate edge runtime, no shared module).
    ============================================================ */
-const DED_OCCASION_PHRASE = {
-  birthday: 'On their birthday', wedding: 'For their wedding', anniversary: 'For their anniversary',
-  bar_bat_mitzvah: 'For their bar or bat mitzvah', new_baby: 'For their new baby',
-  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory',
-  thank_you: 'As a thank you', just_because: 'Just because', other: null,
-};
-function dedOccasionPhrase(occasion, occasionOther){
-  return occasion === 'other' ? (occasionOther || 'A special occasion') : (DED_OCCASION_PHRASE[occasion] || occasion);
-}
-
 let dedicationPageToken = 0;
 async function renderDedicationPage(code){
   const root = document.getElementById('dedication-root');
@@ -6657,18 +6714,19 @@ async function renderDedicationPage(code){
   if(error || !data){ renderDedicationMissing(root); return; }
 
   const d = data;
-  const phrase = dedOccasionPhrase(d.occasion, d.occasion_other);
-  const from = d.sender_name ? `From ${escHtml(d.sender_name)}` : 'From someone';
+  const headline = dedHeadline(d.occasion, d.recipient_name);
+  const line = dedLine(d.occasion, d.recipient_name, d.occasion_other);
+  const senderLine = dedSenderLine(d.occasion, d.sender_name, !d.sender_name);
   const cover = d.cover_url ? cdnImg(d.cover_url, 640) : '/icon-512.png';
 
   root.innerHTML = `
     <div class="ded-page">
       <img class="ded-page-cover" src="${escHtml(cover)}" data-raw="${escHtml(d.cover_url || '')}"
            onerror="this.onerror=null;if(this.dataset.raw)this.src=this.dataset.raw;" alt="" width="320" height="320">
-      <h1 class="ded-page-for">For ${escHtml(d.recipient_name)}</h1>
-      <div class="ded-page-occasion">${escHtml(phrase)}</div>
+      <h1 class="ded-page-headline">${escHtml(headline)}</h1>
+      <div class="ded-page-line">${escHtml(line)}</div>
       ${d.message ? `<p class="ded-page-message">&ldquo;${escHtml(d.message)}&rdquo;</p>` : ''}
-      <div class="ded-page-from">${from}</div>
+      <div class="ded-page-sender">${escHtml(senderLine)}</div>
       <div class="ded-page-song">${escHtml(d.song_title || '')}</div>
       <button class="home-primary-btn filled ded-page-play" type="button" id="ded-page-play-btn">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>

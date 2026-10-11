@@ -110,15 +110,15 @@ export async function run() {
     const namedPlan = await decide('/d/ABCD2345', new URLSearchParams(), namedFetch);
     r.check('renders (not a redirect) for a live dedication', namedPlan.kind === 'render' && namedPlan.tag === 'dedication', JSON.stringify(namedPlan));
     const namedHtml = namedPlan.fn(shell);
-    r.check('title is "A song for Mom | Laivy Hart"', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1] === 'A song for Mom | Laivy Hart', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1]);
-    r.check('og:title matches', (namedHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'A song for Mom', namedHtml.match(/og:title[^>]*/)?.[0]);
-    r.check('og:description carries the occasion and the start of the message', /On their birthday.*Love you so much/.test((namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1] || ''), (namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1]);
+    r.check('title is the headline: "Happy birthday, Mom | Laivy Hart"', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1] === 'Happy birthday, Mom | Laivy Hart', (namedHtml.match(/<title>([^<]*)<\/title>/) || [])[1]);
+    r.check('og:title is the headline', (namedHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'Happy birthday, Mom', namedHtml.match(/og:title[^>]*/)?.[0]);
+    r.check('og:description is the line plus the start of the message', /A birthday song for Mom.*Love you so much/.test((namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1] || ''), (namedHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1]);
     r.check('og:image uses the cover via the wsrv.nl transform', (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]?.includes('wsrv.nl'), (namedHtml.match(/<meta property="og:image" content="([^"]*)">/) || [])[1]);
     r.check('dedication canonical uses the bare domain, no www', (namedHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/d/ABCD2345', (namedHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
     r.check('dedication og:url uses the bare domain, no www', (namedHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1] === 'https://laivyhart.com/d/ABCD2345', (namedHtml.match(/<meta property="og:url" content="([^"]*)">/) || [])[1]);
     r.check('noindex is present (dedication pages are personal)', /name="robots" content="noindex"/.test(namedHtml));
     const namedSsr = (namedHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
-    r.check('SSR body shows the real sender name', /From Tzvi/.test(namedSsr), namedSsr);
+    r.check('SSR body shows the sender line with the real name', /With love, Tzvi/.test(namedSsr), namedSsr);
 
     const anonFetch = async () => ({
       ok: true,
@@ -131,7 +131,8 @@ export async function run() {
     const anonPlan = await decide('/d/ANON1111', new URLSearchParams(), anonFetch);
     const anonHtml = anonPlan.fn(shell);
     const anonSsr = (anonHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
-    r.check('anonymous: no sender name anywhere in the rendered HTML', !/Tzvi/.test(anonHtml) && /From someone/.test(anonSsr), anonSsr);
+    r.check('anonymous in_memory: no sender name anywhere, and "Dedicated by" wording', !/Tzvi/.test(anonHtml) && /Dedicated by someone who cares/.test(anonSsr), anonSsr);
+    r.check('in_memory headline and OG title: "In loving memory of Dad"', (anonHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'In loving memory of Dad', (anonHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1]);
     r.check('still noindex', /name="robots" content="noindex"/.test(anonHtml));
 
     const missingFetch = async () => ({ ok: true, json: async () => [] });

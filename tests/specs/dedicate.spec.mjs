@@ -109,7 +109,7 @@ async function scenarioSuccessShareActions(browser, port, r) {
   await page.fill('#dedicate-message', 'Love you!');
 
   const preview = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
-  r.check('the live preview shows the recipient, occasion label and the signed-in sender\'s name', preview === 'For Mom · Birthday · from Nova Ash', preview);
+  r.check('the live preview reads like the page: the line, then the sender line', preview === 'A birthday song for Mom. With love, Nova Ash.', preview);
 
   // Block the real wa.me navigation; navigator.clipboard cannot be reassigned
   // (it is a getter on the prototype), so the real API is used instead, with
@@ -138,7 +138,7 @@ async function scenarioSuccessShareActions(browser, port, r) {
   await page.click('#dedicate-whatsapp');
   await page.waitForTimeout(100);
   const opened = await page.evaluate(() => window.__opened[0]);
-  const expectedText = 'I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://laivyhart.com/d/ABCD2345';
+  const expectedText = 'Happy birthday, Mom! I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://laivyhart.com/d/ABCD2345';
   r.check('WhatsApp opens wa.me with the exact expected text, URL-encoded', opened === 'https://wa.me/?text=' + encodeURIComponent(expectedText), opened);
 
   await page.click('#dedicate-copy');
@@ -194,8 +194,8 @@ async function scenarioStripShowsAndHides(browser, port, r) {
     cards: Array.from(document.querySelectorAll('.dedications-strip-card')).map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href') })),
   }));
   r.check('strip is visible when the song has dedications', shown.hidden === false);
-  r.check('a named sender renders "from Tzvi"', /For Mom.*Birthday.*from Tzvi/s.test(shown.cards[0]?.text), shown.cards[0]);
-  r.check('an anonymous sender renders "from someone"', /For Yossi.*Getting better.*from someone/s.test(shown.cards[1]?.text), shown.cards[1]);
+  r.check('card shows the line, then "from Tzvi"', /A birthday song for Mom.*from Tzvi/s.test(shown.cards[0]?.text), shown.cards[0]);
+  r.check('an anonymous sender renders "from someone", and "Something else" renders its own text', /A song for Yossi: Getting better.*from someone/s.test(shown.cards[1]?.text), shown.cards[1]);
   r.check('each card links to its own /d/<code> page', shown.cards[0]?.href === '/d/AAAA1111' && shown.cards[1]?.href === '/d/BBBB2222', shown.cards);
   r.check('no console/page errors', errors1.length === 0, errors1.join(' | '));
   await withDedications.close();

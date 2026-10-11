@@ -113,10 +113,17 @@ any failure.
   inline without faking success; the song page's Dedications strip shows
   named/anonymous senders and hides entirely with none; 390px layout.
 - `specs/dedication-page.spec.mjs`, `/d/<code>` client-rendered from
-  `dedications_public`: a live named dedication, an anonymous one ("From
-  someone", never a name), a removed-or-unknown code (identical "no longer
+  `dedications_public`: a live named dedication (headline, line, message,
+  sender line), an anonymous in_memory one ("Dedicated by someone who
+  cares", never a name), a removed-or-unknown code (identical "no longer
   available" message either way), the Play button handing off to the real
   player, and 1280px/390px rendering.
+- `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
+  line/sender-line/share-text table in index.html, called directly in-page
+  rather than round-tripped through the form 21 times: every occasion's
+  headline and line, the sender line's "With love"/"Dedicated by" (in_memory)
+  split and its anonymous form, the WhatsApp/share text per occasion
+  including the in_memory exception, and the grouped (optgroup) dropdown.
 - `specs/admin-song-ideas.spec.mjs` (SONG-1): the admin "Your Song" tab,
   signed in as an admin with `admin_list_song_ideas`/`admin_week_picks`/
   `admin_set_song_idea_status` stubbed: the list (idea text, submitter name

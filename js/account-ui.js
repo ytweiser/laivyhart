@@ -969,14 +969,21 @@ async function renderFollowing(container, user) {
    module and that page share no import, the same reasoning TROPHY_LABELS
    already documents in middleware.js. */
 const SITE_ORIGIN = 'https://laivyhart.com';
+// DED-3: just the dropdown's own label text, not the full headline/line
+// table -- a list row needs a short tag, not a sentence. bar_bat_mitzvah
+// (DED-1's original key) stays mapped here too, since a row written before
+// DED-3 can still show up in this list.
 const DED_OCCASION_LABEL = {
-  birthday: 'Birthday', wedding: 'Wedding', anniversary: 'Anniversary',
-  bar_bat_mitzvah: 'Bar or Bat Mitzvah', new_baby: 'New baby',
-  refuah_shleimah: 'Refuah shleimah', in_memory: 'In memory of',
-  thank_you: 'Thank you', just_because: 'Just because', other: null,
+  birthday: 'Birthday', engagement: 'Engagement', wedding: 'Wedding', anniversary: 'Anniversary',
+  bar_mitzvah: 'Bar Mitzvah', bat_mitzvah: 'Bat Mitzvah', bar_bat_mitzvah: 'Bar or Bat Mitzvah',
+  new_baby: 'New baby', bris: 'Bris', upsherin: 'Upsherin',
+  graduation: 'Graduation', siyum: 'Siyum', new_job: 'New job', new_home: 'New home',
+  aliyah: 'Aliyah', retirement: 'Retirement',
+  refuah_shleimah: 'Refuah shleimah', encouragement: 'Encouragement',
+  thank_you: 'Thank you', in_memory: 'In memory', just_because: 'Just because', other: null,
 };
 function dedOccasionLabel(occasion, occasionOther) {
-  return occasion === 'other' ? (occasionOther || 'Other') : (DED_OCCASION_LABEL[occasion] || occasion);
+  return occasion === 'other' ? (occasionOther || 'Something else') : (DED_OCCASION_LABEL[occasion] || occasion);
 }
 function fmtDedDate(iso) {
   try { return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }); }
