@@ -5849,9 +5849,9 @@ function dedUpdatePreview(){
     const anonymous = document.getElementById('dedicate-anonymous').checked;
     showDedErr('');
     if(!recipient){ showDedErr('Please say who this is for.'); return; }
-    if(recipient.length > 60){ showDedErr('That name is a bit long -- 60 characters or fewer.'); return; }
+    if(recipient.length > 60){ showDedErr('That name is a bit long: 60 characters or fewer.'); return; }
     if(occasion === 'other' && !other){ showDedErr('Describe the occasion in a few words.'); return; }
-    if(message.length > 280){ showDedErr('That message is a bit long -- 280 characters or fewer.'); return; }
+    if(message.length > 280){ showDedErr('That message is a bit long: 280 characters or fewer.'); return; }
 
     const btn = document.getElementById('dedicate-submit');
     btn.disabled = true;

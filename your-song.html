@@ -437,7 +437,7 @@
     showYsErr('');
 
     if(!text){ showYsErr('Please write your idea first.'); return; }
-    if(text.length > 3000){ showYsErr('That idea is a bit long -- 3,000 characters or fewer.'); return; }
+    if(text.length > 3000){ showYsErr('That idea is a bit long: 3,000 characters or fewer.'); return; }
     if(!agree){ showYsErr('Please agree to the idea submissions terms.'); return; }
 
     const user = window.laivy && window.laivy.auth && window.laivy.auth.user;

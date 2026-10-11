@@ -557,7 +557,7 @@ export function formatSongIdeaNotification(event, data) {
   if (event === 'picked') {
     return {
       subject: 'Your song idea was picked this week',
-      text: `Hi,\n\nGood news -- your song idea was picked this week:\n\n"${data.excerpt || ''}"\n\n`
+      text: `Hi,\n\nGood news! Your song idea was picked this week:\n\n"${data.excerpt || ''}"\n\n`
           + `We're turning it into a real song now. We'll email you again the moment it's released.\n\n`
           + `The Laivy Hart team`,
     };
