@@ -16,7 +16,6 @@ const SONG = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA);
 async function gotoYourSong(page, port) {
   await page.goto(`http://localhost:${port}/your-song`, { waitUntil: 'load' });
   await page.waitForSelector('#idea-box', { timeout: 10000 });
-  await page.waitForTimeout(250);
 }
 
 export async function run(browser, port) {
@@ -90,7 +89,7 @@ async function scenarioSignedOutKeepsText(browser, port, r) {
   await page.fill('#ys-credit', 'A Reader');
   await page.check('#ys-agree');
   await page.click('#ys-submit');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     calls: window.__openModalCalls,
@@ -103,7 +102,7 @@ async function scenarioSignedOutKeepsText(browser, port, r) {
   // Reload (as if returning from sign-in): the draft restores into the box.
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#idea-box', { timeout: 10000 });
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => document.getElementById('ys-text').value.length > 0, { timeout: 10000 });
   const after = await page.evaluate(() => ({
     text: document.getElementById('ys-text').value,
     credit: document.getElementById('ys-credit').value,
@@ -129,14 +128,17 @@ async function scenarioSubmitSuccess(browser, port, r) {
   await gotoYourSong(page, port);
 
   // Signed in: the credit field prefills with the artist's own display name.
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => document.getElementById('ys-credit').value === 'Nova Ash', { timeout: 10000 });
   const prefilled = await page.evaluate(() => document.getElementById('ys-credit').value);
   r.check('credit-as prefills with the signed-in artist\'s display name', prefilled === 'Nova Ash', prefilled);
 
   await page.fill('#ys-text', 'A song about the first rain after a long drought.');
   await page.check('#ys-agree');
   await page.click('#ys-submit');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const success = document.querySelector('[data-ys-pane="success"]');
+    return success && !success.hidden;
+  }, { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     formHidden: document.querySelector('[data-ys-pane="form"]').hidden,
@@ -158,7 +160,13 @@ async function scenarioMadeFromIdeas(browser, port, r) {
   const hiddenPage = await newPage(browser);
   const errors1 = collectErrors(hiddenPage);
   await wireSupabaseStubs(hiddenPage, { songs: F.SONGS_ROWS });
+  // "Stays hidden" has no DOM change to poll for (the section's class never
+  // moves), so the real condition here is "the songs fetch that would have
+  // shown it has actually finished" -- the network response, not a guess at
+  // how long that takes.
+  const songsFetched = hiddenPage.waitForResponse((resp) => resp.url().includes('/rest/v1/songs?'), { timeout: 10000 });
   await gotoYourSong(hiddenPage, port);
+  await songsFetched;
   const hidden = await hiddenPage.evaluate(() => document.getElementById('ys-made-section').classList.contains('hidden'));
   r.check('hidden when no song carries an idea credit', hidden === true);
   r.check('no console/page errors', errors1.length === 0, errors1.join(' | '));
@@ -169,7 +177,7 @@ async function scenarioMadeFromIdeas(browser, port, r) {
   const withCredit = F.SONGS_ROWS.map((s) => (s.id === SONG.id ? { ...s, idea_credit: 'A Reader' } : s));
   await wireSupabaseStubs(shownPage, { songs: withCredit });
   await gotoYourSong(shownPage, port);
-  await shownPage.waitForTimeout(200);
+  await shownPage.waitForSelector('.ys-made-card', { timeout: 10000 });
   const d = await shownPage.evaluate(() => ({
     hidden: document.getElementById('ys-made-section').classList.contains('hidden'),
     card: document.querySelector('.ys-made-card')?.textContent,

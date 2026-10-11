@@ -48,7 +48,13 @@ async function openYourSong(browser, port, overrides) {
   await page.goto(`http://localhost:${port}/admin.html`, { waitUntil: 'load' });
   await page.waitForSelector('#songideas-btn', { timeout: 10000, state: 'visible' });
   await page.click('#songideas-btn');
-  await page.waitForTimeout(400);
+  // Both loadYourSong() and loadWeekPicksHeader() are async RPC calls; wait
+  // for the list to actually leave its "Loading..." placeholder rather than
+  // a fixed delay.
+  await page.waitForFunction(() => {
+    const list = document.getElementById('si-list');
+    return list && !/Loading/.test(list.textContent);
+  }, { timeout: 10000 });
   return { page, errors };
 }
 
@@ -83,12 +89,12 @@ async function scenarioListAndFilters(browser, port, r) {
   r.check('the anonymous idea shows its chosen credit name', d[1].meta.includes('A Friend'), d[1].meta);
 
   await page.click('#si-filters [data-status="released"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 1, { timeout: 10000 });
   const releasedView = await page.evaluate(() => Array.from(document.querySelectorAll('#si-list .si-item')).map((el) => el.querySelector('.si-meta')?.textContent));
   r.check('"Released" filter shows only the released row, with the song title', releasedView.length === 1 && releasedView[0].includes(SONG.title), releasedView);
 
   await page.click('#si-filters [data-status=""]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 3, { timeout: 10000 });
   const allCount = await page.evaluate(() => document.querySelectorAll('#si-list .si-item').length);
   r.check('"All" filter shows all 3 fixture rows', allCount === 3, allCount);
 
@@ -125,26 +131,29 @@ async function scenarioPickAndStudio(browser, port, r) {
   const { page, errors } = await openYourSong(browser, port);
 
   await page.click('#si-list .si-item:nth-of-type(1) [data-si-pick]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 1, { timeout: 10000 });
   const afterPick = await page.evaluate(() => document.querySelectorAll('#si-list .si-item').length);
   r.check('picking an idea drops it out of the "Received" filter', afterPick === 1, afterPick);
 
   await page.click('#si-filters [data-status="picked"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent === 'Picked', { timeout: 10000 });
   const pickedRow = await page.evaluate(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent);
   r.check('it now shows up under "Picked"', pickedRow === 'Picked', pickedRow);
 
+  // Still filtered by "Picked": once the status actually moves to in_studio
+  // the row no longer matches, so the list empties before the next filter
+  // click re-queries it.
   await page.click('#si-list .si-item [data-si-studio]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 0, { timeout: 10000 });
   await page.click('#si-filters [data-status="in_studio"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent === 'In the studio', { timeout: 10000 });
   const studioRow = await page.evaluate(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent);
   r.check('"In the studio" moves it to that status', studioRow === 'In the studio', studioRow);
 
   await page.click('#si-list .si-item [data-si-notpicked]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 0, { timeout: 10000 });
   await page.click('#si-filters [data-status="not_picked"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent === 'Not picked', { timeout: 10000 });
   const notPickedRow = await page.evaluate(() => document.querySelector('#si-list .si-item .si-status-tag')?.textContent);
   r.check('"Not this week" moves it to that status', notPickedRow === 'Not picked', notPickedRow);
 
@@ -157,23 +166,24 @@ async function scenarioReleasePicker(browser, port, r) {
   const { page, errors } = await openYourSong(browser, port);
 
   await page.click('#si-list .si-item:nth-of-type(1) [data-si-release]');
-  await page.waitForTimeout(200);
+  await page.waitForSelector('#si-list .si-item:nth-of-type(1) [data-si-release-select]', { timeout: 10000 });
   const pickerOptions = await page.evaluate(() => Array.from(document.querySelectorAll('#si-list .si-item:nth-of-type(1) [data-si-release-select] option')).map((o) => o.textContent));
   r.check('the picker lists approved songs, including the fixture song', pickerOptions.some((t) => t.includes(SONG.title)), pickerOptions);
 
   // Confirming with nothing chosen is refused, not silently accepted.
   await page.evaluate(() => { window.__alerts = []; window.alert = (m) => window.__alerts.push(m); });
   await page.click('#si-list .si-item:nth-of-type(1) [data-si-release-confirm]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => window.__alerts.length > 0, { timeout: 10000 });
   const noChoice = await page.evaluate(() => window.__alerts.length);
   r.check('confirming with no song chosen is refused', noChoice === 1);
 
   await page.selectOption('#si-list .si-item:nth-of-type(1) [data-si-release-select]', SONG.id);
   await page.click('#si-list .si-item:nth-of-type(1) [data-si-release-confirm]');
-  await page.waitForTimeout(300);
+  // Still filtered by "Received": releasing moves the idea off this list.
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 1, { timeout: 10000 });
 
   await page.click('#si-filters [data-status="released"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#si-list .si-item').length === 2, { timeout: 10000 });
   const released = await page.evaluate(() => document.querySelectorAll('#si-list .si-item').length);
   r.check('the idea now shows up under "Released" (2 total: the fixture one plus this one)', released === 2, released);
 
@@ -188,7 +198,11 @@ async function scenarioCopyButton(browser, port, r) {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
 
   await page.click('#si-list .si-item:nth-of-type(1) [data-si-copy]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(
+    async (expected) => { try { return (await navigator.clipboard.readText()) === expected; } catch (e) { return false; } },
+    'A song about staying up all night talking.',
+    { timeout: 10000 },
+  );
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   r.check('Copy puts the idea text on the clipboard', copied === 'A song about staying up all night talking.', copied);
 

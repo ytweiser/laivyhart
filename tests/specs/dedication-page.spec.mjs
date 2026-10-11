@@ -12,7 +12,10 @@ const SONG = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA);
 
 async function gotoDedication(page, port, code) {
   await page.goto(`http://localhost:${port}/d/${code}`, { waitUntil: 'load' });
-  await page.waitForTimeout(400);
+  // Either the real dedication renders or the page decides it is missing --
+  // wait for whichever actually happens, not a fixed delay (which a loaded
+  // system, e.g. the parallel worker pool, can outrun).
+  await page.waitForSelector('.ded-page-headline, .ded-page-missing', { timeout: 10000 });
 }
 
 export async function run(browser, port) {
@@ -116,7 +119,7 @@ async function scenarioPlayButton(browser, port, r) {
   });
   await gotoDedication(page, port, 'PLAY0001');
   await page.click('#ded-page-play-btn');
-  await page.waitForTimeout(400);
+  await page.waitForFunction((slug) => location.pathname === '/song/' + slug, SONG.slug, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     // loadSong() itself rewrites the address to the canonical /song/<slug>
     // once a specific song is loaded on the 'listen' route (syncSongUrl) --

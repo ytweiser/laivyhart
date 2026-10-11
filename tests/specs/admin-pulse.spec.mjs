@@ -74,7 +74,7 @@ async function openAdminPulse(browser, port, overrides) {
   await page.goto(`http://localhost:${port}/admin.html`, { waitUntil: 'load' });
   await page.waitForSelector('#pulse-btn', { timeout: 10000, state: 'visible' });
   await page.click('#pulse-btn');
-  await page.waitForTimeout(400);
+  await page.waitForSelector('#pulse-tiles .pulse-tile', { timeout: 10000 });
   return { page, errors };
 }
 
@@ -116,7 +116,7 @@ async function scenarioSongDrilldown(browser, port, r) {
   r.section('clicking a song opens its drilldown (pulse_song)');
   const { page, errors } = await openAdminPulse(browser, port);
   await page.click('#pulse-top-songs .pll-name');
-  await page.waitForTimeout(300);
+  await page.waitForSelector('.pulse-funnel', { timeout: 10000 });
   const d = await page.evaluate(() => ({
     hasFunnel: !!document.querySelector('.pulse-funnel'),
     bodyText: document.getElementById('pulse-song-body')?.textContent || '',
@@ -129,7 +129,7 @@ async function scenarioSongDrilldown(browser, port, r) {
 
   // Back goes to the overview, not a dead end.
   await page.click('#pulse-back');
-  await page.waitForTimeout(300);
+  await page.waitForSelector('#pulse-tiles .pulse-tile', { timeout: 10000 });
   const backAt = await page.evaluate(() => !!document.getElementById('pulse-tiles'));
   r.check('back link returns to the Pulse overview', backAt === true);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
@@ -140,7 +140,7 @@ async function scenarioMemberDrilldown(browser, port, r) {
   r.section('clicking a member opens their history (pulse_member by user_id)');
   const { page, errors } = await openAdminPulse(browser, port);
   await page.click('#pulse-top-listeners .pll-name[data-pulse-open="member"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => (document.getElementById('pulse-member-body')?.textContent || '').length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => document.getElementById('pulse-member-body')?.textContent || '');
   r.check('shows the member\'s name and email', d.includes('Nova Ash') && d.includes('nova@example.test'), d);
   r.check('shows their totals', d.includes('6') && d.includes('3'), d); // plays, completes from the fixture
@@ -152,7 +152,7 @@ async function scenarioVisitorDrilldown(browser, port, r) {
   r.section('clicking a visitor opens their device history (pulse_member by device_id)');
   const { page, errors } = await openAdminPulse(browser, port, { pulseMember: PULSE_VISITOR });
   await page.click('#pulse-top-listeners .pll-name[data-pulse-open="visitor"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => (document.getElementById('pulse-member-body')?.textContent || '').length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => document.getElementById('pulse-member-body')?.textContent || '');
   r.check('shows "Visitor" (no name, no email, no device id leaked into the heading)', d.includes('Visitor') && !d.includes('nova@example.test'), d);
   r.check('shows their play count', d.includes('4'), d);

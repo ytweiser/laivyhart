@@ -26,10 +26,22 @@ export async function run(browser, port) {
   return r;
 }
 
+// The pill mounts asynchronously into a reserved slot (#now-artist
+// [data-follow-slot]) -- except for your own song, which skips the slot
+// entirely and decides synchronously (see FOLLOW-2's own comment in
+// index.html), so there is nothing to wait for there. Either outcome
+// satisfies this.
+async function followPillSettled(page) {
+  await page.waitForFunction(() => {
+    const slot = document.querySelector('#now-artist [data-follow-slot]');
+    return !slot || !!document.querySelector('#now-artist [data-follow-btn]');
+  }, { timeout: 10000 });
+}
+
 async function gotoSong(page, port, slug) {
   await page.goto(`http://localhost:${port}/song/${slug}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300); // the compact pill mounts after initial paint
+  await followPillSettled(page);
 }
 
 async function spyOpenModal(page) {
@@ -56,7 +68,7 @@ async function scenarioSignedOut(browser, port, r) {
   r.check('starts as "Follow"', before.text === 'Follow', before.text);
 
   await page.click('#now-artist [data-follow-btn]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const after = await page.evaluate(() => {
     const modal = document.querySelector('.lv-modal-backdrop');
     return {
@@ -87,7 +99,7 @@ async function scenarioFollowToggle(browser, port, r) {
   r.check('starts as "Follow", not following', initial.text === 'Follow' && initial.following === 'false', JSON.stringify(initial));
 
   await page.click('#now-artist [data-follow-btn]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => document.querySelector('#now-artist [data-follow-btn]')?.dataset.following === 'true', { timeout: 10000 });
   const followed = await page.evaluate(() => ({
     text: document.querySelector('#now-artist [data-follow-btn]')?.textContent,
     following: document.querySelector('#now-artist [data-follow-btn]')?.dataset.following,
@@ -95,7 +107,7 @@ async function scenarioFollowToggle(browser, port, r) {
   r.check('optimistic toggle to "Following"', followed.text === 'Following' && followed.following === 'true', JSON.stringify(followed));
 
   await page.click('#now-artist [data-follow-btn]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => document.querySelector('#now-artist [data-follow-btn]')?.dataset.following === 'false', { timeout: 10000 });
   const unfollowed = await page.evaluate(() => ({
     text: document.querySelector('#now-artist [data-follow-btn]')?.textContent,
     following: document.querySelector('#now-artist [data-follow-btn]')?.dataset.following,
@@ -114,14 +126,14 @@ async function scenarioArtistPageReflects(browser, port, r) {
   await gotoSong(page, port, SLUG);
 
   await page.click('#now-artist [data-follow-btn]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => document.querySelector('#now-artist [data-follow-btn]')?.dataset.following === 'true', { timeout: 10000 });
 
   // Client-side navigation (the artist-link row is intercepted, no reload --
   // confirmed in index.html), so the in-memory followed-ids cache carries
   // over, same as a real visitor browsing within one session would see.
   await page.click('#now-artist a.artist-link');
   await page.waitForSelector('.artist-wrap .artist-name', { timeout: 10000 });
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following === 'true', { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     name: document.querySelector('.artist-name')?.textContent,
@@ -163,7 +175,7 @@ async function scenarioDailyLimitError(browser, port, r) {
   await gotoSong(page, port, SLUG);
 
   await page.click('#now-artist [data-follow-btn]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.querySelector('#now-artist [data-follow-err]')?.hidden === false, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     errText: document.querySelector('#now-artist [data-follow-err]')?.textContent,
     errHidden: document.querySelector('#now-artist [data-follow-err]')?.hidden,
@@ -191,7 +203,7 @@ async function scenarioNoLayoutShift(browser, port, r) {
     const r = document.getElementById('now-badges').getBoundingClientRect();
     return { top: r.top, left: r.left };
   });
-  await page.waitForTimeout(500); // widget fully settled
+  await followPillSettled(page);
   const settled = await page.evaluate(() => {
     const r = document.getElementById('now-badges').getBoundingClientRect();
     return { top: r.top, left: r.left };

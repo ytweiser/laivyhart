@@ -32,7 +32,6 @@ function boardFixture() {
 async function gotoBoard(page, port) {
   await page.goto(`http://localhost:${port}/your-song/ideas`, { waitUntil: 'load' });
   await page.waitForSelector('.yi-card', { timeout: 10000 });
-  await page.waitForTimeout(200);
 }
 
 export async function run(browser, port) {
@@ -76,7 +75,7 @@ async function scenarioTabsReorder(browser, port, r) {
   r.check('"Newest" is the default tab, most recent first', newestOrder[0] === 'idea-newest', newestOrder);
 
   await page.click('#yi-tabs [data-sort="most_hearted"]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.querySelector('.yi-card')?.dataset.ideaId === 'idea-most-hearted', { timeout: 10000 });
   const heartedOrder = await page.evaluate(() => Array.from(document.querySelectorAll('.yi-card')).map((c) => c.dataset.ideaId));
   r.check('"Most hearted" reorders by hearts_count desc', heartedOrder[0] === 'idea-most-hearted', heartedOrder);
 
@@ -97,7 +96,7 @@ async function scenarioHeartSignedOut(browser, port, r) {
     window.laivy.accountUI.openModal = (opts) => { window.__openModalCalls.push(opts); return orig(opts); };
   });
   await page.click('.yi-card[data-idea-id="idea-newest"] [data-yi-heart]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     calls: window.__openModalCalls,
     count: document.querySelector('.yi-card[data-idea-id="idea-newest"] [data-yi-count]')?.textContent,
@@ -119,7 +118,7 @@ async function scenarioHeartSignedIn(browser, port, r) {
 
   const card = '.yi-card[data-idea-id="idea-newest"]';
   await page.click(`${card} [data-yi-heart]`);
-  await page.waitForTimeout(200);
+  await page.waitForFunction((sel) => document.querySelector(`${sel} [data-yi-count]`)?.textContent === '3', card, { timeout: 10000 });
   const on = await page.evaluate((sel) => ({
     count: document.querySelector(`${sel} [data-yi-count]`).textContent,
     isOn: document.querySelector(`${sel} [data-yi-heart]`).classList.contains('is-on'),
@@ -128,7 +127,7 @@ async function scenarioHeartSignedIn(browser, port, r) {
   r.check('the heart shows filled', on.isOn === true, on.isOn);
 
   await page.click(`${card} [data-yi-heart]`);
-  await page.waitForTimeout(200);
+  await page.waitForFunction((sel) => document.querySelector(`${sel} [data-yi-count]`)?.textContent === '2', card, { timeout: 10000 });
   const off = await page.evaluate((sel) => ({
     count: document.querySelector(`${sel} [data-yi-count]`).textContent,
     isOn: document.querySelector(`${sel} [data-yi-heart]`).classList.contains('is-on'),

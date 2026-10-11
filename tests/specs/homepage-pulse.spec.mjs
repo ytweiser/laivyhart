@@ -20,8 +20,11 @@ const SETTINGS_OFF = [...F.SITE_SETTINGS_ROWS, { key: 'pulse_public_enabled', va
 
 async function gotoHome(page, url, port) {
   await page.goto(`http://localhost:${port}${url}`, { waitUntil: 'load' });
+  // loadPublicSettings() is awaited before initRoute() (index.html's own
+  // boot sequence), so by the time the rails exist the switch's decision
+  // is already final -- each call site below still waits for its own
+  // specific follow-up condition.
   await page.waitForSelector('#homepage .rail-item, #homepage .hero-tile', { timeout: 10000 });
-  await page.waitForTimeout(400);
 }
 
 export async function run(browser, port) {
@@ -42,6 +45,9 @@ async function scenarioOffNoFetch(browser, port, r) {
     if (name === 'rpc:public_pulse') publicPulseCalled = true;
   });
   await gotoHome(page, '/', port);
+  // Proving an absence can't wait for a selector that will never appear --
+  // networkidle is the real "nothing async is still in flight" signal.
+  await page.waitForLoadState('networkidle');
   const present = await page.evaluate(() => !!document.querySelector('.pulse-box'));
   r.check('Pulse box is absent from the homepage', present === false);
   r.check('public_pulse was never fetched', publicPulseCalled === false);
@@ -55,7 +61,7 @@ async function scenarioOnRendersItems(browser, port, r) {
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, { siteSettings: SETTINGS_ON, publicPulse: PUBLIC_PULSE_ROWS });
   await gotoHome(page, '/', port);
-  await page.waitForTimeout(300);
+  await page.waitForSelector('.pulse-box-item', { timeout: 10000 });
   const d = await page.evaluate(() => ({
     present: !!document.querySelector('.pulse-box'),
     text: document.getElementById('pulse-box-list')?.textContent || '',
@@ -76,7 +82,9 @@ async function scenarioPreviewAsAdmin(browser, port, r) {
   await wireSupabaseStubs(page, { siteSettings: SETTINGS_OFF, publicPulse: PUBLIC_PULSE_ROWS, selfArtistRow: ADMIN_SELF_ROW });
   await signInAs(page, F.SESSION_USERS.NOVA);
   await gotoHome(page, '/?preview=pulse', port);
-  await page.waitForTimeout(500); // auth resolves after first paint; the box appears on the laivy:auth re-render
+  // auth resolves after first paint; the box appears on the laivy:auth
+  // re-render, so wait for the box itself rather than guessing when that is.
+  await page.waitForSelector('.pulse-box', { timeout: 10000 });
   const present = await page.evaluate(() => !!document.querySelector('.pulse-box'));
   r.check('Pulse box is present for an admin with the preview flag, even with the switch off', present === true);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
@@ -90,7 +98,9 @@ async function scenarioPreviewAsNonAdmin(browser, port, r) {
   await wireSupabaseStubs(page, { siteSettings: SETTINGS_OFF, publicPulse: PUBLIC_PULSE_ROWS, selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH] });
   await signInAs(page, F.SESSION_USERS.NOVA);
   await gotoHome(page, '/?preview=pulse', port);
-  await page.waitForTimeout(500);
+  // Same "prove the absence" reasoning as scenarioOffNoFetch above: wait
+  // for the auth re-render's async activity to quiet down, not a guess.
+  await page.waitForLoadState('networkidle');
   const present = await page.evaluate(() => !!document.querySelector('.pulse-box'));
   r.check('Pulse box stays absent for a signed-in non-admin, even with the preview flag', present === false);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));

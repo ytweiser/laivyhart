@@ -28,7 +28,6 @@ async function gotoSettings(page, port) {
     const el = document.getElementById('lv-mysongs-list');
     return el && !/Loading/.test(el.textContent);
   }, { timeout: 10000 });
-  await page.waitForTimeout(150);
 }
 
 async function scenarioMySongs(browser, port, r) {
@@ -74,7 +73,10 @@ async function scenarioMySongs(browser, port, r) {
   // it isn't told how to handle, which would silently abort the withdraw.
   page.once('dialog', (d) => d.accept());
   await page.click('#lv-mysongs-list [data-withdraw]');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => {
+    const btn = document.querySelector('#lv-mysongs-list [data-withdraw]');
+    return btn && btn.textContent === 'Withdrawn';
+  }, { timeout: 10000 });
   const afterWithdraw = await page.evaluate(() => {
     const btn = document.querySelector('#lv-mysongs-list [data-withdraw]');
     return { text: btn?.textContent, disabled: btn?.disabled };
@@ -103,11 +105,18 @@ async function scenarioMyPicksAddCapUnpublished(browser, port, r) {
   r.check('empty-state nudge text', (emptyState || '').includes("Pick up to six songs, yours or anyone's, and say why."), emptyState);
 
   async function searchAndAdd(title) {
+    const before = await page.evaluate(() => document.querySelectorAll('#lv-mypicks-list .lv-pick-row').length);
     await page.fill('#lv-pick-search-input', '');
     await page.fill('#lv-pick-search-input', title);
-    await page.waitForTimeout(350);
+    await page.waitForSelector('.lv-pick-result', { timeout: 10000 });
     await page.click('.lv-pick-result');
-    await page.waitForTimeout(250);
+    // Reused below for the capped 7th attempt too, which is REFUSED rather
+    // than added -- so the real condition is "either", not just a count bump.
+    await page.waitForFunction((n) => {
+      const count = document.querySelectorAll('#lv-mypicks-list .lv-pick-row').length;
+      const err = document.querySelector('[data-pick-err]');
+      return count !== n || (err && !err.hidden);
+    }, before, { timeout: 10000 });
   }
 
   // Six real picks, one of them (Borrowed Light) by Sable Ridge -- the
@@ -145,9 +154,12 @@ async function scenarioMyPicksAddCapUnpublished(browser, port, r) {
   });
   await gotoSettings(page3, port);
   await page3.fill('#lv-pick-search-input', 'Afterglow');
-  await page3.waitForTimeout(400);
+  await page3.waitForSelector('.lv-pick-result', { timeout: 10000 });
   await page3.click('.lv-pick-result');
-  await page3.waitForTimeout(250);
+  await page3.waitForFunction(() => {
+    const err = document.querySelector('[data-pick-err]');
+    return err && !err.hidden;
+  }, { timeout: 10000 });
   const unpub = await page3.evaluate(() => ({
     err: document.querySelector('[data-pick-err]')?.textContent,
     hidden: document.querySelector('[data-pick-err]')?.hidden,
@@ -177,8 +189,10 @@ async function scenarioMyPicksReorder(browser, port, r) {
   r.check('two picks load in position order', JSON.stringify(before) === JSON.stringify(['Low Light', 'Borrowed Light']), JSON.stringify(before));
 
   const pageErrorsBeforeSwap = errors.length;
-  await page.click('.lv-pick-row:nth-child(2) [data-dir="up"]');
-  await page.waitForTimeout(250);
+  await Promise.all([
+    page.waitForResponse((resp) => resp.url().includes('/rest/v1/rpc/swap_my_pick_positions'), { timeout: 10000 }),
+    page.click('.lv-pick-row:nth-child(2) [data-dir="up"]'),
+  ]);
   const swapArgs = swapCalls[0] ? JSON.parse(swapCalls[0]) : null;
   const swappedPositions = swapArgs && [swapArgs.p_pos_a, swapArgs.p_pos_b].sort().join(',') === '1,2';
   r.check('swap_my_pick_positions called with positions 1 and 2', swapCalls.length === 1 && swappedPositions, JSON.stringify(swapArgs));
@@ -192,8 +206,7 @@ async function scenarioMyPicksReorder(browser, port, r) {
   const errors2 = collectErrors(page2);
   await wireSupabaseStubs(page2, { artistPicks: existingPicks.map((p) => ({ artist_id: F.NOVA_ASH, song_id: p.song_id, note: p.note, position: p.position })) });
   await page2.goto(`http://localhost:${port}/artist/nova-ash`, { waitUntil: 'load' });
-  await page2.waitForSelector('.artist-name', { timeout: 10000 });
-  await page2.waitForTimeout(500);
+  await page2.waitForSelector('[data-rail="picks"] .pick-note', { timeout: 10000 });
   const notes = await page2.evaluate(() => Array.from(document.querySelectorAll('[data-rail="picks"] .pick-note')).map((e) => e.textContent));
   r.check('both notes render on the artist page, in order', notes[0]?.includes('First pick') && notes[1]?.includes('Second pick'), JSON.stringify(notes));
   r.check('no console/page errors (artist page)', errors2.length === 0, errors2.join(' | '));
@@ -225,7 +238,10 @@ async function scenarioBio(browser, port, r) {
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(F.SELF_ARTIST_ROWS[F.NOVA_ASH]) });
   });
   await page.click('[data-act="save"]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const ok = document.querySelector('[data-ok]');
+    return ok && !ok.hidden;
+  }, { timeout: 10000 });
   r.check('save sends the bio text to artists.update', savedPatch && savedPatch.bio === bioText, JSON.stringify(savedPatch));
   const okShown = await page.evaluate(() => !document.querySelector('[data-ok]')?.hidden);
   r.check('"Saved." confirmation shows', okShown === true);
@@ -267,7 +283,7 @@ async function scenarioFollowing(browser, port, r) {
   r.check('links to /artist/sable-ridge', d.href === '/artist/sable-ridge', d.href);
 
   await page.click('.lv-following-unfollow');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.querySelectorAll('.lv-following-row').length === 0, { timeout: 10000 });
   const after = await page.evaluate(() => ({
     rows: document.querySelectorAll('.lv-following-row').length,
     emptyText: document.getElementById('lv-following-list')?.textContent,
@@ -312,7 +328,10 @@ async function scenarioMyDedications(browser, port, r) {
 
   await page.evaluate(() => { window.confirm = () => true; });
   await page.click('.lv-ded-row[data-code="LIVE0001"] [data-ded-remove]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const status = document.querySelector('.lv-ded-row[data-code="LIVE0001"] .lv-ded-status');
+    return status && status.textContent === 'Removed';
+  }, { timeout: 10000 });
   const afterRemove = await page.evaluate(() => {
     const row = document.querySelector('.lv-ded-row[data-code="LIVE0001"]');
     return { status: row?.querySelector('.lv-ded-status')?.textContent, actionsEmpty: row?.querySelector('.lv-ded-actions')?.children.length === 0 };
@@ -368,7 +387,10 @@ async function scenarioMySongIdeas(browser, port, r) {
 
   await page.evaluate(() => { window.confirm = () => true; });
   await page.click('#lv-song-ideas-list .lv-ded-row[data-id="idea-received"] [data-si-withdraw]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const status = document.querySelector('#lv-song-ideas-list .lv-ded-row[data-id="idea-received"] .lv-ded-status');
+    return status && status.textContent === 'Withdrawn';
+  }, { timeout: 10000 });
   const afterWithdraw = await page.evaluate(() => {
     const row = document.querySelector('#lv-song-ideas-list .lv-ded-row[data-id="idea-received"]');
     return { status: row?.querySelector('.lv-ded-status')?.textContent, actionsEmpty: row?.querySelector('.lv-ded-actions')?.children.length === 0 };

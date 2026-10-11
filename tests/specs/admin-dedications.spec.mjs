@@ -50,7 +50,10 @@ async function openAdminDedications(browser, port, overrides) {
   await page.goto(`http://localhost:${port}/admin.html`, { waitUntil: 'load' });
   await page.waitForSelector('#dedications-btn', { timeout: 10000, state: 'visible' });
   await page.click('#dedications-btn');
-  await page.waitForTimeout(400);
+  await page.waitForFunction(() => {
+    const list = document.getElementById('ded-list');
+    return list && !/Loading/.test(list.textContent);
+  }, { timeout: 10000 });
   return { page, errors };
 }
 
@@ -99,12 +102,12 @@ async function scenarioFilters(browser, port, r) {
   const { page, errors } = await openAdminDedications(browser, port);
 
   await page.click('#ded-filters [data-status="removed"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#ded-list .ded-item').length === 1, { timeout: 10000 });
   const removedView = await page.evaluate(() => Array.from(document.querySelectorAll('#ded-list .ded-item')).map((el) => el.querySelector('.ded-recipient')?.textContent));
   r.check('"Removed" filter shows only the removed row', removedView.length === 1 && removedView[0].includes('Old One'), removedView);
 
   await page.click('#ded-filters [data-status=""]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#ded-list .ded-item').length === 3, { timeout: 10000 });
   const allView = await page.evaluate(() => document.querySelectorAll('#ded-list .ded-item').length);
   r.check('"All" filter shows all 3 fixture rows', allView === 3, allView);
 
@@ -118,13 +121,13 @@ async function scenarioRemoveFlow(browser, port, r) {
 
   await page.evaluate(() => { window.prompt = () => 'Inappropriate recipient name'; });
   await page.click('#ded-list .ded-item [data-ded-remove]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('#ded-list .ded-item').length === 1, { timeout: 10000 });
 
   const after = await page.evaluate(() => document.querySelectorAll('#ded-list .ded-item').length);
   r.check('the removed dedication drops out of the Live list', after === 1, after);
 
   await page.click('#ded-filters [data-status="removed"]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !!document.querySelector('#ded-list .ded-item .ded-removed-tag'), { timeout: 10000 });
   const removedText = await page.evaluate(() => document.querySelector('#ded-list .ded-item .ded-removed-tag')?.textContent);
   r.check('it now shows up under Removed, with the reason', removedText && removedText.includes('Inappropriate recipient name'), removedText);
 
@@ -144,7 +147,7 @@ async function scenarioRemoveError(browser, port, r) {
     window.alert = (m) => window.__alerts.push(m);
   });
   await page.click('#ded-list .ded-item [data-ded-remove]');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => window.__alerts.length > 0, { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     alerts: window.__alerts,

@@ -11,10 +11,12 @@ import { signInAs } from '../lib/auth.mjs';
 import { makeReporter } from '../lib/report.mjs';
 import * as F from '../fixtures.mjs';
 
-const PORT = 8743;
 const HEBREW_RE = /[֐-׿]/;
 
 export async function run(browser, port) {
+  // TEST-1: this used to shadow a module-level `const PORT = 8743`, which
+  // would have silently hardcoded the port (breaking the parallel worker
+  // pool, where each worker gets its own) if the shadow were ever dropped.
   const PORT = port;
   const r = makeReporter('artist-page.spec.mjs');
   await scenarioRealData(browser, PORT, r);
@@ -31,7 +33,12 @@ export async function run(browser, port) {
 async function gotoArtist(page, port, handle) {
   await page.goto(`http://localhost:${port}/artist/${handle}`, { waitUntil: 'load' });
   await page.waitForSelector('.artist-wrap .artist-name', { timeout: 10000 });
-  await page.waitForTimeout(700); // progressive rows (comments/recommendations)
+  // Comments and recommendations load as two independent, un-awaited
+  // promises (index.html's renderArtistPage) that stay hidden forever if
+  // their row set is empty -- there is no single "both settled" DOM flag to
+  // poll for across every scenario's fixture (empty or not), so this waits
+  // for the network activity they cause to actually finish instead.
+  await page.waitForLoadState('networkidle', { timeout: 10000 });
 }
 
 async function scenarioRealData(browser, port, r) {
@@ -141,7 +148,7 @@ async function scenarioFollowSignedOut(browser, port, r) {
   r.check('Follow button present for a signed-out visitor', before.hasButton === true);
 
   await page.click('#artist-follow-slot [data-follow-btn]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector('.lv-modal-backdrop')?.hidden === false, { timeout: 10000 });
   const after = await page.evaluate(() => {
     const modal = document.querySelector('.lv-modal-backdrop');
     return { modalHidden: modal ? modal.hidden : 'MISSING', stillNotFollowing: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following };
@@ -169,7 +176,7 @@ async function scenarioFollowThirdParty(browser, port, r) {
   r.check('follower count shown (12)', (initial.count || '').startsWith('12'), initial.count);
 
   await page.click('#artist-follow-slot [data-follow-btn]');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following === 'true', { timeout: 10000 });
   const toggled = await page.evaluate(() => ({
     text: document.querySelector('#artist-follow-slot [data-follow-btn]')?.textContent,
     following: document.querySelector('#artist-follow-slot [data-follow-btn]')?.dataset.following,
@@ -192,7 +199,7 @@ async function scenarioFollowThirdParty(browser, port, r) {
   });
   await gotoArtist(page2, port, 'nova-ash');
   await page2.click('#artist-follow-slot [data-follow-btn]');
-  await page2.waitForTimeout(250);
+  await page2.waitForFunction(() => document.querySelector('#artist-follow-slot [data-follow-err]')?.hidden === false, { timeout: 10000 });
   const errored = await page2.evaluate(() => ({
     errText: document.querySelector('#artist-follow-slot [data-follow-err]')?.textContent,
     errHidden: document.querySelector('#artist-follow-slot [data-follow-err]')?.hidden,
@@ -286,7 +293,10 @@ async function scenarioWidths(browser, port, r) {
 
   for (const width of [1280, 1024, 760, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.waitForTimeout(120);
+    // Two animation frames is the standard way to wait for a resize's style
+    // recalc, layout and paint to have actually happened, rather than
+    // guessing how long that takes.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const d = await page.evaluate(() => {
       const wraps = Array.from(document.querySelectorAll('#artist-root .rail-scroll-wrap'));
       return {

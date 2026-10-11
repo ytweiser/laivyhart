@@ -24,10 +24,14 @@ export async function run(browser, port) {
   const placeholder = await page.getAttribute('#search', 'placeholder');
   r.check('placeholder updated', placeholder === 'Search songs, artists, lyrics, tags', placeholder);
 
+  // renderList() runs synchronously off the search box's own 'input' event
+  // (only the analytics ping is debounced, 600ms, and never affects the
+  // DOM) -- so waiting for the input's value to actually land is the real
+  // condition, not a guess at how long rendering takes.
   async function searchFor(q) {
     await page.fill('#search', '');
     await page.fill('#search', q);
-    await page.waitForTimeout(150);
+    await page.waitForFunction((want) => document.getElementById('search').value === want, q, { timeout: 5000 });
     return page.evaluate(() => ({
       groupPresent: !!document.querySelector('.search-artists'),
       names: Array.from(document.querySelectorAll('.search-artist-name')).map((e) => e.textContent),
@@ -46,7 +50,7 @@ export async function run(browser, port) {
   // Artist result links to the right page and is above the song rows.
   await page.fill('#search', '');
   await page.fill('#search', 'nova');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.getElementById('search').value === 'nova', null, { timeout: 5000 });
   const order = await page.evaluate(() => {
     const rows = document.getElementById('rows');
     const group = rows.querySelector('.search-artists');
@@ -73,7 +77,13 @@ export async function run(browser, port) {
   await page2.goto(`http://localhost:${port}/listen`, { waitUntil: 'load' });
   await page2.waitForSelector('#search', { timeout: 10000 });
   await page2.fill('#search', 'nova');
-  await page2.waitForTimeout(200);
+  // The fallback read (artists.json, since the live query is stubbed to
+  // fail) is the thing actually worth waiting on here, not just the input
+  // event -- wait for the real result the check below expects.
+  await page2.waitForFunction(
+    () => Array.from(document.querySelectorAll('.search-artist-name')).some((e) => e.textContent === 'Nova Ash'),
+    null, { timeout: 5000 },
+  ).catch(() => {}); // let the check below fail with a clear message if it never shows up
   const fallback = await page2.evaluate(() => Array.from(document.querySelectorAll('.search-artist-name')).map((e) => e.textContent));
   r.check('search works from artists.json when the live read fails', fallback.includes('Nova Ash'), JSON.stringify(fallback));
   r.check('no console/page errors (fallback case)', errors2.length === 0, errors2.join(' | '));

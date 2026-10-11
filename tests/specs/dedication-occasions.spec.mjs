@@ -51,7 +51,13 @@ async function loadAnyPage(browser, port) {
   const errors = collectErrors(page);
   await wireSupabaseStubs(page);
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'load' });
-  await page.waitForTimeout(200);
+  // dedHeadline/dedLine/etc. are defined by the same inline script that
+  // builds the occasion dropdown, so its presence means the functions these
+  // tests call directly are ready too. state: 'attached', not the default
+  // 'visible' -- the dropdown lives inside the (hidden until opened)
+  // dedicate sheet, and a native <option> has no box Playwright considers
+  // "visible" regardless, so the default would just time out.
+  await page.waitForSelector('#dedicate-occasion option', { state: 'attached', timeout: 10000 });
   return { page, errors };
 }
 

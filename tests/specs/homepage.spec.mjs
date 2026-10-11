@@ -15,7 +15,9 @@ export async function run(browser, port) {
 
   await page.goto(`http://localhost:${port}/`, { waitUntil: 'load' });
   await page.waitForSelector('#homepage .rail-item, #homepage .hero-tile', { timeout: 10000 });
-  await page.waitForTimeout(500);
+  // The mood strip renders in the same pass as the rails, so its presence
+  // is the real signal that the homepage has finished mounting.
+  await page.waitForSelector('.mood-card', { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     heroPresent: !!document.querySelector('.hero-tile'),
@@ -42,7 +44,7 @@ export async function run(browser, port) {
   r.check('at least one homepage rail is scrollable (fades/arrows wiring intact)', scrollable.some(Boolean), JSON.stringify(d.railScrollable));
 
   await page.click('#homepage .rail-item');
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !document.getElementById('page-listen').classList.contains('hidden'), null, { timeout: 10000 });
   const onListen = await page.evaluate(() => !document.getElementById('page-listen').classList.contains('hidden'));
   r.check('clicking a homepage card opens /listen', onListen === true);
 

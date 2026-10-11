@@ -16,7 +16,6 @@ async function gotoSongWithCredit(page, port, idea_credit) {
   await wireSupabaseStubs(page, { songs });
   await page.goto(`http://localhost:${port}/song/${SONG.slug}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300);
 }
 
 export async function run(browser, port) {
@@ -33,7 +32,9 @@ async function scenarioLinksToRealProfile(browser, port, r) {
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await gotoSongWithCredit(page, port, 'Nova Ash');
-  await page.waitForTimeout(250);
+  // The line renders plain text first, then upgrades to a link once the
+  // async artists_public lookup resolves -- wait for that upgrade itself.
+  await page.waitForFunction(() => !!document.getElementById('now-idea-credit')?.querySelector('a'), { timeout: 10000 });
   const d = await page.evaluate(() => {
     const el = document.getElementById('now-idea-credit');
     const a = el.querySelector('a');
@@ -60,7 +61,10 @@ async function scenarioAnonymousNeverLinks(browser, port, r) {
   });
   await page.goto(`http://localhost:${port}/song/${SONG.slug}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300);
+  // "Anonymous" never starts the async lookup at all (an early return), so
+  // there is no DOM change to wait for -- waiting for the network to settle
+  // is the real condition for "confirm nothing else fired", not a guess.
+  await page.waitForLoadState('networkidle');
   const d = await page.evaluate(() => {
     const el = document.getElementById('now-idea-credit');
     return { text: el.textContent, hasLink: !!el.querySelector('a') };
@@ -76,8 +80,17 @@ async function scenarioNoMatchStaysPlainText(browser, port, r) {
   r.section('a custom credit name with no matching profile stays plain text');
   const page = await newPage(browser);
   const errors = collectErrors(page);
-  await gotoSongWithCredit(page, port, 'A Family Friend');
-  await page.waitForTimeout(300);
+  const songs = F.SONGS_ROWS.map((s) => (s.id === SONG.id ? { ...s, idea_credit: 'A Family Friend' } : s));
+  await wireSupabaseStubs(page, { songs });
+  // A miss has no DOM change either (stays plain text) -- wait for the
+  // lookup's own response instead of guessing how long it takes to fail.
+  const lookedUp = page.waitForResponse(
+    (resp) => resp.url().includes('/rest/v1/artists_public') && resp.url().includes('display_name'),
+    { timeout: 10000 },
+  );
+  await page.goto(`http://localhost:${port}/song/${SONG.slug}`, { waitUntil: 'load' });
+  await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
+  await lookedUp;
   const d = await page.evaluate(() => {
     const el = document.getElementById('now-idea-credit');
     return { text: el.textContent, hasLink: !!el.querySelector('a') };
@@ -95,7 +108,6 @@ async function scenarioHiddenWhenNoCredit(browser, port, r) {
   await wireSupabaseStubs(page, { songs: F.SONGS_ROWS });
   await page.goto(`http://localhost:${port}/song/${SONG.slug}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(250);
   const hidden = await page.evaluate(() => document.getElementById('now-idea-credit').classList.contains('hidden'));
   r.check('the line is hidden', hidden === true);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));

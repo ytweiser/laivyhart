@@ -31,7 +31,10 @@ export async function run(browser, port) {
 async function gotoSong(page, port, slug) {
   await page.goto(`http://localhost:${port}/song/${slug}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300);
+  // paintRatings() has run (it appends #rating-msg last) -- the real
+  // condition every scenario below actually needs before reading a star
+  // or a row's locked state.
+  await page.waitForSelector('#rating-rows .rating-row', { timeout: 10000 });
 }
 
 async function scenarioSignedOut(browser, port, r) {
@@ -58,7 +61,7 @@ async function scenarioSignedOut(browser, port, r) {
   r.check('note says "Sign in to rate"', before.note === 'Sign in to rate', before.note);
 
   await page.click('.star[data-facet="words"][data-score="3"]');
-  await page.waitForTimeout(100);
+  await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const after = await page.evaluate(() => ({
     calls: window.__openModalCalls,
     filled: Array.from(document.querySelectorAll('.rating-row[data-facet="words"] .star svg'))
@@ -89,7 +92,7 @@ async function scenarioSignedOutKeyboard(browser, port, r) {
 
   await page.focus('.star[data-facet="music"][data-score="2"]');
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(100);
+  await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     calls: window.__openModalCalls.length,
     filled: Array.from(document.querySelectorAll('.rating-row[data-facet="music"] .star svg'))
@@ -108,7 +111,13 @@ async function scenarioFreshAccount(browser, port, r) {
   await wireSupabaseStubs(page);
   await signInAs(page, { ...F.SESSION_USERS.LISTENER, createdAt: new Date(Date.now() - 60000) });
   await gotoSong(page, port, SLUG);
-  await page.waitForTimeout(200);
+  // The sign-in event can resolve after the first (signed-out-looking) paint;
+  // the words row un-locking is the real signal that the repaint it triggers
+  // (see index.html's own laivy:auth listener on paintRatings) has happened.
+  await page.waitForFunction(() => {
+    const row = document.querySelector('.rating-row[data-facet="words"]');
+    return row && !row.classList.contains('is-locked');
+  }, { timeout: 10000 });
 
   const before = await page.evaluate(() => {
     const row = document.querySelector('.rating-row[data-facet="words"]');
@@ -121,7 +130,10 @@ async function scenarioFreshAccount(browser, port, r) {
   r.check('stars render (not withheld for a new account)', before.starCount === 5, before.starCount);
 
   await page.click('.star[data-facet="words"][data-score="4"]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => {
+    const stars = document.querySelectorAll('.rating-row[data-facet="words"] .star svg');
+    return Array.from(stars).filter((svg) => svg.classList.contains('is-on')).length === 4;
+  }, { timeout: 10000 });
   const after = await page.evaluate(() => {
     const stars = Array.from(document.querySelectorAll('.rating-row[data-facet="words"] .star'));
     const filled = stars.filter((b) => b.querySelector('svg').classList.contains('is-on')).length;
@@ -151,10 +163,19 @@ async function scenarioRateError(browser, port, r) {
   });
   await signInAs(page, { ...F.SESSION_USERS.LISTENER, createdAt: new Date(Date.now() - 60000) });
   await gotoSong(page, port, SLUG);
-  await page.waitForTimeout(200);
+  await page.waitForFunction(() => {
+    const row = document.querySelector('.rating-row[data-facet="music"]');
+    return row && !row.classList.contains('is-locked');
+  }, { timeout: 10000 });
 
   await page.click('.star[data-facet="music"][data-score="5"]');
-  await page.waitForTimeout(250);
+  // rate_song() is rejected and the optimistic fill reverted, then the
+  // server's own message shown -- the message actually appearing is the
+  // real signal that round trip (and the revert) has finished.
+  await page.waitForFunction(() => {
+    const msg = document.getElementById('rating-msg');
+    return msg && msg.hidden === false && msg.textContent.length > 0;
+  }, { timeout: 10000 });
   const after = await page.evaluate(() => {
     const stars = Array.from(document.querySelectorAll('.rating-row[data-facet="music"] .star svg'));
     const msg = document.getElementById('rating-msg');
@@ -170,7 +191,11 @@ async function scenarioRateError(browser, port, r) {
   r.check('shown as an error', after.msgBad === true);
   r.check('message is visible', after.msgHidden === false);
 
-  await page.waitForTimeout(5200); // the auto-dismiss timer (5s)
+  // index.html's own auto-dismiss timer (ratingMessage(), 5000ms) -- polled
+  // for rather than slept past, so this returns as soon as it actually
+  // clears instead of always waiting the full 5s+, and still times out
+  // loudly if it never does.
+  await page.waitForFunction(() => document.getElementById('rating-msg')?.hidden === true, { timeout: 7000 });
   const cleared = await page.evaluate(() => document.getElementById('rating-msg')?.hidden);
   r.check('the message clears itself after a few seconds', cleared === true);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
@@ -243,7 +268,7 @@ async function scenarioHeartState(browser, port, r) {
   const startCount = Number(before.count);
 
   await page.click('.love-btn[data-love="song"]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.querySelector('.love-btn[data-love="song"]').classList.contains('on'), { timeout: 10000 });
   const afterTap = await page.evaluate(() => {
     const btn = document.querySelector('.love-btn[data-love="song"]');
     return {

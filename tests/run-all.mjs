@@ -2,26 +2,39 @@
 /* ============================================================
    The one command: node run-all.mjs (or `npm test` from inside tests/).
 
-   Starts the local static server, launches one shared headless browser, runs
-   every browser-based spec plus the Node-only specs, and reports combined
-   pass/fail counts with a non-zero exit code on any failure.
+   TEST-1: runs every spec file across a pool of forked worker processes
+   (default: CPU cores minus one, override with --jobs N), each with its
+   own static server port and its own browser, launched once per worker and
+   reused across that worker's specs (lib/worker-entry.mjs). A separate OS
+   process per worker -- not threads, not concurrent promises in one
+   process -- is what actually isolates module-level state (jwksCache,
+   pickAutoId, ...) between specs running at the same time; see that file's
+   own header for why.
 
-   --only <names>: run just the named specs (comma-separated, matched against
-   each spec's short name below -- e.g. `node run-all.mjs --only your-song-page,idea-credit`).
-   Meant for iterating on one area while working on a prompt; see CLAUDE.md's
-   testing rules for when to use this versus the full run.
+   --only <names>: run just the named specs (comma-separated, matched
+   against each spec's short name below -- e.g.
+   `node run-all.mjs --only your-song-page,idea-credit`). Spread across the
+   same worker pool as a full run, just with fewer specs to place.
+
+   Reports combined pass/fail counts with a non-zero exit code on any
+   failure, same meaning as the old single-process run: a total line, and
+   every failure listed with the spec it came from and its message.
 
    Never touches the live site or anyone's real Chrome -- see lib/browser.mjs
    for exactly what's blocked and why.
    ============================================================ */
-import { launchBrowser } from './lib/browser.mjs';
-import { serve } from './lib/server.mjs';
+import { fork } from 'node:child_process';
+import os from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
-const PORT = Number(process.env.LAIVY_TEST_PORT || 8743);
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const BASE_PORT = Number(process.env.LAIVY_TEST_PORT || 8743);
 
-// name: the short name --only matches against. kind: 'browser' (run(browser,
-// PORT)), 'port' (run(PORT), no browser instance needed but still wants the
-// static server), or 'none' (run(), no server or browser at all).
+// name: the short name --only and the worker pool both key off. kind:
+// 'browser' (run(browser, port)), 'port' (run(port), no browser instance
+// needed but still wants the static server), or 'none' (run(), no server
+// or browser at all).
 const SPECS = [
   { name: 'homepage', path: './specs/homepage.spec.mjs', kind: 'browser' },
   { name: 'artist-page', path: './specs/artist-page.spec.mjs', kind: 'browser' },
@@ -47,60 +60,86 @@ const SPECS = [
   { name: 'worker-song-idea-notify', path: './specs/worker-song-idea-notify.spec.mjs', kind: 'none' },
 ];
 
-function parseOnly(argv) {
-  const i = argv.indexOf('--only');
+function parseArg(argv, flag) {
+  const i = argv.indexOf(flag);
   if (i === -1) return null;
-  const arg = argv[i + 1] || '';
-  return arg.split(',').map((s) => s.trim()).filter(Boolean);
+  return argv[i + 1] || null;
+}
+
+function runWorker(port, specs) {
+  return new Promise((resolve) => {
+    const child = fork(join(__dirname, 'lib', 'worker-entry.mjs'), [JSON.stringify({ port, specs })], {
+      stdio: 'inherit',
+    });
+    let settled = false;
+    child.on('message', (msg) => { settled = true; resolve(msg); });
+    child.on('error', (e) => { if (!settled) { settled = true; resolve({ ok: false, error: String(e) }); } });
+    child.on('exit', (code) => {
+      if (!settled) resolve({ ok: false, error: `worker for [${specs.map((s) => s.name).join(', ')}] exited with code ${code} before reporting` });
+    });
+  });
 }
 
 async function main() {
-  const only = parseOnly(process.argv.slice(2));
-  const specs = only ? SPECS.filter((s) => only.includes(s.name)) : SPECS;
+  const argv = process.argv.slice(2);
+  const only = parseArg(argv, '--only');
+  const onlyNames = only ? only.split(',').map((s) => s.trim()).filter(Boolean) : null;
+  const jobsArg = parseArg(argv, '--jobs');
+  const defaultJobs = Math.max(1, os.cpus().length - 1);
+  const jobs = jobsArg ? Math.max(1, Number(jobsArg)) : defaultJobs;
 
-  if (only) {
-    const unknown = only.filter((n) => !SPECS.some((s) => s.name === n));
+  let specs = SPECS;
+  if (onlyNames) {
+    const unknown = onlyNames.filter((n) => !SPECS.some((s) => s.name === n));
     if (unknown.length) {
       console.error(`Unknown spec name(s): ${unknown.join(', ')}`);
       console.error(`Known names: ${SPECS.map((s) => s.name).join(', ')}`);
       process.exit(1);
     }
+    specs = SPECS.filter((s) => onlyNames.includes(s.name));
     console.log(`--only: running ${specs.map((s) => s.name).join(', ')}`);
   }
 
-  const results = [];
-  const needsServerOrBrowser = specs.some((s) => s.kind !== 'none');
+  const numWorkers = Math.max(1, Math.min(jobs, specs.length));
+  console.log(`Running ${specs.length} spec file(s) across ${numWorkers} worker(s)...`);
 
-  if (needsServerOrBrowser) {
-    const server = await serve(PORT);
-    const browser = await launchBrowser();
-    try {
-      for (const s of specs) {
-        if (s.kind === 'none') continue;
-        const mod = await import(s.path);
-        results.push(s.kind === 'browser' ? await mod.run(browser, PORT) : await mod.run(PORT));
-      }
-    } finally {
-      await browser.close();
-      server.close();
+  // Round-robin, not a contiguous slice: adjacent entries above are often
+  // related (the your-song-* trio, the admin-* trio, ...) and tend to be
+  // similarly sized, so spreading by stride balances the pool better than
+  // handing one worker a whole cluster of the slowest specs.
+  const buckets = Array.from({ length: numWorkers }, () => []);
+  // Resolved to an absolute URL here, relative to THIS file -- worker-entry.mjs
+  // lives one directory down (tests/lib/), so a bare relative path like
+  // './specs/...' would resolve wrong there.
+  specs.forEach((s, i) => buckets[i % numWorkers].push({ ...s, path: new URL(s.path, import.meta.url).href }));
+
+  const t0 = Date.now();
+  const workerResults = await Promise.all(
+    buckets.map((bucket, i) => runWorker(BASE_PORT + i, bucket)),
+  );
+  const wallMs = Date.now() - t0;
+
+  const allResults = [];
+  let hadWorkerError = false;
+  for (const wr of workerResults) {
+    if (!wr || !wr.ok) {
+      hadWorkerError = true;
+      console.error('A test worker failed to report results:', wr && wr.error);
+      continue;
     }
+    allResults.push(...wr.results);
   }
 
-  for (const s of specs) {
-    if (s.kind !== 'none') continue;
-    const mod = await import(s.path);
-    results.push(await mod.run());
-  }
-
-  const totalPassed = results.reduce((n, r) => n + r.passed, 0);
-  const totalFailed = results.reduce((n, r) => n + r.failed, 0);
+  const totalPassed = allResults.reduce((n, r) => n + r.passed, 0);
+  const totalFailed = allResults.reduce((n, r) => n + r.failed, 0);
   console.log(`\n${'='.repeat(50)}`);
   console.log(`TOTAL: ${totalPassed} passed, ${totalFailed} failed`);
   if (totalFailed) {
     console.log('\nFailures:');
-    for (const r of results) for (const f of r.failures) console.log('  - ' + f);
+    for (const r of allResults) for (const f of r.failures) console.log(`  - [${r.name}] ${f}`);
   }
-  process.exit(totalFailed ? 1 : 0);
+  console.log(`Wall time: ${(wallMs / 1000).toFixed(1)}s across ${numWorkers} worker(s)`);
+  process.exit((totalFailed || hadWorkerError) ? 1 : 0);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

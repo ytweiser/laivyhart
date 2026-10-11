@@ -38,7 +38,10 @@ async function setGPC(page) {
 async function gotoSong(page, port) {
   await page.goto(`http://localhost:${port}/song/${SLUG}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300);
+  // js/activity.js is a <script type="module">, loaded after the page's
+  // main inline script -- wait for window.laivy.activity to actually exist
+  // rather than guessing how long module loading takes.
+  await page.waitForFunction(() => !!(window.laivy && window.laivy.activity), null, { timeout: 10000 });
 }
 // Real decoded audio never loads here (r2.dev is blocked, and the fixture
 // song carries no audio_url anyway) -- the milestone logic only cares about
@@ -55,8 +58,25 @@ async function fakeAudio(page) {
   });
 }
 async function forceFlush(page) {
+  // flush(false) takes the fetch+keepalive path, awaited all the way
+  // through inside this evaluate() -- by the time it resolves, stub-activity.mjs's
+  // route handler (itself awaited by that same fetch) has already run, so
+  // no extra wait is needed here.
   await page.evaluate(() => window.laivy && window.laivy.activity && window.laivy.activity.flush(false));
-  await page.waitForTimeout(50);
+}
+
+// Polls (not a blind sleep) for a specific event type to show up in the
+// Node-side `calls` array, re-flushing each try -- for the one case
+// (the search debounce) where what we are really waiting on is an in-page
+// setTimeout with no DOM signal to hook a waitForFunction onto.
+async function waitForEventType(page, calls, type, timeoutMs = 3000) {
+  const start = Date.now();
+  for (;;) {
+    await forceFlush(page);
+    if (calls.some((c) => (c.body?.events || []).some((e) => e.type === type))) return;
+    if (Date.now() - start > timeoutMs) return; // let the check below report the miss clearly
+    await new Promise((res) => setTimeout(res, 50));
+  }
 }
 
 export async function run(browser, port) {
@@ -135,11 +155,11 @@ async function scenarioQueueAndFlushShape(browser, port, r) {
   // The heart (an authenticated-irrelevant, signed-out-allowed action).
   await page.click('.love-btn[data-love="song"]');
   // Search is debounced 600ms to the final query (the existing GA debounce
-  // this reuses) -- type, then wait past it, then force the flush rather
-  // than wait out the real 10s timer.
+  // this reuses) -- type, then poll (re-flushing each try) until the
+  // debounced ping actually lands, rather than wait out the real 10s
+  // periodic timer or guess a delay past the debounce.
   await page.fill('#search', 'supernova');
-  await page.waitForTimeout(700);
-  await forceFlush(page);
+  await waitForEventType(page, calls, 'search');
 
   r.check('at least one /event call was made', calls.length >= 1, calls.length);
   const allEvents = calls.flatMap((c) => (c.body && c.body.events) || []);
@@ -218,8 +238,12 @@ async function scenarioBeaconContentType(browser, port, r) {
   await page.evaluate(() => window.laivy.activity.log('heart', { song_id: 'x' }));
   // Exercises the real sendBeacon call path (urgent=true), exactly as the
   // real pagehide listener does -- not the fetch+keepalive path.
+  // navigator.sendBeacon() is fire-and-forget (no promise this evaluate()
+  // can await), so this polls the Node-side `calls` array -- the one place
+  // that call's actual arrival is observable -- instead of guessing a delay.
   await page.evaluate(() => window.laivy.activity.flush(true));
-  await page.waitForTimeout(200);
+  const start = Date.now();
+  while (calls.length === 0 && Date.now() - start < 3000) await new Promise((res) => setTimeout(res, 20));
 
   r.check('the beacon reached the endpoint', calls.length === 1, calls.length);
   r.check(

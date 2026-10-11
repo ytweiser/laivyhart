@@ -16,7 +16,17 @@ const SLUG = SONG.slug;
 async function gotoSong(page, port, slug) {
   await page.goto(`http://localhost:${port}/song/${slug || SLUG}`, { waitUntil: 'load' });
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
-  await page.waitForTimeout(300);
+  // dock-react (the Dedicate/Share buttons) starts hidden in the static
+  // markup and is unhidden once loadSong() finishes -- the actual thing
+  // every scenario below needs ready before it clicks Dedicate.
+  await page.waitForSelector('#now-dedicate-btn', { state: 'visible', timeout: 10000 });
+}
+
+// Every scenario below opens the sheet the same way: click, then wait for
+// the modal itself (not a fixed delay) before touching it further.
+async function openDedicateSheet(page) {
+  await page.click('#now-dedicate-btn');
+  await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
 }
 
 export async function run(browser, port) {
@@ -43,7 +53,7 @@ async function scenarioSignedOutReason(browser, port, r) {
   });
 
   await page.click('#now-dedicate-btn');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => window.__openModalCalls.length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     calls: window.__openModalCalls,
     modalOpen: !document.getElementById('dedicate-modal').hidden,
@@ -66,22 +76,23 @@ async function scenarioFormValidation(browser, port, r) {
   await signInAs(page, F.SESSION_USERS.NOVA);
   await gotoSong(page, port);
 
-  await page.click('#now-dedicate-btn');
-  await page.waitForTimeout(200);
+  await openDedicateSheet(page);
   r.check('the sheet opens, titled with the song', await page.evaluate(() => document.getElementById('dedicate-song-title').textContent) === SONG.title);
 
   // Empty recipient: refused client-side, no RPC call.
   await page.click('#dedicate-submit');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => document.getElementById('dedicate-err').textContent.length > 0, { timeout: 10000 });
   let err = await page.evaluate(() => document.getElementById('dedicate-err').textContent);
   r.check('empty recipient is refused with an inline message', /who this is for/i.test(err), err);
   r.check('no RPC call was made for the empty case', rpcCalls.length === 0, rpcCalls.length);
 
-  // Occasion "Other" with no description: refused client-side.
+  // Occasion "Other" with no description: refused client-side. The error
+  // text must actually CHANGE from the "who this is for" message above, not
+  // just stay non-empty, or this would pass on a stale message too.
   await page.fill('#dedicate-recipient', 'Mom');
   await page.selectOption('#dedicate-occasion', 'other');
   await page.click('#dedicate-submit');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => /describe the occasion/i.test(document.getElementById('dedicate-err').textContent), { timeout: 10000 });
   err = await page.evaluate(() => document.getElementById('dedicate-err').textContent);
   r.check('"Other" with no description is refused', /describe the occasion/i.test(err), err);
   r.check('the occasion-other field is revealed for "Other"', await page.evaluate(() => !document.getElementById('dedicate-occasion-other').hidden));
@@ -102,8 +113,7 @@ async function scenarioSuccessShareActions(browser, port, r) {
   await signInAs(page, F.SESSION_USERS.NOVA);
   await gotoSong(page, port);
 
-  await page.click('#now-dedicate-btn');
-  await page.waitForTimeout(150);
+  await openDedicateSheet(page);
   await page.fill('#dedicate-recipient', 'Mom');
   await page.selectOption('#dedicate-occasion', 'birthday');
   await page.fill('#dedicate-message', 'Love you!');
@@ -121,7 +131,7 @@ async function scenarioSuccessShareActions(browser, port, r) {
   });
 
   await page.click('#dedicate-submit');
-  await page.waitForTimeout(250);
+  await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
 
   const after = await page.evaluate(() => ({
     formHidden: document.querySelector('[data-ded-pane="form"]').hidden,
@@ -136,13 +146,17 @@ async function scenarioSuccessShareActions(browser, port, r) {
   r.check('WhatsApp and Copy actions are both present', after.waVisible && after.copyVisible, JSON.stringify(after));
 
   await page.click('#dedicate-whatsapp');
-  await page.waitForTimeout(100);
+  await page.waitForFunction(() => window.__opened.length > 0, { timeout: 10000 });
   const opened = await page.evaluate(() => window.__opened[0]);
   const expectedText = 'Happy birthday, Mom! I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://laivyhart.com/d/ABCD2345';
   r.check('WhatsApp opens wa.me with the exact expected text, URL-encoded', opened === 'https://wa.me/?text=' + encodeURIComponent(expectedText), opened);
 
   await page.click('#dedicate-copy');
-  await page.waitForTimeout(100);
+  await page.waitForFunction(
+    async (expected) => { try { return (await navigator.clipboard.readText()) === expected; } catch (e) { return false; } },
+    'https://laivyhart.com/d/ABCD2345',
+    { timeout: 10000 },
+  );
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   r.check('Copy link copies the dedication URL', copied === 'https://laivyhart.com/d/ABCD2345', copied);
 
@@ -161,11 +175,10 @@ async function scenarioServerErrorInline(browser, port, r) {
   await signInAs(page, F.SESSION_USERS.NOVA);
   await gotoSong(page, port);
 
-  await page.click('#now-dedicate-btn');
-  await page.waitForTimeout(150);
+  await openDedicateSheet(page);
   await page.fill('#dedicate-recipient', 'Mom');
   await page.click('#dedicate-submit');
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => document.getElementById('dedicate-err').textContent.length > 0, { timeout: 10000 });
 
   const d = await page.evaluate(() => ({
     err: document.getElementById('dedicate-err').textContent,
@@ -188,7 +201,7 @@ async function scenarioStripShowsAndHides(browser, port, r) {
     ],
   });
   await gotoSong(withDedications, port);
-  await withDedications.waitForTimeout(300);
+  await withDedications.waitForFunction(() => document.querySelectorAll('.dedications-strip-card').length === 2, { timeout: 10000 });
   const shown = await withDedications.evaluate(() => ({
     hidden: document.getElementById('dedications-strip').classList.contains('hidden'),
     cards: Array.from(document.querySelectorAll('.dedications-strip-card')).map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href') })),
@@ -203,8 +216,13 @@ async function scenarioStripShowsAndHides(browser, port, r) {
   const withoutDedications = await newPage(browser);
   const errors2 = collectErrors(withoutDedications);
   await wireSupabaseStubs(withoutDedications, { dedicationsPublic: [] });
+  // The strip is hidden in the static markup too, so "hidden" alone cannot
+  // tell "not loaded yet" from "loaded and confirmed empty" -- wait for the
+  // actual dedications_public response (attached before the navigation that
+  // triggers it) before reading that state.
+  const stripResponse = withoutDedications.waitForResponse((resp) => resp.url().includes('dedications_public'), { timeout: 10000 });
   await gotoSong(withoutDedications, port);
-  await withoutDedications.waitForTimeout(300);
+  await stripResponse;
   const hiddenState = await withoutDedications.evaluate(() => document.getElementById('dedications-strip').classList.contains('hidden'));
   r.check('strip is hidden entirely when the song has none', hiddenState === true);
   r.check('no console/page errors', errors2.length === 0, errors2.join(' | '));
@@ -227,7 +245,7 @@ async function scenarioViewport390(browser, port, r) {
   r.check('Dedicate button renders at 390px', btnVisible === true);
 
   await page.click('#now-dedicate-btn');
-  await page.waitForTimeout(200);
+  await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
   const sheet = await page.evaluate(() => {
     const el = document.querySelector('.ded-sheet');
     const rect = el.getBoundingClientRect();

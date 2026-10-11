@@ -14,11 +14,75 @@ node_modules/.bin/playwright-core install chromium   # once, downloads a local C
 node run-all.mjs
 ```
 
-That's the one command. It starts a local static file server (serving the
-real repo's `index.html`, `theme.css`, `js/*.js`, etc. — the real app code,
-not a mock of it), launches one headless Chromium, runs every spec in
-`specs/`, and prints a combined pass/fail count with a non-zero exit code on
-any failure.
+That's the one command. It runs every spec in `specs/` against the real
+repo's `index.html`, `theme.css`, `js/*.js`, etc. (the real app code, not a
+mock of it) and prints a combined pass/fail count with a non-zero exit code
+on any failure.
+
+## TEST-1: parallel runs
+
+`run-all.mjs` is an orchestrator, not a test runner itself: it forks a pool
+of worker processes (default: CPU cores minus one), hands each one a slice
+of the spec list, and each worker starts its own local static server, its
+own headless Chromium (launched once and reused across that worker's own
+specs, same as the old single-process run reused its one browser across
+everything), and runs its specs in sequence against them
+(`lib/worker-entry.mjs`). A separate OS process per worker, not threads or
+concurrent promises in one process, is what actually isolates module-level
+state (a JWKS cache, an auto-increment id, ...) between specs that might
+otherwise run at the same moment.
+
+```
+node run-all.mjs                           # full suite, default worker count
+node run-all.mjs --jobs 4                  # cap the pool at 4 workers
+node run-all.mjs --only your-song-page,idea-credit   # just these specs (comma-separated short names; see the SPECS list at the top of run-all.mjs for every name)
+LAIVY_TEST_PORT=9000 node run-all.mjs       # base port each worker's server counts up from (default 8743)
+```
+
+Output keeps the same meaning as the old single-process run: a `TOTAL: N
+passed, M failed` line, and on any failure a list underneath with the
+owning spec named for each one (`- [spec-name] check label`). Console
+output from different workers' specs can interleave on screen since they
+really do run at the same time; that final summary is always the accurate,
+non-interleaved source of truth.
+
+Before this (single process, every spec one after another): **125.3s**.
+After (parallel pool, 15 workers on a 16-core machine): **~24-27s**, a
+~5x speedup confirmed across three repeated full runs (566 passed, 0
+failed each time). The 10 slowest spec files in the old serial run, for
+reference (any one of these is also now a reasonable `--only` target while
+working on that area):
+
+| spec | time |
+|---|---|
+| settings | 15.2s |
+| rating | 13.6s |
+| artist-page | 13.5s |
+| admin-song-ideas | 10.4s |
+| dedicate | 9.9s |
+| your-song-page | 9.0s |
+| song-page | 7.9s |
+| activity | 6.9s |
+| admin-pulse | 6.1s |
+| admin-dedications | 6.0s |
+
+Parallelizing surfaced one real bug worth knowing about: a fixed
+`page.waitForTimeout(400)` in `dedication-page.spec.mjs` was long enough to
+mask a race under the old serial run's lighter load, but flaked once 15
+Chromium instances were competing for CPU at once. Every fixed sleep in
+every spec (105 `waitForTimeout` call sites across 17 files) has since been
+replaced with a wait for the actual element, DOM condition, network
+response, or (where nothing else was observable, e.g. `navigator.sendBeacon`
+or an in-page debounce timer) a bounded poll -- not a longer guess. That is
+also just a more reliable harness regardless of parallelism.
+
+One known limitation, not fixed here because it is outside what a single
+`run-all.mjs` invocation needs to guarantee: two separate, simultaneous
+invocations of `node run-all.mjs` on the same machine (two terminals, two
+CI jobs) will collide on the same deterministic port range. Pass a
+different `LAIVY_TEST_PORT` to each if that ever comes up; the old
+single-process harness had the same single-port limitation already, just
+over a narrower range.
 
 ## What's here
 
@@ -53,6 +117,10 @@ any failure.
   script runs. No real Supabase Auth call, no real JWT signature (nothing
   here ever sends it anywhere but this harness's own stubs).
 - `lib/report.mjs` — the shared pass/fail counter/printer every spec uses.
+- `lib/worker-entry.mjs` (TEST-1), one forked worker's entry point: starts
+  its own server and browser once, runs its assigned slice of specs against
+  them in sequence, and reports back over the fork's own IPC channel (never
+  stdout, which each spec's own PASS/FAIL lines already use).
 - `specs/homepage.spec.mjs` — regression check that artist-page work never
   touched the homepage rails (shared functions like `railCardHTML`,
   `setupRailAffordances`).
