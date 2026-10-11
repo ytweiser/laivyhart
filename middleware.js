@@ -35,7 +35,7 @@ export const config = {
   // Middleware runs before rewrites, so these are the real request paths.
   // index.html, songs.json and every static asset are deliberately absent, so
   // the internal fetches below cannot re-enter this function.
-  matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*', '/your-song'],
+  matcher: ['/', '/song/:path*', '/artist/:path*', '/d/:path*', '/u/:path*', '/your-song'],
 };
 
 const SITE = 'https://laivyhart.com';
@@ -486,6 +486,78 @@ function renderDedication(html, d) {
   return addNoindex(html);
 }
 
+// PROFILE-1: /u/<handle> has no build-time snapshot -- every member, not
+// only artists with an approved song, needs one -- so this live-fetches
+// member_profile() over REST exactly the way fetchDedication() above does
+// for /d/<code>: same anon key, a POST to the RPC endpoint since this is a
+// function call rather than a view select, same injectable fetchImpl.
+async function fetchMemberProfile(handle, fetchImpl) {
+  if (!handle) return null;
+  try {
+    const url = DED_SUPABASE_URL + '/rest/v1/rpc/member_profile';
+    const res = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        apikey: DED_SUPABASE_ANON_KEY,
+        Authorization: 'Bearer ' + DED_SUPABASE_ANON_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ p_handle: handle }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Profiles are never indexed (item 17) -- noindex always, public or private
+   alike. The anon key this file carries means the function never sees a
+   viewer, so is_self is always false here; a private profile's own minimal
+   shape (profile_public:false) carries only handle/is_artist/display_name/
+   avatar_url, which is exactly item 11's "avatar, display name, and 'This
+   profile is private.'" -- nothing else to check before falling back to
+   that branch. */
+function renderMemberProfile(html, p) {
+  const canonical = SITE + '/u/' + encodeURIComponent(p.handle);
+  const name = p.display_name || p.handle;
+  const image = cdnImage(p.avatar_url, 1200) || DEFAULT_OG_IMAGE;
+
+  html = setTitle(html, escAttr(name + ' | ' + SITE_NAME));
+  html = upsertCanonical(html, escAttr(canonical));
+  html = setMeta(html, 'property', 'og:title', escAttr(name));
+  html = setMeta(html, 'property', 'og:url', escAttr(canonical));
+  html = setMeta(html, 'property', 'og:image', escAttr(image));
+  html = setMeta(html, 'property', 'og:type', 'profile');
+  html = setMeta(html, 'name', 'twitter:title', escAttr(name));
+  html = setMeta(html, 'name', 'twitter:image', escAttr(image));
+  html = setMeta(html, 'name', 'twitter:card', 'summary_large_image');
+  if (p.avatar_url) {
+    html = html
+      .replace(/\s*<meta property="og:image:width" content="[^"]*">/, '')
+      .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
+  }
+
+  if (p.profile_public === false) {
+    const privateDesc = 'This profile is private.';
+    html = upsertMeta(html, 'name', 'description', escAttr(privateDesc));
+    html = setMeta(html, 'property', 'og:description', escAttr(privateDesc));
+    html = setMeta(html, 'name', 'twitter:description', escAttr(privateDesc));
+    html = injectSsr(html, '<h1>' + escHtml(name) + '</h1><p>' + privateDesc + '</p>');
+    return addNoindex(html);
+  }
+
+  const desc = firstSentence(p.bio, 160) || 'A member of ' + SITE_NAME + '.';
+  html = upsertMeta(html, 'name', 'description', escAttr(desc));
+  html = setMeta(html, 'property', 'og:description', escAttr(desc));
+  html = setMeta(html, 'name', 'twitter:description', escAttr(desc));
+
+  let body = '<h1>' + escHtml(name) + '</h1>';
+  if (p.bio) body += '<p>' + escHtml(p.bio).replace(/\n/g, '<br>') + '</p>';
+  html = injectSsr(html, body);
+  return addNoindex(html);
+}
+
 /* ------------------------------------------------------------
    The routing decision, split out from the request plumbing so it can be
    exercised directly in tests without a Vercel runtime.
@@ -543,6 +615,20 @@ export async function decide(pathname, searchParams, fetchImpl = fetch) {
     // for an approved song) -- noindex, same as any other 404 here.
     if (!dedication) return { kind: 'render', fn: addNoindex, tag: 'dedication-404' };
     return { kind: 'render', fn: (h) => renderDedication(h, dedication), tag: 'dedication' };
+  }
+
+  m = /^\/u\/([^/]+)\/?$/.exec(pathname);
+  if (m) {
+    let handle; try { handle = decodeURIComponent(m[1]); } catch (e) { handle = m[1]; }
+    const profile = await fetchMemberProfile(handle, fetchImpl);
+    // Unknown, suspended or deleted -- noindex, same as any other 404 here.
+    if (!profile) return { kind: 'render', fn: addNoindex, tag: 'member-404' };
+    // Item 1: an artist's own handle redirects to the page they already
+    // have, rather than a second page at /u/ rendering nothing useful.
+    if (profile.is_artist) {
+      return { kind: 'redirect', location: '/artist/' + encodeURIComponent(profile.handle) };
+    }
+    return { kind: 'render', fn: (h) => renderMemberProfile(h, profile), tag: 'member' };
   }
 
   return null;

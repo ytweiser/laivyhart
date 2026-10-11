@@ -282,7 +282,12 @@ async function scenarioStripShowsAndHides(browser, port, r) {
   await withDedications.waitForFunction(() => document.querySelectorAll('.dedications-strip-card').length === 2, { timeout: 10000 });
   const shown = await withDedications.evaluate(() => ({
     hidden: document.getElementById('dedications-strip').classList.contains('hidden'),
-    cards: Array.from(document.querySelectorAll('.dedications-strip-card')).map((a) => ({ text: a.textContent.trim(), href: a.getAttribute('href') })),
+    // PROFILE-1: the card is now a <div> (a link cannot nest inside another
+    // link, and the sender's name got its own link to /u/<handle>) with the
+    // /d/<code> link as its first <a> child, not the card element itself.
+    cards: Array.from(document.querySelectorAll('.dedications-strip-card')).map((card) => ({
+      text: card.textContent.trim(), href: card.querySelector('a')?.getAttribute('href'),
+    })),
   }));
   r.check('strip is visible when the song has dedications', shown.hidden === false);
   r.check('card shows the line, then "from Tzvi"', /A birthday song for Mom.*from Tzvi/s.test(shown.cards[0]?.text), shown.cards[0]);

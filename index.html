@@ -1399,10 +1399,11 @@
   .dedications-strip-h{font-family:var(--font-ui); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.07em;
     color:var(--text-faint); margin-bottom:0.6rem;}
   .dedications-strip-list{display:flex; flex-direction:column; gap:0.45rem; margin-bottom:0.7rem;}
-  .dedications-strip-card{display:block; text-decoration:none; font-family:var(--font-ui); font-size:0.88rem;
+  .dedications-strip-card{display:block; font-family:var(--font-ui); font-size:0.88rem;
     color:var(--text-dim); padding:0.1rem 0;}
   .dedications-strip-card strong{color:var(--text); font-weight:500;}
-  .dedications-strip-card:hover{color:var(--accent-2);}
+  .dedications-strip-card a{color:inherit; text-decoration:none;}
+  .dedications-strip-card a:hover{color:var(--accent-2); text-decoration:underline;}
   .dedications-strip-cta{
     background:none; border:none; padding:0; cursor:pointer; color:var(--accent-3);
     font-family:var(--font-ui); font-size:0.85rem; text-decoration:underline;
@@ -1423,6 +1424,8 @@
   .comment-body{font-family:var(--font-display); font-size:1rem; line-height:1.55; color:var(--text); white-space:pre-line;}
   .comment-meta{display:flex; gap:0.6rem; margin-top:0.32rem; font-family:var(--font-ui); font-size:0.68rem; color:var(--text-faint);}
   .comment-who{color:var(--text-dim);}
+  .comment-who a{color:inherit; text-decoration:none;}
+  .comment-who a:hover{color:var(--accent-2); text-decoration:underline;}
   .comment-form{display:flex; flex-direction:column; gap:0.55rem; margin-bottom:1.3rem;}
   /* Compact until the visitor clicks in: an inviting one-line prompt that
      expands into the full form (framing line, name, city, Share button). */
@@ -5154,7 +5157,21 @@ function fmtCommentDate(iso){
 function sigJoin(name, city){
   return [name, city].map(x => (x || '').trim()).filter(Boolean).join(', ');
 }
-function renderCommentList(rows){
+// PROFILE-1: a comment/idea/etc. row carries the commenter's account id
+// (artist_id), not their handle. member_handles (id, handle) is the one
+// public, privacy-neutral lookup that resolves it for ANY member, artist or
+// listener alike -- artists_public excludes listeners, and raw artists
+// blocks anon entirely. One batched query per render, never one per row.
+async function loadMemberHandles(ids){
+  const unique = Array.from(new Set((ids || []).filter(Boolean)));
+  if(!unique.length) return new Map();
+  try{
+    const { data, error } = await supabaseClient.from('member_handles').select('id, handle').in('id', unique);
+    if(error) throw error;
+    return new Map((data || []).map(r => [r.id, r.handle]));
+  }catch(e){ return new Map(); }
+}
+function renderCommentList(rows, handleMap){
   const list = document.getElementById('comments-list');
   if(!rows || rows.length === 0){
     list.innerHTML = `<div class="comments-empty">No reflections yet. Be the first to share one.</div>`;
@@ -5162,9 +5179,13 @@ function renderCommentList(rows){
   }
   list.innerHTML = rows.map(c => {
     const sig = sigJoin(c.name, c.city);
+    const handle = handleMap && handleMap.get(c.artist_id);
+    const sigHTML = handle
+      ? `<a href="/u/${encodeURIComponent(handle)}">${escHtml(sig)}</a>`
+      : escHtml(sig);
     return `<div class="comment">
       <div class="comment-body">${escHtml(c.body)}</div>
-      <div class="comment-meta">${sig ? `<span class="comment-who">– ${escHtml(sig)}</span>` : ''}<span class="comment-when">${fmtCommentDate(c.created_at)}</span></div>
+      <div class="comment-meta">${sig ? `<span class="comment-who">– ${sigHTML}</span>` : ''}<span class="comment-when">${fmtCommentDate(c.created_at)}</span></div>
     </div>`;
   }).join('');
 }
@@ -5183,14 +5204,16 @@ async function loadComments(){
   list.innerHTML = `<div class="comments-empty">Loading…</div>`;
   const { data, error } = await supabaseClient
     .from('comments')
-    .select('name, city, body, created_at')
+    .select('artist_id, name, city, body, created_at')
     .eq('song_id', reqId)
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   // Ignore if the visitor switched songs while this was in flight.
   if(currentIdx === null || SONGS[currentIdx].id !== reqId) return;
   if(error){ list.innerHTML = `<div class="comments-empty">Couldn't load reflections right now.</div>`; return; }
-  renderCommentList(data);
+  const handleMap = await loadMemberHandles(data.map(c => c.artist_id));
+  if(currentIdx === null || SONGS[currentIdx].id !== reqId) return;
+  renderCommentList(data, handleMap);
 }
 document.getElementById('comment-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -6209,7 +6232,7 @@ async function loadDedicationsStrip(){
   const reqId = song.id;
   const { data, error } = await supabaseClient
     .from('dedications_public')
-    .select('code, recipient_name, occasion, occasion_other, sender_name, created_at')
+    .select('code, recipient_name, occasion, occasion_other, sender_name, sender_handle, created_at')
     .eq('song_id', reqId)
     .order('created_at', { ascending: false })
     .limit(5);
@@ -6219,7 +6242,16 @@ async function loadDedicationsStrip(){
   document.getElementById('dedications-strip-list').innerHTML = data.map((d) => {
     const line = dedLine(d.occasion, d.recipient_name, d.occasion_other);
     const from = d.sender_name ? `from ${d.sender_name}` : 'from someone';
-    return `<a class="dedications-strip-card" href="/d/${encodeURIComponent(d.code)}">${escHtml(line)} &middot; ${escHtml(from)}</a>`;
+    // PROFILE-1: the card used to be one whole-row <a> to /d/<code>; the
+    // sender's own name now links elsewhere (/u/<handle>), and a link cannot
+    // nest inside another link, so this is a <div> with two separate <a>s
+    // instead of one anchor around everything.
+    const fromHTML = d.sender_handle
+      ? `<a href="/u/${encodeURIComponent(d.sender_handle)}">${escHtml(from)}</a>`
+      : escHtml(from);
+    return `<div class="dedications-strip-card">
+        <a href="/d/${encodeURIComponent(d.code)}">${escHtml(line)}</a> &middot; ${fromHTML}
+      </div>`;
   }).join('');
 }
 
@@ -6276,6 +6308,12 @@ let route = 'home';
 const ARTIST_PATH_RE = /^\/artist\/([^\/]+)\/?$/;
 const SONG_PATH_RE   = /^\/song\/([^\/]+)\/?$/;
 const D_PATH_RE       = /^\/d\/([^\/]+)\/?$/;
+const USER_PATH_RE    = /^\/u\/([^\/]+)\/?$/;
+function memberHandleFromPath(){
+  const m = USER_PATH_RE.exec(location.pathname);
+  if(!m) return null;
+  try{ return decodeURIComponent(m[1]).toLowerCase(); }catch(e){ return m[1].toLowerCase(); }
+}
 function dedicationCodeFromPath(){
   const m = D_PATH_RE.exec(location.pathname);
   if(!m) return null;
@@ -6303,6 +6341,7 @@ function routeFromPath(){
   if(p === '/auth/callback') return 'callback';
   if(ARTIST_PATH_RE.test(p)) return 'artist';
   if(D_PATH_RE.test(p)) return 'dedication';
+  if(USER_PATH_RE.test(p)) return 'member';
   if(SONG_PATH_RE.test(p)) return 'listen';   // a song page IS the listen view
   return 'home';
 }
@@ -6323,6 +6362,7 @@ function showPage(next){
   // player and all app state survive a trip through sign-in.
   const artistRoot = document.getElementById('artist-root');
   const dedicationRoot = document.getElementById('dedication-root');
+  const memberRoot = document.getElementById('member-root');
   document.getElementById('page-home').classList.toggle('hidden', next !== 'home');
   document.getElementById('page-listen').classList.toggle('hidden', next !== 'listen');
   if(settings) settings.classList.toggle('hidden', next !== 'settings' && next !== 'callback');
@@ -6330,11 +6370,13 @@ function showPage(next){
   if(uploadRoot) uploadRoot.classList.toggle('hidden', next !== 'upload');
   if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
   if(dedicationRoot) dedicationRoot.classList.toggle('hidden', next !== 'dedication');
+  if(memberRoot) memberRoot.classList.toggle('hidden', next !== 'member');
   // LISTEN-1: artist/dedication/settings/upload render into an otherwise
   // bare root, so they borrow the shared #route-header -- / and /listen
-  // keep their own topbar/home-header and never show this one.
+  // keep their own topbar/home-header and never show this one. PROFILE-1:
+  // member joins the same group for the same reason.
   const routeHeader = document.getElementById('route-header');
-  const HEADERLESS_ROUTES = ['artist', 'dedication', 'settings', 'upload'];
+  const HEADERLESS_ROUTES = ['artist', 'dedication', 'settings', 'upload', 'member'];
   if(routeHeader) routeHeader.classList.toggle('hidden', !HEADERLESS_ROUTES.includes(next));
   // HOME-1: the ticker band is a sibling of every route's own root, not
   // nested in one, so it needs its own show/hide here. LISTEN-1: shown on
@@ -6345,6 +6387,8 @@ function showPage(next){
     renderArtistPage(artistHandleFromPath());
   } else if(next === 'dedication'){
     renderDedicationPage(dedicationCodeFromPath());
+  } else if(next === 'member'){
+    renderMemberPage(memberHandleFromPath());
   } else if(next === 'upload'){
     // ?song=<id> edits an existing one. RLS scopes it to the caller's own.
     let songParam = null;
@@ -6487,6 +6531,7 @@ function initRoute(){
   if(location.pathname === '/upload'){ showPage('upload'); return; }
   if(ARTIST_PATH_RE.test(location.pathname)){ showPage('artist'); return; }
   if(D_PATH_RE.test(location.pathname)){ showPage('dedication'); return; }
+  if(USER_PATH_RE.test(location.pathname)){ showPage('member'); return; }
 
   /* /song/<slug> is the canonical song URL. The song is LOADED, not played:
      a browser blocks autoplay without a gesture, so starting playback here
@@ -6800,7 +6845,7 @@ async function loadArtistComments(a){
   try{
     const { data, error } = await supabaseClient
       .from('comments')
-      .select('name, city, body, created_at, songs!comments_song_id_fkey!inner(title, title_translit, slug, language, artist_id, status)')
+      .select('artist_id, name, city, body, created_at, songs!comments_song_id_fkey!inner(title, title_translit, slug, language, artist_id, status)')
       .eq('status', 'approved')
       .eq('songs.artist_id', a.id)
       .eq('songs.status', 'approved')
@@ -7024,7 +7069,7 @@ async function renderDedicationPage(code){
 
   const { data, error } = await supabaseClient
     .from('dedications_public')
-    .select('code, song_id, song_title, song_slug, cover_url, recipient_name, occasion, occasion_other, message, sender_name, created_at')
+    .select('code, song_id, song_title, song_slug, cover_url, recipient_name, occasion, occasion_other, message, sender_name, sender_handle, created_at')
     .eq('code', code)
     .maybeSingle();
   if(token !== dedicationPageToken) return;
@@ -7034,6 +7079,14 @@ async function renderDedicationPage(code){
   const headline = dedHeadline(d.occasion, d.recipient_name);
   const line = dedLine(d.occasion, d.recipient_name, d.occasion_other);
   const senderLine = dedSenderLine(d.occasion, d.sender_name, !d.sender_name);
+  // dedSenderLine() stays a plain string -- the composer preview (line 6077)
+  // also calls it, and that preview must never link anywhere. Here, once
+  // escaped, the sender's own escaped name is replaced with a linked copy of
+  // itself when sender_handle is present; it appears exactly once in the
+  // line by construction (every DED_OCCASION template uses the name once).
+  const senderHTML = (d.sender_handle && d.sender_name)
+    ? escHtml(senderLine).replace(escHtml(d.sender_name), `<a href="/u/${encodeURIComponent(d.sender_handle)}">${escHtml(d.sender_name)}</a>`)
+    : escHtml(senderLine);
   const cover = d.cover_url ? cdnImg(d.cover_url, 640) : '/icon-512.png';
 
   root.innerHTML = `
@@ -7043,7 +7096,7 @@ async function renderDedicationPage(code){
       <h1 class="ded-page-headline">${escHtml(headline)}</h1>
       <div class="ded-page-line">${escHtml(line)}</div>
       ${d.message ? `<p class="ded-page-message">&ldquo;${escHtml(d.message)}&rdquo;</p>` : ''}
-      <div class="ded-page-sender">${escHtml(senderLine)}</div>
+      <div class="ded-page-sender">${senderHTML}</div>
       <div class="ded-page-song">${escHtml(d.song_title || '')}</div>
       <button class="home-primary-btn filled ded-page-play" type="button" id="ded-page-play-btn">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
@@ -7292,11 +7345,13 @@ async function renderArtistPage(handle){
      rest of the page is already interactive costs nothing -- there is no
      space reserved for either to pop into.
      ------------------------------------------------------------ */
-  loadArtistComments(a).then(rows => {
+  loadArtistComments(a).then(async rows => {
     if(token !== artistPageToken || !rows.length) return;
     const sec = document.getElementById('artist-listeners');
     const list = document.getElementById('artist-listener-list');
     if(!sec || !list) return;
+    const handleMap = await loadMemberHandles(rows.map(c => c.artist_id));
+    if(token !== artistPageToken) return;
     list.innerHTML = rows.map(c => {
       const song = c.songs || null;
       const heb = song ? isHebrew(song) : false;
@@ -7305,9 +7360,13 @@ async function renderArtistPage(handle){
         ? `<a class="listener-song" href="/song/${encodeURIComponent(song.slug)}">${escHtml(title)}</a>`
         : `<span class="listener-song">${escHtml(title)}</span>`;
       const who = sigJoin(c.name, c.city) || 'A listener';
+      const handle = handleMap.get(c.artist_id);
+      const whoHTML = handle
+        ? `<a href="/u/${encodeURIComponent(handle)}">${escHtml(who)}</a>`
+        : escHtml(who);
       return `<div class="listener-item">
           <p class="listener-body">${escHtml(c.body)}</p>
-          <div class="listener-meta"><span class="listener-who">${escHtml(who)}</span> &middot; ${link}</div>
+          <div class="listener-meta"><span class="listener-who">${whoHTML}</span> &middot; ${link}</div>
         </div>`;
     }).join('');
     sec.hidden = false;
@@ -7328,6 +7387,168 @@ async function renderArtistPage(handle){
   });
 }
 
+/* ============================================================
+   PROFILE-1: the public member page, /u/<handle>. Every member has one,
+   not only artists -- member_profile() is the one read, and it already
+   shapes the private case and is_self, so this function's only job is
+   turning that one JSON object into markup. No build-time snapshot exists
+   for this route (listeners are absent from artists.json, same reason
+   middleware.js's own /u/<handle> branch fetches live), so this is a plain
+   RPC call, same as any other live read on this page.
+   ============================================================ */
+let memberPageToken = 0;
+function memberSince(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00Z');
+  if(!isFinite(d.getTime())) return '';
+  return 'Member since ' + d.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+function memberNotFoundHTML(){
+  return `<div class="artist-wrap artist-missing">
+      <h1>Member not found</h1>
+      <p><a class="quiet-link" href="/">Back to Laivy Hart</a></p>
+    </div>`;
+}
+// Same shape as artistAvatarHTML -- a member and an artist are both rows of
+// the same artists table, so the avatar-or-initial fallback is identical.
+function memberAvatarHTML(p, px){
+  if(p && p.avatar_url){
+    return `<img class="artist-avatar" src="${escHtml(cdnImg(p.avatar_url, px))}" data-raw="${escHtml(p.avatar_url)}"
+      onerror="this.onerror=null;this.src=this.dataset.raw;" alt="" width="${px}" height="${px}">`;
+  }
+  const initial = (((p && (p.display_name || p.handle)) || '?').trim()[0] || '?').toUpperCase();
+  return `<div class="artist-avatar is-initial" aria-hidden="true">${escHtml(initial)}</div>`;
+}
+
+async function renderMemberPage(handle){
+  const root = document.getElementById('member-root');
+  if(!root) return;
+  const token = ++memberPageToken;
+  root.innerHTML = `<div class="artist-wrap"><p class="artist-loading">Loading&hellip;</p></div>`;
+  if(!handle){ root.innerHTML = memberNotFoundHTML(); return; }
+
+  const { data, error } = await supabaseClient.rpc('member_profile', { p_handle: handle });
+  if(token !== memberPageToken) return;
+  const p = (!error && data) ? data : null;
+  if(!p){ root.innerHTML = memberNotFoundHTML(); return; }
+
+  // Item 1: an artist's own handle belongs at /artist/<handle> -- this route
+  // never renders the {handle, is_artist:true} shape the function sends
+  // back instead of a real profile. replaceState, not pushState: this is a
+  // correction of where the visitor already is, not a new place to go back
+  // to with the back button.
+  if(p.is_artist){
+    history.replaceState({ route: 'artist' }, '', '/artist/' + encodeURIComponent(p.handle));
+    showPage('artist');
+    return;
+  }
+
+  const displayName = p.display_name || p.handle;
+
+  // Item 11: a private profile viewed by anyone but its own owner shows only
+  // this -- nothing below it, regardless of what member_profile() might
+  // otherwise have included (it already withholds everything else itself).
+  if(p.profile_public === false && !p.is_self){
+    root.innerHTML = `
+      <div class="artist-wrap">
+        <header class="artist-head">
+          ${memberAvatarHTML(p, 160)}
+          <div class="artist-head-text">
+            <h1 class="artist-name">${escHtml(displayName)}</h1>
+            <p class="artist-bio">This profile is private.</p>
+          </div>
+        </header>
+      </div>`;
+    logActivity('profile_view', { meta: { handle: p.handle } });
+    return;
+  }
+
+  const bioHTML = p.bio ? escHtml(p.bio).replace(/\n/g, '<br>') : '';
+  const since = memberSince(p.created_at);
+  const stats = p.stats || {};
+  const statTiles = [
+    [stats.comments || 0, 'Comments'],
+    [stats.dedications_sent || 0, 'Dedications sent'],
+    [stats.ideas_made_into_songs || 0, 'Ideas made into songs'],
+  ].filter(([n]) => n > 0);
+
+  const favorites = p.favorites || [];
+  const comments = p.comments || [];
+  const dedications = p.dedications || [];
+  const ideas = p.ideas || [];
+  const following = p.following || [];
+
+  root.innerHTML = `
+    <div class="artist-wrap">
+      <header class="artist-head">
+        ${memberAvatarHTML(p, 160)}
+        <div class="artist-head-text">
+          <h1 class="artist-name">${escHtml(displayName)}</h1>
+          <div class="artist-handle">@${escHtml(p.handle)}</div>
+          ${bioHTML ? `<p class="artist-bio">${bioHTML}</p>` : ''}
+          ${since ? `<p class="member-since">${escHtml(since)}</p>` : ''}
+          ${p.is_self ? `<div class="artist-actions"><a class="home-primary-btn outlined" href="/settings">Edit profile</a></div>` : ''}
+        </div>
+      </header>
+
+      ${statTiles.length ? `<div class="artist-stat-strip">${statTiles.map(([n, k]) =>
+        `<div class="stat-tile"><div class="stat-tile-n">${escHtml(String(n))}</div><div class="stat-tile-k">${escHtml(k)}</div></div>`
+      ).join('')}</div>` : ''}
+
+      ${favorites.length ? `<section class="member-section">
+          <h2 class="rail-title-h">Favorite songs</h2>
+          <div class="member-list">${favorites.map(f => `
+            <a class="member-row member-row-song" href="/song/${encodeURIComponent(f.slug || '')}">
+              ${f.cover_url ? `<img class="member-row-cover" src="${escHtml(cdnImg(f.cover_url, 96))}" alt="" width="48" height="48">` : ''}
+              <span class="member-row-text">
+                <span class="member-row-title">${escHtml(f.title || 'Untitled')}</span>
+                ${f.note ? `<span class="member-row-note">${escHtml(f.note)}</span>` : ''}
+              </span>
+            </a>`).join('')}</div>
+        </section>` : ''}
+
+      ${comments.length ? `<section class="member-section">
+          <h2 class="rail-title-h">Recent comments</h2>
+          <div class="member-list">${comments.map(c => `
+            <div class="member-row">
+              <a class="member-row-title" href="/song/${encodeURIComponent(c.song_slug || '')}">${escHtml(c.song_title || 'A song')}</a>
+              <p class="member-row-body">${escHtml(c.body || '')}</p>
+            </div>`).join('')}</div>
+        </section>` : ''}
+
+      ${dedications.length ? `<section class="member-section">
+          <h2 class="rail-title-h">Dedications sent</h2>
+          <div class="member-list">${dedications.map(d => `
+            <a class="member-row" href="/d/${encodeURIComponent(d.code)}">
+              <span class="member-row-title">${escHtml(d.song_title || 'A song')}</span>
+            </a>`).join('')}</div>
+        </section>` : ''}
+
+      ${ideas.length ? `<section class="member-section">
+          <h2 class="rail-title-h">Song ideas</h2>
+          <div class="member-list">${ideas.map(i => `
+            <div class="member-row">
+              <p class="member-row-body">${escHtml(i.idea_text || '')}</p>
+              <div class="member-row-meta">
+                <span>${escHtml(String(i.hearts_count || 0))} &hearts;</span>
+                ${i.released_song_slug ? `<a href="/song/${encodeURIComponent(i.released_song_slug)}">Made into a song</a>` : ''}
+              </div>
+            </div>`).join('')}</div>
+        </section>` : ''}
+
+      ${following.length ? `<section class="member-section">
+          <h2 class="rail-title-h">Following</h2>
+          <div class="member-list">${following.map(f => `
+            <a class="member-row member-row-artist" href="/artist/${encodeURIComponent(f.handle)}">
+              ${memberAvatarHTML(f, 40)}
+              <span class="member-row-title">${escHtml(f.display_name || f.handle)}</span>
+            </a>`).join('')}</div>
+        </section>` : ''}
+    </div>`;
+
+  // Item 19: never a view of your own profile.
+  if(!p.is_self) logActivity('profile_view', { meta: { handle: p.handle } });
+}
 
 /* ============================================================
    Mini-player (homepage, while a song plays)
@@ -7416,6 +7637,8 @@ flushEventQueue();
 <div id="artist-root" class="hidden"></div>
 <!-- DED-2: a dedication page, /d/<code>. Another sibling view. -->
 <div id="dedication-root" class="hidden"></div>
+<!-- PROFILE-1: a member profile page, /u/<handle>. Another sibling view. -->
+<div id="member-root" class="hidden"></div>
 
 <!-- Auth + account UI. Modules, so they run after the app script above; both
      reuse the single client from js/supabase-client.js. -->

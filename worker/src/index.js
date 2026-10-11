@@ -233,6 +233,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'page_view', 'play_start', 'play_25', 'play_50', 'play_75', 'play_complete',
   'heart', 'unheart', 'rate', 'comment', 'follow', 'unfollow', 'share', 'search',
   'sign_in', 'sign_up', 'upload_submit', 'dedication', 'idea_submit', 'idea_heart',
+  'profile_view',
 ];
 const ACTIVITY_EVENT_TYPE_SET = new Set(ACTIVITY_EVENT_TYPES);
 
@@ -722,12 +723,19 @@ export default {
       return json({ error: 'Method not allowed' }, 405, origin);
     }
 
-    /* --- /upload/avatar: signed-in artists, JWT-authorized ---------------
-       Handled BEFORE the UPLOAD_TOKEN check below, because an ordinary artist
-       does not have (and must never be given) the admin token. The only key
-       this route will ever write is avatars/<sub>/<timestamp>.jpg, where <sub>
-       comes from the verified token and not from anything the caller sent, so
-       there is no path for one artist to write into another's prefix. */
+    /* --- /upload/avatar: any signed-in member, JWT-authorized ------------
+       PROFILE-1: checked this route and found it never actually restricted
+       to artists -- verifySupabaseJwt() alone decides who may call it, with
+       no is_artist/role check anywhere below. The comment above used to say
+       "artists" because that was the only kind of member with a page to put
+       an avatar on; now every member has one (/u/<handle>), so the comment
+       is corrected to match the code, which needs no change itself.
+       Handled BEFORE the UPLOAD_TOKEN check below, because an ordinary
+       member does not have (and must never be given) the admin token. The
+       only key this route will ever write is avatars/<sub>/<timestamp>.jpg,
+       where <sub> comes from the verified token and not from anything the
+       caller sent, so there is no path for one member to write into
+       another's prefix. */
     if (new URL(request.url).pathname === '/upload/avatar') {
       if (request.method !== 'POST' && request.method !== 'PUT') {
         return json({ error: 'Method not allowed' }, 405, origin);

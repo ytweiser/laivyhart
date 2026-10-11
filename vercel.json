@@ -58,6 +58,14 @@
     {
       "source": "/d/:code([^/.]+)/",
       "destination": "/index.html"
+    },
+    {
+      "source": "/u/:handle([^/.]+)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/u/:handle([^/.]+)/",
+      "destination": "/index.html"
     }
   ]
 }

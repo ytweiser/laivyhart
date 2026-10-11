@@ -11,6 +11,7 @@ artist_stats            # artist page stats, shown to signed-out visitors too
 badge_setting           # called from song_badges' own select list, a public view (the badge shelf on every song card) -- caught live by the Node anon-key check, not by grep alone
 follower_count          # follower count, shown to signed-out visitors too
 increment_play_count    # anyone can play a song without an account
+member_profile          # /u/<handle> public profile page, usable signed-out (029_member_profiles.sql)
 public_pulse            # the homepage Pulse box, public by design (021_pulse.sql)
 public_ticker           # the homepage/listen ticker band, public by design (026_public_ticker.sql)
 recommend_for_artist    # artist page recommendations, shown to signed-out visitors too

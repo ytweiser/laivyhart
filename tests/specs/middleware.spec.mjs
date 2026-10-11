@@ -157,6 +157,50 @@ export async function run() {
     r.check('an unknown (or removed -- dedications_public hides those identically) code -> noindex, not a crash', missingPlan.kind === 'render' && missingPlan.tag === 'dedication-404', JSON.stringify(missingPlan));
     const missingHtml = missingPlan.fn(shell);
     r.check('noindex on the missing-dedication shell too', /name="robots" content="noindex"/.test(missingHtml));
+
+    // ---- PROFILE-1: /u/<handle> -- member_profile() over REST, a scalar
+    // json return (not array-wrapped like dedications_public's plain select
+    // above), so the stub's json() resolves to the object (or null) directly. ----
+    const artistProfileFetch = async () => ({ ok: true, json: async () => ({ handle: 'nova-ash', is_artist: true }) });
+    const artistProfilePlan = await decide('/u/nova-ash', new URLSearchParams(), artistProfileFetch);
+    r.check('an artist\'s own handle redirects to /artist/<handle>', artistProfilePlan.kind === 'redirect' && artistProfilePlan.location === '/artist/nova-ash', JSON.stringify(artistProfilePlan));
+
+    const publicProfileFetch = async () => ({
+      ok: true,
+      json: async () => ({
+        handle: 'listener1', is_artist: false, profile_public: true, is_self: false,
+        display_name: 'Dana Listener', bio: 'I love a good chorus.\nAnd a key change.',
+        avatar_url: 'https://example.com/avatar.jpg', created_at: '2026-01-15T00:00:00Z',
+        stats: { comments: 3, dedications_sent: 1, ideas_made_into_songs: 0 },
+        favorites: [], comments: [], dedications: [], ideas: [], show_following: false, following: [],
+      }),
+    });
+    const publicProfilePlan = await decide('/u/listener1', new URLSearchParams(), publicProfileFetch);
+    r.check('renders (not a redirect) for a public listener profile', publicProfilePlan.kind === 'render' && publicProfilePlan.tag === 'member', JSON.stringify(publicProfilePlan));
+    const publicProfileHtml = publicProfilePlan.fn(shell);
+    r.check('title is the display name', (publicProfileHtml.match(/<title>([^<]*)<\/title>/) || [])[1] === 'Dana Listener | Laivy Hart', (publicProfileHtml.match(/<title>([^<]*)<\/title>/) || [])[1]);
+    r.check('profile canonical uses the bare domain, no www', (publicProfileHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1] === 'https://laivyhart.com/u/listener1', (publicProfileHtml.match(/<link rel="canonical" href="([^"]*)">/) || [])[1]);
+    r.check('noindex is present on every profile, public or not', /name="robots" content="noindex"/.test(publicProfileHtml));
+    const publicProfileSsr = (publicProfileHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
+    r.check('SSR body shows the bio with a <br> for the line break', publicProfileSsr.includes('<p>I love a good chorus.<br>And a key change.</p>'), publicProfileSsr);
+
+    const privateProfileFetch = async () => ({
+      ok: true,
+      json: async () => ({
+        handle: 'private1', is_artist: false, profile_public: false, is_self: false,
+        display_name: 'Private Person', avatar_url: null,
+      }),
+    });
+    const privateProfilePlan = await decide('/u/private1', new URLSearchParams(), privateProfileFetch);
+    const privateProfileHtml = privateProfilePlan.fn(shell);
+    const privateProfileSsr = (privateProfileHtml.match(/<section id="ssr" hidden>([\s\S]*?)<\/section>/) || [, ''])[1];
+    r.check('private profile SSR shows only the name and the private sentence', privateProfileSsr === '<h1>Private Person</h1><p>This profile is private.</p>', privateProfileSsr);
+    r.check('private profile description is the private sentence, nothing it should not see', (privateProfileHtml.match(/<meta name="description" content="([^"]*)">/) || [])[1] === 'This profile is private.', (privateProfileHtml.match(/<meta name="description" content="([^"]*)">/) || [])[1]);
+    r.check('still noindex on a private profile', /name="robots" content="noindex"/.test(privateProfileHtml));
+
+    const missingProfileFetch = async () => ({ ok: true, json: async () => null });
+    const missingProfilePlan = await decide('/u/does-not-exist', new URLSearchParams(), missingProfileFetch);
+    r.check('an unknown handle -> noindex, not a crash', missingProfilePlan.kind === 'render' && missingProfilePlan.tag === 'member-404', JSON.stringify(missingProfilePlan));
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }

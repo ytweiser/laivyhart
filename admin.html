@@ -392,6 +392,8 @@
   .pulse-feed-item .pulse-song-link{color:var(--accent-2); cursor:pointer;}
   .pulse-feed-item .pulse-song-link:hover{text-decoration:underline;}
   .pulse-feed-item .pulse-when{color:var(--text-faint); font-size:0.78rem;}
+  .pulse-profile-link{color:var(--text-faint); font-size:0.78rem; text-decoration:none;}
+  .pulse-profile-link:hover{color:var(--accent-2); text-decoration:underline;}
   .pulse-list{max-width:44rem;}
   .pulse-list-row{display:flex; justify-content:space-between; gap:0.8rem; padding:0.5rem 0;
     border-bottom:1px solid var(--line); font-size:0.9rem;}
@@ -2221,8 +2223,14 @@ function pulseFeedVerbHTML(e){
 // "Visitor in Haifa, IL hearted Asking for 1". The name and the song (when
 // there is one) are both click targets into their own drilldown.
 function pulseFeedLineHTML(e){
+  // PROFILE-1: pulse_feed() now carries the member's own handle -- a live
+  // link to their public page, alongside (not instead of) the existing
+  // drilldown click, which stays on the name itself.
+  const profileLink = e.handle
+    ? ` <a class="pulse-profile-link" href="/u/${escAttr(e.handle)}" target="_blank" rel="noopener">@${escHtml(e.handle)}</a>`
+    : '';
   const who = e.user_id
-    ? `<strong data-pulse-open="member" data-id="${escAttr(e.user_id)}">${escHtml(e.display_name || 'Member')}</strong>`
+    ? `<strong data-pulse-open="member" data-id="${escAttr(e.user_id)}">${escHtml(e.display_name || 'Member')}</strong>${profileLink}`
     : `<strong data-pulse-open="visitor" data-id="${escAttr(e.device_id)}">Visitor</strong>`;
   const where = (e.city || e.country) ? ` in ${escHtml([e.city, e.country].filter(Boolean).join(', '))}` : '';
   let what = '';
@@ -2447,7 +2455,8 @@ async function showPulseMember(id, isVisitor){
   if(t.ratings !== undefined) tiles.push(['Ratings', t.ratings]);
   if(t.follows !== undefined) tiles.push(['Follows', t.follows]);
   body.innerHTML = `
-    <div class="mod-meta">${escHtml(data.display_name || 'Visitor')}${data.email ? ' &middot; ' + escHtml(data.email) : ''}</div>
+    <div class="mod-meta">${escHtml(data.display_name || 'Visitor')}${data.email ? ' &middot; ' + escHtml(data.email) : ''}
+      ${data.handle ? ` &middot; <a href="/u/${escAttr(data.handle)}" target="_blank" rel="noopener">@${escHtml(data.handle)}</a>` : ''}</div>
     <div class="pulse-tiles">${tiles.map(([label, n]) => `
       <div class="pulse-tile"><div class="pulse-tile-n">${n || 0}</div><div class="pulse-tile-label">${escHtml(label)}</div></div>`
     ).join('')}</div>

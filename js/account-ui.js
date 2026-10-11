@@ -15,7 +15,7 @@
    ============================================================ */
 import { supabase, signInWithEmail, signInWithGoogle, signOut, refreshArtist, isAdmin, authState } from './auth.js';
 
-const HANDLE_RE = /^[a-z0-9][a-z0-9-]{2,29}$/;
+const HANDLE_RE = /^[a-z0-9][a-z0-9_-]{2,29}$/;
 
 /* GA. index.html owns laivyTrack (and the laivy-no-track escape hatch); on
    pages that do not define it, fall back to the same guard so the flag is
@@ -279,13 +279,13 @@ function renderSlot(slot) {
   const menu = el('div', 'lv-menu account-menu');
   menu.setAttribute('role', 'menu');
   menu.hidden = true;
-  /* "My page" only points at a public page when there IS one. Since 1A-7 a
-     listener (is_artist false) is absent from artists_public, so their handle
-     would resolve to "Artist not found" -- linking a signed-in person to a dead
-     page from their own menu is the worst version of that. They get /settings
-     instead, which is the page that is actually theirs. */
-  const myPage = (artist && artist.is_artist && artist.handle)
-    ? `/artist/${encodeURIComponent(artist.handle)}`
+  /* "My page" points at the member's own public page. Since 1A-7 a listener
+     (is_artist false) was absent from artists_public, so their handle would
+     have resolved to "Artist not found" -- that gap is closed by PROFILE-1's
+     /u/<handle>, which every member (artist or not) now has, so this no
+     longer needs a /settings fallback. */
+  const myPage = (artist && artist.handle)
+    ? (artist.is_artist ? `/artist/${encodeURIComponent(artist.handle)}` : `/u/${encodeURIComponent(artist.handle)}`)
     : '/settings';
   menu.innerHTML =
     `<a role="menuitem" href="${esc(myPage)}">My page</a>` +
@@ -376,7 +376,7 @@ export function renderAccountSlots() {
    raises on a taken one) -- this is only so the field can say so before save. */
 export async function checkHandle(handle, selfId) {
   if (!HANDLE_RE.test(handle)) {
-    return { ok: false, reason: '3-30 characters: lowercase letters, numbers and dashes, starting with a letter or number.' };
+    return { ok: false, reason: '3-30 characters: lowercase letters, numbers, dashes and underscores, starting with a letter or number.' };
   }
   if (!supabase) return { ok: true };
   try {
@@ -413,8 +413,8 @@ function profileFields(artist) {
            value="${esc(artist && artist.display_name_he || '')}">
 
     <label class="lv-label" for="lv-bio">About you (optional) <span dir="rtl" lang="he">על עצמך</span></label>
-    <textarea class="lv-input lv-textarea" id="lv-bio" maxlength="600" rows="4">${esc(artist && artist.bio || '')}</textarea>
-    <p class="lv-hint"><span data-bio-count>0</span>/600</p>
+    <textarea class="lv-input lv-textarea" id="lv-bio" maxlength="400" rows="4">${esc(artist && artist.bio || '')}</textarea>
+    <p class="lv-hint"><span data-bio-count>0</span>/400</p>
   `;
 }
 
@@ -441,17 +441,34 @@ function wireProfileFields(root, artist, onValid) {
 }
 
 async function saveProfile(root, artist) {
-  const patch = {
-    handle: (root.querySelector('#lv-handle').value || '').trim().toLowerCase(),
-    display_name: (root.querySelector('#lv-name').value || '').trim(),
-    display_name_he: (root.querySelector('#lv-name-he').value || '').trim() || null,
-    bio: (root.querySelector('#lv-bio').value || '').trim() || null,
-  };
-  if (!HANDLE_RE.test(patch.handle)) throw new Error('That handle is not valid.');
-  if (!patch.display_name) throw new Error('Please enter a display name.');
-  const { error } = await supabase.from('artists').update(patch).eq('id', artist.id);
+  const handle = (root.querySelector('#lv-handle').value || '').trim().toLowerCase();
+  const displayNameHe = (root.querySelector('#lv-name-he').value || '').trim() || null;
+  const displayName = (root.querySelector('#lv-name').value || '').trim();
+  const bio = (root.querySelector('#lv-bio').value || '').trim() || null;
+  if (!HANDLE_RE.test(handle)) throw new Error('That handle is not valid.');
+  if (!displayName) throw new Error('Please enter a display name.');
+
   // The guard and the unique index are the real gate; surface their words.
-  if (error) throw new Error(error.message || 'Could not save.');
+  const { error: handleErr } = await supabase.from('artists')
+    .update({ handle, display_name_he: displayNameHe }).eq('id', artist.id);
+  if (handleErr) throw new Error(handleErr.message || 'Could not save.');
+
+  // display_name/bio/the two privacy toggles go through update_my_profile()
+  // (029_member_profiles.sql), which enforces the 2-40/400 bounds and the
+  // banned-term check itself. The toggle inputs only exist on /settings, not
+  // in the onboarding panel that also calls this function -- passing null
+  // when they are absent keeps whatever the row already has (the function's
+  // own coalesce), so onboarding never touches either toggle's default.
+  const publicToggle = root.querySelector('#lv-profile-public');
+  const followingToggle = root.querySelector('#lv-show-following');
+  const { error: profileErr } = await supabase.rpc('update_my_profile', {
+    p_display_name: displayName,
+    p_bio: bio,
+    p_profile_public: publicToggle ? publicToggle.checked : null,
+    p_show_following: followingToggle ? followingToggle.checked : null,
+  });
+  if (profileErr) throw new Error(profileErr.message || 'Could not save.');
+
   await refreshArtist();
 }
 
@@ -627,9 +644,16 @@ export function renderSettings(container) {
       </div>
       <input type="file" accept="image/*" data-avatar-file hidden>
       <p class="lv-err" data-avatar-err hidden></p>
+
+      <label class="lv-label-row"><input type="checkbox" id="lv-profile-public" ${!artist || artist.profile_public !== false ? 'checked' : ''}>
+        Make my profile public <span dir="rtl" lang="he">הפוך את הפרופיל שלי לפומבי</span></label>
+      <label class="lv-label-row"><input type="checkbox" id="lv-show-following" ${artist && artist.show_following ? 'checked' : ''}>
+        Show who I follow <span dir="rtl" lang="he">הצג את מי שאני עוקב אחריו</span></label>
+      ${artist && artist.handle ? `<p class="lv-hint"><a href="/${artist.is_artist ? 'artist' : 'u'}/${encodeURIComponent(artist.handle)}">View my profile</a></p>` : ''}
+
       ${artist && artist.is_artist === false ? `<p class="lv-hint lv-notyet">
-        Your page goes live when your first song is approved.
-        <span dir="rtl" lang="he">העמוד שלך יעלה לאוויר כשהשיר הראשון שלך יאושר.</span>
+        Your artist page goes live when your first song is approved -- your profile above is already live.
+        <span dir="rtl" lang="he">עמוד האמן שלך יעלה לאוויר כשהשיר הראשון שלך יאושר -- הפרופיל שלך למעלה כבר פעיל.</span>
       </p>` : ''}
       <p class="lv-err" data-err hidden></p>
       <p class="lv-ok" data-ok hidden>Saved.</p>
@@ -643,7 +667,6 @@ export function renderSettings(container) {
       <p class="lv-hint">Editing sends a song back for review and takes it off the site until it is re-approved.</p>
       <div id="lv-mysongs-list"><p class="lv-hint">Loading&hellip;</p></div>
 
-      ${(artist && artist.is_artist) ? `
       <hr class="lv-rule">
       <h2 class="lv-section-h">My picks</h2>
       <div class="lv-pick-search">
@@ -652,7 +675,6 @@ export function renderSettings(container) {
       </div>
       <p class="lv-err" data-pick-err hidden></p>
       <div id="lv-mypicks-list"><p class="lv-hint">Loading&hellip;</p></div>
-      ` : ''}
 
       <hr class="lv-rule">
       <h2 class="lv-section-h">Following</h2>
@@ -679,7 +701,7 @@ export function renderSettings(container) {
   wireProfileFields(container, artist);
   wireAvatar(container, artist);
   renderMySongs(container, artist);
-  if (artist && artist.is_artist) renderMyPicks(container, artist);
+  renderMyPicks(container, artist);
   renderFollowing(container, user);
   renderMyDedications(container);
   renderMySongIdeas(container);

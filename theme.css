@@ -819,8 +819,34 @@ body{
 }
 .listener-meta{ margin-top:0.3rem; font-family:var(--font-ui); font-size:0.78rem; color:var(--text-faint); }
 .listener-who{ color:var(--text-dim); font-style:italic; }
+.listener-who a{ color:inherit; text-decoration:none; }
+.listener-who a:hover{ color:var(--accent-2); text-decoration:underline; }
 .listener-song{ color:var(--accent-2); text-decoration:none; font-weight:600; }
 .listener-song:hover{ text-decoration:underline; }
+
+/* PROFILE-1: the public member page, /u/<handle>. Reuses every .artist-*
+   token above as-is (same header, same stat strip) -- only the list
+   sections below (favorites/comments/dedications/ideas/following) are new,
+   since none of .listener-item's quote styling fits a plain link row. */
+.member-since{ font-family:var(--font-ui); font-size:0.82rem; color:var(--text-faint); margin:0.5rem 0 0; }
+.member-section{ margin:2.2rem 0; }
+.member-list{ display:flex; flex-direction:column; gap:0.9rem; }
+.member-row{
+  display:block; padding:0.7rem 0.9rem; border-radius:var(--radius-sm);
+  background:var(--glass-bg); border:1px solid var(--glass-border); color:var(--text);
+  text-decoration:none; font-family:var(--font-ui);
+}
+a.member-row:hover{ border-color:rgba(var(--accent-2-rgb),0.4); }
+.member-row-song, .member-row-artist{ display:flex; align-items:center; gap:0.7rem; }
+.member-row-text{ display:flex; flex-direction:column; gap:0.15rem; min-width:0; }
+.member-row-title{ font-weight:600; color:var(--text); }
+a .member-row-title{ text-decoration:none; }
+.member-row-note{ font-size:0.82rem; color:var(--text-dim); }
+.member-row-body{ font-size:0.9rem; line-height:1.5; color:var(--text-dim); margin:0.3rem 0 0; }
+.member-row-meta{ display:flex; gap:0.9rem; font-size:0.78rem; color:var(--text-faint); margin-top:0.35rem; }
+.member-row-meta a{ color:var(--accent-2); text-decoration:none; }
+.member-row-cover{ width:48px; height:48px; border-radius:6px; object-fit:cover; flex:0 0 48px; }
+.member-row-artist .artist-avatar{ width:40px; height:40px; flex:0 0 40px; font-size:1.1rem; }
 
 /* ARTIST-2: "If you like <name>, try these" -- recommend_for_artist, live
    only (no snapshot fallback: a stale recommendation is worse than none). */
@@ -1040,6 +1066,8 @@ body{
   color:var(--text); margin:0 0 1rem; white-space:pre-line;
 }
 .ded-page-sender{ font-family:var(--font-ui); font-size:0.88rem; color:var(--text-faint); margin-bottom:0.3rem; }
+.ded-page-sender a{ color:inherit; text-decoration:none; }
+.ded-page-sender a:hover{ color:var(--accent-2); text-decoration:underline; }
 .ded-page-song{ font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--accent-2); margin-bottom:1.6rem; }
 .ded-page-play{ margin:0 auto; width:auto; padding:0.8rem 1.8rem; }
 .ded-page-play svg{ width:1.1rem; height:1.1rem; }

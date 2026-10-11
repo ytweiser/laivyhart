@@ -99,7 +99,7 @@ async function scenarioMyPicksAddCapUnpublished(browser, port, r) {
   await gotoSettings(page, port);
 
   const sectionPresent = await page.evaluate(() => !!document.getElementById('lv-mypicks-list'));
-  r.check('My picks section renders (artist only)', sectionPresent === true);
+  r.check('My picks section renders', sectionPresent === true);
 
   const emptyState = await page.evaluate(() => document.getElementById('lv-mypicks-list')?.textContent);
   r.check('empty-state nudge text', (emptyState || '').includes("Pick up to six songs, yours or anyone's, and say why."), emptyState);
@@ -230,6 +230,7 @@ async function scenarioBio(browser, port, r) {
   r.check('counter updates live as you type', counterAfter === String(bioText.length), counterAfter);
 
   let savedPatch = null;
+  let savedProfileCall = null;
   await page.route(/\/rest\/v1\/artists\?id=eq\./, async (route) => {
     if (route.request().method() === 'PATCH') {
       savedPatch = JSON.parse(route.request().postData() || '{}');
@@ -237,12 +238,19 @@ async function scenarioBio(browser, port, r) {
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(F.SELF_ARTIST_ROWS[F.NOVA_ASH]) });
   });
+  // PROFILE-1: display_name/bio (and the two privacy toggles, absent here)
+  // now go through update_my_profile(), not the direct artists PATCH above.
+  await page.route(/\/rest\/v1\/rpc\/update_my_profile/, async (route) => {
+    savedProfileCall = JSON.parse(route.request().postData() || '{}');
+    return route.fulfill({ status: 200, contentType: 'application/json', body: 'null' });
+  });
   await page.click('[data-act="save"]');
   await page.waitForFunction(() => {
     const ok = document.querySelector('[data-ok]');
     return ok && !ok.hidden;
   }, { timeout: 10000 });
-  r.check('save sends the bio text to artists.update', savedPatch && savedPatch.bio === bioText, JSON.stringify(savedPatch));
+  r.check('save sends the bio text to update_my_profile', savedProfileCall && savedProfileCall.p_bio === bioText, JSON.stringify(savedProfileCall));
+  r.check('the direct artists PATCH no longer carries display_name/bio', savedPatch && savedPatch.bio === undefined && savedPatch.display_name === undefined, JSON.stringify(savedPatch));
   const okShown = await page.evaluate(() => !document.querySelector('[data-ok]')?.hidden);
   r.check('"Saved." confirmation shows', okShown === true);
   await page.close();

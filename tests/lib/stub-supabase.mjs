@@ -64,6 +64,17 @@ export function buildFixtureResponses(overrides) {
     removeMyDedicationResult: null,
     createDedicationResult: 'NEWCODE1', // the code create_dedication() returns, or a full fulfill() object for the error path
     dedicationsPublic: [],       // dedications_public rows: the strip (filtered by song_id) and /d/<code> (filtered by code) both read this
+    // PROFILE-1. memberProfiles: keyed by handle (lowercase), the exact
+    // json shape member_profile() returns; an absent key means "not found"
+    // (null), same convention the RPC itself uses. memberHandles:
+    // member_handles rows (id, handle), read by the comment/dedication
+    // name-linking follow-up query.
+    memberProfiles: {},
+    memberHandles: [],
+    // update_my_profile(): null means a plain success; a full fulfill()
+    // object (e.g. the banned-term rejection's own wording) forces the
+    // error path, same convention as createDedicationResult/rateSongResult.
+    updateMyProfileResult: null,
     // SONG-1. adminSetSongIdeaStatusResult: a full fulfill() object to force
     // admin_set_song_idea_status's error path; null means a plain success
     // that actually mutates the in-memory songIdeasState (see below).
@@ -273,7 +284,19 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     // artists_public VIEW, checked separately above). .maybeSingle() accepts
     // either a bare object or null here.
     if (url.includes('/rest/v1/artists?')) { notify('selfArtistRow'); return fulfill(F2.selfArtistRow); }
+    if (url.includes('/rest/v1/member_handles')) { notify('memberHandles'); return fulfill(await filterRows(req, F2.memberHandles)); }
 
+    if (url.includes('/rest/v1/rpc/update_my_profile')) {
+      notify('rpc:update_my_profile');
+      if (F2.updateMyProfileResult) return route.fulfill(F2.updateMyProfileResult);
+      return fulfill(null);
+    }
+    if (url.includes('/rest/v1/rpc/member_profile')) {
+      const handle = rpcParam(req, 'p_handle');
+      notify('rpc:member_profile');
+      const profile = F2.memberProfiles[String(handle || '').toLowerCase()];
+      return fulfill(profile === undefined ? null : profile);
+    }
     if (url.includes('/rest/v1/rpc/artist_stats')) {
       const id = rpcParam(req, 'p_artist_id');
       notify('rpc:artist_stats');
