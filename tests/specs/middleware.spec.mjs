@@ -135,6 +135,23 @@ export async function run() {
     r.check('in_memory headline and OG title: "In loving memory of Dad"', (anonHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1] === 'In loving memory of Dad', (anonHtml.match(/<meta property="og:title" content="([^"]*)">/) || [])[1]);
     r.check('still noindex', /name="robots" content="noindex"/.test(anonHtml));
 
+    // LISTEN-1: "Something else" with no write-in text must never leave a
+    // bare ": ." in the SSR og:description (dedLine's 'other' branch, same
+    // fix as index.html's copy of this table).
+    const otherEmptyFetch = async () => ({
+      ok: true,
+      json: async () => ([{
+        code: 'OTHR0001', song_id: 'song-1', song_title: 'Supernova', song_slug: 'supernova-a000',
+        cover_url: null, recipient_name: 'Sam', occasion: 'other', occasion_other: '',
+        message: null, sender_name: 'Tzvi', created_at: new Date().toISOString(),
+      }]),
+    });
+    const otherEmptyPlan = await decide('/d/OTHR0001', new URLSearchParams(), otherEmptyFetch);
+    const otherEmptyHtml = otherEmptyPlan.fn(shell);
+    const otherEmptyDesc = (otherEmptyHtml.match(/<meta property="og:description" content="([^"]*)">/) || [])[1] || '';
+    r.check('"Something else" with an empty box never shows ": ."', !otherEmptyDesc.includes(': .'), otherEmptyDesc);
+    r.check('"Something else" with an empty box reads "A song for Sam."', otherEmptyDesc.startsWith('A song for Sam.'), otherEmptyDesc);
+
     const missingFetch = async () => ({ ok: true, json: async () => [] });
     const missingPlan = await decide('/d/NOPE0000', new URLSearchParams(), missingFetch);
     r.check('an unknown (or removed -- dedications_public hides those identically) code -> noindex, not a crash', missingPlan.kind === 'render' && missingPlan.tag === 'dedication-404', JSON.stringify(missingPlan));

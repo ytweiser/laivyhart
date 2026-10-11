@@ -399,7 +399,15 @@ function dedHeadline(occasion, name) {
   return fn ? fn(name).headline : `This one's for you, ${name}`;
 }
 function dedLine(occasion, name, occasionOther) {
-  if (occasion === 'other') return 'A song for ' + name + ': ' + (occasionOther || '');
+  // LISTEN-1: same reasoning as index.html's copy of this table -- trim a
+  // trailing ./!/? from the free-typed text so this line never carries its
+  // own terminal punctuation into renderDedication()'s "line + '. ...'"
+  // concatenation below (an empty box must not leave a bare ": .", and
+  // user-typed punctuation must not double up into "..").
+  if (occasion === 'other') {
+    const t = (occasionOther || '').trim().replace(/[.!?]+$/, '');
+    return t ? 'A song for ' + name + ': ' + t : 'A song for ' + name;
+  }
   const fn = DED_OCCASION[occasion];
   return fn ? fn(name).line : 'A song for ' + name;
 }

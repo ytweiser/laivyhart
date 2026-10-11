@@ -33,6 +33,8 @@ export async function run(browser, port) {
   const r = makeReporter('dedicate.spec.mjs');
   await scenarioSignedOutReason(browser, port, r);
   await scenarioFormValidation(browser, port, r);
+  await scenarioSomethingElsePreview(browser, port, r);
+  await scenarioCounter(browser, port, r);
   await scenarioSuccessShareActions(browser, port, r);
   await scenarioServerErrorInline(browser, port, r);
   await scenarioStripShowsAndHides(browser, port, r);
@@ -97,6 +99,82 @@ async function scenarioFormValidation(browser, port, r) {
   r.check('"Other" with no description is refused', /describe the occasion/i.test(err), err);
   r.check('the occasion-other field is revealed for "Other"', await page.evaluate(() => !document.getElementById('dedicate-occasion-other').hidden));
   r.check('still no RPC call', rpcCalls.length === 0, rpcCalls.length);
+
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioSomethingElsePreview(browser, port, r) {
+  r.section('LISTEN-1: "Something else" preview -- clean empty, clean filled, clean after a stray trailing period');
+  const page = await newPage(browser);
+  const errors = collectErrors(page);
+  await wireSupabaseStubs(page, { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH] });
+  await signInAs(page, F.SESSION_USERS.NOVA);
+  await gotoSong(page, port);
+  await openDedicateSheet(page);
+
+  await page.fill('#dedicate-recipient', 'Mom');
+  await page.selectOption('#dedicate-occasion', 'other');
+
+  const empty = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
+  r.check('empty box: no colon, no stray period', empty === 'A song for Mom. With love, Nova Ash.', empty);
+
+  await page.fill('#dedicate-occasion-other', 'for being wonderful');
+  const filled = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
+  r.check('filled: colon, the text, one period', filled === 'A song for Mom: for being wonderful. With love, Nova Ash.', filled);
+
+  // A trailing period typed into the box itself must not double up.
+  await page.fill('#dedicate-occasion-other', 'for being wonderful.');
+  const trailingPeriod = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
+  r.check('a trailing period in the box does not produce ".."', trailingPeriod === 'A song for Mom: for being wonderful. With love, Nova Ash.', trailingPeriod);
+  r.check('never shows ": ."', !trailingPeriod.includes(': .'), trailingPeriod);
+  r.check('never shows ".."', !trailingPeriod.includes('..'), trailingPeriod);
+
+  // Back to empty (e.g. the visitor cleared it): clean again, not "stuck"
+  // with whatever punctuation guard fired last.
+  await page.fill('#dedicate-occasion-other', '');
+  const clearedAgain = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
+  r.check('cleared back to empty: clean again', clearedAgain === 'A song for Mom. With love, Nova Ash.', clearedAgain);
+
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioCounter(browser, port, r) {
+  r.section('LISTEN-1: the message counter -- 280 on an empty box, the real typed length after typing/deleting/switching occasion');
+  const page = await newPage(browser);
+  const errors = collectErrors(page);
+  await wireSupabaseStubs(page, { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH] });
+  await signInAs(page, F.SESSION_USERS.NOVA);
+  await gotoSong(page, port);
+
+  const counterText = () => page.evaluate(() => document.getElementById('dedicate-counter').textContent);
+  const waitForCounter = (expected) => page.waitForFunction(
+    (exp) => document.getElementById('dedicate-counter').textContent === exp, expected, { timeout: 10000 },
+  );
+
+  await openDedicateSheet(page);
+  r.check('280 on a freshly opened, empty box', await counterText() === '280 characters left', await counterText());
+
+  await page.fill('#dedicate-message', 'Love you!');
+  await waitForCounter('271 characters left');
+  r.check('280 minus the actual typed length (9 characters)', await counterText() === '271 characters left', await counterText());
+
+  await page.fill('#dedicate-message', '');
+  await waitForCounter('280 characters left');
+  r.check('back to 280 after deleting everything', await counterText() === '280 characters left', await counterText());
+
+  await page.fill('#dedicate-message', 'Mazel tov');
+  await waitForCounter('271 characters left');
+  await page.selectOption('#dedicate-occasion', 'wedding');
+  r.check('switching occasion does not touch the message or its count', await counterText() === '271 characters left', await counterText());
+
+  // Reopening (a different song, or the same one again) must not carry a
+  // stale count from the last time the sheet was open -- the actual bug:
+  // nothing reset the counter text itself when the box was cleared on open.
+  await page.click('#dedicate-close');
+  await openDedicateSheet(page);
+  r.check('reopening resets to 280, not stuck at the last count shown', await counterText() === '280 characters left', await counterText());
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

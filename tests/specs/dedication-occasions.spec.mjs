@@ -41,6 +41,7 @@ export async function run(browser, port) {
   const r = makeReporter('dedication-occasions.spec.mjs');
   await scenarioGroupedDropdown(browser, port, r);
   await scenarioHeadlinesAndLines(browser, port, r);
+  await scenarioSomethingElseLine(browser, port, r);
   await scenarioSenderLines(browser, port, r);
   await scenarioShareText(browser, port, r);
   return r;
@@ -102,6 +103,29 @@ async function scenarioHeadlinesAndLines(browser, port, r) {
     r.check(`${expect.key}: headline`, got.headline === expect.headline, got.headline);
     r.check(`${expect.key}: line`, got.line === expect.line, got.line);
   }
+
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioSomethingElseLine(browser, port, r) {
+  r.section('LISTEN-1: "Something else" line never produces ": ." (empty) or ".." (trailing punctuation)');
+  const { page, errors } = await loadAnyPage(browser, port);
+
+  const d = await page.evaluate(() => ({
+    empty: dedLine('other', 'Yankel', ''),
+    nullOther: dedLine('other', 'Yankel', null),
+    whitespaceOnly: dedLine('other', 'Yankel', '   '),
+    filled: dedLine('other', 'Yankel', 'a surprise'),
+    trailingPeriod: dedLine('other', 'Yankel', 'a surprise.'),
+    trailingBang: dedLine('other', 'Yankel', 'a surprise!'),
+  }));
+  r.check('empty string: no colon at all', d.empty === 'A song for Yankel', d.empty);
+  r.check('null: same as empty', d.nullOther === 'A song for Yankel', d.nullOther);
+  r.check('whitespace-only: same as empty', d.whitespaceOnly === 'A song for Yankel', d.whitespaceOnly);
+  r.check('filled: colon plus the text, no trailing punctuation added', d.filled === 'A song for Yankel: a surprise', d.filled);
+  r.check('a trailing period in the typed text is stripped, not doubled', d.trailingPeriod === 'A song for Yankel: a surprise', d.trailingPeriod);
+  r.check('a trailing "!" in the typed text is stripped the same way', d.trailingBang === 'A song for Yankel: a surprise', d.trailingBang);
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

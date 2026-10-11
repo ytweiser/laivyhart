@@ -143,6 +143,12 @@
   .ticker-item strong{color:var(--text); font-weight:600;}
   @keyframes ticker-scroll{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
 
+  /* LISTEN-1: the shared header for artist/dedication/settings/upload (see
+     #route-header's own comment). .topbar already gives it the flex layout
+     used inside .panel.now; this adds what that context otherwise provided
+     (edge padding, a separating line) for when it stands on its own. */
+  .page-topbar{padding:1.1rem 1.5rem; border-bottom:1px solid var(--line);}
+
   /* ---------- LEFT: now playing ---------- */
   .now{padding:1.3rem 1.5rem;}
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap;}
@@ -266,23 +272,11 @@
     color:var(--text-faint); margin-bottom:0.3rem;
   }
 
-  /* lyrics hero: its OWN bounded box that scrolls internally, so the
-     like + reflections zone below it is always visible without scrolling
-     to the end of the lyrics. */
-  /* Lyrics box: a bounded, resizable frame sitting close to the title. Its
-     height is JS-driven (drag handle, remembered per session); this is the
-     pre-JS fallback. It scrolls within its own frame. */
-  .lyrics-wrap{flex:0 0 auto; height:52vh; min-height:4.5rem; display:flex; flex-direction:column; margin-top:0.45rem; position:relative;}
-  /* Drag handle on the lyrics box bottom edge (session-only resize). */
-  .lyrics-resize{
-    flex:0 0 auto; height:15px; margin-top:1px;
-    display:flex; align-items:center; justify-content:center;
-    cursor:ns-resize; touch-action:none; border-radius:8px;
-    transition:background 0.15s var(--ease);
-  }
-  .lyrics-resize:hover, .lyrics-resize:focus-visible{background:var(--glass-hi); outline:none;}
-  .lyrics-resize .grip{width:2.4rem; height:4px; border-radius:4px; background:var(--chip-border); transition:background 0.15s var(--ease);}
-  .lyrics-resize:hover .grip, .lyrics-resize:focus-visible .grip{background:var(--accent-2);}
+  /* LISTEN-1: lyrics flow at their natural height in the normal page
+     flow now, same reasoning as .engage below -- nothing here is its own
+     bounded, internally-scrolling box any more (removed: the fixed/
+     drag-resizable height and .lyrics-resize's handle entirely). */
+  .lyrics-wrap{margin-top:0.45rem;}
   /* Engagement zone (like + reflections). It flows at its natural height below
      the controls so the like heart and every comment are reachable by
      scrolling the PAGE, never trapped in a short inner scroller. */
@@ -302,11 +296,12 @@
     transition:all 0.2s var(--ease);
   }
   .lang-toggle button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
-  .lyrics-scroll{flex:1; min-height:0; overflow-y:auto; padding-right:0.5rem;}
   .lyrics{font-size:1.45rem; line-height:1.95; white-space:pre-line; font-family:var(--font-display);}
   .lyrics.is-heb{font-family:var(--font-heb); direction:rtl; text-align:right; font-size:1.7rem; line-height:1.85;}
   .lyrics.hidden{display:none;}
-  .now-empty{margin:auto; text-align:center; color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1.1rem; max-width:22rem;}
+  /* No longer a flex item centered by auto-margins (that needed a bounded
+     flex parent) -- max-width + margin:auto centers it in plain flow. */
+  .now-empty{margin:2.5rem auto; text-align:center; color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1.1rem; max-width:22rem;}
 
   /* player dock */
   .dock{
@@ -335,29 +330,28 @@
   .tbtn:hover{transform:translateY(-1px);}
   .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
   .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.45);}
-  /* Radio + Mood radio: a tidy pair of playback actions in the Bordeaux
-     palette, warmer and more present than a plain form field, but distinct
-     from the round play button and from the Love/Share reaction pair. */
+  /* Radio + Mood radio: LISTEN-1 made this pair the most prominent control
+     in the list header (left on desktop, first on phones), Radio filled in
+     the accent gradient always (not just once playing) so it reads as the
+     primary action; Mood radio stays outlined beside it -- still larger
+     than before, but visually the second choice next to a filled Radio. */
   .radio-btn{
-    display:inline-flex; align-items:center; gap:0.4rem; white-space:nowrap;
-    font-family:var(--font-ui); font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;
-    padding:0.5rem 0.85rem; border-radius:14px; cursor:pointer; color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
-    border:1px solid var(--accent-2); box-shadow:0 2px 10px rgba(var(--accent-1-rgb),0.14);
-    transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease);
+    display:inline-flex; align-items:center; gap:0.45rem; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.76rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+    padding:0.65rem 1.1rem; border-radius:14px; cursor:pointer; color:#fff;
+    background:var(--accent-grad); border:1px solid transparent; box-shadow:0 4px 14px rgba(var(--accent-1-rgb),0.32);
+    transition:transform 0.18s var(--ease), box-shadow 0.2s var(--ease);
   }
-  .radio-btn svg{width:0.95rem; height:0.95rem; display:block; flex-shrink:0;}
-  .radio-btn:hover{transform:translateY(-1px);
-    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2));
-    box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.26);}
-  .radio-btn.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
+  .radio-btn svg{width:1.05rem; height:1.05rem; display:block; flex-shrink:0;}
+  .radio-btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.42);}
+  .radio-btn.active{box-shadow:0 6px 20px rgba(var(--accent-1-rgb),0.55);}
 
-  .mood-radio-ic{width:0.9rem; height:0.9rem; color:var(--accent-2); flex-shrink:0;}
+  .mood-radio-ic{width:1rem; height:1rem; color:var(--accent-2); flex-shrink:0;}
   .mood-radio{
     appearance:none; -webkit-appearance:none; -moz-appearance:none;
-    font-family:var(--font-ui); font-size:0.7rem; font-weight:600; letter-spacing:0.02em;
+    font-family:var(--font-ui); font-size:0.74rem; font-weight:600; letter-spacing:0.02em;
     display:inline-flex; align-items:center; gap:0.42rem;
-    padding:0.5rem 0.95rem; border-radius:14px; cursor:pointer; max-width:12rem;
+    padding:0.62rem 1rem; border-radius:14px; cursor:pointer; max-width:12rem;
     color:var(--accent-2);
     background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
     border:1px solid var(--accent-2);
@@ -460,13 +454,15 @@
     position:sticky; top:16px; align-self:start;
     height:calc(100vh - 32px);
   }
-  .tabs{display:flex; align-items:center; gap:0.4rem; margin-bottom:0.9rem; flex-wrap:wrap;}
-  /* Radio + Mood radio relocated into the list header, right of the tabs. */
-  .tabs-radio{margin-left:auto; display:flex; align-items:center; gap:0.5rem;}
+  .tabs{display:flex; align-items:center; justify-content:space-between; gap:0.6rem; margin-bottom:0.9rem; flex-wrap:wrap;}
+  /* Radio + Mood radio: left, prominent (see their own rules above).
+     Songs/Playlists: right, quieter -- .tabs-list below. */
+  .tabs-radio{display:flex; align-items:center; gap:0.5rem;}
+  .tabs-list{display:flex; align-items:center; gap:0.35rem;}
   .tab{
-    font-family:var(--font-ui); font-size:0.74rem; text-transform:uppercase; letter-spacing:0.06em;
-    padding:0.5rem 0.9rem; border-radius:14px; cursor:pointer;
-    background:transparent; border:1px solid transparent; color:var(--text-dim);
+    font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
+    padding:0.42rem 0.75rem; border-radius:12px; cursor:pointer;
+    background:transparent; border:1px solid transparent; color:var(--text-faint);
   }
   .tab.active{background:var(--glass-hi); border-color:var(--glass-border); color:var(--text);}
 
@@ -1346,7 +1342,9 @@
   /* ---------- Share, pinned to the far right of the transport row ----------
      Row 2 holds prev/play/next on the left and Share on the right, nothing
      else; the three loves are their own row beneath. */
-  .dock-react{display:flex; align-items:center; gap:0.6rem; margin-left:auto;}
+  /* LISTEN-1: its own centered row after .loves now, not sharing the
+     transport row (was margin-left:auto, pinned to that row's right edge). */
+  .dock-react{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-top:0.2rem;}
   .dock-react.hidden{display:none;}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
@@ -1499,12 +1497,14 @@
     /* Undo the desktop sticky/viewport-height pin so the list stacks in the
        single-column flow and grows with the page. */
     .browse{padding:1rem 1rem 0.4rem; position:static; top:auto; height:auto;}
-    /* Tabs row wraps: Radio + Mood radio drop beneath the tabs, full width,
-       two across. */
-    .tabs-radio{flex-basis:100%; margin-left:0; margin-top:0.15rem;}
+    /* Tabs row wraps: Radio + Mood radio stay first (full width, two
+       across), Songs/Playlists drop to a second line below them --
+       LISTEN-1's "Radio first" on phones too. */
+    .tabs-radio{flex-basis:100%;}
     .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
     .tabs-radio .mood-radio-wrap{flex:1 1 0; min-width:0;}
     .tabs-radio .mood-radio{width:100%; max-width:none; justify-content:center;}
+    .tabs-list{margin-top:0.15rem;}
     /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
        all three loves on one line at 56px. Dock spacing is trimmed so the loves
        row adds its own height plus the one 0.5rem row gap, nothing more. */
@@ -1521,22 +1521,11 @@
        both real breathing space instead of crowding the outline. */
     .love-btn{padding:0.05rem 0.3rem 0.3rem;}
     .love-label{padding:0 0.2rem;}
-    /* On mobile the now-playing panel is NOT a fixed-height flex frame with
-       pinned controls and a capped reflections zone. Sections just stack and
-       flow so the PAGE scrolls to reveal the like heart, the reflection form,
-       and the comments. (Desktop keeps the bounded/pinned behavior above.)
-       EXCEPTION: the lyrics get their OWN generous-but-capped box that scrolls
-       internally, so a long song does not push the controls and comments far
-       down the page. The box grows with the lyrics up to ~50vh, then the
-       lyrics scroll inside it. */
-    .lyrics-wrap{flex:0 0 auto; height:auto !important; min-height:0; max-height:50vh;}
-    .lyrics-resize{display:none;}          /* resize handle stays hidden on mobile */
-    /* Lyrics scroll inside the capped .lyrics-wrap. overscroll-behavior:contain
-       keeps a touch-scroll of the lyrics from yanking the whole page, while
-       still leaving the page free to scroll when the touch starts outside the
-       box (controls, like, comments). */
-    .lyrics-scroll{flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto;
-      -webkit-overflow-scrolling:touch; overscroll-behavior:contain;}
+    /* On mobile the now-playing panel is NOT a fixed-height flex frame.
+       Sections just stack and flow so the PAGE scrolls to reveal the like
+       heart, the reflection form, and the comments -- LISTEN-1 made this
+       the desktop behavior too, lyrics included (no more capped/scrolling
+       exception for them). */
     /* Reflections zone flows at natural height instead of being a short inner
        scroller trapped behind the controls. This must stay uncapped so the
        comment box is always reachable (the old .engage 9rem-floor trap). */
@@ -1608,6 +1597,27 @@
   <div class="ticker-track" id="ticker-track"></div>
 </div>
 
+<!-- LISTEN-1: a shared header for the routes that render straight into an
+     empty root with no header of their own (artist, dedication, settings,
+     upload) -- / and /listen keep their own existing topbar/home-header,
+     unchanged. #account-slot here is just another slot account-ui.js's
+     renderAccountSlots() already finds and fills (it queries every element
+     with that id, same as the two above). -->
+<div class="topbar page-topbar hidden" id="route-header">
+  <a class="logo logo-brand" href="/">
+    <picture>
+      <source type="image/webp" srcset="/brand/wordmark.webp">
+      <img class="logo-img" src="/brand/wordmark.png" width="102" height="34" alt="Laivy Hart" decoding="async">
+    </picture>
+  </a>
+  <nav class="site-nav" aria-label="Site">
+    <a href="/" data-nav="home">Home</a>
+    <a href="/listen" data-nav="listen">Songs</a>
+    <a href="/about.html">About</a>
+    <div id="account-slot"></div>
+  </nav>
+</div>
+
 <div class="app hidden" id="page-listen">
 
   <!-- ================= LEFT: now playing ================= -->
@@ -1672,23 +1682,9 @@
       <div class="pullquote hidden" id="now-about"></div>
     </div>
 
-    <div class="lyrics-wrap" id="lyrics-wrap">
-      <div class="lyrics-head">
-        <span class="lbl">Lyrics</span>
-        <div class="lang-toggle" id="lang-toggle"></div>
-      </div>
-      <div class="lyrics-scroll" id="lyrics-scroll">
-        <div class="now-empty" id="now-empty">Pick a song, hit Radio, or spin a category to begin.</div>
-        <div class="lyrics is-heb hidden" id="lyrics-orig"></div>
-        <div class="lyrics hidden" id="lyrics-trans"></div>
-      </div>
-      <div class="lyrics-resize" id="lyrics-resize" role="separator" aria-orientation="horizontal"
-           tabindex="0" title="Drag to resize the lyrics" aria-label="Drag to resize the lyrics">
-        <span class="grip"></span>
-      </div>
-    </div>
-
-    <!-- Player controls: pinned here, above the like + reflections -->
+    <!-- LISTEN-1: everything acted on, above the lyrics -- progress bar;
+         prev/play/next; heart, words and music stars, Dedicate, Share;
+         Dedications strip. Was below the lyrics; moved up here. -->
     <div class="dock">
       <div class="scrub-row">
         <time id="t-elapsed">0:00</time>
@@ -1699,32 +1695,33 @@
         <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <!-- Share + Dedicate: on the right of the transport row -->
-        <div class="dock-react hidden" id="dock-react">
-          <button class="share-invite" id="now-dedicate-btn" type="button" aria-label="Dedicate this song">
-            <span class="share-invite-ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
-            </span>
-          </button>
-          <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
-            <span class="share-invite-ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
-            </span>
-          </button>
-        </div>
       </div>
-      <!-- The heart (one tap, anonymous, public count) and, since 1A-6, the
-           words and the music as 1-to-5 ratings that require an account.
-           Hidden until a song is playing. -->
+      <!-- The heart (one tap, anonymous, public count) first, then, since
+           1A-6, the words and the music as 1-to-5 ratings that require an
+           account. Hidden until a song is playing. -->
       <div class="loves hidden" id="loves">
         <div class="loves-q">What did you think?</div>
-        <div class="rating-rows" id="rating-rows"></div>
         <div class="loves-row">
           <button class="love-btn" data-love="song" type="button" aria-pressed="false" aria-label="Love this song">
             <span class="love-ic"><svg class="love-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg></span>
             <span class="love-label">the song <span class="love-count">0</span></span>
           </button>
         </div>
+        <div class="rating-rows" id="rating-rows"></div>
+      </div>
+      <!-- Dedicate + Share: their own row now, after the loves, no longer
+           sharing the transport row. -->
+      <div class="dock-react hidden" id="dock-react">
+        <button class="share-invite" id="now-dedicate-btn" type="button" aria-label="Dedicate this song">
+          <span class="share-invite-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
+          </span>
+        </button>
+        <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
+          <span class="share-invite-ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+          </span>
+        </button>
       </div>
 
       <!-- DED-2: the latest dedications of this song, hidden when there are
@@ -1737,7 +1734,25 @@
       </div>
     </div>
 
-    <!-- Engagement zone (below the pinned controls): the global listener feed
+    <!-- LISTEN-1: lyrics now come after the controls, flowing at their
+         natural height like everything else -- no more fixed-height,
+         drag-resizable, internally-scrolling box (see the removed
+         "Resizable lyrics box" script and its CSS for what this replaced).
+         The whole page scrolls as one; nothing here is ever trapped above
+         a scroll area. -->
+    <div class="lyrics-wrap" id="lyrics-wrap">
+      <div class="lyrics-head">
+        <span class="lbl">Lyrics</span>
+        <div class="lang-toggle" id="lang-toggle"></div>
+      </div>
+      <div class="lyrics-scroll" id="lyrics-scroll">
+        <div class="now-empty" id="now-empty">Pick a song, hit Radio, or spin a category to begin.</div>
+        <div class="lyrics is-heb hidden" id="lyrics-orig"></div>
+        <div class="lyrics hidden" id="lyrics-trans"></div>
+      </div>
+    </div>
+
+    <!-- Engagement zone (below the lyrics): the global listener feed
          when nothing is playing, this song's reflections when one is. -->
     <div class="engage" id="engage">
       <!-- Idle / opening: the global "Comments from listeners" feed -->
@@ -1774,9 +1789,9 @@
   <!-- ================= RIGHT: browse ================= -->
   <section class="panel browse glass">
     <div class="tabs">
-      <button class="tab active" id="tab-songs">Songs</button>
-      <button class="tab" id="tab-playlists">Playlists</button>
-      <!-- Radio + Mood radio: relocated here from the player dock, right of the tabs. -->
+      <!-- LISTEN-1: Radio + Mood radio are the most prominent control in
+           this header now -- left on desktop, first on phones -- with
+           Songs/Playlists quieter, to the right/below. -->
       <div class="tabs-radio">
         <button class="radio-btn" id="radio-btn" aria-label="Shuffle and play everything">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
@@ -1795,6 +1810,10 @@
           </button>
           <div class="lv-menu mood-menu" id="mood-menu" role="menu" aria-label="Choose a mood" hidden></div>
         </span>
+      </div>
+      <div class="tabs-list">
+        <button class="tab active" id="tab-songs">Songs</button>
+        <button class="tab" id="tab-playlists">Playlists</button>
       </div>
     </div>
 
@@ -4400,7 +4419,6 @@ function loadSong(idx, keepRailQueue){
   playCounted = false;
   playMilestones = { p25:false, p50:false, p75:false, complete:false };
   renderNow();
-  if(window.__refreshLyricsSize) window.__refreshLyricsSize();
   renderList();
   loadComments();
   loadDedicationsStrip();
@@ -5340,9 +5358,9 @@ let onMoodDocClick = null, onMoodKeydown = null, onMoodReflow = null;
 /* PORTAL. The menu was authored inside .mood-radio-wrap, which sits under
    .browse -> .panel{overflow:hidden}. Two separate ancestors broke it:
 
-     - .panel's overflow:hidden CLIPS it. .tabs-radio is margin-left:auto, so
-       the button sits at the panel's right edge and a 13rem menu ran straight
-       off that edge and was cut -- which is why the list looked incomplete.
+     - .panel's overflow:hidden CLIPS it. However .tabs-radio is positioned,
+       a 13rem menu can run straight off the panel's edge and be cut --
+       which is why the list looked incomplete.
      - .browse is position:sticky, and sticky ALWAYS creates a stacking
        context. That trapped the menu's z-index inside .browse, so it could not
        rise above the mini-player or the dock no matter how high it was set.
@@ -5852,72 +5870,6 @@ document.getElementById('dedicate-picker-tabs').addEventListener('click', (e) =>
 });
 
 /* ============================================================
-   Resizable lyrics box (drag handle). The chosen height is kept for
-   THIS session only (sessionStorage); a fresh visit resets to default.
-   ============================================================ */
-(function(){
-  const panel = document.querySelector('.panel.now');
-  const wrap = document.getElementById('lyrics-wrap');
-  const handle = document.getElementById('lyrics-resize');
-  if(!panel || !wrap || !handle) return;
-
-  const KEY = 'laivy-lyrics-h-v1';
-  const MIN_H = 120;
-  const isMobile = () => window.matchMedia('(max-width:900px)').matches;
-
-  // The now-playing panel is free-flowing (the page scrolls), so the lyrics
-  // box is sized against the VIEWPORT, not the panel height. A generous
-  // default shows many lines; the banner/title above and controls/like/
-  // comments below stay reachable by scrolling the page.
-  function maxH(){ return Math.max(MIN_H, Math.round(window.innerHeight * 0.9)); }
-  function clampH(h){ return Math.min(Math.max(h, MIN_H), maxH()); }
-  function apply(h){ wrap.style.height = clampH(h) + 'px'; }
-  function desired(){
-    let s = null; try{ s = parseFloat(sessionStorage.getItem(KEY)); }catch(e){}
-    if(s && isFinite(s)) return s;
-    return Math.round(window.innerHeight * 0.52);   // generous: ~half the screen
-  }
-  function refresh(){
-    if(isMobile()){ wrap.style.height = ''; return; }
-    apply(desired());
-  }
-  window.__refreshLyricsSize = refresh;
-
-  let dragging = false, startY = 0, startH = 0;
-  handle.addEventListener('pointerdown', (e) => {
-    if(isMobile()) return;
-    dragging = true; startY = e.clientY; startH = wrap.offsetHeight;
-    try{ handle.setPointerCapture(e.pointerId); }catch(_){}
-    document.body.style.userSelect = 'none';
-    e.preventDefault();
-  });
-  handle.addEventListener('pointermove', (e) => {
-    if(!dragging) return;
-    apply(startH + (e.clientY - startY));
-  });
-  function endDrag(){
-    if(!dragging) return;
-    dragging = false;
-    document.body.style.userSelect = '';
-    try{ sessionStorage.setItem(KEY, String(wrap.offsetHeight)); }catch(e){}
-  }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
-  handle.addEventListener('keydown', (e) => {
-    if(isMobile()) return;
-    let d = 0;
-    if(e.key === 'ArrowUp') d = -24;
-    else if(e.key === 'ArrowDown') d = 24;
-    else return;
-    e.preventDefault();
-    apply(wrap.offsetHeight + d);
-    try{ sessionStorage.setItem(KEY, String(wrap.offsetHeight)); }catch(_){}
-  });
-  window.addEventListener('resize', refresh);
-  refresh();
-})();
-
-/* ============================================================
    Share this song (per-song deep link)
    ============================================================ */
 function laivyToast(msg){
@@ -6031,7 +5983,17 @@ const DED_OCCASION = {
   thank_you:       { group: 'Support',      label: 'Thank you',       headline: (n) => `Thank you, ${n}`,             line: (n) => `A thank-you song for ${n}` },
   in_memory:       { group: 'Support',      label: 'In memory',       headline: (n) => `In loving memory of ${n}`,    line: (n) => `A song in memory of ${n}` },
   just_because:    { group: null,           label: 'Just because',   headline: (n) => `This one's for you, ${n}`,    line: (n) => `A song for ${n}, just because` },
-  other:           { group: null,           label: 'Something else', headline: (n) => `This one's for you, ${n}`,    line: (n, other) => `A song for ${n}: ${other || ''}` },
+  // LISTEN-1: trim a trailing ./!/? from the free-typed text so this line
+  // never ends in its own terminal punctuation -- every caller appends a
+  // period (or ": \"quoted snippet\".") straight after it, and this is the
+  // one piece of raw user input flowing into that, so it is the one place
+  // that has to guarantee no ": ." (empty box) or ".." (user typed a
+  // period) ever results. Empty box: no colon at all, just the name.
+  other:           { group: null,           label: 'Something else', headline: (n) => `This one's for you, ${n}`,
+                      line: (n, other) => {
+                        const t = (other || '').trim().replace(/[.!?]+$/, '');
+                        return t ? `A song for ${n}: ${t}` : `A song for ${n}`;
+                      } },
 };
 function dedHeadline(occasion, name){
   const def = DED_OCCASION[occasion];
@@ -6089,6 +6051,7 @@ function openDedicateModalForSong(s){
   document.getElementById('dedicate-occasion-other').value = '';
   document.getElementById('dedicate-occasion-other').hidden = true;
   document.getElementById('dedicate-message').value = '';
+  dedUpdateCounter();
   document.getElementById('dedicate-anonymous').checked = false;
   document.getElementById('dedicate-err').hidden = true;
   document.getElementById('dedicate-submit').disabled = false;
@@ -6115,6 +6078,16 @@ function dedUpdatePreview(){
   document.getElementById('dedicate-preview').textContent = `${line}. ${senderLine}.`;
   document.getElementById('dedicate-message').placeholder = dedMessagePlaceholder(occasion, recipient);
 }
+// LISTEN-1: the actual typed length only -- .value, never the placeholder
+// (a textarea's placeholder is never part of .value, so this was never at
+// risk from that; the real bug was the counter being left stale from
+// whatever it last said, since nothing reset it when the sheet reopens
+// with the message box cleared). Shared by the input listener below and
+// the reset in openDedicateModalForSong.
+function dedUpdateCounter(){
+  const len = document.getElementById('dedicate-message').value.length;
+  document.getElementById('dedicate-counter').textContent = `${280 - len} characters left`;
+}
 
 (function(){
   const modal = document.getElementById('dedicate-modal');
@@ -6133,11 +6106,7 @@ function dedUpdatePreview(){
   occasionOther.addEventListener('input', dedUpdatePreview);
   document.getElementById('dedicate-anonymous').addEventListener('change', dedUpdatePreview);
 
-  const msgEl = document.getElementById('dedicate-message');
-  const counterEl = document.getElementById('dedicate-counter');
-  msgEl.addEventListener('input', () => {
-    counterEl.textContent = `${280 - msgEl.value.length} characters left`;
-  });
+  document.getElementById('dedicate-message').addEventListener('input', dedUpdateCounter);
 
   function showDedErr(text){
     const el = document.getElementById('dedicate-err');
@@ -6149,7 +6118,7 @@ function dedUpdatePreview(){
     const recipient = document.getElementById('dedicate-recipient').value.trim();
     const occasion = occasionSel.value;
     const other = occasionOther.value.trim();
-    const message = msgEl.value.trim();
+    const message = document.getElementById('dedicate-message').value.trim();
     const anonymous = document.getElementById('dedicate-anonymous').checked;
     showDedErr('');
     if(!recipient){ showDedErr('Please say who this is for.'); return; }
@@ -6361,9 +6330,17 @@ function showPage(next){
   if(uploadRoot) uploadRoot.classList.toggle('hidden', next !== 'upload');
   if(artistRoot) artistRoot.classList.toggle('hidden', next !== 'artist');
   if(dedicationRoot) dedicationRoot.classList.toggle('hidden', next !== 'dedication');
+  // LISTEN-1: artist/dedication/settings/upload render into an otherwise
+  // bare root, so they borrow the shared #route-header -- / and /listen
+  // keep their own topbar/home-header and never show this one.
+  const routeHeader = document.getElementById('route-header');
+  const HEADERLESS_ROUTES = ['artist', 'dedication', 'settings', 'upload'];
+  if(routeHeader) routeHeader.classList.toggle('hidden', !HEADERLESS_ROUTES.includes(next));
   // HOME-1: the ticker band is a sibling of every route's own root, not
-  // nested in one, so it needs its own show/hide here.
-  if(next === 'home' || next === 'listen') startTicker(); else stopTicker();
+  // nested in one, so it needs its own show/hide here. LISTEN-1: shown on
+  // the same routes as #route-header, for the same "same chrome as the
+  // rest of the site" reason, plus home/listen which already had it.
+  if(next === 'home' || next === 'listen' || HEADERLESS_ROUTES.includes(next)) startTicker(); else stopTicker();
   if(next === 'artist'){
     renderArtistPage(artistHandleFromPath());
   } else if(next === 'dedication'){

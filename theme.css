@@ -159,6 +159,21 @@
   color-scheme:light;
 }
 
+/* LISTEN-1: every native <select>'s OPENED dropdown, in all 8 theme x
+   lighting combinations (option/optgroup are not covered by the :root
+   color-scheme above on their own in every browser, which is how a select
+   ends up white text on a white/light native popup over a dark theme --
+   "white on white"). color-scheme set directly on the control, PLUS the
+   theme's own solid, opaque surface + text tokens on option/optgroup
+   (including the optgroup label itself) -- the one thing every browser's
+   native dropdown reliably honors regardless of color-scheme support. */
+select{color-scheme:dark;}
+[data-theme="light"] select{color-scheme:light;}
+/* Only option/optgroup -- not select itself, which keeps whatever closed-
+   state background each page already gives it (.lv-input, .sort-select,
+   admin's own field styles, ...). This is purely about the opened list. */
+option, optgroup{background-color:var(--bg-2); color:var(--text);}
+
 /* ---- Backgrounds + text: color theme x lighting ---- */
 /* :root doubles as the Bordeaux-dark fallback if JS is disabled. */
 :root,

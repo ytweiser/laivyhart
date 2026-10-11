@@ -260,6 +260,35 @@ over a narrower range.
   out, and that the switch itself still works if ever turned back off; plus
   a static sweep confirming the old "we pick three" wording is gone from
   `your-song.html`, `admin.html` and `middleware.js`.
+- `specs/now-playing-layout.spec.mjs` (LISTEN-1): the now-playing panel's
+  reordered layout -- progress, prev/play/next, heart then words/music
+  stars, Dedicate+Share, Dedications strip, all above the lyrics now; the
+  lyrics are no longer a fixed-height, internally-scrolling box (the old
+  drag handle is gone entirely); nothing inside the panel has its own
+  vertical scroller; the comments are reachable by scrolling the page; and
+  the language toggle still sits with the lyrics heading.
+- `specs/site-header.spec.mjs` (LISTEN-1): the shared `#route-header` +
+  ticker band for the routes that used to render into a bare root with no
+  header at all (`/artist/:handle`, `/d/:code`, `/settings`, `/upload`),
+  each with a Home link that actually navigates; confirms `/` and `/listen`
+  still use their own existing header and never double up; and the
+  `/listen` list header's Radio + Mood radio (left/first, filled/prominent)
+  vs. Songs/Playlists (right/quieter) at 1280 and 390.
+- `specs/select-contrast.spec.mjs` (LISTEN-1): every native `<select>`'s
+  opened dropdown ("white on white") -- color-scheme set on the control and
+  option/optgroup contrast (background vs. text, including the optgroup
+  label) checked live via `getComputedStyle` across all 8 color x lighting
+  combinations, each required to clear 4.5:1 (worst case printed to the
+  console: gold-light, ~12.7:1 at the time this was written).
+- Dedication preview/counter fixes (LISTEN-1) live inside the specs that
+  already owned that surface rather than a new file:
+  `dedicate.spec.mjs` ("Something else" preview clean when empty/filled/
+  typed-with-trailing-punctuation; the message counter showing 280 on an
+  empty box, the real typed length after typing/deleting, unaffected by
+  switching occasion, and reset -- not stale -- on reopening),
+  `dedication-occasions.spec.mjs` (the same fix at the `dedLine()` level,
+  directly), and `middleware.spec.mjs` (the SSR `og:description` for the
+  same empty-box case).
 
 ## Adding a scenario
 
