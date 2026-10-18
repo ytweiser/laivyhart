@@ -1,0 +1,41 @@
+# DEPLOY-1: deploy the Cloudflare Worker (worker/) on every push to main that
+# touches it, or by hand from the Actions tab. Deploy only: this workflow
+# never sets, lists or overwrites a Worker secret; those live in Cloudflare
+# and survive a deploy.
+name: Deploy Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # wrangler 4.151.1 declares engines.node >=22.0.0.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install
+        working-directory: worker
+        run: npm ci
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: worker
+          wranglerVersion: '4.151.1'
+          command: deploy

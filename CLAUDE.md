@@ -18,3 +18,10 @@ Dropping and recreating a function resets its grants; re-apply them.
 Add anon-callable functions to `tests/sql/anon-allowlist.txt` with a
 one-line reason, in the same commit that grants it -- `grants-audit.spec.mjs`
 fails the suite otherwise.
+
+## Deployment
+
+The Worker deploys automatically through GitHub Actions (Deploy Worker) on
+push to main when worker/ changes. Do not run npx wrangler deploy by hand
+unless the Action fails. Worker secrets are still set only by Tzvi in his own
+terminal, never through Claude Code.

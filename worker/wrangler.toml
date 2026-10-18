@@ -1,6 +1,7 @@
 name = "laivyhart-audio-upload"
 main = "src/index.js"
 compatibility_date = "2026-09-03"
+account_id = "399263609ac9eaa37ce64dd7ded3d1b9"
 
 # Bind the existing R2 bucket. `AUDIO_BUCKET` is how the Worker code refers to
 # it; `bucket_name` must match the real bucket in your Cloudflare account.

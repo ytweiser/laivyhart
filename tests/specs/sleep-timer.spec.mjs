@@ -18,6 +18,13 @@ import { newPage, collectErrors } from '../lib/browser.mjs';
 import { wireSupabaseStubs } from '../lib/stub-supabase.mjs';
 import { makeReporter } from '../lib/report.mjs';
 import * as F from '../fixtures.mjs';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { loadWorker } from '../lib/load-worker.mjs';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const ACTIVITY_URL = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev/event';
 
 const AUDIO_HOST = 'audio.test';
 function silentWav(secs) {
@@ -84,6 +91,7 @@ export async function run(browser, port) {
   await scenarioPausedAtTime(browser, port, r);
   await scenarioEndOfSong(browser, port, r);
   await scenarioContrast(browser, port, r);
+  await scenarioEventsEndToEnd(browser, port, r);
   return r;
 }
 
@@ -336,6 +344,66 @@ async function scenarioContrast(browser, port, r) {
         bad.length === 0 && res.length === 8 && onCount >= 2, JSON.stringify(bad));
     }
   }
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+/* DEPLOY-1: the real js/activity.js -> the real Worker POST /event handler
+   (worker/src/index.js, loaded into Node) -> the rows it would insert,
+   checked against the newest activity_events_event_type_check in sql/. The
+   one network hop that would leave the sandbox (the insert) is a stub. This
+   page alone clears laivy-no-track, as activity.spec.mjs does, so the
+   client really sends. */
+function newestConstraintTypes() {
+  const files = readFileSync(join(ROOT, 'sql', '030_sleep_timer_events.sql'), 'utf8');
+  const m = files.match(/check \(event_type = any \(array\[([\s\S]*?)\]\)\)/);
+  return m ? [...m[1].matchAll(/'([a-z0-9_]+)'/g)].map((x) => x[1]) : [];
+}
+async function scenarioEventsEndToEnd(browser, port, r) {
+  r.section('sleep events end to end: client -> Worker /event -> insert rows (unknown type still dropped)');
+  const W = await loadWorker();
+  const inserted = [];
+  const fetchImpl = async (url, opts) => { inserted.push(...JSON.parse(opts.body)); return { ok: true, text: async () => '[]' }; };
+  const { page, errors } = await setup(browser);
+  await page.addInitScript(() => { try { localStorage.removeItem('laivy-no-track'); } catch (e) {} });
+  await page.route(ACTIVITY_URL, async (route) => {
+    const req = route.request();
+    const wreq = new Request(ACTIVITY_URL, { method: 'POST', headers: req.headers(), body: req.postData() || '' });
+    // Jerusalem, as Cloudflare would describe the visitor (no IP anywhere).
+    Object.defineProperty(wreq, 'cf', { value: { city: 'Jerusalem', region: 'Jerusalem', country: 'IL', latitude: '31.78', longitude: '35.22' } });
+    const waits = [];
+    const res = await W.handleActivityEvent(wreq, { SUPABASE_SERVICE_ROLE_KEY: 'svc' }, { waitUntil: (p) => waits.push(p) }, fetchImpl);
+    await Promise.all(waits);
+    await route.fulfill({ status: res.status });
+  });
+  await page.goto(`http://localhost:${port}/listen`, { waitUntil: 'load' });
+  await page.waitForSelector('#rows .row', { timeout: 10000 });
+  await page.waitForFunction(() => window.laivy && window.laivy.activity && window.laivy.activity.log, null, { timeout: 10000 });
+  await page.click('#station-row [data-station="all"]');
+  await page.waitForFunction(() => mode === 'radio' && currentIdx !== null && !audioEl.paused, null, { timeout: 10000 });
+  await pick(page, 'end_of_song');
+  await page.waitForFunction(() => sleepTimer === null && audioEl.paused, null, { timeout: 10000 });
+  await page.evaluate(() => window.laivy.activity.log('not_a_real_type', { meta: { x: 1 } }));
+  await page.evaluate(() => window.laivy.activity.flush(false));
+  const set = inserted.filter((x) => x.event_type === 'sleep_timer_set');
+  const fired = inserted.filter((x) => x.event_type === 'sleep_timer_fired');
+  r.check('sleep_timer_set reaches the insert with its option', set.length === 1 && set[0].meta.option === 'end_of_song', JSON.stringify(set));
+  r.check('sleep_timer_fired reaches the insert with option and action', fired.length === 1
+    && fired[0].meta.option === 'end_of_song' && fired[0].meta.action === 'pause', JSON.stringify(fired));
+  r.check('an unknown event type is still dropped by the Worker', !inserted.some((x) => x.event_type === 'not_a_real_type')
+    && inserted.length > 2, inserted.map((x) => x.event_type).join());
+  const row = fired[0] || {};
+  r.check('same rules as other events: a device id, anonymous (no account), session id', typeof row.device_id === 'string' && row.device_id.length > 0
+    && row.user_id === null && !!row.session_id, JSON.stringify(row));
+  r.check('city-level location only: no IP, no coordinates in the row', !('ip' in row) && !('latitude' in row) && !('longitude' in row)
+    && /Jerusalem/.test(row.display_city || ''), JSON.stringify(row));
+  const allowed = newestConstraintTypes();
+  r.check('sql/030 allows both sleep events and not the unknown one', allowed.includes('sleep_timer_set') && allowed.includes('sleep_timer_fired')
+    && !allowed.includes('not_a_real_type'), allowed.join());
+  r.check('every row the Worker would insert passes the database constraint', inserted.every((x) => allowed.includes(x.event_type)),
+    inserted.map((x) => x.event_type).filter((t) => !allowed.includes(t)).join());
+  r.check('every Worker-allowed type is allowed by the database', W.ACTIVITY_EVENT_TYPES.every((t) => allowed.includes(t)),
+    W.ACTIVITY_EVENT_TYPES.filter((t) => !allowed.includes(t)).join());
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }

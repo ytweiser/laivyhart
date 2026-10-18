@@ -258,7 +258,7 @@ export const ACTIVITY_EVENT_TYPES = [
   'page_view', 'play_start', 'play_25', 'play_50', 'play_75', 'play_complete',
   'heart', 'unheart', 'rate', 'comment', 'follow', 'unfollow', 'share', 'search',
   'sign_in', 'sign_up', 'upload_submit', 'dedication', 'idea_submit', 'idea_heart',
-  'profile_view',
+  'profile_view', 'sleep_timer_set', 'sleep_timer_fired',
 ];
 const ACTIVITY_EVENT_TYPE_SET = new Set(ACTIVITY_EVENT_TYPES);
 

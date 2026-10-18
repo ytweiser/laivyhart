@@ -4801,15 +4801,16 @@ function setSleep(key){
   if(sleepTimer.deadline) sleepTick = setInterval(checkSleep, 1000);
   paintSleep();
 }
-// Time is up (or this song ended, for end_of_song).
-function fireSleep(){
+// Time is up (or this song ended, for end_of_song: atEnd, when the element
+// already reads paused although the music was playing until now).
+function fireSleep(atEnd){
   const t = sleepTimer;
   if(!t) return;
-  const playing = !audioEl.paused;
+  const playing = !!atEnd || !audioEl.paused;
   const fade = playing && !!t.deadline && volumeIsSettable();
   logActivity('sleep_timer_fired', { meta: { option: t.key, action: !playing ? 'none' : fade ? 'fade' : 'pause' } });
   if(!fade){
-    if(playing) audioEl.pause();
+    if(!audioEl.paused) audioEl.pause();
     clearSleep();
     return;
   }
@@ -4835,7 +4836,7 @@ function checkSleep(){
 // queue moves on. Returns true when it did.
 function sleepAtTrackEnd(){
   if(!sleepTimer || sleepTimer.deadline) return false;
-  fireSleep();
+  fireSleep(true);
   setPlayIcon(false); setAmbientPlaying(false);
   return true;
 }
