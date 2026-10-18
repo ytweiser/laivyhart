@@ -26,7 +26,8 @@
    UPLOAD_TOKEN is never involved and a contributor never holds it.
    ============================================================ */
 import { supabase, refreshArtist } from './auth.js';
-import { compressImage, readAudioDuration, makeShareImage } from './media-utils.js';
+import { readAudioDuration, makeShareImage } from './media-utils.js';
+import { compressPicture, readyLabel, COVER_MAX_SIDE } from './image-compress.js';
 
 const R2_UPLOAD_URL = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
 const AUDIO_MAX_BYTES = 20 * 1024 * 1024;         // mirrors the Worker
@@ -39,7 +40,11 @@ const esc = (v) => String(v == null ? '' : v)
 let CHANNELS = [];
 let current = null;          // the song being edited, or a blank
 let pendingAudio = null;
+// IMG-1: the cover as it will be sent, prepared the moment it is picked:
+// { blob, name, bytes, width, height, bitmap } (bitmap = the upright source,
+// kept for the share copy). Never the original file.
 let pendingCover = null;
+let coverPrep = null;        // the in-flight compression, awaited by a save
 let lastReason = null;
 let audioName = null;        // the original name of a file uploaded this session
 let pendingAudioDur = null;  // read from the pending File as soon as it is picked
@@ -213,7 +218,8 @@ export async function saveSong(mode, form, hooks) {
   // PLAY-1: which share image this save should (re)make, if any: the new
   // cover; the theme plate when the song has no cover (its title may have
   // changed); nothing when an existing cover is untouched.
-  const ogSource = pendingCover ? pendingCover : (!song.cover_url ? null : undefined);
+  if (coverPrep) { try { await coverPrep; } catch (e) { /* its error is already on the field */ } }
+  const ogSource = pendingCover ? pendingCover.bitmap : (!song.cover_url ? null : undefined);
 
   // 2. Upload. Media first: a failed upload must not leave a half-saved row
   //    behind, and on Submit it must not transition anything.
@@ -232,9 +238,8 @@ export async function saveSong(mode, form, hooks) {
     }
     if (pendingCover) {
       kind = 'cover';
-      let blob = pendingCover, ctype = 'image/jpeg';
-      try { const c = await compressImage(pendingCover, 1600, 0.82); if (c) blob = c; }
-      catch (e) { /* send the original if compression fails */ }
+      // Already compressed when it was picked (IMG-1).
+      const blob = pendingCover.blob, ctype = 'image/jpeg';
       const meta = { name: pendingCover.name, size: blob.size };
       progress('cover', { ...meta, loaded: 0, total: blob.size });
       song.cover_url = await uploadMedia('cover', blob, ctype,
@@ -398,12 +403,12 @@ function platePreviewHTML(title) {
 function coverCardHTML(title) {
   const pending = !!pendingCover;
   if (!pending && !current.cover_url) return '';
-  const src = pending ? objUrl(pendingCover) : current.cover_url;
+  const src = pending ? objUrl(pendingCover.blob) : current.cover_url;
   return `<div class="u-file-card is-cover" data-state="${pending ? 'pending' : 'uploaded'}">
       <img class="u-cover-thumb" src="${esc(src)}" alt="">
       <div class="u-file-main">
         <div class="u-file-name">${esc(pending ? pendingCover.name : 'Cover image')}</div>
-        <div class="u-file-state">${pending ? 'Ready to upload' : 'Uploaded ✓'}</div>
+        <div class="u-file-state">${pending ? esc(readyLabel(pendingCover.bytes)) : 'Uploaded ✓'}</div>
         <div class="u-progress" hidden><div class="u-progress-fill"></div></div>
       </div>
       <button type="button" class="u-replace">Replace</button>
@@ -647,7 +652,7 @@ export async function renderUploadPage(container, songId) {
     card.innerHTML = attached ? html
       : `<div class="u-plate-row">${platePreviewHTML($('#u-title').value)}</div>`;
     $('#u-cover').hidden = attached && !replacing.cover;
-    $('#u-cover-status').textContent = pendingCover ? 'Resized and uploaded when you save or submit.'
+    $('#u-cover-status').textContent = pendingCover ? 'Uploads when you save or submit.'
       : attached ? '' : 'Without one, your song gets a coloured plate with its name on it.';
     if (attached) card.querySelector('.u-replace').addEventListener('click', () => reveal('cover'));
   };
@@ -701,12 +706,28 @@ export async function renderUploadPage(container, songId) {
     });
   });
 
+  // IMG-1: compressed right away, so the preview and the size shown are
+  // exactly what will be sent.
   $('#u-cover').addEventListener('change', (e) => {
     const f = e.target.files[0] || null;
     if (!f) return;
-    revokeFor(pendingCover);
-    pendingCover = f; replacing.cover = false;
-    paintCover();
+    const box = $('#u-err-cover');
+    if (box) { box.hidden = true; box.textContent = ''; }
+    $('#u-cover-status').textContent = 'Preparing…';
+    const prep = compressPicture(f, { maxSide: COVER_MAX_SIDE });
+    coverPrep = prep;
+    prep.then((out) => {
+      if (coverPrep !== prep) return;          // a newer pick replaced this one
+      if (pendingCover) revokeFor(pendingCover.blob);
+      pendingCover = { ...out, name: f.name };
+      replacing.cover = false;
+      paintCover();
+    }, (err) => {
+      if (coverPrep !== prep) return;
+      putFieldError('cover', (err && err.message) || 'Could not read that picture.');
+      $('#u-cover-status').textContent = '';
+      e.target.value = '';
+    }).finally(() => { if (coverPrep === prep) coverPrep = null; });
   });
 
   const busyEls = () => [...container.querySelectorAll('.u-actions button, input[type=file], .u-replace')];

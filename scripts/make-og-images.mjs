@@ -196,7 +196,7 @@ async function main() {
     for (const r of ok) {
       execFileSync('npx', ['wrangler', 'r2', 'object', 'put', `${BUCKET}/og/${r.id}.jpg`,
         '--file', r.file, '--content-type', 'image/jpeg',
-        '--cache-control', 'public, max-age=86400'],
+        '--cache-control', 'public, max-age=86400', '--remote'],
       { cwd: join(root, 'worker'), stdio: ['ignore', 'ignore', 'inherit'] });
       up++;
       process.stdout.write(`\r[og] uploaded ${up}/${ok.length}`);

@@ -210,6 +210,15 @@ over a narrower range.
 - `specs/worker-og-upload.spec.mjs` (PLAY-1): the Worker's
   `/upload/cover?og_for=<song-id>`: own song only, uuid only, 200 KB cap,
   plain cover uploads unchanged.
+- `specs/image-compress.spec.mjs` (IMG-1): `js/image-compress.js` and every
+  picture upload. A >3 MB test photo stored sideways (EXIF orientation 6) with
+  a GPS block comes out upright, under 300 KB, longest side 1200, with no
+  EXIF/XMP/IPTC; a small picture is not enlarged; the avatar is a 400 px
+  square; HEIC this browser cannot decode, a PDF and a corrupt file get the
+  "isn't supported" message; over 20 MB is refused. The contributor form,
+  the admin song editor and the avatar on My page each show "Ready, N KB"
+  and send that compressed file (decoded and measured at the stubbed Worker),
+  plus the 600x600 og/ copy for covers.
 - `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
   line/sender-line/share-text table in index.html, called directly in-page
   rather than round-tripped through the form 21 times: every occasion's

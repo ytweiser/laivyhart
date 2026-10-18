@@ -14,6 +14,7 @@
    already presents both languages at once.
    ============================================================ */
 import { supabase, signInWithEmail, signInWithGoogle, signOut, refreshArtist, isAdmin, authState } from './auth.js';
+import { compressPicture, readyLabel, AVATAR_MAX_SIDE } from './image-compress.js';
 
 const HANDLE_RE = /^[a-z0-9][a-z0-9_-]{2,29}$/;
 
@@ -524,34 +525,14 @@ function showOnboarding() {
 /* ---------------- avatar ---------------- */
 
 const WORKER_BASE = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
-const AVATAR_PX = 512;
+const AVATAR_PX = AVATAR_MAX_SIDE;
+let lastAvatarReady = '';   // "Ready, 38 KB" for the last photo sent; survives the re-render a save causes
 
-/* Same shape as admin.html's compressImage, with one difference that matters:
-   an avatar is round, so this CENTER-CROPS to a square first and then scales,
-   rather than fitting the long side and leaving a non-square image that CSS
-   would crop unpredictably. Canvas-based, so it only runs in a browser. */
-export function compressAvatar(file, px = AVATAR_PX, quality = 0.85) {
-  return new Promise((resolve, reject) => {
-    if (!file || !/^image\//.test(file.type || '')) { reject(new Error('That is not an image.')); return; }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const w = img.naturalWidth, h = img.naturalHeight;
-      if (!w || !h) { reject(new Error('Could not read that image.')); return; }
-      const side = Math.min(w, h);                 // the square we take from the source
-      const sx = Math.round((w - side) / 2);
-      const sy = Math.round((h - side) / 2);
-      const canvas = document.createElement('canvas');
-      canvas.width = px; canvas.height = px;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, px, px);   // JPEG has no alpha
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, px, px);
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not encode that image.')), 'image/jpeg', quality);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not open that image.')); };
-    img.src = url;
-  });
+/* IMG-1: through the shared helper (js/image-compress.js): upright, and
+   center-cropped square because an avatar is shown round, at most 400 px,
+   JPEG under 300 KB with no metadata. */
+export async function compressAvatar(file) {
+  return compressPicture(file, { maxSide: AVATAR_MAX_SIDE, square: true });
 }
 
 /* The access token is read at click time, never from a render path, so it is
@@ -600,9 +581,21 @@ function wireAvatar(root, artist) {
   input.addEventListener('change', async () => {
     const file = input.files && input.files[0];
     if (!file) return;
-    err.hidden = true; btn.disabled = true; btn.textContent = 'Uploading...';
+    err.hidden = true; btn.disabled = true; btn.textContent = 'Preparing...';
+    const sizeEl = root.querySelector('[data-avatar-size]');
+    if (sizeEl) sizeEl.textContent = '';
     try {
-      const blob = await compressAvatar(file);
+      const out = await compressAvatar(file);
+      const blob = out.blob;
+      // Show what is being sent before it goes.
+      const prevEl = root.querySelector('[data-prev]');
+      if (prevEl) {
+        const u = URL.createObjectURL(blob);
+        prevEl.outerHTML = `<img class="lv-avatar-prev" data-prev src="${esc(u)}" alt="">`;
+      }
+      lastAvatarReady = readyLabel(out.bytes);
+      if (sizeEl) sizeEl.textContent = lastAvatarReady;
+      btn.textContent = 'Uploading...';
       const url = await postAvatar(blob);
       const { error } = await supabase.from('artists').update({ avatar_url: url }).eq('id', artist.id);
       if (error) throw new Error(error.message);
@@ -640,6 +633,7 @@ export function renderSettings(container) {
         <div>
           <button class="lv-btn outlined" type="button" data-act="avatar" style="width:auto;margin-top:0;">Change photo</button>
           <p class="lv-hint">A square photo works best. It is resized to ${AVATAR_PX}px.</p>
+          <p class="lv-hint" data-avatar-size>${esc(lastAvatarReady)}</p>
         </div>
       </div>
       <input type="file" accept="image/*" data-avatar-file hidden>

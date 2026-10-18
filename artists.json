@@ -105,6 +105,12 @@
         "threshold": 50
       },
       {
+        "song_id": "5647c338-0aee-4472-8e35-44dad08c5477",
+        "track": "plays",
+        "tier": 1,
+        "threshold": 50
+      },
+      {
         "song_id": "f1a18aad-35ee-4c86-b7fe-7a8bdb3a004a",
         "track": "plays",
         "tier": 1,
@@ -112,12 +118,6 @@
       },
       {
         "song_id": "c6272ed4-8f13-4fa3-9715-34923d16ebb6",
-        "track": "plays",
-        "tier": 1,
-        "threshold": 50
-      },
-      {
-        "song_id": "5647c338-0aee-4472-8e35-44dad08c5477",
         "track": "plays",
         "tier": 1,
         "threshold": 50
