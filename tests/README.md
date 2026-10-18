@@ -229,6 +229,18 @@ over a narrower range.
   reduced-motion form; the mini-player's "Radio · <mood>"; a 375 px screen
   (one sideways-scrolling line, fade, search box on screen); and 4.5:1 text
   contrast for every station button in all 4 colors x light/dark.
+- `specs/sleep-timer.spec.mjs` (SLEEP-1): the sleep timer, on Playwright's
+  fake clock. Once paused, no setTimeout/setInterval fires at all (a phone
+  throttling every timer), so anything that still fires on time did so from
+  the audio's own timeupdate events. Every option's deadline and label, Off
+  shown only while running, Off cancels, a new pick replaces the old, a
+  reload clears it; the mini-player's moon and time left; time up fading
+  over ~10s then pausing with the volume put back (and a hand pause
+  mid-fade); the iPhone case (volume writes ignored: pause at the time, no
+  fade); time up while paused (only the timer clears); End of this song
+  stopping both radio and a Play all queue; Autoplay never touched; the
+  sleep_timer_set/sleep_timer_fired calls; and 4.5:1 contrast for every
+  sleep control in all 4 colors x light/dark.
 - `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
   line/sender-line/share-text table in index.html, called directly in-page
   rather than round-tripped through the form 21 times: every occasion's

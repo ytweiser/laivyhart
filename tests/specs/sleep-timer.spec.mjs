@@ -1,0 +1,341 @@
+/* ============================================================
+   SLEEP-1 -- the sleep timer.
+
+   Songs get a stubbed 3s silent WAV (as in stations.spec.mjs) so radio and
+   queues really play and really end. Time is Playwright's fake clock: once
+   paused, Date.now() only moves when the test says so and no setTimeout or
+   setInterval fires at all -- the "phone throttled every timer" case -- so
+   anything that still fires on time did so from the audio's own timeupdate
+   events. Covers: every option's deadline and label, Off shown only while
+   running, Off cancels, a new pick replaces the old, the mini-player's moon,
+   time up fading (Chromium can set volume) then pausing with the volume put
+   back, the iPhone case (volume writes ignored: pause at the time, no fade),
+   time up while paused (only the timer clears), End of this song stopping
+   both radio and a Play all queue, Autoplay never touched, the analytics
+   events, and contrast of every sleep control in 4 colors x 2 lightings.
+   ============================================================ */
+import { newPage, collectErrors } from '../lib/browser.mjs';
+import { wireSupabaseStubs } from '../lib/stub-supabase.mjs';
+import { makeReporter } from '../lib/report.mjs';
+import * as F from '../fixtures.mjs';
+
+const AUDIO_HOST = 'audio.test';
+function silentWav(secs) {
+  const rate = 8000, n = Math.round(rate * secs);
+  const b = Buffer.alloc(44 + n, 0x80);
+  b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVE', 8);
+  b.write('fmt ', 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24); b.writeUInt32LE(rate, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34);
+  b.write('data', 36); b.writeUInt32LE(n, 40);
+  return b;
+}
+const WAV = silentWav(3);
+const SONGS = F.SONGS_ROWS.map((s) => ({ ...s, audio_url: `https://${AUDIO_HOST}/${s.id}.wav` }));
+const MIN = 60000;
+
+async function setup(browser, opts) {
+  opts = opts || {};
+  const page = await newPage(browser, opts.viewport);
+  const errors = collectErrors(page);
+  await wireSupabaseStubs(page, { songs: SONGS });
+  await page.route(`**://${AUDIO_HOST}/**`, (r) => r.fulfill({ status: 200, contentType: 'audio/wav', body: WAV }));
+  if (opts.clock) await page.clock.install();
+  return { page, errors };
+}
+// /listen with radio playing (RADIO station), activity calls captured.
+async function openPlaying(page, port) {
+  await page.goto(`http://localhost:${port}/listen`, { waitUntil: 'load' });
+  await page.waitForSelector('#rows .row', { timeout: 10000 });
+  await page.waitForFunction(() => document.querySelectorAll('#station-row [data-station]').length > 1, null, { timeout: 10000 });
+  await page.waitForFunction(() => window.laivy && window.laivy.activity && window.laivy.activity.log, null, { timeout: 10000 });
+  await page.evaluate(() => {
+    window.__acts = [];
+    window.laivy.activity.log = (type, opts) => { window.__acts.push({ type, opts: opts || {} }); };
+  });
+  await page.click('#station-row [data-station="all"]');
+  await page.waitForFunction(() => mode === 'radio' && currentIdx !== null && !audioEl.paused, null, { timeout: 10000 });
+}
+// Fake clock: stop time (no timers fire from here on) and return "now".
+async function freeze(page) {
+  const now = await page.evaluate(() => Date.now());
+  await page.clock.pauseAt(now + 1000);
+  return now + 1000;
+}
+async function pick(page, key, opener) {
+  await page.click(opener || '#sleep-btn');
+  await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
+  await page.click(`#sleep-panel-row [data-sleep="${key}"]`);
+}
+const btnText = (page) => page.evaluate(() => document.getElementById('sleep-btn-text').textContent);
+const state = (page) => page.evaluate(() => ({
+  timer: sleepTimer && { ...sleepTimer }, fading: !!sleepFade, paused: audioEl.paused, vol: audioEl.volume,
+  autoplay: autoplayOn, sw: document.getElementById('autoplay-switch').checked, idx: currentIdx, mode,
+}));
+const acts = (page, type) => page.evaluate((t) => window.__acts.filter((x) => x.type === t).map((x) => x.opts.meta), type);
+// One audio timeupdate, the real one from the playing element.
+const nextTimeupdate = (page) => page.evaluate(() => new Promise((res) => audioEl.addEventListener('timeupdate', () => res(), { once: true })));
+
+export async function run(browser, port) {
+  const r = makeReporter('sleep-timer.spec.mjs');
+  await scenarioOptions(browser, port, r);
+  await scenarioMini(browser, port, r);
+  await scenarioFade(browser, port, r);
+  await scenarioNoVolume(browser, port, r);
+  await scenarioPausedAtTime(browser, port, r);
+  await scenarioEndOfSong(browser, port, r);
+  await scenarioContrast(browser, port, r);
+  return r;
+}
+
+async function scenarioOptions(browser, port, r) {
+  r.section('the menu: every option sets its deadline and label; Off; replacing');
+  const { page, errors } = await setup(browser, { clock: true });
+  await openPlaying(page, port);
+  r.check('the Sleep button sits next to the Autoplay switch', await page.evaluate(() =>
+    document.querySelector('.autoplay-toggle').nextElementSibling === document.getElementById('sleep-btn')
+      && !!document.querySelector('#sleep-btn svg')));
+  r.check('it says "Sleep" before a timer is set', await btnText(page) === 'Sleep');
+  await page.click('#sleep-btn');
+  await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
+  const menu = await page.evaluate(() => [...document.querySelectorAll('#sleep-panel-row [data-sleep]')].filter((b) => !b.hidden).map((b) => b.textContent));
+  r.check('menu: 15 minutes, 30 minutes, 45 minutes, 1 hour, End of this song (no Off yet)',
+    JSON.stringify(menu) === JSON.stringify(['15 minutes', '30 minutes', '45 minutes', '1 hour', 'End of this song']), JSON.stringify(menu));
+  r.check('...in the station panel\'s sheet with station buttons', await page.evaluate(() =>
+    document.getElementById('sleep-panel').classList.contains('station-panel')
+      && [...document.querySelectorAll('#sleep-panel-row [data-sleep]')].every((b) => b.classList.contains('station-btn'))));
+  await page.keyboard.press('Escape');
+  r.check('Escape closes it', await page.evaluate(() => document.getElementById('sleep-panel').hidden));
+
+  const t0 = await freeze(page);
+  for (const [key, min, label] of [['15', 15, 'Sleep 15:00'], ['30', 30, 'Sleep 30:00'], ['45', 45, 'Sleep 45:00'], ['60', 60, 'Sleep 60:00']]) {
+    await pick(page, key);
+    const s = await state(page);
+    r.check(`${key}: deadline is now + ${min} min, button reads "${label}"`,
+      s.timer && s.timer.key === key && s.timer.deadline === t0 + min * MIN && await btnText(page) === label,
+      JSON.stringify({ s, text: await btnText(page) }));
+    r.check(`${key}: picking closes the menu`, await page.evaluate(() => document.getElementById('sleep-panel').hidden));
+  }
+  r.check('a new choice replaces the old (one timer, the newest)', (await state(page)).timer.key === '60');
+  await page.clock.setSystemTime(t0 + 37 * MIN + 46000);
+  await nextTimeupdate(page);
+  r.check('the label counts down from the clock ("Sleep 22:14" at 37:46 in)', await btnText(page) === 'Sleep 22:14', await btnText(page));
+  r.check('radio keeps playing while the timer runs', !(await state(page)).paused && (await state(page)).mode === 'radio');
+
+  await pick(page, 'end_of_song');
+  let s = await state(page);
+  r.check('End of this song: no deadline, button reads "Sleep: end of song"', s.timer.key === 'end_of_song' && s.timer.deadline === null
+    && await btnText(page) === 'Sleep: end of song', JSON.stringify(s));
+  await page.click('#sleep-btn');
+  const lit = await page.evaluate(() => [...document.querySelectorAll('#sleep-panel-row [data-sleep]')].map((b) => ({ k: b.dataset.sleep, on: b.classList.contains('is-on'), hidden: b.hidden })));
+  r.check('while running, Off is shown and the running choice is filled', lit.find((x) => x.k === 'off' && !x.hidden)
+    && lit.filter((x) => x.on).map((x) => x.k).join() === 'end_of_song', JSON.stringify(lit));
+  await page.click('#sleep-panel-row [data-sleep="off"]');
+  s = await state(page);
+  r.check('Off cancels it, the button is back to "Sleep"', s.timer === null && await btnText(page) === 'Sleep', JSON.stringify(s));
+  await page.click('#sleep-btn');
+  r.check('...and Off is hidden again', await page.evaluate(() => document.querySelector('#sleep-panel-row [data-sleep="off"]').hidden));
+  await page.keyboard.press('Escape');
+  await page.clock.setSystemTime(t0 + 120 * MIN);
+  await nextTimeupdate(page);
+  r.check('a cancelled timer never fires (still playing)', !(await state(page)).paused);
+  r.check('sleep_timer_set logged with each chosen option',
+    JSON.stringify((await acts(page, 'sleep_timer_set')).map((m) => m.option)) === JSON.stringify(['15', '30', '45', '60', 'end_of_song', 'off']),
+    JSON.stringify(await acts(page, 'sleep_timer_set')));
+  r.check('Autoplay untouched', (await state(page)).autoplay === true && (await state(page)).sw === true);
+
+  await pick(page, '30');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#rows .row', { timeout: 10000 });
+  r.check('a reload clears the timer (not remembered)', await page.evaluate(() => sleepTimer === null && document.getElementById('sleep-btn-text').textContent === 'Sleep'));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioMini(browser, port, r) {
+  r.section('mini-player: a small moon with the time left');
+  const { page, errors } = await setup(browser, { clock: true, viewport: { width: 390, height: 844 } });
+  await openPlaying(page, port);
+  const t0 = await freeze(page);
+  await pick(page, '45');
+  await page.evaluate(() => navigate('home'));
+  await page.waitForFunction(() => !document.getElementById('mini-player').classList.contains('hidden'), null, { timeout: 10000 });
+  await page.clock.setSystemTime(t0 + 21 * MIN + 46000);
+  await nextTimeupdate(page);
+  const m = await page.evaluate(() => {
+    const el = document.getElementById('mini-sleep'), rc = el.getBoundingClientRect();
+    const all = [...document.querySelectorAll('#mini-player > *')].filter((x) => x.offsetParent);
+    return { hidden: el.classList.contains('hidden'), moon: !!el.querySelector('svg'), text: el.textContent, right: rc.right,
+      maxRight: Math.max(...all.map((x) => x.getBoundingClientRect().right)), label: el.getAttribute('aria-label') };
+  });
+  r.check('shows the moon with "23:14" left', !m.hidden && m.moon && m.text === '23:14', JSON.stringify(m));
+  r.check('says it to screen readers', m.label === 'Sleep timer: 23:14 left. Change', m.label);
+  r.check('the whole bar (station + moon + buttons) fits 390 px', m.maxRight <= 390, JSON.stringify(m));
+  await page.click('#mini-sleep');
+  await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
+  r.check('tapping it opens the sleep menu', true);
+  await page.click('#sleep-panel-row [data-sleep="end_of_song"]');
+  r.check('End of this song: the moon says "End of song"', await page.evaluate(() => document.getElementById('mini-sleep').textContent) === 'End of song');
+  await page.click('#mini-sleep');
+  await page.click('#sleep-panel-row [data-sleep="off"]');
+  r.check('Off: the moon goes away', await page.evaluate(() => document.getElementById('mini-sleep').classList.contains('hidden')));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioFade(browser, port, r) {
+  r.section('time up (timers frozen): fade over ~10s from timeupdate alone, pause, volume back');
+  const { page, errors } = await setup(browser, { clock: true });
+  await openPlaying(page, port);
+  await page.evaluate(() => { audioEl.volume = 0.8; });
+  const t0 = await freeze(page);
+  await pick(page, '15');
+  await page.clock.setSystemTime(t0 + 15 * MIN - 1000);
+  await nextTimeupdate(page);
+  r.check('one second early: nothing yet', !(await state(page)).fading && !(await state(page)).paused);
+  await page.clock.setSystemTime(t0 + 15 * MIN);
+  await nextTimeupdate(page);
+  let s = await state(page);
+  r.check('at the deadline, with every timer frozen, timeupdate starts the fade', s.fading && !s.paused, JSON.stringify(s));
+  await page.clock.setSystemTime(t0 + 15 * MIN + 5000);
+  await nextTimeupdate(page);
+  s = await state(page);
+  r.check('halfway (5s): about half volume, still playing', !s.paused && Math.abs(s.vol - 0.4) < 0.05, JSON.stringify(s));
+  r.check('radio keeps going during the fade', s.mode === 'radio');
+  await page.clock.setSystemTime(t0 + 15 * MIN + 10000);
+  await nextTimeupdate(page);
+  await page.waitForFunction(() => audioEl.paused, null, { timeout: 3000 });
+  s = await state(page);
+  r.check('after ~10s: paused', s.paused, JSON.stringify(s));
+  r.check('the volume is put back (0.8) so the next play is not silent', Math.abs(s.vol - 0.8) < 0.001, JSON.stringify(s));
+  r.check('the timer cleared itself; the button reads "Sleep"', s.timer === null && !s.fading && await btnText(page) === 'Sleep');
+  r.check('Autoplay untouched', s.autoplay === true && s.sw === true);
+  r.check('sleep_timer_fired logged (option 15, faded)', JSON.stringify(await acts(page, 'sleep_timer_fired')) === JSON.stringify([{ option: '15', action: 'fade' }]),
+    JSON.stringify(await acts(page, 'sleep_timer_fired')));
+
+  // Paused by hand mid-fade: done there, volume back at once.
+  await page.evaluate(() => audioEl.play());
+  await page.waitForFunction(() => !audioEl.paused, null, { timeout: 5000 });
+  const t1 = await page.evaluate(() => Date.now());
+  await pick(page, '30');
+  await page.clock.setSystemTime(t1 + 30 * MIN + 3000);
+  await nextTimeupdate(page);
+  await page.clock.setSystemTime(t1 + 30 * MIN + 6000);
+  await nextTimeupdate(page);
+  await page.evaluate(() => audioEl.pause());
+  await page.waitForFunction(() => sleepTimer === null, null, { timeout: 3000 });
+  s = await state(page);
+  r.check('paused by hand mid-fade: timer clears, volume back to 0.8', s.paused && Math.abs(s.vol - 0.8) < 0.001, JSON.stringify(s));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioNoVolume(browser, port, r) {
+  r.section('iPhone Safari (volume writes ignored, always reads 1): pause at the time, no fade');
+  const { page, errors } = await setup(browser, { clock: true });
+  await openPlaying(page, port);
+  await page.evaluate(() => {
+    Object.defineProperty(audioEl, 'volume', { configurable: true, get: () => 1, set: () => {} });
+  });
+  const t0 = await freeze(page);
+  await pick(page, '30');
+  await page.clock.setSystemTime(t0 + 30 * MIN);
+  await nextTimeupdate(page);
+  await page.waitForFunction(() => audioEl.paused, null, { timeout: 3000 });
+  const s = await state(page);
+  r.check('paused right at the deadline, no fade, timer cleared', s.paused && !s.fading && s.timer === null, JSON.stringify(s));
+  r.check('sleep_timer_fired logged (option 30, paused)', JSON.stringify(await acts(page, 'sleep_timer_fired')) === JSON.stringify([{ option: '30', action: 'pause' }]));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioPausedAtTime(browser, port, r) {
+  r.section('paused by hand: the timer keeps running; at the time only the timer clears');
+  const { page, errors } = await setup(browser, { clock: true });
+  await openPlaying(page, port);
+  const t0 = await freeze(page);
+  await pick(page, '15');
+  await page.evaluate(() => audioEl.pause());
+  await page.waitForFunction(() => audioEl.paused, null, { timeout: 3000 });
+  await page.clock.setSystemTime(t0 + 5 * MIN - 1000);
+  await page.clock.runFor(1000);   // one interval tick, landing on 5:00 in
+  r.check('a hand pause keeps the timer running ("Sleep 10:00")', (await state(page)).timer?.key === '15' && await btnText(page) === 'Sleep 10:00', await btnText(page));
+  const before = await state(page);
+  await page.clock.setSystemTime(t0 + 15 * MIN - 1000);
+  await page.clock.runFor(1000);
+  const s = await state(page);
+  r.check('time up while paused: timer cleared, nothing else (same song, still paused, volume as was)',
+    s.timer === null && s.paused && s.idx === before.idx && s.vol === before.vol && s.mode === 'radio', JSON.stringify(s));
+  r.check('sleep_timer_fired logged (action none)', JSON.stringify(await acts(page, 'sleep_timer_fired')) === JSON.stringify([{ option: '15', action: 'none' }]));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+async function scenarioEndOfSong(browser, port, r) {
+  r.section('End of this song: stops at the end even with radio, or a queue, to continue');
+  for (const kind of ['radio', 'queue']) {
+    const { page, errors } = await setup(browser);
+    if (kind === 'radio') {
+      await openPlaying(page, port);
+    } else {
+      await page.goto(`http://localhost:${port}/artist/nova-ash`, { waitUntil: 'load' });
+      await page.waitForSelector('#artist-playall', { timeout: 10000 });
+      await page.click('#artist-playall');
+      await page.waitForFunction(() => currentIdx !== null && manualQueue && manualQueue.length > 1 && !audioEl.paused, null, { timeout: 10000 });
+      await page.evaluate(() => navigate('listen'));
+      await page.waitForFunction(() => !document.getElementById('play-mode-row').classList.contains('hidden'), null, { timeout: 5000 });
+    }
+    const before = await state(page);
+    const hadNext = await page.evaluate(() => !!nextUp);
+    await pick(page, 'end_of_song');
+    await page.waitForFunction(() => audioEl.ended || (audioEl.paused && sleepTimer === null), null, { timeout: 10000 });
+    await page.waitForFunction(() => sleepTimer === null, null, { timeout: 3000 });
+    // A continuation would have started synchronously inside 'ended'.
+    const s = await state(page);
+    r.check(`[${kind}] something was lined up to continue`, hadNext);
+    r.check(`[${kind}] stopped when the song ended: same song, paused, nothing new started`,
+      s.paused && s.idx === before.idx, JSON.stringify({ before, s }));
+    r.check(`[${kind}] the timer cleared; Autoplay untouched`, s.timer === null && s.autoplay === true && s.sw === true);
+    r.check(`[${kind}] the play button shows play`, await page.evaluate(() => document.getElementById('play-btn').innerHTML.includes('▶')));
+    r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+    await page.close();
+  }
+}
+
+async function scenarioContrast(browser, port, r) {
+  r.section('contrast: the Sleep button, every menu option and the moon, 4 colors x light/dark, set and not');
+  const { page, errors } = await setup(browser);
+  await openPlaying(page, port);
+  await pick(page, '30');
+  await page.click('#sleep-btn');
+  for (const color of ['bordeaux', 'emerald', 'royal', 'gold']) {
+    for (const theme of ['dark', 'light']) {
+      const res = await page.evaluate(({ color, theme }) => {
+        document.documentElement.setAttribute('data-color', color);
+        document.documentElement.setAttribute('data-theme', theme);
+        const parse = (str) => (str.match(/rgba?\([^)]+\)/g) || []).map((c) => c.match(/[\d.]+/g).map(Number));
+        const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+        const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+        const over = (fg, bg) => { const a = fg[3] == null ? 1 : fg[3]; return [0, 1, 2].map((i) => fg[i] * a + bg[i] * (1 - a)); };
+        const rootCs = getComputedStyle(document.documentElement);
+        const hex = (h) => { h = h.trim().replace('#', ''); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
+        const pageBgs = [hex(rootCs.getPropertyValue('--bg')), hex(rootCs.getPropertyValue('--bg-2'))];
+        const out = [];
+        for (const b of document.querySelectorAll('#sleep-panel-row [data-sleep], #sleep-btn, #mini-sleep')) {
+          const cs = getComputedStyle(b);
+          const text = parse(cs.color)[0];
+          let worst = Infinity;
+          const stops = cs.backgroundImage !== 'none' ? parse(cs.backgroundImage) : [parse(cs.backgroundColor)[0]];
+          for (const base of pageBgs) for (const stop of stops) worst = Math.min(worst, ratio(over(text, base), over(stop || [0, 0, 0, 0], base)));
+          out.push({ id: b.dataset.sleep || b.id, on: b.classList.contains('is-on'), ratio: Math.round(worst * 100) / 100 });
+        }
+        return out;
+      }, { color, theme });
+      const bad = res.filter((x) => x.ratio < 4.5);
+      const onCount = res.filter((x) => x.on).length;
+      r.check(`${color}/${theme}: all ${res.length} sleep controls (${onCount} set) at 4.5:1 or better; lowest ${Math.min(...res.map((x) => x.ratio))}`,
+        bad.length === 0 && res.length === 8 && onCount >= 2, JSON.stringify(bad));
+    }
+  }
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}

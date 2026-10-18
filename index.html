@@ -983,6 +983,17 @@
   }
   .mini-station.hidden{display:none;}
   .mini-station:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  /* SLEEP-1: a small moon with the time left while a sleep timer runs; a tap
+     opens the sleep menu. */
+  .mini-sleep{
+    flex:0 0 auto; display:inline-flex; align-items:center; gap:0.25rem; cursor:pointer; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.72rem; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums;
+    background:rgba(var(--accent-2-rgb),0.12); border:1px solid rgba(var(--accent-2-rgb),0.55);
+    border-radius:999px; padding:0.3rem 0.55rem;
+  }
+  .mini-sleep svg{width:0.85rem; height:0.85rem; display:block;}
+  .mini-sleep.hidden{display:none;}
+  .mini-sleep:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .mini-btn{background:none; border:none; cursor:pointer; color:var(--text); width:2.4rem; height:2.4rem; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .mini-btn svg{width:1.4rem; height:1.4rem; fill:currentColor;}
   /* CH-2: this container held the three grouped category pill rows
@@ -1418,6 +1429,19 @@
   .autoplay-toggle input:checked + .autoplay-track{background:var(--accent-solid);}
   .autoplay-toggle input:checked + .autoplay-track .autoplay-knob{left:1.04rem; background:#fff;}
   .autoplay-toggle input:focus-visible + .autoplay-track{outline:2px solid var(--accent-solid); outline-offset:2px;}
+  /* SLEEP-1: the Sleep timer button, next to Autoplay. Outlined like
+     "Change station" (--text on the page), so it clears 4.5:1 the same way;
+     its menu is the station panel's sheet with station buttons in it. */
+  .sleep-btn{
+    display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; white-space:nowrap;
+    background:none; border:1px solid rgba(var(--accent-2-rgb),0.55); border-radius:999px;
+    padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.78rem; font-weight:600; color:var(--text);
+    font-variant-numeric:tabular-nums;
+  }
+  .sleep-btn svg{width:0.95rem; height:0.95rem; display:block; flex-shrink:0;}
+  .sleep-btn:hover{background:rgba(var(--accent-2-rgb),0.14);}
+  .sleep-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  .sleep-btn.is-on{background:rgba(var(--accent-2-rgb),0.12);}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
@@ -1809,6 +1833,8 @@
           <span class="autoplay-track" aria-hidden="true"><span class="autoplay-knob"></span></span>
           <span class="autoplay-text">Autoplay</span>
         </label>
+        <!-- SLEEP-1: stop the music by itself after a while. -->
+        <button class="sleep-btn" id="sleep-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sleep-panel" aria-label="Sleep timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleep-btn-text">Sleep</span></button>
       </div>
 
       <!-- DED-2: the latest dedications of this song, hidden when there are
@@ -2003,6 +2029,7 @@
     <span class="mini-sub" id="mini-sub"></span>
   </button>
   <button class="mini-station hidden" id="mini-station" type="button" aria-haspopup="dialog" aria-controls="station-panel"></button>
+  <button class="mini-sleep hidden" id="mini-sleep" type="button" aria-haspopup="dialog" aria-controls="sleep-panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="mini-sleep-text"></span></button>
   <button class="mini-btn" id="mini-play" type="button" aria-label="Play or pause">&#9654;</button>
   <button class="mini-btn" id="mini-next" type="button" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
 </div>
@@ -2015,6 +2042,16 @@
     <button class="station-panel-close" id="station-panel-close" type="button" aria-label="Close">&times;</button>
   </div>
   <div class="station-row" id="station-panel-row" role="group" aria-label="Radio stations"></div>
+</div>
+
+<!-- SLEEP-1: the sleep timer menu (the Sleep button and the mini-player's
+     moon both open it). The station panel's sheet and buttons. -->
+<div class="station-panel sleep-panel" id="sleep-panel" role="dialog" aria-label="Sleep timer" hidden>
+  <div class="station-panel-head">
+    <span>Sleep timer</span>
+    <button class="station-panel-close" id="sleep-panel-close" type="button" aria-label="Close">&times;</button>
+  </div>
+  <div class="station-row" id="sleep-panel-row" role="group" aria-label="Stop the music after"></div>
 </div>
 
 <div class="picker-overlay hidden" id="picker-overlay">
@@ -4670,6 +4707,199 @@ function paintPlayMode(){
   });
 })();
 
+/* ---------------- SLEEP-1: the sleep timer ----------------
+   15/30/45 minutes, 1 hour, or the end of this song. The deadline is a clock
+   time (Date.now() based), checked by a 1s interval AND on every audio
+   timeupdate, because phones throttle timers in the background but keep
+   firing media events while the music plays. When time is up the music fades
+   over SLEEP_FADE_MS, then pauses and the volume is put back; where the
+   volume can't be set (iPhone Safari: it always reads 1) it just pauses.
+   Radio, queues and Autoplay carry on untouched until then. Not remembered:
+   a reload clears it. */
+const SLEEP_FADE_MS = 10000;
+const SLEEP_OPTIONS = [
+  { key: '15', label: '15 minutes', min: 15 },
+  { key: '30', label: '30 minutes', min: 30 },
+  { key: '45', label: '45 minutes', min: 45 },
+  { key: '60', label: '1 hour', min: 60 },
+  { key: 'end_of_song', label: 'End of this song' },
+  { key: 'off', label: 'Off' },
+];
+let sleepTimer = null;      // { key, deadline } (deadline null for end_of_song)
+let sleepFade = null;       // { start, vol } while fading out
+let sleepTick = null;
+
+// iOS ignores volume writes (it always reads back 1), so test it.
+function volumeIsSettable(){
+  const v = audioEl.volume;
+  try{ audioEl.volume = v > 0.5 ? v - 0.25 : v + 0.25; }catch(e){ return false; }
+  const ok = Math.abs(audioEl.volume - v) > 0.01;
+  try{ audioEl.volume = v; }catch(e){}
+  return ok;
+}
+function sleepLeftText(){
+  if(!sleepTimer) return '';
+  if(!sleepTimer.deadline) return '';
+  const s = Math.max(0, Math.ceil((sleepTimer.deadline - Date.now()) / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+function paintSleep(){
+  const left = sleepLeftText();
+  const end = sleepTimer && !sleepTimer.deadline;
+  const btn = document.getElementById('sleep-btn');
+  if(btn){
+    const t = document.getElementById('sleep-btn-text');
+    const txt = !sleepTimer ? 'Sleep' : end ? 'Sleep: end of song' : 'Sleep ' + left;
+    if(t && t.textContent !== txt) t.textContent = txt;
+    btn.classList.toggle('is-on', !!sleepTimer);
+    btn.setAttribute('aria-label', !sleepTimer ? 'Sleep timer'
+      : end ? 'Sleep timer: stops at the end of this song' : 'Sleep timer: ' + left + ' left');
+  }
+  const mini = document.getElementById('mini-sleep');
+  if(mini){
+    mini.classList.toggle('hidden', !sleepTimer);
+    const t = document.getElementById('mini-sleep-text');
+    const txt = !sleepTimer ? '' : end ? 'End of song' : left;
+    if(t && t.textContent !== txt) t.textContent = txt;
+    mini.setAttribute('aria-label', !sleepTimer ? 'Sleep timer'
+      : end ? 'Sleep timer: end of this song. Change' : 'Sleep timer: ' + left + ' left. Change');
+  }
+  document.querySelectorAll('#sleep-panel-row [data-sleep]').forEach(b => {
+    const k = b.dataset.sleep;
+    const isOn = !!sleepTimer && sleepTimer.key === k;
+    b.classList.toggle('is-on', isOn);
+    b.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+    if(k === 'off') b.hidden = !sleepTimer;
+  });
+}
+function renderSleepOptions(){
+  const row = document.getElementById('sleep-panel-row');
+  if(!row) return;
+  row.innerHTML = SLEEP_OPTIONS.map(o =>
+    `<button class="station-btn" data-sleep="${o.key}" type="button" aria-pressed="false">${escHtml(o.label)}</button>`).join('');
+  paintSleep();
+}
+// Puts the volume back if a fade was under way.
+function stopSleepFade(){
+  if(!sleepFade) return;
+  try{ audioEl.volume = sleepFade.vol; }catch(e){}
+  sleepFade = null;
+}
+function clearSleep(){
+  stopSleepFade();
+  sleepTimer = null;
+  clearInterval(sleepTick); sleepTick = null;
+  paintSleep();
+}
+function setSleep(key){
+  const o = SLEEP_OPTIONS.find(x => x.key === key);
+  if(!o) return;
+  logActivity('sleep_timer_set', { meta: { option: key } });
+  clearSleep();               // a new choice replaces the old; Off just cancels
+  if(key === 'off') return;
+  sleepTimer = { key, deadline: o.min ? Date.now() + o.min * 60000 : null };
+  if(sleepTimer.deadline) sleepTick = setInterval(checkSleep, 1000);
+  paintSleep();
+}
+// Time is up (or this song ended, for end_of_song).
+function fireSleep(){
+  const t = sleepTimer;
+  if(!t) return;
+  const playing = !audioEl.paused;
+  const fade = playing && !!t.deadline && volumeIsSettable();
+  logActivity('sleep_timer_fired', { meta: { option: t.key, action: !playing ? 'none' : fade ? 'fade' : 'pause' } });
+  if(!fade){
+    if(playing) audioEl.pause();
+    clearSleep();
+    return;
+  }
+  sleepFade = { start: Date.now(), vol: audioEl.volume };
+  stepSleepFade();
+}
+function stepSleepFade(){
+  if(!sleepFade) return;
+  const k = (Date.now() - sleepFade.start) / SLEEP_FADE_MS;
+  if(k >= 1){
+    audioEl.pause();
+    clearSleep();             // restores the volume for the next play
+    return;
+  }
+  try{ audioEl.volume = sleepFade.vol * (1 - k); }catch(e){}
+}
+function checkSleep(){
+  if(sleepFade){ stepSleepFade(); return; }
+  if(sleepTimer && sleepTimer.deadline && Date.now() >= sleepTimer.deadline) fireSleep();
+  else paintSleep();
+}
+// The song finished by itself: end_of_song stops here, before radio or a
+// queue moves on. Returns true when it did.
+function sleepAtTrackEnd(){
+  if(!sleepTimer || sleepTimer.deadline) return false;
+  fireSleep();
+  setPlayIcon(false); setAmbientPlaying(false);
+  return true;
+}
+function onTrackDone(){
+  if(sleepAtTrackEnd()) return;
+  handleTrackEnd();   // PLAY-1: queue, then radio, unless Autoplay is off
+}
+
+/* The menu: the station panel's sheet. Opened by the Sleep button and the
+   mini-player's moon; closed by a pick, the close button, Escape, or a tap
+   outside it. */
+let sleepPanelOpener = null;
+function onSleepPanelKey(e){ if(e.key === 'Escape') closeSleepPanel(true); }
+function onSleepPanelOutside(e){
+  const panel = document.getElementById('sleep-panel');
+  if(!panel || panel.hidden || panel.contains(e.target)) return;
+  if(e.target.closest('#sleep-btn, #mini-sleep')) return;
+  closeSleepPanel();
+}
+function openSleepPanel(opener){
+  const panel = document.getElementById('sleep-panel');
+  if(!panel || !panel.hidden) return;
+  closeStationPanel();
+  paintSleep();
+  panel.hidden = false;
+  sleepPanelOpener = opener || null;
+  document.querySelectorAll('#sleep-btn, #mini-sleep').forEach(b => b.setAttribute('aria-expanded', 'true'));
+  document.addEventListener('keydown', onSleepPanelKey, true);
+  document.addEventListener('click', onSleepPanelOutside, true);
+  const first = panel.querySelector('.station-btn.is-on') || panel.querySelector('.station-btn');
+  if(first) try{ first.focus({ preventScroll: true }); }catch(e){}
+}
+function closeSleepPanel(restoreFocus){
+  const panel = document.getElementById('sleep-panel');
+  if(!panel || panel.hidden) return;
+  panel.hidden = true;
+  document.querySelectorAll('#sleep-btn, #mini-sleep').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  document.removeEventListener('keydown', onSleepPanelKey, true);
+  document.removeEventListener('click', onSleepPanelOutside, true);
+  if(restoreFocus && sleepPanelOpener) try{ sleepPanelOpener.focus(); }catch(e){}
+  sleepPanelOpener = null;
+}
+(function(){
+  renderSleepOptions();
+  const btn = document.getElementById('sleep-btn');
+  if(btn) btn.addEventListener('click', () => {
+    const panel = document.getElementById('sleep-panel');
+    if(panel && panel.hidden) openSleepPanel(btn); else closeSleepPanel();
+  });
+  const mini = document.getElementById('mini-sleep');
+  if(mini) mini.addEventListener('click', () => openSleepPanel(mini));
+  const x = document.getElementById('sleep-panel-close');
+  if(x) x.addEventListener('click', () => closeSleepPanel(true));
+  const row = document.getElementById('sleep-panel-row');
+  if(row) row.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sleep]');
+    if(!b) return;
+    setSleep(b.dataset.sleep);
+    closeSleepPanel(true);
+  });
+  audioEl.addEventListener('timeupdate', checkSleep);
+  document.addEventListener('visibilitychange', checkSleep);
+})();
+
 /* Lock screen / headset controls, set for every song, radio included. */
 function mediaArtwork(s){
   if(s.cover){
@@ -4718,7 +4948,7 @@ function playCurrent(){
     setAmbientPlaying(false);
     resetScrub();
     // Keep radio, playlists, and a rail "Play all" moving even before audio.
-    if(mode !== 'manual' || manualQueue) idleTimer = setTimeout(handleTrackEnd, 9000);
+    if(mode !== 'manual' || manualQueue) idleTimer = setTimeout(onTrackDone, 9000);
   }
 }
 
@@ -4798,7 +5028,10 @@ audioEl.addEventListener('play', () => {
     ? { song_id: s.id, artist_id: s.artist_id, meta: { source: currentSource } }
     : { song_id: s.id, artist_id: s.artist_id });
 });
-audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(false); });
+audioEl.addEventListener('pause', () => {
+  setPlayIcon(false); setAmbientPlaying(false);
+  if(sleepFade) clearSleep();   // SLEEP-1: paused by hand mid-fade: done, volume back
+});
 audioEl.addEventListener('ended', () => {
   if(!playMilestones.complete && currentIdx !== null && SONGS[currentIdx]){
     playMilestones.complete = true;
@@ -4806,7 +5039,7 @@ audioEl.addEventListener('ended', () => {
     logActivity('play_complete', { song_id: s.id, artist_id: s.artist_id });
   }
   playCounted = false;
-  handleTrackEnd();   // PLAY-1: queue, then radio, unless Autoplay is off
+  onTrackDone();   // SLEEP-1 end_of_song, else PLAY-1: queue, then radio, unless Autoplay is off
 });
 
 /* ============================================================
@@ -5758,6 +5991,7 @@ function onStationPanelOutside(e){
 function openStationPanel(opener){
   const panel = document.getElementById('station-panel');
   if(!panel || !panel.hidden) return;
+  closeSleepPanel();
   paintStations();
   panel.hidden = false;
   stationPanelOpener = opener || null;
@@ -7887,6 +8121,7 @@ function updateMiniPlayer(){
     ms.classList.toggle('hidden', !label);
     ms.setAttribute('aria-label', label ? 'Station: ' + label + '. Change station' : 'Change station');
   }
+  paintSleep();   // SLEEP-1: the moon with the time left
   document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
 }
 document.getElementById('mini-play').addEventListener('click', togglePlay);
