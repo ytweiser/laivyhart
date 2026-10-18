@@ -330,77 +330,91 @@
   .tbtn:hover{transform:translateY(-1px);}
   .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
   .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.45);}
-  /* Radio + Mood radio: LISTEN-1 made this pair the most prominent control
-     in the list header (left on desktop, first on phones), Radio filled in
-     the accent gradient always (not just once playing) so it reads as the
-     primary action; Mood radio stays outlined beside it -- still larger
-     than before, but visually the second choice next to a filled Radio. */
-  .radio-btn{
-    display:inline-flex; align-items:center; gap:0.45rem; white-space:nowrap;
-    font-family:var(--font-ui); font-size:0.76rem; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
-    padding:0.65rem 1.1rem; border-radius:14px; cursor:pointer; color:#fff;
-    background:var(--accent-grad); border:1px solid transparent; box-shadow:0 4px 14px rgba(var(--accent-1-rgb),0.32);
-    transition:transform 0.18s var(--ease), box-shadow 0.2s var(--ease);
+  /* RADIO-2: the stations. One component -- .station-btn -- in three places:
+     the row on /listen, the "Change station" panel, and (through that panel)
+     the mini-player. RADIO (all songs) is the first station, then one per
+     channel. The station that is playing is filled; every other one is
+     outlined. Filled uses --station-on-1/2 (theme.css), chosen so white text
+     clears 4.5:1 in all four colors; outlined uses --text on a faint accent
+     wash, which clears it in both lightings. */
+  .station-row{
+    display:flex; flex-wrap:nowrap; align-items:center; gap:0.45rem;
+    overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch;
+    scrollbar-width:none; overscroll-behavior-x:contain;
+    padding:2px 2px 4px; min-width:0;
   }
-  .radio-btn svg{width:1.05rem; height:1.05rem; display:block; flex-shrink:0;}
-  .radio-btn:hover{transform:translateY(-1px); box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.42);}
-  .radio-btn.active{box-shadow:0 6px 20px rgba(var(--accent-1-rgb),0.55);}
-
-  .mood-radio-ic{width:1rem; height:1rem; color:var(--accent-2); flex-shrink:0;}
-  .mood-radio{
-    appearance:none; -webkit-appearance:none; -moz-appearance:none;
-    font-family:var(--font-ui); font-size:0.74rem; font-weight:600; letter-spacing:0.02em;
-    display:inline-flex; align-items:center; gap:0.42rem;
-    padding:0.62rem 1rem; border-radius:14px; cursor:pointer; max-width:12rem;
-    color:var(--accent-2);
-    background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.12), rgba(var(--accent-2-rgb),0.12));
-    border:1px solid var(--accent-2);
-    transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease), color 0.2s var(--ease);
+  .station-row::-webkit-scrollbar{display:none;}
+  /* A soft fade at the right edge while there is more to scroll to. */
+  .station-row.has-more{
+    -webkit-mask-image:linear-gradient(to right, #000 calc(100% - 2.6rem), transparent);
+            mask-image:linear-gradient(to right, #000 calc(100% - 2.6rem), transparent);
   }
-  .mood-radio:hover{transform:translateY(-1px); background:linear-gradient(135deg, rgba(var(--accent-1-rgb),0.2), rgba(var(--accent-2-rgb),0.2)); box-shadow:0 6px 16px rgba(var(--accent-1-rgb),0.22);}
-  .mood-radio:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
-  .mood-radio.active{background:var(--accent-grad); border-color:transparent; color:#fff; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.4);}
-  .mood-radio.active .mood-radio-ic{color:#fff;}
-  /* The chooser. The wrap is the positioning context for the menu; the caret
-     is what tells a visitor this opens something rather than playing. */
-  .mood-radio-wrap{position:relative; display:inline-flex; align-items:center;}
-  .mood-radio-caret{width:0.78rem; height:0.78rem; flex-shrink:0; opacity:0.85;}
-  /* Reuses .lv-menu (the account-chip menu) wholesale -- same surface, border,
-     shadow and radius -- and only overrides the anchoring, since this one hangs
-     from a control on the left of its row rather than the top-right chip. */
-  /* DIAGNOSIS -> FIX, four things at once. Specificity .lv-menu.mood-menu so
-     these beat the shared .lv-menu rules whatever the file order.
+  .station-btn{
+    flex:0 0 auto; display:inline-flex; align-items:center; gap:0.4rem; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.74rem; font-weight:600; letter-spacing:0.03em;
+    padding:0.55rem 0.95rem; border-radius:999px; cursor:pointer;
+    color:var(--text);
+    background:rgba(var(--accent-2-rgb),0.10);
+    border:1px solid rgba(var(--accent-2-rgb),0.55);
+    transition:transform 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  }
+  .station-btn svg{width:1rem; height:1rem; display:block; flex-shrink:0;}
+  .station-btn.is-all{font-weight:700; text-transform:uppercase; letter-spacing:0.06em;}
+  .station-btn:hover{transform:translateY(-1px); background:rgba(var(--accent-2-rgb),0.18);}
+  .station-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  .station-btn.is-on{
+    color:#fff; border-color:transparent;
+    background:linear-gradient(135deg, var(--station-on-1), var(--station-on-2));
+    box-shadow:0 5px 16px rgba(var(--accent-1-rgb),0.40);
+  }
 
-     1. OPAQUE. .lv-menu paints var(--glass-hi), which is rgba(255,255,255,0.07)
-        in dark -- 7% white, i.e. see-through. Fine over the topbar where the
-        account chip lives; useless over a busy song list. --bg-2 is the site's
-        solid panel surface (what .lv-modal uses) and is an opaque hex in all
-        eight theme x lighting combinations.
-     2. TOP-MOST. z-index 360 clears the loves row (150), the mini-player (200)
-        and the account menu (301), and stays under the true modals (400).
-     3. NOT CLIPPED. position:fixed, with coordinates set from the button's
-        rect at open time -- see placeMoodMenu(). The element is also PORTALLED
-        to <body>; see the note there for why fixed alone is not enough.
-     4. POINTER-CAPTURING. An explicit pointer-events:auto plus a solid fill,
-        so a tap on the panel's padding cannot reach a control behind it. */
-  .lv-menu.mood-menu{
-    position:fixed; top:0; left:0; right:auto; z-index:360;
-    min-width:13rem; max-width:min(18rem, calc(100vw - 1.5rem));
-    max-height:min(60vh, 26rem); overflow-y:auto;
-    background:var(--bg-2);
-    border:1px solid var(--glass-border);
+  /* The station line, directly under the play controls. */
+  .station-line{
+    display:flex; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;
+    margin-top:0.55rem; padding:0.4rem 0.75rem; border-radius:999px;
+    font-family:var(--font-ui); font-size:0.8rem; color:var(--text);
+    border:1px solid transparent;
+  }
+  .station-line.hidden{display:none;}
+  .station-line-text:empty{display:none;}
+  .station-line-text b{font-weight:700;}
+  .station-change{
+    background:none; border:1px solid rgba(var(--accent-2-rgb),0.55); border-radius:999px; cursor:pointer;
+    padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.74rem; font-weight:600; color:var(--text);
+  }
+  .station-change:hover{background:rgba(var(--accent-2-rgb),0.14);}
+  .station-change:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  /* Radio just took over: glow for ~3s. Reduced motion: the same highlight,
+     held still. */
+  .station-line.is-glow{
+    border-color:rgba(var(--accent-2-rgb),0.7);
+    background:rgba(var(--accent-2-rgb),0.12);
+    animation:station-glow 1s var(--ease) 3;
+  }
+  @keyframes station-glow{
+    0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-2-rgb),0);}
+    50%{box-shadow:0 0 18px 2px rgba(var(--accent-2-rgb),0.55);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .station-line.is-glow{animation:none; box-shadow:0 0 0 2px rgba(var(--accent-2-rgb),0.45);}
+  }
+
+  /* The "Change station" panel: one compact sheet for the now-playing panel
+     and the mini-player. Opaque (--bg-2), above the mini-player (200) and the
+     account menu (301), under true modals (400). */
+  .station-panel{
+    position:fixed; left:50%; bottom:1rem; transform:translateX(-50%); z-index:360;
+    width:min(34rem, calc(100vw - 1.5rem)); box-sizing:border-box;
+    padding:0.8rem 0.9rem 0.9rem; border-radius:var(--radius-sm);
+    background:var(--bg-2); border:1px solid var(--glass-border);
     box-shadow:0 18px 48px rgba(0,0,0,0.45);
-    pointer-events:auto;
   }
-  .mood-menu-item{
-    display:flex; align-items:center; gap:0.5rem; width:100%;
-    font-family:var(--font-ui); font-size:0.82rem; letter-spacing:0.03em;
-  }
-  .mood-menu-item.is-on{color:var(--accent-2); font-weight:700;}
-  .mood-menu-tick{width:0.85rem; flex-shrink:0; color:var(--accent-2);}
-  .mood-menu-empty{
-    padding:0.5rem 0.65rem; font-family:var(--font-ui); font-size:0.8rem; color:var(--text-faint);
-  }
+  .station-panel[hidden]{display:none;}
+  .station-panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:0.55rem;
+    font-family:var(--font-ui); font-size:0.72rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-dim);}
+  .station-panel-close{background:none; border:0; cursor:pointer; font-size:1.3rem; line-height:1; color:var(--text); padding:0 0.2rem;}
+  .station-panel .station-row{flex-wrap:wrap; overflow:visible;}
+  .station-panel .station-row.has-more{-webkit-mask-image:none; mask-image:none;}
 
   /* ---------- The homepage mood strip (CH-2) ----------
      Text cards, not song cards: a mood word over a themed tint. The tint walks
@@ -457,8 +471,10 @@
   .tabs{display:flex; align-items:center; justify-content:space-between; gap:0.6rem; margin-bottom:0.9rem; flex-wrap:wrap;}
   /* Radio + Mood radio: left, prominent (see their own rules above).
      Songs/Playlists: right, quieter -- .tabs-list below. */
-  .tabs-radio{display:flex; align-items:center; gap:0.5rem;}
-  .tabs-list{display:flex; align-items:center; gap:0.35rem;}
+  /* RADIO-2: the station row takes the whole first line of the header (it
+     scrolls sideways, never wraps); Songs/Playlists sit under it, right. */
+  .tabs-stations{flex:1 1 100%; min-width:0;}
+  .tabs-list{display:flex; align-items:center; gap:0.35rem; margin-left:auto;}
   .tab{
     font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
     padding:0.42rem 0.75rem; border-radius:12px; cursor:pointer;
@@ -924,6 +940,17 @@
   .mini-title{font-size:0.95rem; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .mini-title.heb{font-family:var(--font-heb); direction:rtl;}
   .mini-sub{font-family:var(--font-display); font-style:italic; font-size:0.8rem; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  /* RADIO-2: the station, next to the title ("Radio · Fire me up"); a tap opens
+     the station panel. Truncates rather than crowding the title out. */
+  .mini-station{
+    flex:0 1 auto; min-width:0; max-width:42%; cursor:pointer;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.72rem; font-weight:600; color:var(--text);
+    background:rgba(var(--accent-2-rgb),0.12); border:1px solid rgba(var(--accent-2-rgb),0.55);
+    border-radius:999px; padding:0.3rem 0.65rem;
+  }
+  .mini-station.hidden{display:none;}
+  .mini-station:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .mini-btn{background:none; border:none; cursor:pointer; color:var(--text); width:2.4rem; height:2.4rem; font-size:1rem; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .mini-btn svg{width:1.4rem; height:1.4rem; fill:currentColor;}
   /* CH-2: this container held the three grouped category pill rows
@@ -1349,9 +1376,7 @@
   /* PLAY-1: Radio tag + Autoplay switch. */
   .play-mode-row{display:flex; align-items:center; justify-content:center; gap:0.9rem; flex-wrap:wrap; margin-top:0.7rem;
     font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim);}
-  .play-mode-row.hidden, .now-radio-tag.hidden{display:none;}
-  .now-radio-tag{display:inline-flex; align-items:center; padding:0.18rem 0.6rem; border-radius:999px;
-    background:var(--chip-bg); color:var(--text); font-weight:600; letter-spacing:0.02em;}
+  .play-mode-row.hidden{display:none;}
   .autoplay-toggle{display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; user-select:none; position:relative;}
   .autoplay-toggle input{position:absolute; opacity:0; width:1px; height:1px; margin:0;}
   .autoplay-track{width:2.1rem; height:1.2rem; border-radius:999px; background:var(--chip-bg); position:relative;
@@ -1515,13 +1540,8 @@
     /* Undo the desktop sticky/viewport-height pin so the list stacks in the
        single-column flow and grows with the page. */
     .browse{padding:1rem 1rem 0.4rem; position:static; top:auto; height:auto;}
-    /* Tabs row wraps: Radio + Mood radio stay first (full width, two
-       across), Songs/Playlists drop to a second line below them --
-       LISTEN-1's "Radio first" on phones too. */
-    .tabs-radio{flex-basis:100%;}
-    .tabs-radio .radio-btn{flex:1 1 0; justify-content:center;}
-    .tabs-radio .mood-radio-wrap{flex:1 1 0; min-width:0;}
-    .tabs-radio .mood-radio{width:100%; max-width:none; justify-content:center;}
+    /* The station row stays one sideways-scrolling line (RADIO-2);
+       Songs/Playlists drop below it. */
     .tabs-list{margin-top:0.15rem;}
     /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
        all three loves on one line at 56px. Dock spacing is trimmed so the loves
@@ -1714,6 +1734,12 @@
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
       </div>
+      <!-- RADIO-2: what is playing ("On Radio: All songs", "On Radio: <mood>",
+           "Playing: <queue>") and the way to switch. -->
+      <div class="station-line hidden" id="station-line">
+        <span class="station-line-text" id="station-line-text" aria-live="polite"></span>
+        <button class="station-change" id="station-change" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="station-panel">Change station</button>
+      </div>
       <!-- The heart (one tap, anonymous, public count) first, then, since
            1A-6, the words and the music as 1-to-5 ratings that require an
            account. Hidden until a song is playing. -->
@@ -1742,11 +1768,10 @@
         </button>
       </div>
 
-      <!-- PLAY-1: says "Radio" when radio has taken over (so a new song
-           starting is never a mystery), and the Autoplay switch: on by
-           default, remembered on this device. -->
+      <!-- PLAY-1: the Autoplay switch: on by default, remembered on this
+           device. (What is playing -- "On Radio: ..." -- is the station line
+           under the play controls, RADIO-2.) -->
       <div class="play-mode-row hidden" id="play-mode-row">
-        <span class="now-radio-tag hidden" id="now-radio-tag"></span>
         <label class="autoplay-toggle" for="autoplay-switch">
           <input type="checkbox" id="autoplay-switch" role="switch" checked>
           <span class="autoplay-track" aria-hidden="true"><span class="autoplay-knob"></span></span>
@@ -1819,27 +1844,17 @@
   <!-- ================= RIGHT: browse ================= -->
   <section class="panel browse glass">
     <div class="tabs">
-      <!-- LISTEN-1: Radio + Mood radio are the most prominent control in
-           this header now -- left on desktop, first on phones -- with
-           Songs/Playlists quieter, to the right/below. -->
-      <div class="tabs-radio">
-        <button class="radio-btn" id="radio-btn" aria-label="Shuffle and play everything">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
-          Radio
-        </button>
-        <!-- Mood radio is a CHOOSER. CH-2 made it a plain button on the
-             premise that /listen had no channel picker; that premise is
-             reversed. It opens a menu of the eight moods and plays nothing
-             until one is picked, so it can never be mistaken for plain Radio. -->
-        <span class="mood-radio-wrap">
-          <button class="mood-radio" id="mood-radio-btn" type="button"
-                  aria-haspopup="menu" aria-expanded="false" aria-label="Mood radio">
-            <svg class="mood-radio-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 4 21 4 14 12.5 14 19 10 21 10 12.5 3 4"/></svg>
-            <span id="mood-radio-label">Mood radio</span>
-            <svg class="mood-radio-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      <!-- RADIO-2: the stations, in place of the old Mood radio dropdown.
+           RADIO (all songs) first, then one button per channel in the
+           homepage strip's order, rendered by renderStations() once the
+           channels load. One tap switches. -->
+      <div class="tabs-stations">
+        <div class="station-row" id="station-row" role="group" aria-label="Radio stations">
+          <button class="station-btn is-all radio-btn" id="radio-btn" data-station="all" type="button" aria-pressed="false" aria-label="Radio: all songs">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
+            Radio
           </button>
-          <div class="lv-menu mood-menu" id="mood-menu" role="menu" aria-label="Choose a mood" hidden></div>
-        </span>
+        </div>
       </div>
       <div class="tabs-list">
         <button class="tab active" id="tab-songs">Songs</button>
@@ -1955,8 +1970,19 @@
     <span class="mini-title" id="mini-title"></span>
     <span class="mini-sub" id="mini-sub"></span>
   </button>
+  <button class="mini-station hidden" id="mini-station" type="button" aria-haspopup="dialog" aria-controls="station-panel"></button>
   <button class="mini-btn" id="mini-play" type="button" aria-label="Play or pause">&#9654;</button>
   <button class="mini-btn" id="mini-next" type="button" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
+</div>
+
+<!-- RADIO-2: the station panel ("Change station" and the mini-player's
+     station name both open it). Same station buttons as the /listen row. -->
+<div class="station-panel" id="station-panel" role="dialog" aria-label="Change station" hidden>
+  <div class="station-panel-head">
+    <span>Stations</span>
+    <button class="station-panel-close" id="station-panel-close" type="button" aria-label="Close">&times;</button>
+  </div>
+  <div class="station-row" id="station-panel-row" role="group" aria-label="Radio stations"></div>
 </div>
 
 <div class="picker-overlay hidden" id="picker-overlay">
@@ -2406,6 +2432,7 @@ async function loadChannels(){
 
   CHANNELS.sort((a, b) => (a.sort_order - b.sort_order) || a.title.localeCompare(b.title));
   channelTitle = new Map(CHANNELS.map(c => [c.id, c.title]));
+  renderStations();
 }
 
 /* ============================================================
@@ -3166,8 +3193,11 @@ function renderBrowseCloud(){
   if(clear) clear.addEventListener('click', () => {
     activeChannel = null;
     try{ history.replaceState({ route: 'listen' }, '', '/listen'); }catch(e){}
+    // A mood that was playing carries on as plain radio (all songs).
+    if(mode === 'channelRadio'){ mode = 'radio'; computeNextUp(); }
     renderBrowseCloud();
     renderList();
+    paintPlayMode();
   });
 }
 /* Normalize text for search on BOTH the index and the query so the two agree,
@@ -3502,8 +3532,7 @@ function renderList(){
     row.addEventListener('click', (e) => {
       if(e.target.closest('.row-add')) return;
       mode = 'manual';
-      document.getElementById('radio-btn').classList.remove('active');
-      loadSong(Number(row.dataset.idx));
+          loadSong(Number(row.dataset.idx));
     });
   });
   rows.querySelectorAll('.row-add').forEach(btn => {
@@ -3747,8 +3776,9 @@ function findASongHTML(){
    are words over a themed tint rather than song cards, so the section reads as
    "pick a feeling" rather than "here is more music".
 
-   This is the ONLY entry point to a channel: there is no channel picker on
-   /listen.
+   The same channels, in the same order and wording, are the station buttons
+   on /listen and in the "Change station" panel (RADIO-2); all three enter a
+   channel through goChannel().
    ============================================================ */
 function moodStripHTML(){
   if(!CHANNELS.length) return '';
@@ -4195,7 +4225,7 @@ function renderHomepage(){
       if(!sec || !sec.songs.length) return;
       laivyTrack('home_play', { rail: sec.key, song_id: sec.songs[0].id });
       navigate('listen');
-      playRail(sec.songs.map(s => idxOf.get(s.id)));  // builds manualQueue on arrival
+      playRail(sec.songs.map(s => idxOf.get(s.id)), sec.title);  // builds manualQueue on arrival
     });
   });
 
@@ -4214,10 +4244,10 @@ function renderHomepage(){
 
 // Start a rail playing in order (manual mode, not radio). manualStep and the
 // end-of-track auto-advance follow manualQueue while it is set.
-function playRail(idxs){
+function playRail(idxs, name){
   if(!idxs || !idxs.length) return;
   mode = 'manual';
-  document.getElementById('radio-btn').classList.remove('active');
+  manualQueueName = name || '';
   manualQueue = idxs.slice();
   manualPos = 0;
   loadSong(manualQueue[0], true);
@@ -4470,7 +4500,6 @@ function loadSong(idx, keepRailQueue, opts){
   if(!opts.cont && radioTakeover){
     radioTakeover = false;
     if(mode === 'radio' || mode === 'channelRadio') mode = 'manual';
-    const rb = document.getElementById('radio-btn'); if(rb) rb.classList.remove('active');
   }
   if(!opts.back && currentIdx !== null && currentIdx !== idx){
     playHistory.push(currentIdx);
@@ -4565,10 +4594,10 @@ function handleTrackEnd(){
     radioTakeover = true;
     mode = activeChannel ? 'channelRadio' : 'radio';
     queue = []; queuePos = 0;
-    if(mode === 'radio'){ const rb = document.getElementById('radio-btn'); if(rb) rb.classList.add('active'); }
   }
   pendingSource = radioTakeover ? 'autoplay' : null;
   loadSong(n.idx, false, { cont: true });
+  if(n.kind === 'takeover') glowStationLine();   // RADIO-2: say why a new song started
   return true;
 }
 
@@ -4596,12 +4625,8 @@ function radioLabel(){
 function paintPlayMode(){
   const row = document.getElementById('play-mode-row');
   if(row) row.classList.toggle('hidden', currentIdx === null);
-  const tag = document.getElementById('now-radio-tag');
-  if(tag){
-    const label = radioLabel();
-    tag.textContent = label;
-    tag.classList.toggle('hidden', !label);
-  }
+  paintStations();
+  paintStationLine();
   const sw = document.getElementById('autoplay-switch');
   if(sw) sw.checked = autoplayOn;
 }
@@ -5494,7 +5519,6 @@ function playSongById(id){
   const idx = SONGS.findIndex(s => s.id === id);
   if(idx < 0) return;
   mode = 'manual';
-  document.getElementById('radio-btn').classList.remove('active');
   loadSong(idx);
   try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }
   catch(e){ window.scrollTo(0, 0); }
@@ -5563,143 +5587,191 @@ function advanceQueue(){
   queuePos = (queuePos + 1) % queue.length;
   loadSong(queue[queuePos]);
 }
+// RADIO: the all-songs station. Leaves any mood (filter, banner, ?channel=)
+// so the list goes back to every song too. Its button is wired through the
+// shared station handler (RADIO-2), not a listener of its own.
 function startRadio(){
   if(SONGS.length === 0) return;
   mode = 'radio';
   radioTakeover = false;
-  document.getElementById('radio-btn').classList.add('active');
   queue = []; queuePos = 0;
+  manualQueue = null;
+  if(activeChannel){
+    activeChannel = null;
+    try{
+      if(new URLSearchParams(location.search).has('channel')) history.replaceState({ route: 'listen' }, '', '/listen');
+    }catch(e){}
+    renderBrowseCloud();
+    renderList();
+  }
   const i = pickRadioIdx(null);
   if(i >= 0) loadSong(i, false, { cont: true });
+  else paintPlayMode();
 }
-document.getElementById('radio-btn').addEventListener('click', startRadio);
-/* Mood radio: a chooser, not a play button.
+/* ============================================================
+   RADIO-2: the stations. RADIO (all songs) plus one per channel, in the
+   homepage strip's order, as one row of buttons -- on /listen in place of the
+   old Mood radio dropdown, and again in the "Change station" panel that the
+   now-playing station line and the mini-player open. One tap switches:
+   RADIO -> startRadio() (back to all songs), a mood -> goChannel(), the same
+   path the homepage strip uses (filter, banner, address, a song now).
+   ============================================================ */
+const RADIO_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>';
+let manualQueueName = '';   // "Top 10", "Nova Ash: Play all", ... for the station line
+let playlistName = '';
 
-   CH-2 shipped this as a plain button that shuffled the active channel, or
-   everything when there was none. On /listen there usually IS none, so it
-   silently behaved exactly like Radio -- no filter, no station name, nothing
-   to distinguish it. It now always presents the eight moods first and plays
-   nothing until one is picked.
-
-   Picking a mood hands off to goChannel(), the SAME path the homepage strip
-   uses, so the filter, the banner, the address and the shuffle are one
-   implementation rather than two that can drift. */
-const moodBtn  = document.getElementById('mood-radio-btn');
-const moodMenu = document.getElementById('mood-menu');
-let onMoodDocClick = null, onMoodKeydown = null, onMoodReflow = null;
-
-/* PORTAL. The menu was authored inside .mood-radio-wrap, which sits under
-   .browse -> .panel{overflow:hidden}. Two separate ancestors broke it:
-
-     - .panel's overflow:hidden CLIPS it. However .tabs-radio is positioned,
-       a 13rem menu can run straight off the panel's edge and be cut --
-       which is why the list looked incomplete.
-     - .browse is position:sticky, and sticky ALWAYS creates a stacking
-       context. That trapped the menu's z-index inside .browse, so it could not
-       rise above the mini-player or the dock no matter how high it was set.
-
-   position:fixed escapes the clipping but NOT the stacking context, so neither
-   fix alone is enough. Moving the element to <body> escapes both. Done once at
-   startup rather than on every open, so there is no DOM churn and the
-   open/close listeners keep working on the same node. */
-if(moodMenu && document.body) document.body.appendChild(moodMenu);
-
-/* Anchor the fixed panel under the button, clamped to the viewport so it can
-   never hang off an edge, and flipped above the button when there is more room
-   there. Recomputed on open and on any scroll/resize while open. */
-function placeMoodMenu(){
-  if(!moodMenu || !moodBtn || moodMenu.hidden) return;
-  const b = moodBtn.getBoundingClientRect();
-  const m = moodMenu.getBoundingClientRect();
-  const pad = 8;
-  const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
-
-  let top = b.bottom + 6;
-  if(vh && top + m.height > vh - pad && b.top - 6 - m.height > pad){
-    top = b.top - 6 - m.height;          // not enough room below: flip above
+// 'all' while plain radio plays, a channel id while that mood plays, else null.
+function currentStation(){
+  if(mode === 'radio') return 'all';
+  if(mode === 'channelRadio') return activeChannel || 'all';
+  return null;
+}
+function stationButtonHTML(c){
+  return `<button class="station-btn" data-station="${escHtml(c.id)}" type="button" aria-pressed="false">${escHtml(c.title)}</button>`;
+}
+function allStationHTML(){
+  return `<button class="station-btn is-all" data-station="all" type="button" aria-pressed="false" aria-label="Radio: all songs">${RADIO_ICON} Radio</button>`;
+}
+function renderStations(){
+  const row = document.getElementById('station-row');
+  if(row){
+    row.querySelectorAll('[data-station]:not([data-station="all"])').forEach(b => b.remove());
+    row.insertAdjacentHTML('beforeend', CHANNELS.map(stationButtonHTML).join(''));
   }
-  if(vh) top = Math.max(pad, Math.min(top, vh - m.height - pad));
-
-  let left = b.left;
-  if(vw) left = Math.max(pad, Math.min(left, vw - m.width - pad));
-
-  moodMenu.style.top = Math.round(top) + 'px';
-  moodMenu.style.left = Math.round(left) + 'px';
+  const prow = document.getElementById('station-panel-row');
+  if(prow) prow.innerHTML = allStationHTML() + CHANNELS.map(stationButtonHTML).join('');
+  paintStations();
+}
+function updateStationFade(row){
+  if(!row) return;
+  row.classList.toggle('has-more', row.scrollWidth - row.clientWidth - row.scrollLeft > 4);
+}
+function paintStations(){
+  const on = currentStation();
+  document.querySelectorAll('.station-row [data-station]').forEach(b => {
+    const isOn = b.dataset.station === on;
+    b.classList.toggle('is-on', isOn);
+    b.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+  });
+  // Keep the playing station in view in the sideways row (e.g. after a pick
+  // from the panel), moving only the row, never the page.
+  const row = document.getElementById('station-row');
+  const lit = row && row.querySelector('.is-on');
+  if(lit){
+    const rr = row.getBoundingClientRect(), br = lit.getBoundingClientRect();
+    if(rr.width > 0){
+      if(br.left < rr.left) row.scrollLeft -= (rr.left - br.left) + 8;
+      else if(br.right > rr.right) row.scrollLeft += (br.right - rr.right) + 8;
+    }
+  }
+  updateStationFade(row);
+}
+function stationLineHTML(){
+  if(mode === 'radio' || mode === 'channelRadio'){
+    const c = mode === 'channelRadio' && activeChannel ? channelById(activeChannel) : null;
+    return 'On Radio: <b>' + escHtml(c ? c.title : 'All songs') + '</b>';
+  }
+  if(mode === 'playlist' && playlistName) return 'Playing: <b>' + escHtml(playlistName) + '</b>';
+  if(mode === 'manual' && manualQueue && manualQueue.length && manualQueueName){
+    return 'Playing: <b>' + escHtml(manualQueueName) + '</b>';
+  }
+  return '';
+}
+// "Radio · Fire me up" for the mini-player; '' when no station is playing.
+function stationShortLabel(){
+  if(mode === 'radio' || mode === 'channelRadio'){
+    const c = mode === 'channelRadio' && activeChannel ? channelById(activeChannel) : null;
+    return 'Radio · ' + (c ? c.title : 'All songs');
+  }
+  if(mode === 'playlist' && playlistName) return playlistName;
+  if(mode === 'manual' && manualQueue && manualQueue.length && manualQueueName) return manualQueueName;
+  return '';
+}
+function paintStationLine(){
+  const line = document.getElementById('station-line');
+  if(!line) return;
+  line.classList.toggle('hidden', currentIdx === null);
+  const t = document.getElementById('station-line-text');
+  if(t) t.innerHTML = stationLineHTML();
+}
+let stationGlowTimer = null;
+function glowStationLine(){
+  const line = document.getElementById('station-line');
+  if(!line) return;
+  line.classList.remove('is-glow');
+  void line.offsetWidth;            // restart the animation if it is already running
+  line.classList.add('is-glow');
+  clearTimeout(stationGlowTimer);
+  stationGlowTimer = setTimeout(() => line.classList.remove('is-glow'), 3000);
 }
 
-function renderMoodMenu(){
-  if(!moodMenu) return;
-  if(!CHANNELS.length){
-    moodMenu.innerHTML = `<div class="mood-menu-empty">No moods yet.</div>`;
+function pickStation(key){
+  closeStationPanel();
+  if(key === 'all'){
+    if(route !== 'listen') navigate('listen');
+    startRadio();
     return;
   }
-  // Same source and same order as the homepage strip, so the two can never
-  // show different sets.
-  moodMenu.innerHTML = CHANNELS.map(c => {
-    const on = c.id === activeChannel;
-    return `<button role="menuitemradio" type="button" aria-checked="${on ? 'true' : 'false'}"`
-         + ` class="mood-menu-item${on ? ' is-on' : ''}" data-channel="${escHtml(c.id)}">`
-         + `<span class="mood-menu-tick" aria-hidden="true">${on ? '&check;' : ''}</span>`
-         + `<span>${escHtml(c.title)}</span></button>`;
-  }).join('');
-  moodMenu.querySelectorAll('.mood-menu-item').forEach(item => {
-    item.addEventListener('click', () => {
-      const id = item.dataset.channel;
-      closeMoodMenu();
-      if(id) goChannel(id);          // the strip's path, reused wholesale
-    });
-  });
+  goChannel(key);
 }
 
-/* Dismissal follows the account-chip menu exactly: capture-phase listeners so
-   nothing in between can swallow the click, both attached on open and removed
-   on close so none leak, plus Escape and a re-click toggle. */
-function closeMoodMenu(){
-  if(!moodMenu || moodMenu.hidden) return;
-  moodMenu.hidden = true;
-  if(moodBtn) moodBtn.setAttribute('aria-expanded', 'false');
-  if(onMoodDocClick){ document.removeEventListener('click', onMoodDocClick, true); onMoodDocClick = null; }
-  if(onMoodKeydown){ document.removeEventListener('keydown', onMoodKeydown, true); onMoodKeydown = null; }
-  if(onMoodReflow){
-    window.removeEventListener('scroll', onMoodReflow, true);
-    window.removeEventListener('resize', onMoodReflow);
-    onMoodReflow = null;
-  }
+/* The panel: opened by "Change station" and the mini-player's station name,
+   closed by a pick, the close button, Escape, or a tap outside it. */
+let stationPanelOpener = null;
+function onStationPanelKey(e){ if(e.key === 'Escape') closeStationPanel(true); }
+function onStationPanelOutside(e){
+  const panel = document.getElementById('station-panel');
+  if(!panel || panel.hidden) return;
+  if(panel.contains(e.target)) return;
+  if(e.target.closest('#station-change, #mini-station')) return;
+  closeStationPanel();
+}
+function openStationPanel(opener){
+  const panel = document.getElementById('station-panel');
+  if(!panel || !panel.hidden) return;
+  paintStations();
+  panel.hidden = false;
+  stationPanelOpener = opener || null;
+  document.querySelectorAll('#station-change, #mini-station').forEach(b => b.setAttribute('aria-expanded', 'true'));
+  document.addEventListener('keydown', onStationPanelKey, true);
+  document.addEventListener('click', onStationPanelOutside, true);
+  const first = panel.querySelector('.station-btn.is-on') || panel.querySelector('.station-btn');
+  if(first) try{ first.focus({ preventScroll: true }); }catch(e){}
+}
+function closeStationPanel(restoreFocus){
+  const panel = document.getElementById('station-panel');
+  if(!panel || panel.hidden) return;
+  panel.hidden = true;
+  document.querySelectorAll('#station-change, #mini-station').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  document.removeEventListener('keydown', onStationPanelKey, true);
+  document.removeEventListener('click', onStationPanelOutside, true);
+  if(restoreFocus && stationPanelOpener) try{ stationPanelOpener.focus(); }catch(e){}
+  stationPanelOpener = null;
 }
 
-function openMoodMenu(){
-  if(!moodMenu || !moodMenu.hidden) return;
-  renderMoodMenu();                  // rebuild each open so the tick is current
-  moodMenu.hidden = false;
-  if(moodBtn) moodBtn.setAttribute('aria-expanded', 'true');
-
-  onMoodDocClick = (e) => {
-    if((moodBtn && moodBtn.contains(e.target)) || moodMenu.contains(e.target)) return;
-    closeMoodMenu();
-  };
-  onMoodKeydown = (e) => {
-    if(e.key === 'Escape'){ closeMoodMenu(); try{ moodBtn.focus(); }catch(err){} }
-  };
-  document.addEventListener('click', onMoodDocClick, true);
-  document.addEventListener('keydown', onMoodKeydown, true);
-
-  // The panel is fixed and anchored to a button that scrolls with the page.
-  // Capture-phase scroll so it follows inner scrollers too, not just the page.
-  onMoodReflow = () => placeMoodMenu();
-  window.addEventListener('scroll', onMoodReflow, true);
-  window.addEventListener('resize', onMoodReflow);
-
-  placeMoodMenu();
-}
-
-/* Belt and braces on top of the solid fill: a tap on the panel's own padding
-   is stopped here, so it can never reach a delegated handler behind it. */
-if(moodMenu) moodMenu.addEventListener('click', (e) => { e.stopPropagation(); });
-
-if(moodBtn) moodBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if(moodMenu && moodMenu.hidden) openMoodMenu(); else closeMoodMenu();
+// One delegated handler for every station button, in the row and the panel.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('.station-row [data-station]');
+  if(!b) return;
+  pickStation(b.dataset.station);
 });
+(function(){
+  const change = document.getElementById('station-change');
+  if(change) change.addEventListener('click', () => {
+    const panel = document.getElementById('station-panel');
+    if(panel && panel.hidden) openStationPanel(change); else closeStationPanel();
+  });
+  const mini = document.getElementById('mini-station');
+  if(mini) mini.addEventListener('click', () => openStationPanel(mini));
+  const x = document.getElementById('station-panel-close');
+  if(x) x.addEventListener('click', () => closeStationPanel(true));
+  const row = document.getElementById('station-row');
+  if(row){
+    row.addEventListener('scroll', () => updateStationFade(row), { passive: true });
+    window.addEventListener('resize', () => updateStationFade(row));
+    if(typeof ResizeObserver === 'function') new ResizeObserver(() => updateStationFade(row)).observe(row);
+  }
+})();
 
 /* Play a channel as a session shuffle.
 
@@ -5714,10 +5786,7 @@ function startChannelRadio(id){
   activeChannel = id;
   mode = 'channelRadio';             // the queue-driven mode Category radio used
   laivyTrack('mood_radio', { channel: id });
-  const rb = document.getElementById('radio-btn');
-  if(rb) rb.classList.remove('active');
-  const mb = document.getElementById('mood-radio-btn');
-  if(mb) mb.classList.add('active');
+  manualQueue = null;
   renderBrowseCloud();
   renderList();
   radioTakeover = false;
@@ -5912,8 +5981,8 @@ function playPlaylist(pl){
   const idxs = pl.songIds.map(id => SONGS.findIndex(s => s.id === id)).filter(i => i >= 0);
   if(idxs.length === 0){ alert('This playlist has no available songs yet.'); return; }
   mode = 'playlist';
+  playlistName = pl.name || 'Playlist';
   radioTakeover = false;
-  document.getElementById('radio-btn').classList.remove('active');
   queue = idxs; queuePos = 0;
   switchTab('songs');
   loadSong(queue[0]);
@@ -7474,7 +7543,7 @@ async function renderArtistPage(handle){
     showPage('listen');
     // "the catalog in its current sort" -- whatever the sort control shows now.
     const ordered = catalogSortedMine(mine, artistSortMode, chartWeeks);
-    playRail(ordered.map(s => idxOf.get(s.id)));
+    playRail(ordered.map(s => idxOf.get(s.id)), displayName + ': Play all');
   });
 
   const shuffleBtn = document.getElementById('artist-shuffle');
@@ -7487,7 +7556,7 @@ async function renderArtistPage(handle){
       const j = Math.floor(Math.random() * (i + 1));
       [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
     }
-    playRail(idxs);
+    playRail(idxs, displayName + ': Shuffle');
   });
 
   const shareBtn = document.getElementById('artist-share');
@@ -7780,7 +7849,15 @@ function updateMiniPlayer(){
   const mini = artistOf(s);
   const miniTranslit = heb ? (s.title_translit || '') : '';
   document.getElementById('mini-sub').textContent =
-    [radioLabel() ? 'Radio' : '', miniTranslit, mini ? artistName(mini) : ''].filter(Boolean).join(' \u00b7 ');
+    [miniTranslit, mini ? artistName(mini) : ''].filter(Boolean).join(' \u00b7 ');
+  // RADIO-2: the station, next to the title; a tap opens the station panel.
+  const ms = document.getElementById('mini-station');
+  if(ms){
+    const label = stationShortLabel();
+    ms.textContent = label;
+    ms.classList.toggle('hidden', !label);
+    ms.setAttribute('aria-label', label ? 'Station: ' + label + '. Change station' : 'Change station');
+  }
   document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
 }
 document.getElementById('mini-play').addEventListener('click', togglePlay);

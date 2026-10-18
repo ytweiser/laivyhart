@@ -141,36 +141,25 @@ async function scenarioHomeListenKeepOwnHeader(browser, port, r) {
 }
 
 async function scenarioRadioTabsOrder(browser, port, r) {
-  r.section('/listen list header: Radio + Mood radio left/first and prominent, Songs/Playlists right/quieter, at 1280 and 390');
+  r.section('/listen list header: the station row (RADIO first) leads, Songs/Playlists after it, at 1280 and 390');
   for (const width of [1280, 390]) {
     const page = await newPage(browser, { width, height: 1000 });
     const errors = collectErrors(page);
     await wireSupabaseStubs(page);
     await page.goto(`http://localhost:${port}/listen`, { waitUntil: 'load' });
     await page.waitForSelector('.tab', { timeout: 10000 });
+    await page.waitForFunction(() => document.querySelectorAll('#station-row [data-station]').length > 1, null, { timeout: 10000 });
 
     const d = await page.evaluate(() => {
       const radio = document.getElementById('radio-btn').getBoundingClientRect();
-      const mood = document.getElementById('mood-radio-btn').getBoundingClientRect();
+      const row = document.getElementById('station-row').getBoundingClientRect();
       const songsTab = document.getElementById('tab-songs').getBoundingClientRect();
-      const radioStyle = getComputedStyle(document.getElementById('radio-btn'));
-      const tabStyle = getComputedStyle(document.getElementById('tab-songs'));
-      return {
-        radioLeft: radio.left, moodLeft: mood.left, songsTop: songsTab.top, radioTop: radio.top,
-        songsLeft: songsTab.left,
-        radioBg: radioStyle.backgroundImage !== 'none' || radioStyle.backgroundColor !== 'rgba(0, 0, 0, 0)',
-        radioColor: radioStyle.color,
-        tabColor: tabStyle.color,
-      };
+      return { radioTop: radio.top, radioLeft: radio.left, rowLeft: row.left, songsTop: songsTab.top,
+        firstStation: document.querySelector('#station-row [data-station]').dataset.station };
     });
-    if (width === 1280) {
-      r.check(`[${width}px] Radio sits left of the Songs tab`, d.radioLeft < d.songsLeft, d);
-      r.check(`[${width}px] Mood radio sits left of the Songs tab too`, d.moodLeft < d.songsLeft, d);
-    } else {
-      // At 390 the groups wrap to two lines -- "first" means above, not left.
-      r.check(`[${width}px] Radio sits above (comes before) the Songs tab`, d.radioTop < d.songsTop, d);
-    }
-    r.check(`[${width}px] Radio is filled (an accent background), the prominent one`, d.radioBg, d);
+    // RADIO-2: the station row has the whole first line; "first" means above.
+    r.check(`[${width}px] the station row comes before the Songs tab`, d.radioTop < d.songsTop, d);
+    r.check(`[${width}px] RADIO is the first station`, d.firstStation === 'all' && Math.abs(d.radioLeft - d.rowLeft) < 6, d);
     r.check('no console/page errors', errors.length === 0, errors.join(' | '));
     await page.close();
   }

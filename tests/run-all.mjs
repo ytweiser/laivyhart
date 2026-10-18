@@ -71,6 +71,7 @@ const SPECS = [
   { name: 'share-og', path: './specs/share-og.spec.mjs', kind: 'none' },
   { name: 'worker-og-upload', path: './specs/worker-og-upload.spec.mjs', kind: 'none' },
   { name: 'image-compress', path: './specs/image-compress.spec.mjs', kind: 'browser' },
+  { name: 'stations', path: './specs/stations.spec.mjs', kind: 'browser' },
 ];
 
 function parseArg(argv, flag) {

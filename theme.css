@@ -25,6 +25,12 @@
   --wash-1:#4A1230;
   --wash-2:#7A1F6B;
   --stroke-alpha:0.16;
+  /* RADIO-2: the filled (playing) station button. Darker than accent-1/2 so
+     white text clears 4.5:1 in every color (bordeaux 8.6/6.5, emerald 7.5/5.8,
+     royal 7.9/5.9, gold 6.4/5.0); the plain accent gradient does not (gold's
+     accent-2 is 2.2:1 under white). */
+  --station-on-1:#8A2546;
+  --station-on-2:#A82C6E;
 
   /* Derived accent tokens, shared by every color theme. Because these hold
      var() references, they resolve per-element against whichever accent the
@@ -53,6 +59,8 @@
   --accent-2-rgb:20,166,124;
   --wash-1:#0E4A38;
   --wash-2:#166B52;
+  --station-on-1:#0B6147;
+  --station-on-2:#0E7356;
 }
 [data-color="royal"]{
   --accent-1:#3A4FC4;
@@ -62,6 +70,8 @@
   --accent-2-rgb:91,107,240;
   --wash-1:#1E2456;
   --wash-2:#3730A3;
+  --station-on-1:#3446B0;
+  --station-on-2:#4656D6;
 }
 [data-color="gold"]{
   --accent-1:#B08423;
@@ -72,6 +82,8 @@
   --wash-1:#4A3714;
   --wash-2:#6B5220;
   --stroke-alpha:0.18;
+  --station-on-1:#7A5A14;
+  --station-on-2:#8C6A1C;
 }
 
 /* ---- Lighting: neutral tokens (same across all color themes) ---- */

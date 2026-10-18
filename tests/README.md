@@ -219,6 +219,16 @@ over a narrower range.
   the admin song editor and the avatar on My page each show "Ready, N KB"
   and send that compressed file (decoded and measured at the stubbed Worker),
   plus the 600x600 og/ copy for covers.
+- `specs/stations.spec.mjs` (RADIO-2): the mood stations. The /listen row
+  (RADIO first, then every channel in order; the old Mood radio dropdown
+  gone); a mood tap plays a song from that mood, highlights it alone and
+  filters the list; RADIO returns to all songs; nothing lit off radio; the
+  station line ("On Radio: All songs" / "On Radio: <mood>" / "Playing:
+  <queue>") under the play controls; Change station opens, switches, closes
+  (pick, Escape, close button, outside tap); the takeover glow and its
+  reduced-motion form; the mini-player's "Radio · <mood>"; a 375 px screen
+  (one sideways-scrolling line, fade, search box on screen); and 4.5:1 text
+  contrast for every station button in all 4 colors x light/dark.
 - `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
   line/sender-line/share-text table in index.html, called directly in-page
   rather than round-tripped through the form 21 times: every occasion's
