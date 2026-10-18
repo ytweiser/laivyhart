@@ -764,6 +764,31 @@
      heading from stranding a word if it ever has to wrap. */
   .hero-callout.show-some-hart{justify-content:stretch;}
   .show-some-hart .hero-callout-h, .show-some-hart .hero-callout-sub{text-wrap:balance;}
+  /* HOME-3: a heart after "Hart". Decoration (aria-hidden). Drawn here, not
+     taken from the logo: the logo's V-heart exists only as raster artwork
+     (brand/wordmark.png), so there is no vector shape to reuse. Badge gold
+     (--badge-gold, the one gold every badge uses: bright gold on dark, deep
+     brass on light, both well over 3:1 on --bg-2). About the heading's cap
+     height, on the baseline, tilted 8deg. Hovering the box or focusing one of
+     its cards gives one gentle double beat; at rest, and always with reduced
+     motion, it is still. Only transform animates, so nothing around it moves.
+     "Hart" and the heart share a no-wrap span so the heart never strands. */
+  .hart-nowrap{white-space:nowrap;}
+  .hart-heart{
+    display:inline-block; width:0.78em; height:0.7em; margin-left:0.16em;
+    vertical-align:baseline; overflow:visible;
+    fill:var(--badge-gold); transform:rotate(8deg); transform-origin:50% 60%;
+  }
+  .show-some-hart:hover .hart-heart,
+  .show-some-hart:has(.gi-action:focus-visible) .hart-heart{animation:hart-beat 0.8s var(--ease) 1;}
+  @keyframes hart-beat{
+    0%, 50%, 100%{transform:rotate(8deg) scale(1);}
+    25%, 75%{transform:rotate(8deg) scale(1.12);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .show-some-hart:hover .hart-heart,
+    .show-some-hart:has(.gi-action:focus-visible) .hart-heart{animation:none;}
+  }
   .gi-actions{display:flex; flex-direction:column; gap:0.55rem; width:100%; flex:1; justify-content:center;}
   /* Each action is a card, and the whole card is the control. It clips the
      big number behind it (overflow:hidden), on purpose. */
@@ -3751,7 +3776,7 @@ function heroCalloutHTML(opts){
           </span>
         ${a.close}`).join('\n        ');
   return `<section class="hero-callout show-some-hart" aria-labelledby="hero-callout-h">
-      <h3 class="hero-callout-h" id="hero-callout-h">Show some Hart</h3>
+      <h3 class="hero-callout-h" id="hero-callout-h">Show some <span class="hart-nowrap">Hart<svg class="hart-heart" viewBox="0 0 24 22" aria-hidden="true" focusable="false"><path d="M12.1 20.7c-.6-.4-1.4-1-2.4-1.8C6.2 16.1 2.4 12.7 2.3 8.5 2.2 5.2 4.6 2.7 7.5 2.8c1.9.1 3.5 1.2 4.5 2.9.9-1.8 2.6-3.1 4.6-3.2 3-.1 5.3 2.4 5.2 5.5-.1 4.4-4 7.8-7.5 10.5-.8.6-1.5 1.2-2.2 1.7z"/></svg></span></h3>
       <p class="hero-callout-sub">${HART_COUNT_WORD[actions.length]} to put your heart into the music.</p>
       <div class="gi-actions">
         ${cards}

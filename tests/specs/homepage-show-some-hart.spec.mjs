@@ -8,7 +8,8 @@
    (upload has no switch of its own). Covers the
    "Dedicate a song" picker flow signed in and signed out, including the
    signed-out -> sign in -> straight back into the picker round trip via
-   /auth/callback.
+   /auth/callback. HOME-3: the heart after the heading (scenarioHeart, plus
+   its place, size and contrast in every skin and width).
    ============================================================ */
 import { newPage, collectErrors } from '../lib/browser.mjs';
 import { wireSupabaseStubs } from '../lib/stub-supabase.mjs';
@@ -29,6 +30,7 @@ export async function run(browser, port) {
   const r = makeReporter('homepage-show-some-hart.spec.mjs');
   await scenarioBoxRenders(browser, port, r);
   await scenarioSkinsAndWidths(browser, port, r);
+  await scenarioHeart(browser, port, r);
   await scenarioGatedOff(browser, port, r);
   await scenarioDedicateSignedOut(browser, port, r);
   await scenarioDedicateSignedInPicksAndSearches(browser, port, r);
@@ -280,7 +282,20 @@ async function scenarioSkinsAndWidths(browser, port, r) {
             };
           });
           for (const k of Object.keys(contrast)) contrast[k] = Math.round(contrast[k] * 100) / 100;
-          return { lines, contrast, cards };
+          // HOME-3: the heart, on the heading's (one) line, about cap height,
+          // 3:1+ against the box.
+          const hh = h.querySelector('.hart-heart');
+          const hr = hh.getBoundingClientRect();
+          const hart = (() => { const t = [...h.querySelectorAll('.hart-nowrap')][0].firstChild; const rg = document.createRange(); rg.setStart(t, 0); rg.setEnd(t, t.length); return rg.getBoundingClientRect(); })();
+          const fs = parseFloat(getComputedStyle(h).fontSize);
+          const heart = {
+            afterHart: hr.left >= hart.right - 1 && hr.left - hart.right < fs * 0.4,
+            onLine: hr.top >= hart.top - 2 && hr.bottom <= hart.bottom + 2,
+            capHeight: Math.round((hh.getBoundingClientRect().height / fs) * 100) / 100,
+            inBox: hr.right <= box.getBoundingClientRect().right,
+            contrast: Math.round(ratio(parse(getComputedStyle(hh).fill), boxBg) * 100) / 100,
+          };
+          return { lines, contrast, cards, heart };
         }, { color, theme });
         const tag = `[${width}px ${color}/${theme}]`;
         r.check(`${tag} heading on one line: ${d.lines.map((l) => '"' + l + '"').join(' / ')}`, d.lines.length === 1, JSON.stringify(d.lines));
@@ -289,10 +304,101 @@ async function scenarioSkinsAndWidths(browser, port, r) {
           d.cards.every((c) => c.circleBigger > 1.45 && c.circleBigger < 1.75 && c.croppedTop && c.croppedBottom && c.croppedLeft), JSON.stringify(d.cards));
         r.check(`${tag} each digit whole and clear of the text (intentionally cropped, not broken)`,
           d.cards.every((c) => c.digitWhole && c.digitClearOfText), JSON.stringify(d.cards));
+        r.check(`${tag} the heart sits right after "Hart" on the heading line, inside the box`, d.heart.afterHart && d.heart.onLine && d.heart.inBox, JSON.stringify(d.heart));
+        // Height of the 8deg-tilted heart's box, as a share of the font size.
+        r.check(`${tag} the heart is about cap height (${d.heart.capHeight}em)`, d.heart.capHeight >= 0.6 && d.heart.capHeight <= 0.85, JSON.stringify(d.heart));
+        r.check(`${tag} the heart is clearly visible: ${d.heart.contrast}:1 against the box (3:1+)`, d.heart.contrast >= 3, JSON.stringify(d.heart));
         const low = Object.entries(d.contrast).filter(([, v]) => v < 4.5);
         r.check(`${tag} all text 4.5:1+, over the numbers too (lowest ${Math.min(...Object.values(d.contrast))})`, low.length === 0, JSON.stringify(low));
       }
     }
+    r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+    await page.close();
+  }
+}
+
+/* HOME-3: the heart after "Show some Hart". Decoration (aria-hidden), the
+   heading still reads "Show some Hart". Still at rest; one double beat
+   (scale ~1.12, tilt kept, 0.8s, once) on hover or a card's keyboard focus;
+   none at all under reduced motion; nothing around it moves mid-beat. */
+async function scenarioHeart(browser, port, r) {
+  r.section('HOME-3: the heart -- decoration, still at rest, one gentle beat, none with reduced motion');
+  for (const reduced of [false, true]) {
+    const page = await newPage(browser, { width: 1280, height: 900 });
+    const errors = collectErrors(page);
+    if (reduced) await page.emulateMedia({ reducedMotion: 'reduce' });
+    await wireSupabaseStubs(page, { siteSettings: SETTINGS_CTA_ON, songs: F.SONGS_ROWS });
+    await gotoHome(page, '/', port);
+    await page.waitForSelector('.show-some-hart .hart-heart', { timeout: 10000 });
+    const tag = reduced ? '[reduced motion]' : '[motion]';
+    await page.mouse.move(5, 890);
+    const rest = await page.evaluate(() => {
+      const h = document.getElementById('hero-callout-h'), hh = h.querySelector('.hart-heart');
+      const k = h.cloneNode(true); k.querySelectorAll('[aria-hidden="true"]').forEach((x) => x.remove());
+      return {
+        svg: hh.tagName.toLowerCase() === 'svg' && !!hh.querySelector('path'), hidden: hh.getAttribute('aria-hidden'),
+        inHeading: hh.closest('h3') === h, a11y: k.textContent.replace(/\s+/g, ' ').trim(), text: h.textContent,
+        noEmoji: !/[\u2665\u2764\u{1F90D}-\u{1F9E1}\u{1F493}-\u{1F49F}]/u.test(h.textContent),
+        anims: hh.getAnimations().length, transform: getComputedStyle(hh).transform,
+      };
+    });
+    if (!reduced) {
+      r.check('an inline SVG heart inside the heading (no emoji, no icon font)', rest.svg && rest.inHeading && rest.noEmoji, JSON.stringify(rest));
+      r.check('aria-hidden; the heading still reads "Show some Hart"', rest.hidden === 'true' && rest.a11y === 'Show some Hart' && rest.text === 'Show some Hart', JSON.stringify(rest));
+      // matrix(cos8, sin8, -sin8, cos8, 0, 0): cos 8deg = 0.990, sin 8deg = 0.139.
+      const m = (rest.transform.match(/-?[\d.]+/g) || []).map(Number);
+      r.check('tilted about 8 degrees', Math.abs(Math.atan2(m[1], m[0]) * 180 / Math.PI - 8) < 0.5, rest.transform);
+    }
+    r.check(`${tag} no motion at rest`, rest.anims === 0, rest.anims);
+
+    const layout = () => page.evaluate(() => {
+      const box = document.querySelector('.show-some-hart');
+      const rr = (el) => { const b = el.getBoundingClientRect(); return [b.left, b.top, b.width, b.height].map((v) => Math.round(v * 10) / 10).join(','); };
+      return [box, box.querySelector('h3'), box.querySelector('.hero-callout-sub'), ...box.querySelectorAll('.gi-action')].map(rr).join(' | ')
+        + ' | heart-layout:' + [box.querySelector('.hart-heart')].map((x) => x.getBoundingClientRect()).map(() => {
+          const t = box.querySelector('.hart-nowrap'); const b = t.getBoundingClientRect(); return [b.left, b.top, b.height].map((v) => Math.round(v * 10) / 10).join(',');
+        })[0];
+    });
+    const before = await layout();
+    await page.hover('.show-some-hart h3');
+    const beat = await page.evaluate(() => {
+      const hh = document.querySelector('.hart-heart');
+      const a = hh.getAnimations();
+      // animation-name, not just running animations: theme.css's global
+      // reduced-motion rule shrinks any animation to 0.001ms, which would
+      // also leave nothing running a moment later.
+      if (!a.length) return { n: 0, animName: getComputedStyle(hh).animationName };
+      const t = a[0].effect.getComputedTiming();
+      a[0].pause(); a[0].currentTime = 200;   // a quarter in: the first beat's peak
+      const m = getComputedStyle(hh).transform.match(/-?[\d.]+/g).map(Number);
+      return { n: a.length, name: a[0].animationName, dur: t.duration, iters: t.iterations, scale: Math.round(Math.hypot(m[0], m[1]) * 1000) / 1000,
+        tilt: Math.round(Math.atan2(m[1], m[0]) * 180 / Math.PI * 10) / 10 };
+    });
+    if (reduced) {
+      r.check(`${tag} hovering the box: no animation at all (animation-name none)`, beat.n === 0 && beat.animName === 'none', JSON.stringify(beat));
+    } else {
+      r.check('hovering the box: one heartbeat animation, 0.8s, played once', beat.n === 1 && beat.name === 'hart-beat' && beat.dur === 800 && beat.iters === 1, JSON.stringify(beat));
+      r.check('...scaling up about 12% at the beat, still tilted', Math.abs(beat.scale - 1.12) < 0.01 && Math.abs(beat.tilt - 8) < 0.5, JSON.stringify(beat));
+      r.check('...and nothing around it shifts mid-beat', await layout() === before, JSON.stringify({ before, during: await layout() }));
+      const kf = await page.evaluate(() => {
+        for (const sh of document.styleSheets) { let rules; try { rules = sh.cssRules; } catch (e) { continue; }
+          for (const ru of rules) if (ru.type === CSSRule.KEYFRAMES_RULE && ru.name === 'hart-beat') return [...ru.cssRules].map((k) => k.keyText + ' ' + k.style.transform); }
+        return null;
+      });
+      r.check('two beats: up at 25% and 75%, back at 50% and 100%', !!kf && kf.join('|').includes('25%, 75% rotate(8deg) scale(1.12)'), JSON.stringify(kf));
+    }
+    // A card's keyboard focus (Tab, so :focus-visible really applies).
+    await page.mouse.move(5, 890);
+    await page.waitForFunction(() => !document.querySelector('.hart-heart').getAnimations().length, null, { timeout: 3000 }).catch(() => {});
+    let focused = false;
+    for (let i = 0; i < 80 && !focused; i++) {
+      await page.keyboard.press('Tab');
+      focused = await page.evaluate(() => !!document.activeElement && !!document.activeElement.closest('.show-some-hart .gi-action'));
+    }
+    const kb = await page.evaluate(() => { const hh = document.querySelector('.hart-heart');
+      return { visible: document.activeElement.matches(':focus-visible'), n: hh.getAnimations().length, animName: getComputedStyle(hh).animationName }; });
+    r.check(`${tag} a card reached by keyboard ${reduced ? 'gives no animation' : 'gives the heartbeat'}`,
+      focused && kb.visible && (reduced ? kb.n === 0 && kb.animName === 'none' : kb.n === 1 && kb.animName === 'hart-beat'), JSON.stringify({ focused, ...kb }));
     r.check('no console/page errors', errors.length === 0, errors.join(' | '));
     await page.close();
   }

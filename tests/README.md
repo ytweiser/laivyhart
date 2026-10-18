@@ -324,7 +324,14 @@ over a narrower range.
   picker (search, Recent, Popular) when signed in, handing a chosen song
   straight to the existing dedicate sheet. Also covers the signed-out round
   trip through `/auth/callback?next=/?dedicate=1` reopening the picker
-  automatically once signed in.
+  automatically once signed in. HOME-3: the gold heart after the heading
+  (inline SVG, aria-hidden, the heading still reads "Show some Hart"):
+  right after "Hart" on the one heading line, about cap height, 3:1+
+  against the box in every skin at both widths; tilted 8deg; still at rest;
+  one 0.8s double beat (scale 1.12) on hover or a card's keyboard focus,
+  with nothing around it moving; and animation-name none under reduced
+  motion (theme.css's global 0.001ms rule alone would also leave nothing
+  running, so the check is on the name, not just on running animations).
 - `specs/your-song-nav.spec.mjs` (HOME-1): "Your Song" in the main nav for
   everyone (`site_settings.your_song_nav_enabled`, now on), signed in and
   out, and that the switch itself still works if ever turned back off; plus
