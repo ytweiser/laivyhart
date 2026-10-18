@@ -281,6 +281,27 @@ for (const row of rows) {
   delete row.idea_id;
 }
 
+/* PLAY-1: og_image, the song's share-sized cover (600x600 JPEG at
+   og/<song-id>.jpg in R2; scripts/make-og-images.mjs backfills it, the upload
+   form and the admin make it for new songs). Only written when a HEAD
+   confirms the object is really there, so middleware.js never points a
+   WhatsApp preview at a missing file; without it the middleware falls back
+   to a square wsrv crop of the cover. Soft-fail like everything else here. */
+const OG_BASE = 'https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/og/';
+try {
+  let found = 0;
+  await Promise.all(rows.map(async (row) => {
+    const ogUrl = OG_BASE + encodeURIComponent(row.id) + '.jpg';
+    try {
+      const h = await fetch(ogUrl, { method: 'HEAD' });
+      if (h.ok) { row.og_image = ogUrl; found++; }
+    } catch (e) { /* leave og_image off this row */ }
+  }));
+  console.log(`[snapshot] ${found}/${rows.length} songs have a share image under og/.`);
+} catch (e) {
+  console.warn(`[snapshot] og image check skipped (${e && e.message}).`);
+}
+
 writeFileSync(outPath, JSON.stringify(rows, null, 2) + '\n');
 console.log(`[snapshot] Wrote songs.json with ${rows.length} approved songs.`);
 

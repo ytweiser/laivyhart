@@ -1346,6 +1346,21 @@
      transport row (was margin-left:auto, pinned to that row's right edge). */
   .dock-react{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-top:0.2rem;}
   .dock-react.hidden{display:none;}
+  /* PLAY-1: Radio tag + Autoplay switch. */
+  .play-mode-row{display:flex; align-items:center; justify-content:center; gap:0.9rem; flex-wrap:wrap; margin-top:0.7rem;
+    font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim);}
+  .play-mode-row.hidden, .now-radio-tag.hidden{display:none;}
+  .now-radio-tag{display:inline-flex; align-items:center; padding:0.18rem 0.6rem; border-radius:999px;
+    background:var(--chip-bg); color:var(--text); font-weight:600; letter-spacing:0.02em;}
+  .autoplay-toggle{display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; user-select:none; position:relative;}
+  .autoplay-toggle input{position:absolute; opacity:0; width:1px; height:1px; margin:0;}
+  .autoplay-track{width:2.1rem; height:1.2rem; border-radius:999px; background:var(--chip-bg); position:relative;
+    border:1px solid var(--line); transition:background 0.18s;}
+  .autoplay-knob{position:absolute; top:50%; left:0.12rem; width:0.88rem; height:0.88rem; border-radius:50%;
+    background:var(--text-dim); transform:translateY(-50%); transition:left 0.18s, background 0.18s;}
+  .autoplay-toggle input:checked + .autoplay-track{background:var(--accent-solid);}
+  .autoplay-toggle input:checked + .autoplay-track .autoplay-knob{left:1.04rem; background:#fff;}
+  .autoplay-toggle input:focus-visible + .autoplay-track{outline:2px solid var(--accent-solid); outline-offset:2px;}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
@@ -1725,6 +1740,18 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
           </span>
         </button>
+      </div>
+
+      <!-- PLAY-1: says "Radio" when radio has taken over (so a new song
+           starting is never a mystery), and the Autoplay switch: on by
+           default, remembered on this device. -->
+      <div class="play-mode-row hidden" id="play-mode-row">
+        <span class="now-radio-tag hidden" id="now-radio-tag"></span>
+        <label class="autoplay-toggle" for="autoplay-switch">
+          <input type="checkbox" id="autoplay-switch" role="switch" checked>
+          <span class="autoplay-track" aria-hidden="true"><span class="autoplay-knob"></span></span>
+          <span class="autoplay-text">Autoplay</span>
+        </label>
       </div>
 
       <!-- DED-2: the latest dedications of this song, hidden when there are
@@ -2191,6 +2218,8 @@ function genArtStyle(seed){
 // actually needed, so heavy source covers (multi-MB PNGs) do not bloat the
 // page. Callers set an onerror that falls back to the raw URL if the CDN is
 // unavailable, so images always render.
+// PLAY-1: the share-sized cover (600x600 JPEG) every song has under og/ in R2.
+const OG_IMAGE_BASE = 'https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/og/';
 function cdnImg(url, w){
   if(!url) return url;
   return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=' + w + '&output=jpg&q=80';
@@ -2928,6 +2957,23 @@ let queuePos = 0;
 // queue of its own; manualStep + auto-advance follow this when it is set).
 let manualQueue = null;  // array of SONGS indices, or null
 let manualPos = 0;
+/* PLAY-1: the music never stops. When a song (or a queue the listener chose)
+   ends with nothing left, radio takes over: within the active mood channel if
+   there is one, otherwise the whole approved catalog, never repeating any of
+   the last RADIO_NO_REPEAT songs. The next song is picked when the current
+   one STARTS (nextUp) so the ended handler can switch audio synchronously,
+   with no network wait, which is what keeps a locked phone playing.
+   Autoplay off restores the old behavior: stop at the end. */
+const AUTOPLAY_KEY = 'laivy-autoplay-v1';
+const RADIO_NO_REPEAT = 15;
+function loadAutoplay(){ try{ return localStorage.getItem(AUTOPLAY_KEY) !== '0'; }catch(e){ return true; } }
+let autoplayOn = loadAutoplay();
+let radioTakeover = false;  // radio began because playback ran out, not via the Radio button
+let recentPlayed = [];      // song ids, oldest first, newest last
+let playHistory = [];       // SONGS indices, for "previous" inside radio
+let nextUp = null;          // { idx, kind: 'radio'|'takeover'|'queue'|'rail', pos }
+let pendingSource = null;   // handed to the next loadSong by a continuation
+let currentSource = null;   // 'autoplay' when radio continuation started this song
 const railScrolledThisSession = new Set(); // home_rail_scroll: once per rail
 let idleTimer = null;
 let playCounted = false;
@@ -4415,7 +4461,25 @@ function syncSongUrl(s){
   }catch(e){ /* history is best effort */ }
 }
 
-function loadSong(idx, keepRailQueue){
+/* opts.cont: a continuation (ended / next / previous inside radio), which
+   keeps a radio takeover going; any other load is the listener's own pick
+   and ends it. opts.back: stepping back through playHistory. */
+function loadSong(idx, keepRailQueue, opts){
+  opts = opts || {};
+  currentSource = pendingSource; pendingSource = null;
+  if(!opts.cont && radioTakeover){
+    radioTakeover = false;
+    if(mode === 'radio' || mode === 'channelRadio') mode = 'manual';
+    const rb = document.getElementById('radio-btn'); if(rb) rb.classList.remove('active');
+  }
+  if(!opts.back && currentIdx !== null && currentIdx !== idx){
+    playHistory.push(currentIdx);
+    if(playHistory.length > 50) playHistory.shift();
+  }
+  if(SONGS[idx] && SONGS[idx].id){
+    recentPlayed.push(SONGS[idx].id);
+    if(recentPlayed.length > 50) recentPlayed.shift();
+  }
   currentIdx = idx;
   if(!keepRailQueue) manualQueue = null; // a non-rail pick ends any "Play all"
   langView = 'orig';
@@ -4428,9 +4492,159 @@ function loadSong(idx, keepRailQueue){
   paintRatings();
   loadMyRatings(SONGS[idx] && SONGS[idx].id).then(paintRatings);
   playCurrent();
+  computeNextUp();
+  setMediaSession(SONGS[idx]);
+  paintPlayMode();
   updateMiniPlayer();
   if(route === 'listen') syncSongUrl(SONGS[idx]);
 }
+
+/* ---------------- PLAY-1: continuation ---------------- */
+function radioPoolIdxs(channel){
+  const out = [];
+  for(let i = 0; i < SONGS.length; i++){
+    const s = SONGS[i];
+    if(!s || !s.audio) continue;
+    if(s.status && s.status !== 'approved') continue;
+    if(channel && !(s.channels || []).includes(channel)) continue;
+    out.push(i);
+  }
+  return out;
+}
+// Random, but never one of the last RADIO_NO_REPEAT played (or half the pool
+// when the pool is smaller), and never the song playing now.
+function pickRadioIdx(channel){
+  const pool = radioPoolIdxs(channel);
+  if(!pool.length) return -1;
+  const win = Math.min(RADIO_NO_REPEAT, Math.floor(pool.length / 2));
+  const recent = new Set(win > 0 ? recentPlayed.slice(-win) : []);
+  let cands = pool.filter(i => i !== currentIdx && !recent.has(SONGS[i].id));
+  if(!cands.length) cands = pool.filter(i => i !== currentIdx);
+  if(!cands.length) cands = pool;
+  return cands[Math.floor(Math.random() * cands.length)];
+}
+// Plain Radio is the whole catalog even inside a channel; everything else
+// (Mood radio, or a takeover from a song heard inside a channel) stays in it.
+function radioChannelFor(m){ return m === 'radio' ? null : activeChannel; }
+
+function computeNextUp(){
+  nextUp = null;
+  if(currentIdx === null) return;
+  if(mode === 'radio' || mode === 'channelRadio'){
+    const i = pickRadioIdx(radioChannelFor(mode));
+    if(i >= 0) nextUp = { idx: i, kind: 'radio' };
+    return;
+  }
+  // A queue the listener chose plays to its end first.
+  if(mode === 'playlist' && queue.length && queuePos < queue.length - 1){
+    nextUp = { idx: queue[queuePos + 1], kind: 'queue', pos: queuePos + 1 };
+    return;
+  }
+  if(mode === 'manual' && manualQueue && manualQueue.length){
+    const cur = manualQueue.indexOf(currentIdx);
+    const base = cur < 0 ? manualPos : cur;
+    if(base < manualQueue.length - 1){
+      nextUp = { idx: manualQueue[base + 1], kind: 'rail', pos: base + 1 };
+      return;
+    }
+  }
+  if(!autoplayOn) return;               // today's behavior: stop here
+  const i = pickRadioIdx(activeChannel);
+  if(i >= 0) nextUp = { idx: i, kind: 'takeover' };
+}
+
+// Runs inside the audio element's 'ended' handler: everything here is
+// synchronous, so the new src is set and play() called in the same task.
+function handleTrackEnd(){
+  const n = (nextUp && SONGS[nextUp.idx]) ? nextUp : null;
+  nextUp = null;
+  if(!n){ setPlayIcon(false); setAmbientPlaying(false); return false; }
+  if(n.kind === 'queue'){ queuePos = n.pos; loadSong(n.idx); return true; }
+  if(n.kind === 'rail'){ manualPos = n.pos; loadSong(n.idx, true); return true; }
+  if(n.kind === 'takeover'){
+    radioTakeover = true;
+    mode = activeChannel ? 'channelRadio' : 'radio';
+    queue = []; queuePos = 0;
+    if(mode === 'radio'){ const rb = document.getElementById('radio-btn'); if(rb) rb.classList.add('active'); }
+  }
+  pendingSource = radioTakeover ? 'autoplay' : null;
+  loadSong(n.idx, false, { cont: true });
+  return true;
+}
+
+function playPrev(){
+  if(mode === 'radio' || mode === 'channelRadio'){
+    const back = playHistory.pop();
+    if(back != null && SONGS[back]){ loadSong(back, false, { cont: true, back: true }); return; }
+    try{ audioEl.currentTime = 0; }catch(e){}
+    return;
+  }
+  if(mode !== 'manual' && queue.length){
+    queuePos = (queuePos - 1 + queue.length) % queue.length;
+    loadSong(queue[queuePos]);
+  } else {
+    manualStep(-1);
+  }
+}
+
+function radioLabel(){
+  if(mode !== 'radio' && mode !== 'channelRadio') return '';
+  const ch = radioChannelFor(mode);
+  const c = ch && CHANNELS.find(x => x.id === ch);
+  return c ? 'Radio · ' + c.title : 'Radio';
+}
+function paintPlayMode(){
+  const row = document.getElementById('play-mode-row');
+  if(row) row.classList.toggle('hidden', currentIdx === null);
+  const tag = document.getElementById('now-radio-tag');
+  if(tag){
+    const label = radioLabel();
+    tag.textContent = label;
+    tag.classList.toggle('hidden', !label);
+  }
+  const sw = document.getElementById('autoplay-switch');
+  if(sw) sw.checked = autoplayOn;
+}
+(function(){
+  const sw = document.getElementById('autoplay-switch');
+  if(!sw) return;
+  sw.checked = autoplayOn;
+  sw.addEventListener('change', () => {
+    autoplayOn = !!sw.checked;
+    try{ localStorage.setItem(AUTOPLAY_KEY, autoplayOn ? '1' : '0'); }catch(e){}
+    computeNextUp();
+  });
+})();
+
+/* Lock screen / headset controls, set for every song, radio included. */
+function mediaArtwork(s){
+  if(s.cover){
+    const sq = 'https://wsrv.nl/?url=' + encodeURIComponent(s.cover) + '&w=512&h=512&fit=cover&output=jpg&q=80';
+    return [{ src: sq, sizes: '512x512', type: 'image/jpeg' }];
+  }
+  return [{ src: OG_IMAGE_BASE + encodeURIComponent(s.id) + '.jpg', sizes: '600x600', type: 'image/jpeg' }];
+}
+function setMediaSession(s){
+  if(!s || !('mediaSession' in navigator)) return;
+  try{
+    const a = artistOf(s);
+    const meta = {
+      title: s.title || s.title_translit || 'Laivy Hart',
+      artist: a ? artistName(a) : 'Laivy Hart',
+      album: radioLabel() || 'Laivy Hart',
+      artwork: mediaArtwork(s),
+    };
+    navigator.mediaSession.metadata = (typeof MediaMetadata === 'function') ? new MediaMetadata(meta) : meta;
+  }catch(e){ /* best effort */ }
+}
+(function(){
+  if(!('mediaSession' in navigator)) return;
+  const on = (action, fn) => { try{ navigator.mediaSession.setActionHandler(action, fn); }catch(e){} };
+  on('play', () => { if(currentIdx === null) return; audioEl.play().catch(()=>{}); });
+  on('pause', () => { audioEl.pause(); });
+  on('nexttrack', () => playNext());
+  on('previoustrack', () => playPrev());
+})();
 
 function playCurrent(){
   if(currentIdx === null) return;
@@ -4450,8 +4664,7 @@ function playCurrent(){
     setAmbientPlaying(false);
     resetScrub();
     // Keep radio, playlists, and a rail "Play all" moving even before audio.
-    if(mode !== 'manual') idleTimer = setTimeout(advanceQueue, 9000);
-    else if(manualQueue) idleTimer = setTimeout(railAdvance, 9000);
+    if(mode !== 'manual' || manualQueue) idleTimer = setTimeout(handleTrackEnd, 9000);
   }
 }
 
@@ -4468,7 +4681,16 @@ function togglePlay(){
   if(audioEl.paused){ audioEl.play().catch(()=>{}); setPlayIcon(true); setAmbientPlaying(true); }
   else{ audioEl.pause(); setPlayIcon(false); setAmbientPlaying(false); }
 }
-function playNext(){ if(mode !== 'manual' && queue.length) advanceQueue(); else manualStep(1); }
+function playNext(){
+  // Radio: take the song already picked when this one started (instant on a
+  // lock screen), same as the end of a track.
+  if(mode === 'radio' || mode === 'channelRadio'){
+    if(!(nextUp && nextUp.kind === 'radio')) computeNextUp();
+    handleTrackEnd();
+    return;
+  }
+  if(mode !== 'manual' && queue.length) advanceQueue(); else manualStep(1);
+}
 function resetScrub(){
   document.getElementById('scrub').value = 0;
   document.getElementById('t-elapsed').textContent = '0:00';
@@ -4516,7 +4738,11 @@ audioEl.addEventListener('play', () => {
     song_title: s.title || s.title_translit || '',
     song_transliteration: s.title_translit || ''
   });
-  logActivity('play_start', { song_id: s.id, artist_id: s.artist_id });
+  // PLAY-1: a radio continuation is still one ordinary play_start (one listen
+  // in Pulse/the ticker), tagged meta.source = 'autoplay'.
+  logActivity('play_start', currentSource
+    ? { song_id: s.id, artist_id: s.artist_id, meta: { source: currentSource } }
+    : { song_id: s.id, artist_id: s.artist_id });
 });
 audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(false); });
 audioEl.addEventListener('ended', () => {
@@ -4526,8 +4752,7 @@ audioEl.addEventListener('ended', () => {
     logActivity('play_complete', { song_id: s.id, artist_id: s.artist_id });
   }
   playCounted = false;
-  if(mode !== 'manual') advanceQueue();
-  else railAdvance();
+  handleTrackEnd();   // PLAY-1: queue, then radio, unless Autoplay is off
 });
 
 /* ============================================================
@@ -5332,35 +5557,20 @@ function renderFeed(){
 /* ============================================================
    Radio, Mood radio, queue navigation
    ============================================================ */
-function shuffledIndices(channelFilter){
-  let idxs = SONGS.map((s,i)=>i)
-    .filter(i => !channelFilter || (SONGS[i].channels || []).includes(channelFilter));
-  for(let i=idxs.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [idxs[i],idxs[j]]=[idxs[j],idxs[i]]; }
-  return idxs;
-}
 function advanceQueue(){
+  if(mode === 'radio' || mode === 'channelRadio'){ playNext(); return; }
   if(queue.length === 0) return;
   queuePos = (queuePos + 1) % queue.length;
   loadSong(queue[queuePos]);
 }
-// Advance a homepage "Play all" rail queue by one; stop (no wrap) at the end.
-function railAdvance(){
-  if(!manualQueue || !manualQueue.length) return false;
-  const cur = manualQueue.indexOf(currentIdx);
-  const base = cur < 0 ? manualPos : cur;
-  if(base < manualQueue.length - 1){
-    manualPos = base + 1;
-    loadSong(manualQueue[manualPos], true);
-    return true;
-  }
-  return false;
-}
 function startRadio(){
   if(SONGS.length === 0) return;
   mode = 'radio';
+  radioTakeover = false;
   document.getElementById('radio-btn').classList.add('active');
-  queue = shuffledIndices(null); queuePos = 0;
-  loadSong(queue[0]);
+  queue = []; queuePos = 0;
+  const i = pickRadioIdx(null);
+  if(i >= 0) loadSong(i, false, { cont: true });
 }
 document.getElementById('radio-btn').addEventListener('click', startRadio);
 /* Mood radio: a chooser, not a play button.
@@ -5510,8 +5720,10 @@ function startChannelRadio(id){
   if(mb) mb.classList.add('active');
   renderBrowseCloud();
   renderList();
-  queue = shuffledIndices(id); queuePos = 0;
-  if(queue.length) loadSong(queue[0]);
+  radioTakeover = false;
+  queue = []; queuePos = 0;
+  const first = pickRadioIdx(id);
+  if(first >= 0) loadSong(first, false, { cont: true });
 }
 // Manual prev/next walk the VISIBLE (sorted + filtered) order so they match
 // what the listener sees. If the current song has been filtered out of view,
@@ -5538,14 +5750,7 @@ function manualStep(delta){
   }
   loadSong(vis[(pos + delta + vis.length) % vis.length].idx);
 }
-document.getElementById('prev-btn').addEventListener('click', () => {
-  if(mode !== 'manual' && queue.length){
-    queuePos = (queuePos - 1 + queue.length) % queue.length;
-    loadSong(queue[queuePos]);
-  } else {
-    manualStep(-1);
-  }
-});
+document.getElementById('prev-btn').addEventListener('click', playPrev);
 document.getElementById('next-btn').addEventListener('click', playNext);
 
 /* ============================================================
@@ -5707,6 +5912,7 @@ function playPlaylist(pl){
   const idxs = pl.songIds.map(id => SONGS.findIndex(s => s.id === id)).filter(i => i >= 0);
   if(idxs.length === 0){ alert('This playlist has no available songs yet.'); return; }
   mode = 'playlist';
+  radioTakeover = false;
   document.getElementById('radio-btn').classList.remove('active');
   queue = idxs; queuePos = 0;
   switchTab('songs');
@@ -5907,13 +6113,13 @@ function laivyToast(msg){
 // 308-redirects www to it, and this is the single origin every share/OG/
 // canonical link in this file reads.
 const SITE_ORIGIN = 'https://laivyhart.com';
-/* The canonical URL is /song/<slug>. The legacy /?song=<id> form stays as the
-   fallback for a song that somehow has no slug; the middleware 301s it anyway,
-   so an old link already in someone's chat history still lands. */
+/* The canonical URL is /song/<slug>. The legacy /?song=<id> form is never
+   produced any more; the middleware still 301s it, so an old link already in
+   someone's chat history still lands. */
 function songShareUrl(s){
-  return s && s.slug
-    ? SITE_ORIGIN + '/song/' + encodeURIComponent(s.slug)
-    : SITE_ORIGIN + '/?song=' + encodeURIComponent(s.id);
+  // PLAY-1: always /song/<x>. A song with no slug (none today) falls back to
+  // its id there, which the middleware 301s to the slug once it has one.
+  return SITE_ORIGIN + '/song/' + encodeURIComponent((s && (s.slug || s.id)) || '');
 }
 (function(){
   const btn = document.getElementById('now-share-btn');
@@ -7574,7 +7780,7 @@ function updateMiniPlayer(){
   const mini = artistOf(s);
   const miniTranslit = heb ? (s.title_translit || '') : '';
   document.getElementById('mini-sub').textContent =
-    [miniTranslit, mini ? artistName(mini) : ''].filter(Boolean).join(' \u00b7 ');
+    [radioLabel() ? 'Radio' : '', miniTranslit, mini ? artistName(mini) : ''].filter(Boolean).join(' \u00b7 ');
   document.getElementById('mini-play').innerHTML = audioEl.paused ? '&#9654;' : '&#10074;&#10074;';
 }
 document.getElementById('mini-play').addEventListener('click', togglePlay);

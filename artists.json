@@ -6,21 +6,31 @@
     "name_he": null,
     "avatar": null,
     "bio": null,
-    "song_count": 39,
+    "song_count": 40,
     "badges": [
       {
         "badge": "hit_number_one",
-        "value": 3,
+        "value": 5,
         "sort": 2
       },
       {
         "badge": "weeks_at_number_one",
-        "value": 3,
+        "value": 5,
         "sort": 3
       },
       {
+        "badge": "best_words",
+        "value": 1,
+        "sort": 4
+      },
+      {
+        "badge": "best_music",
+        "value": 1,
+        "sort": 5
+      },
+      {
         "badge": "weeks_on_chart",
-        "value": 3,
+        "value": 5,
         "sort": 6
       },
       {
@@ -30,9 +40,9 @@
       }
     ],
     "stats": {
-      "songs": 39,
-      "weeks_on_chart": 56,
-      "hearts": 39,
+      "songs": 40,
+      "weeks_on_chart": 91,
+      "hearts": 49,
       "comments": 1,
       "since": "2026-07-28"
     },
@@ -40,17 +50,17 @@
       {
         "id": "move-me",
         "title": "MOVE ME",
-        "count": 13
+        "count": 14
+      },
+      {
+        "id": "fire-me-up",
+        "title": "FIRE ME UP",
+        "count": 10
       },
       {
         "id": "perceptions",
         "title": "PERCEPTIONS",
         "count": 10
-      },
-      {
-        "id": "fire-me-up",
-        "title": "FIRE ME UP",
-        "count": 9
       },
       {
         "id": "make-me-feel-good",
@@ -81,7 +91,10 @@
     "picks": [],
     "honors": [
       "5647c338-0aee-4472-8e35-44dad08c5477",
+      "17431641-c8e1-4d6c-ae7a-8ea371a677e5",
       "62c8b530-2456-4fa2-bf52-c797bfedea65",
+      "0d81a4bc-22ff-4bd9-8f24-1ab9340501c7",
+      "772e4697-664c-456d-b1f2-8d30e79b61f4",
       "c6272ed4-8f13-4fa3-9715-34923d16ebb6"
     ],
     "milestones": [
@@ -98,13 +111,13 @@
         "threshold": 50
       },
       {
-        "song_id": "5647c338-0aee-4472-8e35-44dad08c5477",
+        "song_id": "c6272ed4-8f13-4fa3-9715-34923d16ebb6",
         "track": "plays",
         "tier": 1,
         "threshold": 50
       },
       {
-        "song_id": "c6272ed4-8f13-4fa3-9715-34923d16ebb6",
+        "song_id": "5647c338-0aee-4472-8e35-44dad08c5477",
         "track": "plays",
         "tier": 1,
         "threshold": 50

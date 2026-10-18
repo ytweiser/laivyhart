@@ -193,6 +193,23 @@ over a narrower range.
   cares", never a name), a removed-or-unknown code (identical "no longer
   available" message either way), the Play button handing off to the real
   player, and 1280px/390px rendering.
+- `specs/play-continuation.spec.mjs` (PLAY-1): the music never stops. A stubbed
+  silent WAV per song; a /listen row, a `/song/<slug>` page and a `/d/<code>`
+  page each roll into radio on `ended` (labelled "Radio", logged as
+  `play_start` with `meta.source = 'autoplay'`); one run lets the clip end on
+  its own; no repeat inside the last 15 (41-song pool) or half the pool (9
+  songs); Mood radio stays in its channel; Autoplay off stops and is
+  remembered; an artist Play all finishes in order before radio; Media
+  Session metadata; the share button's canonical `/song/<slug>` URL.
+- `specs/share-og.spec.mjs` (PLAY-1): middleware.js's real default export under
+  a WhatsApp, a phone-browser and no user agent: exactly one og:image per song
+  and dedication page, the song's `og/<id>.jpg`, with the 600x600 JPEG tag set
+  and twitter card; the square wsrv fallback; a song approved after the last
+  deploy (live lookup); `/song/<id>` and `/?song=` redirects; home keeps the
+  logo, artists keep the avatar.
+- `specs/worker-og-upload.spec.mjs` (PLAY-1): the Worker's
+  `/upload/cover?og_for=<song-id>`: own song only, uuid only, 200 KB cap,
+  plain cover uploads unchanged.
 - `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
   line/sender-line/share-text table in index.html, called directly in-page
   rather than round-tripped through the form 21 times: every occasion's

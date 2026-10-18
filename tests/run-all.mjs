@@ -67,6 +67,9 @@ const SPECS = [
   { name: 'canonical-origin', path: './specs/canonical-origin.spec.mjs', kind: 'none' },
   { name: 'grants-audit', path: './specs/grants-audit.spec.mjs', kind: 'none' },
   { name: 'worker-song-idea-notify', path: './specs/worker-song-idea-notify.spec.mjs', kind: 'none' },
+  { name: 'play-continuation', path: './specs/play-continuation.spec.mjs', kind: 'browser' },
+  { name: 'share-og', path: './specs/share-og.spec.mjs', kind: 'none' },
+  { name: 'worker-og-upload', path: './specs/worker-og-upload.spec.mjs', kind: 'none' },
 ];
 
 function parseArg(argv, flag) {

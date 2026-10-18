@@ -1588,6 +1588,22 @@ async function saveSong(){
       : 'Saved ✓  ·  ')
     + '<button type="button" class="link-btn publish-trigger">Click Publish</button> to update the backup snapshot.';
   msg.className = 'save-msg ' + (chErr ? 'err' : 'ok');
+  // PLAY-1: the share-sized cover link previews use (og/<song-id>.jpg, 600x600
+  // JPEG). Made from the new cover file, or the theme plate for a song with no
+  // cover; an unchanged cover keeps the one it has. Best effort: the song is
+  // saved either way, and the preview falls back to a square crop meanwhile.
+  if(savedId && (pendingCoverFile || !payload.cover_url) && window.laivy && window.laivy.media && window.laivy.media.makeShareImage){
+    try{
+      const og = await window.laivy.media.makeShareImage(pendingCoverFile || null, payload,
+        payload.cover_focus_x, payload.cover_focus_y);
+      const ogRes = await fetch(`${R2_UPLOAD_URL}?folder=og&filename=${encodeURIComponent(savedId + '.jpg')}`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + (getUploadToken() || ''), 'Content-Type': 'image/jpeg' },
+        body: og,
+      });
+      if(!ogRes.ok) console.warn('[admin] share image upload failed', ogRes.status);
+    }catch(e){ console.warn('[admin] share image not made', e); }
+  }
   pendingAudioFile = null;
   pendingCoverFile = null;
   await loadSongs();
@@ -2778,6 +2794,8 @@ function showReleasePicker(id){
 </script>
 
 <script type="module" src="/js/auth.js"></script>
+<!-- PLAY-1: makeShareImage() for the share-sized cover (window.laivy.media). -->
+<script type="module" src="/js/media-utils.js"></script>
 <script type="module" src="/js/activity.js"></script>
 <script type="module" src="/js/account-ui.js"></script>
 </body>

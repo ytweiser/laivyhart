@@ -58,6 +58,53 @@ function cdnImage(url, w) {
   return 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=' + w + '&output=jpg&q=80';
 }
 
+/* PLAY-1: every song's share preview is its own cover, never the logo.
+   og/<song-id>.jpg in R2 is a square 600x600 JPEG under 200 KB, made for
+   exactly this (scripts/make-og-images.mjs, the upload form, the admin);
+   songs.json carries it as og_image only once a HEAD confirmed the file
+   exists. Fallback, for a cover whose share file is not confirmed yet: a
+   square 600x600 wsrv crop of the cover, so the size hints below stay true.
+   No user-agent check anywhere in this file: WhatsApp, a phone browser and a
+   request with no user agent all get the same tags; people still get the
+   normal app, because the app boots on top of this same HTML. */
+const OG_BASE = 'https://pub-75904c6ec4a240bbaa60162b9258ba52.r2.dev/og/';
+const OG_SIZE = 600;
+function squareCdn(url, fx, fy) {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  let out = 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=' + OG_SIZE + '&h=' + OG_SIZE + '&fit=cover';
+  if (fx != null && fy != null && isFinite(fx) && isFinite(fy)) {
+    out += '&a=focal&fpx=' + (Number(fx) / 100).toFixed(2) + '&fpy=' + (Number(fy) / 100).toFixed(2);
+  }
+  return out + '&output=jpg&q=80';
+}
+function songOgImage(song) {
+  if (!song) return null;
+  if (song.og_image) return song.og_image;
+  return squareCdn(song.cover_url, song.cover_focus_x, song.cover_focus_y)
+    || (song.id ? OG_BASE + encodeURIComponent(song.id) + '.jpg' : null);
+}
+/* Exactly one og:image on the page: drop every og:image* tag the shell
+   carries (the logo and its 1200x630 hints) and write the full set for this
+   image, plus the matching twitter tags. */
+function setOgImage(html, image, alt) {
+  html = html.replace(/\s*<meta property="og:image(?::[a-z_]+)?" content="[^"]*">/g, '');
+  html = html.replace(/\s*<meta name="twitter:image(?::alt)?" content="[^"]*">/g, '');
+  const block = [
+    '<meta property="og:image" content="' + escAttr(image) + '">',
+    '<meta property="og:image:secure_url" content="' + escAttr(image) + '">',
+    '<meta property="og:image:type" content="image/jpeg">',
+    '<meta property="og:image:width" content="' + OG_SIZE + '">',
+    '<meta property="og:image:height" content="' + OG_SIZE + '">',
+    '<meta property="og:image:alt" content="' + escAttr(alt) + '">',
+    '<meta name="twitter:image" content="' + escAttr(image) + '">',
+    '<meta name="twitter:image:alt" content="' + escAttr(alt) + '">',
+  ].join('\n');
+  html = /<meta name="twitter:card"[^>]*>/.test(html)
+    ? html.replace(/<meta name="twitter:card"[^>]*>/, (m) => block + '\n' + m)
+    : html.replace('</head>', block + '\n</head>');
+  return setMeta(html, 'name', 'twitter:card', 'summary_large_image');
+}
+
 function escAttr(str) {
   return String(str == null ? '' : str)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -181,7 +228,7 @@ function renderSong(html, song) {
   const heading = song.title || song.title_translit || 'Untitled';
   const pageTitle = heading + ', by ' + artistName;
   const desc = firstSentence(song.about, 160) || 'An original song on ' + SITE_NAME + '.';
-  const image = cdnImage(song.cover_url, 1200) || DEFAULT_OG_IMAGE;
+  const image = songOgImage(song);
   const lang = song.language === 'English' ? 'en' : 'he';
 
   html = setTitle(html, escAttr(pageTitle + ' | ' + SITE_NAME));
@@ -190,19 +237,10 @@ function renderSong(html, song) {
   html = setMeta(html, 'property', 'og:title', escAttr(pageTitle));
   html = setMeta(html, 'property', 'og:description', escAttr(desc));
   html = setMeta(html, 'property', 'og:url', escAttr(canonical));
-  html = setMeta(html, 'property', 'og:image', escAttr(image));
   html = setMeta(html, 'property', 'og:type', 'music.song');
   html = setMeta(html, 'name', 'twitter:title', escAttr(pageTitle));
   html = setMeta(html, 'name', 'twitter:description', escAttr(desc));
-  html = setMeta(html, 'name', 'twitter:image', escAttr(image));
-  html = setMeta(html, 'name', 'twitter:card', 'summary_large_image');
-  // wsrv keeps each cover's own aspect ratio, so the shell's 1200x630 hints
-  // would be a lie for a cover. They describe the default og-image only.
-  if (song.cover_url) {
-    html = html
-      .replace(/\s*<meta property="og:image:width" content="[^"]*">/, '')
-      .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
-  }
+  html = setOgImage(html, image, heading);
 
   const titleDir = isHebrew(song.title) ? ' dir="rtl" lang="he"' : ' lang="en"';
   let body = '<h1' + titleDir + '>' + escHtml(song.title) + '</h1>';
@@ -235,7 +273,7 @@ function renderSong(html, song) {
   if (artist) {
     ld.byArtist = { '@type': 'MusicGroup', name: artistName, url: SITE + '/artist/' + artist.handle };
   }
-  if (song.cover_url) ld.image = image;
+  ld.image = image;
   if (song.about) ld.description = desc;
   const published = song.reviewed_at || song.created_at;
   if (published) ld.datePublished = String(published).slice(0, 10);
@@ -452,7 +490,12 @@ function renderDedication(html, d) {
   const senderLine = dedSenderLine(d.occasion, d.sender_name);
   const snippet = d.message ? firstSentence(d.message, 120) : '';
   const desc = line + (snippet ? ': "' + snippet + '"' : '') + '. A dedication on ' + SITE_NAME + '.';
-  const image = cdnImage(d.cover_url, 1200) || DEFAULT_OG_IMAGE;
+  // PLAY-1: the dedicated song's own share cover, never the logo.
+  const song = songById(d.song_id);
+  const image = (song && songOgImage(song))
+    || squareCdn(d.cover_url)
+    || OG_BASE + encodeURIComponent(d.song_id || '') + '.jpg';
+  const alt = d.song_title || (song && song.title) || headline;
 
   html = setTitle(html, escAttr(headline + ' | ' + SITE_NAME));
   html = upsertMeta(html, 'name', 'description', escAttr(desc));
@@ -460,17 +503,10 @@ function renderDedication(html, d) {
   html = setMeta(html, 'property', 'og:title', escAttr(headline));
   html = setMeta(html, 'property', 'og:description', escAttr(desc));
   html = setMeta(html, 'property', 'og:url', escAttr(canonical));
-  html = setMeta(html, 'property', 'og:image', escAttr(image));
   html = setMeta(html, 'property', 'og:type', 'website');
   html = setMeta(html, 'name', 'twitter:title', escAttr(headline));
   html = setMeta(html, 'name', 'twitter:description', escAttr(desc));
-  html = setMeta(html, 'name', 'twitter:image', escAttr(image));
-  html = setMeta(html, 'name', 'twitter:card', 'summary_large_image');
-  if (d.cover_url) {
-    html = html
-      .replace(/\s*<meta property="og:image:width" content="[^"]*">/, '')
-      .replace(/\s*<meta property="og:image:height" content="[^"]*">/, '');
-  }
+  html = setOgImage(html, image, alt);
 
   let body = '<h1>' + escHtml(headline) + '</h1>';
   body += '<p>' + escHtml(line) + '</p>';
@@ -484,6 +520,28 @@ function renderDedication(html, d) {
   // Dedication pages are personal, not catalog content: never indexed,
   // live or removed alike.
   return addNoindex(html);
+}
+
+/* PLAY-1: a song approved since the last deploy is not in songs.json yet, and
+   used to fall through to the bare shell -- whose og:image is the logo. Look
+   it up live instead (same anon key, same pattern as fetchDedication), by
+   slug, or by id for a /song/<id> link. Approved only. */
+async function fetchSongLive(key, fetchImpl) {
+  if (!key) return null;
+  try {
+    const col = /^[0-9a-f-]{36}$/i.test(key) ? 'id' : 'slug';
+    const url = DED_SUPABASE_URL + '/rest/v1/songs'
+      + '?' + col + '=eq.' + encodeURIComponent(key) + '&status=eq.approved'
+      + '&select=id,slug,title,title_translit,about,language,cover_url,cover_focus_x,cover_focus_y,status,'
+      + 'lyrics_original,lyrics_translation,idea_credit,reviewed_at,created_at,duration_seconds,length_seconds,'
+      + 'artist:artists_public!songs_artist_id_fkey(handle,display_name,avatar_url)';
+    const res = await fetchImpl(url, { headers: { apikey: DED_SUPABASE_ANON_KEY } });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length ? rows[0] : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // PROFILE-1: /u/<handle> has no build-time snapshot -- every member, not
@@ -590,7 +648,19 @@ export async function decide(pathname, searchParams, fetchImpl = fetch) {
   let m = /^\/song\/([^/]+)\/?$/.exec(pathname);
   if (m) {
     let slug; try { slug = decodeURIComponent(m[1]); } catch (e) { slug = m[1]; }
-    const song = songBySlug(slug);
+    let song = songBySlug(slug);
+    // /song/<id> (a share from a song with no slug yet): 301 to its slug.
+    const byId = !song && songById(slug);
+    if (byId && byId.slug && byId.status === 'approved') {
+      return { kind: 'redirect', location: '/song/' + encodeURIComponent(byId.slug) };
+    }
+    if (!song) {
+      const live = await fetchSongLive(slug, fetchImpl);
+      if (live && live.slug && live.slug.toLowerCase() !== String(slug).toLowerCase()) {
+        return { kind: 'redirect', location: '/song/' + encodeURIComponent(live.slug) };
+      }
+      if (live) song = live;
+    }
     if (!song || song.status !== 'approved') {
       return { kind: 'render', fn: addNoindex, tag: 'song-404' };
     }

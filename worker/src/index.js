@@ -207,6 +207,31 @@ export function uploadKeyFor(kind, sub, id, ext) {
   return key;
 }
 
+/* PLAY-1: the share-sized cover link previews use, og/<song-id>.jpg (a
+   600x600 JPEG the upload form makes in the browser). Sent to the same
+   /upload/cover route with ?og_for=<song-id>. Unlike a cover, its key is the
+   song id rather than the caller's own prefix (middleware.js and
+   snapshot-songs.mjs find it by id), so the write is allowed only when the
+   service-role lookup confirms that song's artist_id is the verified `sub`. */
+export const OG_MAX_BYTES = 200 * 1024;
+export function ogKeyFor(songId) {
+  if (!/^[0-9a-f-]{36}$/i.test(String(songId || ''))) throw new Error('bad song id');
+  return `og/${String(songId).toLowerCase()}.jpg`;
+}
+export async function songOwnedBy(songId, sub, env, fetchImpl = fetch) {
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) return false;
+  try {
+    const res = await fetchImpl(SUPABASE_URL + '/rest/v1/songs?select=artist_id&id=eq.' + encodeURIComponent(songId), {
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY },
+    });
+    if (!res.ok) return false;
+    const rows = await res.json();
+    return Array.isArray(rows) && rows.length === 1 && rows[0].artist_id === sub;
+  } catch (e) {
+    return false;
+  }
+}
+
 /* ============================================================
    ACT-1: activity ingest (POST /event).
 
@@ -812,7 +837,14 @@ export default {
           return json({ error: 'Unauthorized: ' + (e && e.message) }, 401, origin);
         }
 
-        const max = kind === 'audio' ? AUDIO_MAX_BYTES : COVER_MAX_BYTES;
+        const ogFor = kind === 'cover' ? new URL(request.url).searchParams.get('og_for') : null;
+        let ogKey = null;
+        if (ogFor != null) {
+          try { ogKey = ogKeyFor(ogFor); } catch (e) { return json({ error: 'Bad song id' }, 400, origin); }
+          if (!(await songOwnedBy(ogFor, sub, env))) return json({ error: 'Not your song' }, 403, origin);
+        }
+
+        const max = kind === 'audio' ? AUDIO_MAX_BYTES : (ogKey ? OG_MAX_BYTES : COVER_MAX_BYTES);
         const declared = Number(request.headers.get('Content-Length') || 0);
         if (declared && declared > max) {
           return json({ error: kind === 'audio' ? 'Audio too large' : 'Image too large' }, 413, origin);
@@ -836,14 +868,18 @@ export default {
           return json({ error: kind === 'audio' ? 'Audio too large' : 'Image too large' }, 413, origin);
         }
 
-        let key;
-        try {
-          key = uploadKeyFor(kind, sub, crypto.randomUUID(), ext);
-        } catch (e) {
-          return json({ error: 'Bad upload target' }, 400, origin);
+        let key = ogKey;
+        if (!key) {
+          try {
+            key = uploadKeyFor(kind, sub, crypto.randomUUID(), ext);
+          } catch (e) {
+            return json({ error: 'Bad upload target' }, 400, origin);
+          }
         }
         try {
-          await env.AUDIO_BUCKET.put(key, bytes, { httpMetadata: { contentType: storedType } });
+          await env.AUDIO_BUCKET.put(key, bytes, {
+            httpMetadata: ogKey ? { contentType: 'image/jpeg', cacheControl: 'public, max-age=86400' } : { contentType: storedType },
+          });
         } catch (e) {
           return json({ error: 'Upload failed: ' + (e && e.message) }, 500, origin);
         }

@@ -26,7 +26,7 @@
    UPLOAD_TOKEN is never involved and a contributor never holds it.
    ============================================================ */
 import { supabase, refreshArtist } from './auth.js';
-import { compressImage, readAudioDuration } from './media-utils.js';
+import { compressImage, readAudioDuration, makeShareImage } from './media-utils.js';
 
 const R2_UPLOAD_URL = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
 const AUDIO_MAX_BYTES = 20 * 1024 * 1024;         // mirrors the Worker
@@ -157,6 +157,22 @@ async function uploadMedia(kind, blob, contentType, onProgress) {
   });
 }
 
+/* PLAY-1: the share-sized cover (600x600 JPEG, og/<song-id>.jpg) that link
+   previews show. Sent through the same /upload/cover route with ?og_for=<id>;
+   the Worker checks the song is the caller's own before writing. `source` is
+   the new cover file, or null for a coverless song (its theme plate). */
+async function uploadShareImage(songId, source, song) {
+  const token = await accessToken();
+  if (!token || !songId) return;
+  const blob = await makeShareImage(source, song);
+  const res = await fetch(`${R2_UPLOAD_URL}/upload/cover?og_for=${encodeURIComponent(songId)}`, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'image/jpeg' },
+    body: blob,
+  });
+  if (!res.ok) throw new Error('share image upload failed (HTTP ' + res.status + ')');
+}
+
 /* ---------------- save ---------------- */
 
 async function stampTermsIfNeeded(uid) {
@@ -193,6 +209,11 @@ export async function saveSong(mode, form, hooks) {
   const song = { ...current, ...form };
   const errs = mode === 'submit' ? validateForSubmit(song, form.agreed, !!pendingAudio) : validateForDraft(song);
   if (errs.length) return { errors: errs };
+
+  // PLAY-1: which share image this save should (re)make, if any: the new
+  // cover; the theme plate when the song has no cover (its title may have
+  // changed); nothing when an existing cover is untouched.
+  const ogSource = pendingCover ? pendingCover : (!song.cover_url ? null : undefined);
 
   // 2. Upload. Media first: a failed upload must not leave a half-saved row
   //    behind, and on Submit it must not transition anything.
@@ -279,6 +300,13 @@ export async function saveSong(mode, form, hooks) {
   // the locked columns all speak for themselves, and rewording them here would
   // only ever make them less accurate.
   if (error) return { errors: [error.message], db: true };
+
+  // Best effort: a failed share image never fails the save. Until it exists,
+  // the middleware shows a square crop of the cover instead.
+  if (ogSource !== undefined) {
+    try { await uploadShareImage(saved, ogSource, song); }
+    catch (e) { console.warn('[laivy] share image not saved', e); }
+  }
 
   // The row now holds the uploaded media, so a retry must neither insert a
   // second row nor upload the same files again.
