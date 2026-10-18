@@ -11,7 +11,7 @@
    time up fading (Chromium can set volume) then pausing with the volume put
    back, the iPhone case (volume writes ignored: pause at the time, no fade),
    time up while paused (only the timer clears), End of this song stopping
-   both radio and a Play all queue, Autoplay never touched, the analytics
+   both radio and a Play all queue, Keep playing never touched, the analytics
    events, and contrast of every sleep control in 4 colors x 2 lightings.
    ============================================================ */
 import { newPage, collectErrors } from '../lib/browser.mjs';
@@ -76,7 +76,7 @@ async function pick(page, key, opener) {
 const btnText = (page) => page.evaluate(() => document.getElementById('sleep-btn-text').textContent);
 const state = (page) => page.evaluate(() => ({
   timer: sleepTimer && { ...sleepTimer }, fading: !!sleepFade, paused: audioEl.paused, vol: audioEl.volume,
-  autoplay: autoplayOn, sw: document.getElementById('autoplay-switch').checked, idx: currentIdx, mode,
+  autoplay: autoplayOn, sw: document.getElementById('keep-playing-switch').checked, idx: currentIdx, mode,
 }));
 const acts = (page, type) => page.evaluate((t) => window.__acts.filter((x) => x.type === t).map((x) => x.opts.meta), type);
 // One audio timeupdate, the real one from the playing element.
@@ -84,6 +84,7 @@ const nextTimeupdate = (page) => page.evaluate(() => new Promise((res) => audioE
 
 export async function run(browser, port) {
   const r = makeReporter('sleep-timer.spec.mjs');
+  await scenarioLayout(browser, port, r);
   await scenarioOptions(browser, port, r);
   await scenarioMini(browser, port, r);
   await scenarioFade(browser, port, r);
@@ -95,17 +96,73 @@ export async function run(browser, port) {
   return r;
 }
 
+/* PLAYER-4: Sleep at the right end of the play controls row, centered with
+   play, above "What did you think?"; the station line right under the row;
+   no Autoplay switch (or its old row) left in the panel. At 300 px, too
+   narrow for one row, Sleep wraps to its own line under the buttons, still
+   above the station line. The buttons never shrink, the page never scrolls
+   sideways. */
+async function scenarioLayout(browser, port, r) {
+  r.section('PLAYER-4: Sleep in the play controls row (1280, 375, and a squeezed 300 px)');
+  for (const width of [1280, 375, 300]) {
+    const { page, errors } = await setup(browser, { viewport: { width, height: 900 } });
+    await openPlaying(page, port);
+    for (const label of ['Sleep', 'Sleep: end of song']) {
+      if (label !== 'Sleep') await pick(page, 'end_of_song');
+      const d = await page.evaluate(() => {
+        const box = (id) => document.getElementById(id).getBoundingClientRect();
+        const t = document.querySelector('.transport'), sl = box('sleep-btn'), pl = box('play-btn'), pv = box('prev-btn'), nx = box('next-btn');
+        const tr = t.getBoundingClientRect();
+        return {
+          inRow: document.getElementById('sleep-btn').parentElement === t && t.lastElementChild.id === 'sleep-btn',
+          text: document.getElementById('sleep-btn-text').textContent,
+          sameLine: Math.abs((sl.top + sl.bottom) / 2 - (pl.top + pl.bottom) / 2) <= 1.5,
+          rightEnd: Math.abs(sl.right - tr.right) <= 1.5, afterNext: sl.left >= nx.right,
+          belowButtons: sl.top >= pl.bottom - 0.5,
+          aboveLoves: sl.bottom <= box('loves').top, lineUnder: t.nextElementSibling.id === 'station-line' && box('station-line').top >= sl.bottom - 0.5,
+          sizes: [pv.width, pl.width, nx.width, pl.height].map((x) => Math.round(x * 10) / 10),
+          cssSizes: ['prev-btn', 'play-btn', 'next-btn'].map((id) => parseFloat(getComputedStyle(document.getElementById(id)).width)),
+          pageW: document.scrollingElement.scrollWidth, vw: window.innerWidth,
+          noOldRow: !document.getElementById('play-mode-row') && !document.getElementById('autoplay-switch')
+            && !document.querySelector('.dock input[role="switch"], .dock .keep-playing-toggle, .autoplay-toggle'),
+        };
+      });
+      const tag = `[${width}px, "${label}"]`;
+      r.check(`${tag} Sleep is the last item of the controls row`, d.inRow && d.text === label, JSON.stringify(d));
+      if (width >= 375) {
+        r.check(`${tag} on the same line as play, vertically centered, at the row's right end`, d.sameLine && d.rightEnd && d.afterNext, JSON.stringify(d));
+      } else {
+        // "Sleep" alone still fits beside the buttons at 300 px; the long
+        // label does not, so it must take its own line under them.
+        r.check(label === 'Sleep' ? `${tag} short label still fits on the play line` : `${tag} too narrow: Sleep wraps to its own line right under the play buttons`,
+          d.rightEnd && (label === 'Sleep' ? d.sameLine : d.belowButtons), JSON.stringify(d));
+      }
+      r.check(`${tag} above "What did you think?", station line directly under the row`, d.aboveLoves && d.lineUnder, JSON.stringify(d));
+      r.check(`${tag} the play buttons keep their full size`, d.sizes.slice(0, 3).every((w, i) => Math.abs(w - d.cssSizes[i]) < 0.6), JSON.stringify(d));
+      r.check(`${tag} no sideways scrolling`, d.pageW <= d.vw, JSON.stringify(d));
+      r.check(`${tag} no Autoplay switch or its old row left in the panel`, d.noOldRow);
+    }
+    r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+    await page.close();
+  }
+}
+
 async function scenarioOptions(browser, port, r) {
   r.section('the menu: every option sets its deadline and label; Off; replacing');
   const { page, errors } = await setup(browser, { clock: true });
   await openPlaying(page, port);
-  r.check('the Sleep button sits next to the Autoplay switch', await page.evaluate(() =>
-    document.querySelector('.autoplay-toggle').nextElementSibling === document.getElementById('sleep-btn')
-      && !!document.querySelector('#sleep-btn svg')));
+  r.check('the Sleep button has its moon', await page.evaluate(() => !!document.querySelector('#sleep-btn svg')));
   r.check('it says "Sleep" before a timer is set', await btnText(page) === 'Sleep');
   await page.click('#sleep-btn');
   await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
   const menu = await page.evaluate(() => [...document.querySelectorAll('#sleep-panel-row [data-sleep]')].filter((b) => !b.hidden).map((b) => b.textContent));
+  r.check('below a divider: the "Keep playing after each song" switch, shown with no timer running', await page.evaluate(() => {
+    const d = document.querySelector('#sleep-panel .sleep-divider'), l = document.querySelector('#sleep-panel label.keep-playing-toggle');
+    return !!d && !!l && l.offsetParent !== null && l.textContent.trim() === 'Keep playing after each song'
+      && !!(document.getElementById('sleep-panel-row').compareDocumentPosition(d) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && !!(d.compareDocumentPosition(l) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && l.getBoundingClientRect().top > document.getElementById('sleep-panel-row').getBoundingClientRect().bottom;
+  }));
   r.check('menu: 15 minutes, 30 minutes, 45 minutes, 1 hour, End of this song (no Off yet)',
     JSON.stringify(menu) === JSON.stringify(['15 minutes', '30 minutes', '45 minutes', '1 hour', 'End of this song']), JSON.stringify(menu));
   r.check('...in the station panel\'s sheet with station buttons', await page.evaluate(() =>
@@ -135,6 +192,7 @@ async function scenarioOptions(browser, port, r) {
     && await btnText(page) === 'Sleep: end of song', JSON.stringify(s));
   await page.click('#sleep-btn');
   const lit = await page.evaluate(() => [...document.querySelectorAll('#sleep-panel-row [data-sleep]')].map((b) => ({ k: b.dataset.sleep, on: b.classList.contains('is-on'), hidden: b.hidden })));
+  r.check('while running, the Keep playing switch is still shown', await page.evaluate(() => document.querySelector('#sleep-panel label.keep-playing-toggle').offsetParent !== null));
   r.check('while running, Off is shown and the running choice is filled', lit.find((x) => x.k === 'off' && !x.hidden)
     && lit.filter((x) => x.on).map((x) => x.k).join() === 'end_of_song', JSON.stringify(lit));
   await page.click('#sleep-panel-row [data-sleep="off"]');
@@ -149,7 +207,7 @@ async function scenarioOptions(browser, port, r) {
   r.check('sleep_timer_set logged with each chosen option',
     JSON.stringify((await acts(page, 'sleep_timer_set')).map((m) => m.option)) === JSON.stringify(['15', '30', '45', '60', 'end_of_song', 'off']),
     JSON.stringify(await acts(page, 'sleep_timer_set')));
-  r.check('Autoplay untouched', (await state(page)).autoplay === true && (await state(page)).sw === true);
+  r.check('Keep playing untouched', (await state(page)).autoplay === true && (await state(page)).sw === true);
 
   await pick(page, '30');
   await page.reload({ waitUntil: 'load' });
@@ -216,7 +274,7 @@ async function scenarioFade(browser, port, r) {
   r.check('after ~10s: paused', s.paused, JSON.stringify(s));
   r.check('the volume is put back (0.8) so the next play is not silent', Math.abs(s.vol - 0.8) < 0.001, JSON.stringify(s));
   r.check('the timer cleared itself; the button reads "Sleep"', s.timer === null && !s.fading && await btnText(page) === 'Sleep');
-  r.check('Autoplay untouched', s.autoplay === true && s.sw === true);
+  r.check('Keep playing untouched', s.autoplay === true && s.sw === true);
   r.check('sleep_timer_fired logged (option 15, faded)', JSON.stringify(await acts(page, 'sleep_timer_fired')) === JSON.stringify([{ option: '15', action: 'fade' }]),
     JSON.stringify(await acts(page, 'sleep_timer_fired')));
 
@@ -290,7 +348,7 @@ async function scenarioEndOfSong(browser, port, r) {
       await page.click('#artist-playall');
       await page.waitForFunction(() => currentIdx !== null && manualQueue && manualQueue.length > 1 && !audioEl.paused, null, { timeout: 10000 });
       await page.evaluate(() => navigate('listen'));
-      await page.waitForFunction(() => !document.getElementById('play-mode-row').classList.contains('hidden'), null, { timeout: 5000 });
+      await page.waitForFunction(() => !document.getElementById('sleep-btn').classList.contains('hidden'), null, { timeout: 5000 });
     }
     const before = await state(page);
     const hadNext = await page.evaluate(() => !!nextUp);
@@ -302,7 +360,7 @@ async function scenarioEndOfSong(browser, port, r) {
     r.check(`[${kind}] something was lined up to continue`, hadNext);
     r.check(`[${kind}] stopped when the song ended: same song, paused, nothing new started`,
       s.paused && s.idx === before.idx, JSON.stringify({ before, s }));
-    r.check(`[${kind}] the timer cleared; Autoplay untouched`, s.timer === null && s.autoplay === true && s.sw === true);
+    r.check(`[${kind}] the timer cleared; Keep playing untouched`, s.timer === null && s.autoplay === true && s.sw === true);
     r.check(`[${kind}] the play button shows play`, await page.evaluate(() => document.getElementById('play-btn').innerHTML.includes('▶')));
     r.check('no console/page errors', errors.length === 0, errors.join(' | '));
     await page.close();
@@ -310,7 +368,7 @@ async function scenarioEndOfSong(browser, port, r) {
 }
 
 async function scenarioContrast(browser, port, r) {
-  r.section('contrast: the Sleep button, every menu option and the moon, 4 colors x light/dark, set and not');
+  r.section('contrast: the Sleep button, every menu option, the Keep playing label and the moon, 4 colors x light/dark, set and not');
   const { page, errors } = await setup(browser);
   await openPlaying(page, port);
   await pick(page, '30');
@@ -328,20 +386,20 @@ async function scenarioContrast(browser, port, r) {
         const hex = (h) => { h = h.trim().replace('#', ''); return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); };
         const pageBgs = [hex(rootCs.getPropertyValue('--bg')), hex(rootCs.getPropertyValue('--bg-2'))];
         const out = [];
-        for (const b of document.querySelectorAll('#sleep-panel-row [data-sleep], #sleep-btn, #mini-sleep')) {
+        for (const b of document.querySelectorAll('#sleep-panel-row [data-sleep], #sleep-btn, #mini-sleep, #sleep-panel .keep-playing-text')) {
           const cs = getComputedStyle(b);
           const text = parse(cs.color)[0];
           let worst = Infinity;
           const stops = cs.backgroundImage !== 'none' ? parse(cs.backgroundImage) : [parse(cs.backgroundColor)[0]];
           for (const base of pageBgs) for (const stop of stops) worst = Math.min(worst, ratio(over(text, base), over(stop || [0, 0, 0, 0], base)));
-          out.push({ id: b.dataset.sleep || b.id, on: b.classList.contains('is-on'), ratio: Math.round(worst * 100) / 100 });
+          out.push({ id: b.dataset.sleep || b.id || b.className, on: b.classList.contains('is-on'), ratio: Math.round(worst * 100) / 100 });
         }
         return out;
       }, { color, theme });
       const bad = res.filter((x) => x.ratio < 4.5);
       const onCount = res.filter((x) => x.on).length;
       r.check(`${color}/${theme}: all ${res.length} sleep controls (${onCount} set) at 4.5:1 or better; lowest ${Math.min(...res.map((x) => x.ratio))}`,
-        bad.length === 0 && res.length === 8 && onCount >= 2, JSON.stringify(bad));
+        bad.length === 0 && res.length === 9 && onCount >= 2, JSON.stringify(bad));
     }
   }
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));

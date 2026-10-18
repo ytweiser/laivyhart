@@ -9,7 +9,7 @@
    Covers: /listen row -> ended -> radio takes over (labelled "Radio",
    logged as source 'autoplay'); a /song/<slug> page; a /d/<code> page; no
    repeat inside the last 15 (and the half-the-pool rule for a small pool);
-   Mood radio stays in its channel; Autoplay off stops (and is remembered);
+   Mood radio stays in its channel; Keep playing off stops (and is remembered);
    an artist "Play all" finishes in order before radio takes over; Media
    Session metadata; and the share button's canonical /song/<slug> URL.
    ============================================================ */
@@ -277,17 +277,25 @@ async function scenarioMood(browser, port, r) {
 }
 
 async function scenarioAutoplayOff(browser, port, r) {
-  r.section('Autoplay off: stop at the end (and it is remembered)');
+  r.section('"Keep playing after each song" off: stop at the end (and it is remembered)');
   const { page, errors } = await setup(browser, BASE_SONGS);
   await openListen(page, port);
   await clickFirstRow(page);
   await waitPlaying(page);
-  const on = await page.evaluate(() => document.getElementById('autoplay-switch').checked);
-  r.check('Autoplay is on by default', on === true);
-  r.check('the switch sits in the now-playing panel', await page.evaluate(() => !!document.querySelector('#now-content ~ .dock #autoplay-switch, .dock #autoplay-switch')));
-  await page.click('label.autoplay-toggle');
+  const on = await page.evaluate(() => document.getElementById('keep-playing-switch').checked);
+  r.check('Keep playing is on by default', on === true);
+  r.check('the switch sits in the Sleep menu, not in the now-playing panel', await page.evaluate(() =>
+    !!document.querySelector('#sleep-panel #keep-playing-switch') && !document.querySelector('.dock input[role="switch"]')
+      && !document.getElementById('autoplay-switch') && !document.getElementById('play-mode-row')));
+  r.check('labelled "Keep playing after each song"', await page.evaluate(() =>
+    document.querySelector('label[for="keep-playing-switch"]').textContent.trim()) === 'Keep playing after each song');
+  await page.click('#sleep-btn');
+  await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
+  await page.click('label.keep-playing-toggle');
+  r.check('the menu stays open after flipping it', await page.evaluate(() => !document.getElementById('sleep-panel').hidden));
   const stored = await page.evaluate(() => localStorage.getItem('laivy-autoplay-v1'));
-  r.check('turning it off is saved on the device', stored === '0', stored);
+  r.check('turning it off is saved on the device (same key as before)', stored === '0', stored);
+  await page.keyboard.press('Escape');
   const a = await state(page);
   await fireEnded(page);
   await page.waitForFunction(() => audioEl.paused || audioEl.ended, null, { timeout: 5000 }).catch(() => {});
@@ -298,7 +306,23 @@ async function scenarioAutoplayOff(browser, port, r) {
   r.check('play icon shows stopped', await page.evaluate(() => document.getElementById('play-btn').innerHTML.includes('▶')));
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#rows .row', { timeout: 10000 });
-  r.check('after a reload Autoplay is still off', await page.evaluate(() => document.getElementById('autoplay-switch').checked === false && autoplayOn === false));
+  r.check('after a reload Keep playing is still off', await page.evaluate(() => document.getElementById('keep-playing-switch').checked === false && autoplayOn === false));
+  // And back on, from the menu: continuous play returns.
+  await clickFirstRow(page);
+  await waitPlaying(page);
+  await page.click('#sleep-btn');
+  await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
+  await page.click('label.keep-playing-toggle');
+  await page.keyboard.press('Escape');
+  r.check('turned back on: saved, and a next song is lined up again', await page.evaluate(() =>
+    localStorage.getItem('laivy-autoplay-v1') === '1' && autoplayOn === true && nextUp !== null));
+  const c = await state(page);
+  await fireEnded(page);
+  await page.waitForFunction((id) => SONGS[currentIdx].id !== id, c.id, { timeout: 5000 }).catch(() => {});
+  r.check('...and the end of the song moves on to another', (await state(page)).id !== c.id);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('#rows .row', { timeout: 10000 });
+  r.check('after a reload Keep playing is still on', await page.evaluate(() => document.getElementById('keep-playing-switch').checked === true && autoplayOn === true));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }

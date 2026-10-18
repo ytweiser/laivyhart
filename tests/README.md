@@ -198,7 +198,7 @@ over a narrower range.
   page each roll into radio on `ended` (labelled "Radio", logged as
   `play_start` with `meta.source = 'autoplay'`); one run lets the clip end on
   its own; no repeat inside the last 15 (41-song pool) or half the pool (9
-  songs); Mood radio stays in its channel; Autoplay off stops and is
+  songs); Mood radio stays in its channel; Keep playing after each song off stops and is
   remembered; an artist Play all finishes in order before radio; Media
   Session metadata; the share button's canonical `/song/<slug>` URL.
 - `specs/share-og.spec.mjs` (PLAY-1): middleware.js's real default export under
@@ -238,9 +238,15 @@ over a narrower range.
   over ~10s then pausing with the volume put back (and a hand pause
   mid-fade); the iPhone case (volume writes ignored: pause at the time, no
   fade); time up while paused (only the timer clears); End of this song
-  stopping both radio and a Play all queue; Autoplay never touched; the
+  stopping both radio and a Play all queue; Keep playing never touched; the
   sleep_timer_set/sleep_timer_fired calls; and 4.5:1 contrast for every
-  sleep control in all 4 colors x light/dark.
+  sleep control (and, since PLAYER-4, the Keep playing label) in all 4
+  colors x light/dark. PLAYER-4: Sleep at the right end of the play
+  controls row, centered with play, above "What did you think?", station
+  line right under the row, at 1280 and 375 px; at 300 px the long label
+  wraps to its own line under the buttons; buttons never shrink, no
+  sideways scroll; no Autoplay switch left in the panel. (The switch itself,
+  now in the Sleep menu, is covered in play-continuation.spec.mjs.)
 - `specs/dedication-occasions.spec.mjs` (DED-3): the canonical headline/
   line/sender-line/share-text table in index.html, called directly in-page
   rather than round-tripped through the form 21 times: every occasion's

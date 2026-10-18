@@ -1416,23 +1416,27 @@
      transport row (was margin-left:auto, pinned to that row's right edge). */
   .dock-react{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-top:0.2rem;}
   .dock-react.hidden{display:none;}
-  /* PLAY-1: Radio tag + Autoplay switch. */
-  .play-mode-row{display:flex; align-items:center; justify-content:center; gap:0.9rem; flex-wrap:wrap; margin-top:0.7rem;
-    font-family:var(--font-ui); font-size:0.82rem; color:var(--text-dim);}
-  .play-mode-row.hidden{display:none;}
-  .autoplay-toggle{display:inline-flex; align-items:center; gap:0.45rem; cursor:pointer; user-select:none; position:relative;}
-  .autoplay-toggle input{position:absolute; opacity:0; width:1px; height:1px; margin:0;}
-  .autoplay-track{width:2.1rem; height:1.2rem; border-radius:999px; background:var(--chip-bg); position:relative;
+  /* PLAY-1 "Keep playing after each song" (was Autoplay). PLAYER-4: it lives
+     at the bottom of the Sleep menu, under a thin divider. */
+  .sleep-divider{height:1px; background:var(--line); margin:0.75rem 0 0.65rem;}
+  .keep-playing-toggle{display:flex; align-items:center; gap:0.55rem; cursor:pointer; user-select:none; position:relative;
+    font-family:var(--font-ui); font-size:0.8rem; color:var(--text);}
+  .keep-playing-toggle input{position:absolute; opacity:0; width:1px; height:1px; margin:0;}
+  .keep-playing-track{width:2.1rem; height:1.2rem; border-radius:999px; background:var(--chip-bg); position:relative; flex-shrink:0;
     border:1px solid var(--line); transition:background 0.18s;}
-  .autoplay-knob{position:absolute; top:50%; left:0.12rem; width:0.88rem; height:0.88rem; border-radius:50%;
+  .keep-playing-knob{position:absolute; top:50%; left:0.12rem; width:0.88rem; height:0.88rem; border-radius:50%;
     background:var(--text-dim); transform:translateY(-50%); transition:left 0.18s, background 0.18s;}
-  .autoplay-toggle input:checked + .autoplay-track{background:var(--accent-solid);}
-  .autoplay-toggle input:checked + .autoplay-track .autoplay-knob{left:1.04rem; background:#fff;}
-  .autoplay-toggle input:focus-visible + .autoplay-track{outline:2px solid var(--accent-solid); outline-offset:2px;}
-  /* SLEEP-1: the Sleep timer button, next to Autoplay. Outlined like
-     "Change station" (--text on the page), so it clears 4.5:1 the same way;
-     its menu is the station panel's sheet with station buttons in it. */
+  .keep-playing-toggle input:checked + .keep-playing-track{background:var(--accent-solid);}
+  .keep-playing-toggle input:checked + .keep-playing-track .keep-playing-knob{left:1.04rem; background:#fff;}
+  .keep-playing-toggle input:focus-visible + .keep-playing-track{outline:2px solid var(--accent-solid); outline-offset:2px;}
+  /* SLEEP-1: the Sleep timer button. PLAYER-4: at the right end of the play
+     controls row (margin-left:auto), centered with the play button; when the
+     row is too narrow it wraps to its own line under the buttons, still
+     right-aligned and still above the station line. Outlined like "Change
+     station" (--text on the page), so it clears 4.5:1 the same way; its
+     menu is the station panel's sheet with station buttons in it. */
   .sleep-btn{
+    margin-left:auto; flex-shrink:0;
     display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; white-space:nowrap;
     background:none; border:1px solid rgba(var(--accent-2-rgb),0.55); border-radius:999px;
     padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.78rem; font-weight:600; color:var(--text);
@@ -1442,6 +1446,7 @@
   .sleep-btn:hover{background:rgba(var(--accent-2-rgb),0.14);}
   .sleep-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .sleep-btn.is-on{background:rgba(var(--accent-2-rgb),0.12);}
+  .sleep-btn.hidden{display:none;}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
@@ -1603,7 +1608,7 @@
        all three loves on one line at 56px. Dock spacing is trimmed so the loves
        row adds its own height plus the one 0.5rem row gap, nothing more. */
     .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
-    .transport{gap:0.5rem; flex-wrap:nowrap;}
+    .transport{gap:0.5rem; flex-wrap:wrap;}   /* PLAYER-4: lets Sleep wrap, never the buttons shrink */
     .loves{gap:0.4rem;}
     .loves-q{font-size:1.1rem;}
     .loves-row{gap:1.6rem;}
@@ -1789,6 +1794,9 @@
         <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
         <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
         <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
+        <!-- SLEEP-1: stop the music by itself after a while. PLAYER-4: here,
+             at the right end of the controls row. -->
+        <button class="sleep-btn hidden" id="sleep-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sleep-panel" aria-label="Sleep timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleep-btn-text">Sleep</span></button>
       </div>
       <!-- RADIO-2: what is playing ("On Radio: All songs", "On Radio: <mood>",
            "Playing: <queue>") and the way to switch. -->
@@ -1822,19 +1830,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
           </span>
         </button>
-      </div>
-
-      <!-- PLAY-1: the Autoplay switch: on by default, remembered on this
-           device. (What is playing -- "On Radio: ..." -- is the station line
-           under the play controls, RADIO-2.) -->
-      <div class="play-mode-row hidden" id="play-mode-row">
-        <label class="autoplay-toggle" for="autoplay-switch">
-          <input type="checkbox" id="autoplay-switch" role="switch" checked>
-          <span class="autoplay-track" aria-hidden="true"><span class="autoplay-knob"></span></span>
-          <span class="autoplay-text">Autoplay</span>
-        </label>
-        <!-- SLEEP-1: stop the music by itself after a while. -->
-        <button class="sleep-btn" id="sleep-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sleep-panel" aria-label="Sleep timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleep-btn-text">Sleep</span></button>
       </div>
 
       <!-- DED-2: the latest dedications of this song, hidden when there are
@@ -2052,6 +2047,14 @@
     <button class="station-panel-close" id="sleep-panel-close" type="button" aria-label="Close">&times;</button>
   </div>
   <div class="station-row" id="sleep-panel-row" role="group" aria-label="Stop the music after"></div>
+  <!-- PLAY-1's switch (was "Autoplay"): on by default, remembered on this
+       device; off stops at the end of each song. Always shown. -->
+  <div class="sleep-divider" aria-hidden="true"></div>
+  <label class="keep-playing-toggle" for="keep-playing-switch">
+    <input type="checkbox" id="keep-playing-switch" role="switch" checked>
+    <span class="keep-playing-track" aria-hidden="true"><span class="keep-playing-knob"></span></span>
+    <span class="keep-playing-text">Keep playing after each song</span>
+  </label>
 </div>
 
 <div class="picker-overlay hidden" id="picker-overlay">
@@ -3059,7 +3062,8 @@ let manualPos = 0;
    the last RADIO_NO_REPEAT songs. The next song is picked when the current
    one STARTS (nextUp) so the ended handler can switch audio synchronously,
    with no network wait, which is what keeps a locked phone playing.
-   Autoplay off restores the old behavior: stop at the end. */
+   "Keep playing after each song" off (PLAY-1's Autoplay; it lives in the
+   Sleep menu since PLAYER-4) restores the old behavior: stop at the end. */
 const AUTOPLAY_KEY = 'laivy-autoplay-v1';
 const RADIO_NO_REPEAT = 15;
 function loadAutoplay(){ try{ return localStorage.getItem(AUTOPLAY_KEY) !== '0'; }catch(e){ return true; } }
@@ -4689,15 +4693,16 @@ function radioLabel(){
   return c ? 'Radio · ' + c.title : 'Radio';
 }
 function paintPlayMode(){
-  const row = document.getElementById('play-mode-row');
-  if(row) row.classList.toggle('hidden', currentIdx === null);
+  const sleep = document.getElementById('sleep-btn');
+  if(sleep) sleep.classList.toggle('hidden', currentIdx === null);
   paintStations();
   paintStationLine();
-  const sw = document.getElementById('autoplay-switch');
+  const sw = document.getElementById('keep-playing-switch');
   if(sw) sw.checked = autoplayOn;
 }
+// "Keep playing after each song" (PLAY-1's Autoplay; same key, same behavior).
 (function(){
-  const sw = document.getElementById('autoplay-switch');
+  const sw = document.getElementById('keep-playing-switch');
   if(!sw) return;
   sw.checked = autoplayOn;
   sw.addEventListener('change', () => {
@@ -4714,7 +4719,7 @@ function paintPlayMode(){
    firing media events while the music plays. When time is up the music fades
    over SLEEP_FADE_MS, then pauses and the volume is put back; where the
    volume can't be set (iPhone Safari: it always reads 1) it just pauses.
-   Radio, queues and Autoplay carry on untouched until then. Not remembered:
+   Radio, queues and Keep playing carry on untouched until then. Not remembered:
    a reload clears it. */
 const SLEEP_FADE_MS = 10000;
 const SLEEP_OPTIONS = [
@@ -4842,7 +4847,7 @@ function sleepAtTrackEnd(){
 }
 function onTrackDone(){
   if(sleepAtTrackEnd()) return;
-  handleTrackEnd();   // PLAY-1: queue, then radio, unless Autoplay is off
+  handleTrackEnd();   // PLAY-1: queue, then radio, unless Keep playing is off
 }
 
 /* The menu: the station panel's sheet. Opened by the Sleep button and the
@@ -5040,7 +5045,7 @@ audioEl.addEventListener('ended', () => {
     logActivity('play_complete', { song_id: s.id, artist_id: s.artist_id });
   }
   playCounted = false;
-  onTrackDone();   // SLEEP-1 end_of_song, else PLAY-1: queue, then radio, unless Autoplay is off
+  onTrackDone();   // SLEEP-1 end_of_song, else PLAY-1: queue, then radio, unless Keep playing is off
 });
 
 /* ============================================================
