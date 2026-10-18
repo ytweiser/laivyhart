@@ -36,7 +36,11 @@ function silentWav(secs) {
   b.write('data', 36); b.writeUInt32LE(n, 40);
   return b;
 }
-const WAV = silentWav(3);
+// 60s songs wherever the music must simply keep going; 3s ones (opts.short)
+// where a song has to end during the test. A 3s song everywhere let a song
+// end, under load, in the middle of checks that assumed it would not.
+const WAV = silentWav(60);
+const SHORT_WAV = silentWav(3);
 const SONGS = F.SONGS_ROWS.map((s) => ({ ...s, audio_url: `https://${AUDIO_HOST}/${s.id}.wav` }));
 const MIN = 60000;
 
@@ -45,7 +49,7 @@ async function setup(browser, opts) {
   const page = await newPage(browser, opts.viewport);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, { songs: SONGS });
-  await page.route(`**://${AUDIO_HOST}/**`, (r) => r.fulfill({ status: 200, contentType: 'audio/wav', body: WAV }));
+  await page.route(`**://${AUDIO_HOST}/**`, (r) => r.fulfill({ status: 200, contentType: 'audio/wav', body: opts.short ? SHORT_WAV : WAV }));
   if (opts.clock) await page.clock.install();
   return { page, errors };
 }
@@ -64,9 +68,12 @@ async function openPlaying(page, port) {
 }
 // Fake clock: stop time (no timers fire from here on) and return "now".
 async function freeze(page) {
+  // pauseAt must lie in the future; a busy machine can spend over a second
+  // between these two calls, so leave plenty. Every check is relative to
+  // the value returned.
   const now = await page.evaluate(() => Date.now());
-  await page.clock.pauseAt(now + 1000);
-  return now + 1000;
+  await page.clock.pauseAt(now + 20000);
+  return now + 20000;
 }
 async function pick(page, key, opener) {
   await page.click(opener || '#sleep-btn');
@@ -80,7 +87,27 @@ const state = (page) => page.evaluate(() => ({
 }));
 const acts = (page, type) => page.evaluate((t) => window.__acts.filter((x) => x.type === t).map((x) => x.opts.meta), type);
 // One audio timeupdate, the real one from the playing element.
-const nextTimeupdate = (page) => page.evaluate(() => new Promise((res) => audioEl.addEventListener('timeupdate', () => res(), { once: true })));
+// Bounded from Node's side (the page's own timers, performance.now and
+// requestAnimationFrame are all frozen by the fake clock): a missing
+// timeupdate fails loudly, with the audio's state, instead of hanging the
+// whole worker.
+async function nextTimeupdate(page) {
+  // Also done once the audio is (or goes) paused: a real timeupdate can land
+  // between moving the clock and getting here, and if that one fired the
+  // timer, the music is already paused and no further timeupdate will come.
+  const wait = page.evaluate(() => new Promise((res) => {
+    if (audioEl.paused) return res();
+    audioEl.addEventListener('timeupdate', () => res(), { once: true });
+    audioEl.addEventListener('pause', () => res(), { once: true });
+  }));
+  let timer;
+  const limit = new Promise((_, rej) => { timer = setTimeout(() => rej(new Error('no timeupdate in 8s')), 8000); });
+  try { await Promise.race([wait, limit]); }
+  catch (e) {
+    const st = await page.evaluate(() => ({ paused: audioEl.paused, ended: audioEl.ended, readyState: audioEl.readyState, idx: currentIdx, src: audioEl.currentSrc, err: audioEl.error && audioEl.error.code }));
+    throw new Error(e.message + ' ' + JSON.stringify(st));
+  } finally { clearTimeout(timer); }
+}
 
 export async function run(browser, port) {
   const r = makeReporter('sleep-timer.spec.mjs');
@@ -88,6 +115,7 @@ export async function run(browser, port) {
   await scenarioOptions(browser, port, r);
   await scenarioMini(browser, port, r);
   await scenarioFade(browser, port, r);
+  await scenarioFadeAcrossSongEnd(browser, port, r);
   await scenarioNoVolume(browser, port, r);
   await scenarioPausedAtTime(browser, port, r);
   await scenarioEndOfSong(browser, port, r);
@@ -287,10 +315,40 @@ async function scenarioFade(browser, port, r) {
   await nextTimeupdate(page);
   await page.clock.setSystemTime(t1 + 30 * MIN + 6000);
   await nextTimeupdate(page);
-  await page.evaluate(() => audioEl.pause());
+  await page.click('#play-btn');   // the real pause control
   await page.waitForFunction(() => sleepTimer === null, null, { timeout: 3000 });
   s = await state(page);
   r.check('paused by hand mid-fade: timer clears, volume back to 0.8', s.paused && Math.abs(s.vol - 0.8) < 0.001, JSON.stringify(s));
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
+/* A song that ends during the fade. The element fires 'pause' just before
+   'ended' at every natural end; that must not count as a hand pause (which
+   used to cancel the fade, put the volume back to full and let radio play
+   on). The fade carries on into the next radio song and still ends paused. */
+async function scenarioFadeAcrossSongEnd(browser, port, r) {
+  r.section('a song ends during the fade: the fade carries on into the next radio song');
+  const { page, errors } = await setup(browser, { clock: true, short: true });
+  await openPlaying(page, port);
+  await page.evaluate(() => { audioEl.volume = 0.8; });
+  const t0 = await freeze(page);
+  await pick(page, '15');
+  await page.clock.setSystemTime(t0 + 15 * MIN);
+  await nextTimeupdate(page);
+  const from = await page.evaluate(() => currentIdx);
+  r.check('the fade has started', (await state(page)).fading);
+  await page.waitForFunction((f) => currentIdx !== f && !audioEl.paused, from, { timeout: 10000 });
+  await page.clock.setSystemTime(t0 + 15 * MIN + 5000);
+  await nextTimeupdate(page);
+  let s = await state(page);
+  r.check('the song ended and radio moved on, mid-fade', s.idx !== from && s.mode === 'radio' && !s.paused, JSON.stringify(s));
+  r.check('...the fade is still running, timer still set, about half volume', s.fading && s.timer && s.timer.key === '15' && Math.abs(s.vol - 0.4) < 0.05, JSON.stringify(s));
+  await page.clock.setSystemTime(t0 + 15 * MIN + 10000);
+  await nextTimeupdate(page);
+  await page.waitForFunction(() => audioEl.paused && sleepTimer === null, null, { timeout: 5000 });
+  s = await state(page);
+  r.check('...and it still ends: paused, volume back to 0.8, timer cleared', s.paused && Math.abs(s.vol - 0.8) < 0.001 && s.timer === null, JSON.stringify(s));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -339,7 +397,7 @@ async function scenarioPausedAtTime(browser, port, r) {
 async function scenarioEndOfSong(browser, port, r) {
   r.section('End of this song: stops at the end even with radio, or a queue, to continue');
   for (const kind of ['radio', 'queue']) {
-    const { page, errors } = await setup(browser);
+    const { page, errors } = await setup(browser, { short: true });
     if (kind === 'radio') {
       await openPlaying(page, port);
     } else {
@@ -422,7 +480,7 @@ async function scenarioEventsEndToEnd(browser, port, r) {
   const W = await loadWorker();
   const inserted = [];
   const fetchImpl = async (url, opts) => { inserted.push(...JSON.parse(opts.body)); return { ok: true, text: async () => '[]' }; };
-  const { page, errors } = await setup(browser);
+  const { page, errors } = await setup(browser, { short: true });
   await page.addInitScript(() => { try { localStorage.removeItem('laivy-no-track'); } catch (e) {} });
   await page.route(ACTIVITY_URL, async (route) => {
     const req = route.request();

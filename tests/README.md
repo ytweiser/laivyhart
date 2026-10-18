@@ -229,6 +229,19 @@ over a narrower range.
   reduced-motion form; the mini-player's "Radio · <mood>"; a 375 px screen
   (one sideways-scrolling line, fade, search box on screen); and 4.5:1 text
   contrast for every station button in all 4 colors x light/dark.
+- `specs/share-text.spec.mjs` (SHARE-1): what a song or dedication share
+  sends, through the real buttons (song Share with and without a native
+  sheet, the dedication success pane's WhatsApp/Copy/Share, the /d/<code>
+  page's Share). Song: note + title as the song page shows it + ", by
+  <artist>", the inspiration in quotes (left out when empty; cut at a full
+  sentence, else a whole word, with "…" within ~280 characters), then the
+  canonical /song/<slug> link alone as the last line. Dedication: note +
+  the phrase table's headline, the message in quotes, its sender line
+  (none when anonymous), the canonical /d/<code> link. Normal, anonymous,
+  no message, In memory, Something else, a Hebrew title and a Hebrew
+  message; wa.me text decodes back exactly; the native sheet gets the link
+  once, as url, never also in text; one emoji, the note. The single
+  og:image for /song/ and /d/ stays share-og.spec.mjs's.
 - `specs/sleep-timer.spec.mjs` (SLEEP-1): the sleep timer, on Playwright's
   fake clock. Once paused, no setTimeout/setInterval fires at all (a phone
   throttling every timer), so anything that still fires on time did so from

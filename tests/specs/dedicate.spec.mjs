@@ -226,17 +226,18 @@ async function scenarioSuccessShareActions(browser, port, r) {
   await page.click('#dedicate-whatsapp');
   await page.waitForFunction(() => window.__opened.length > 0, { timeout: 10000 });
   const opened = await page.evaluate(() => window.__opened[0]);
-  const expectedText = 'Happy birthday, Mom! I dedicated a song to you on Laivy Hart: Supernova. Listen here: https://laivyhart.com/d/ABCD2345';
+  // SHARE-1: note + headline, the message in quotes, the sender line, the link.
+  const expectedText = '\u{1F3B5} Happy birthday, Mom\n\u201CLove you!\u201D\nWith love, Nova Ash\nhttps://laivyhart.com/d/ABCD2345';
   r.check('WhatsApp opens wa.me with the exact expected text, URL-encoded', opened === 'https://wa.me/?text=' + encodeURIComponent(expectedText), opened);
 
   await page.click('#dedicate-copy');
   await page.waitForFunction(
     async (expected) => { try { return (await navigator.clipboard.readText()) === expected; } catch (e) { return false; } },
-    'https://laivyhart.com/d/ABCD2345',
+    expectedText,
     { timeout: 10000 },
   );
   const copied = await page.evaluate(() => navigator.clipboard.readText());
-  r.check('Copy link copies the dedication URL', copied === 'https://laivyhart.com/d/ABCD2345', copied);
+  r.check('Copy link copies the same full text as WhatsApp', copied === expectedText, copied);
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

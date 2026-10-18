@@ -1083,6 +1083,8 @@ a .member-row-title{ text-decoration:none; }
 .ded-page-song{ font-family:var(--font-display); font-style:italic; font-size:1.05rem; color:var(--accent-2); margin-bottom:1.6rem; }
 .ded-page-play{ margin:0 auto; width:auto; padding:0.8rem 1.8rem; }
 .ded-page-play svg{ width:1.1rem; height:1.1rem; }
+/* SHARE-1: Share sits under Play, same width rule. */
+.ded-page-share{ margin:0.7rem auto 0; width:auto; padding:0.65rem 1.6rem; }
 .ded-page-link{ display:block; margin-top:0.9rem; }
 .ded-page-cta{ margin-top:3rem; padding-top:1.6rem; border-top:1px solid var(--chip-border); }
 .ded-page-cta p{ font-family:var(--font-display); font-style:italic; color:var(--text-dim); margin:0 0 0.9rem; }

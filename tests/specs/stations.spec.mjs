@@ -216,11 +216,17 @@ async function scenarioNarrow(browser, port, r) {
   const d = await page.evaluate(() => {
     const row = document.getElementById('station-row');
     const btns = [...row.querySelectorAll('[data-station]')];
-    const tops = new Set(btns.map((b) => Math.round(b.getBoundingClientRect().top)));
+    // One line = every button's vertical centre within 2px of the first's.
+    // (Not rounded tops: the RADIO button, with its icon, is 2px taller, so
+    // its top sits 1px higher and rounding could split them into two "lines"
+    // depending on where the row lands on the page.)
+    const mid = (b) => { const q = b.getBoundingClientRect(); return q.top + q.height / 2; };
+    const tops = new Set(btns.map((b) => Math.abs(mid(b) - mid(btns[0])) <= 2 ? 0 : Math.round(mid(b))));
     const search = document.getElementById('search').getBoundingClientRect();
     const cs = getComputedStyle(row);
     return {
-      n: btns.length, lines: tops.size, scrollW: row.scrollWidth, clientW: row.clientWidth,
+      n: btns.length, lines: tops.size,
+      boxes: btns.map((b) => { const q = b.getBoundingClientRect(); return [b.dataset.station, Math.round(q.top * 10) / 10, Math.round(q.height * 10) / 10]; }), scrollW: row.scrollWidth, clientW: row.clientWidth,
       overflowX: cs.overflowX, scrollbar: cs.scrollbarWidth, fade: row.classList.contains('has-more'),
       rowRight: row.getBoundingClientRect().right, searchLeft: search.left, searchRight: search.right, searchW: search.width,
       pageScrollW: document.scrollingElement.scrollWidth,

@@ -1,6 +1,6 @@
 /* ============================================================
    DED-3 -- the grouped occasion list and the one canonical phrase table
-   (dedHeadline/dedLine/dedSenderLine/dedShareText in index.html). These are
+   (dedHeadline/dedLine/dedSenderLine in index.html, and SHARE-1's dedSharePayload). These are
    plain, stateless functions once the page's script has run, so every
    occasion is checked by calling them directly in-page rather than
    round-tripping the real form 21 times. The form's own wiring (the
@@ -151,20 +151,19 @@ async function scenarioSenderLines(browser, port, r) {
 }
 
 async function scenarioShareText(browser, port, r) {
-  r.section('WhatsApp/share text per occasion, including the in_memory exception');
+  r.section('SHARE-1 share text per occasion: note + headline, message, sender line, link (the table\'s own wording)');
   const { page, errors } = await loadAnyPage(browser, port);
 
-  const d = await page.evaluate(() => ({
-    birthday: dedShareText('birthday', 'Yankel', 'Precious Son', 'https://laivyhart.com/d/CODE0001'),
-    somethingElse: dedShareText('other', 'Yankel', 'Precious Son', 'https://laivyhart.com/d/CODE0002'),
-    inMemory: dedShareText('in_memory', 'Yankel', 'Precious Son', 'https://laivyhart.com/d/CODE0003'),
-  }));
-  r.check('default occasion: "{Headline}! I dedicated a song to you..."',
-    d.birthday === 'Happy birthday, Yankel! I dedicated a song to you on Laivy Hart: Precious Son. Listen here: https://laivyhart.com/d/CODE0001', d.birthday);
-  r.check('"Something else" uses its own headline in the same general form',
-    d.somethingElse === "This one's for you, Yankel! I dedicated a song to you on Laivy Hart: Precious Son. Listen here: https://laivyhart.com/d/CODE0002", d.somethingElse);
-  r.check('in_memory: never addresses the recipient as "you"',
-    d.inMemory === 'I dedicated a song in memory of Yankel on Laivy Hart: Precious Son. https://laivyhart.com/d/CODE0003', d.inMemory);
+  const d = await page.evaluate(() => {
+    const go = (o) => shareFullText(dedSharePayload({ recipient: 'Yankel', message: '', sender: 'Laivy Hart', anonymous: false, code: 'CODE0001', ...o }));
+    return { birthday: go({ occasion: 'birthday' }), somethingElse: go({ occasion: 'other' }), inMemory: go({ occasion: 'in_memory' }) };
+  });
+  r.check('default occasion: the headline, the sender line, the link',
+    d.birthday === '\u{1F3B5} Happy birthday, Yankel\nWith love, Laivy Hart\nhttps://laivyhart.com/d/CODE0001', d.birthday);
+  r.check('"Something else" uses its own headline',
+    d.somethingElse === "\u{1F3B5} This one's for you, Yankel\nWith love, Laivy Hart\nhttps://laivyhart.com/d/CODE0001", d.somethingElse);
+  r.check('in_memory: "In loving memory of", "Dedicated by"',
+    d.inMemory === '\u{1F3B5} In loving memory of Yankel\nDedicated by Laivy Hart\nhttps://laivyhart.com/d/CODE0001', d.inMemory);
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

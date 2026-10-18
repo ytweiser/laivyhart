@@ -4857,6 +4857,12 @@ function stepSleepFade(){
   }
   try{ audioEl.volume = sleepFade.vol * (1 - k); }catch(e){}
 }
+// Paused by hand mid-fade (the play/pause buttons, the lock screen or a
+// headset): time was up anyway, so the timer ends there and the volume comes
+// back at once. Only these real controls count: the element's own 'pause'
+// event also fires at the natural end of every song (just before 'ended'),
+// and that must not stop a fade that runs on into the next radio song.
+function sleepHandPaused(){ if(sleepFade) clearSleep(); }
 function checkSleep(){
   if(sleepFade){ stepSleepFade(); return; }
   if(sleepTimer && sleepTimer.deadline && Date.now() >= sleepTimer.deadline) fireSleep();
@@ -4956,7 +4962,7 @@ function setMediaSession(s){
   if(!('mediaSession' in navigator)) return;
   const on = (action, fn) => { try{ navigator.mediaSession.setActionHandler(action, fn); }catch(e){} };
   on('play', () => { if(currentIdx === null) return; audioEl.play().catch(()=>{}); });
-  on('pause', () => { audioEl.pause(); });
+  on('pause', () => { audioEl.pause(); sleepHandPaused(); });
   on('nexttrack', () => playNext());
   on('previoustrack', () => playPrev());
 })();
@@ -4994,7 +5000,7 @@ function togglePlay(){
   if(currentIdx === null){ startRadio(); return; }
   if(!SONGS[currentIdx].audio) return;
   if(audioEl.paused){ audioEl.play().catch(()=>{}); setPlayIcon(true); setAmbientPlaying(true); }
-  else{ audioEl.pause(); setPlayIcon(false); setAmbientPlaying(false); }
+  else{ audioEl.pause(); setPlayIcon(false); setAmbientPlaying(false); sleepHandPaused(); }
 }
 function playNext(){
   // Radio: take the song already picked when this one started (instant on a
@@ -5059,10 +5065,7 @@ audioEl.addEventListener('play', () => {
     ? { song_id: s.id, artist_id: s.artist_id, meta: { source: currentSource } }
     : { song_id: s.id, artist_id: s.artist_id });
 });
-audioEl.addEventListener('pause', () => {
-  setPlayIcon(false); setAmbientPlaying(false);
-  if(sleepFade) clearSleep();   // SLEEP-1: paused by hand mid-fade: done, volume back
-});
+audioEl.addEventListener('pause', () => { setPlayIcon(false); setAmbientPlaying(false); });
 audioEl.addEventListener('ended', () => {
   if(!playMilestones.complete && currentIdx !== null && SONGS[currentIdx]){
     playMilestones.complete = true;
@@ -6484,6 +6487,76 @@ function songShareUrl(s){
   // its id there, which the middleware 301s to the slug once it has one.
   return SITE_ORIGIN + '/song/' + encodeURIComponent((s && (s.slug || s.id)) || '');
 }
+/* SHARE-1: what every song and dedication share carries. One builder per
+   kind returns { title, text, url }: `text` is every line BEFORE the link,
+   `url` is the canonical link alone. WhatsApp and Copy send text + "\n" +
+   url (the link the last line, alone); the native sheet gets text and url
+   as separate fields so the link appears once, never twice. The music note
+   is the only emoji. */
+const SHARE_NOTE = '\u{1F3B5}';
+const SHARE_INSPIRATION_MAX = 280;
+/* The inspiration on one line, at most SHARE_INSPIRATION_MAX characters
+   (code points, so Hebrew and emoji count as one each) including the "…".
+   Too long: cut after the last full sentence that fits (its closing period
+   becomes the "…"); if no sentence fits, after the last whole word. */
+function clipInspiration(raw, max){
+  max = max || SHARE_INSPIRATION_MAX;
+  const t = String(raw || '').replace(/\s+/g, ' ').trim();
+  const chars = Array.from(t);
+  if(chars.length <= max) return t;
+  const head = chars.slice(0, max - 1).join('');   // room for the "…"
+  let end = -1;
+  const re = /[.!?]["'\u201D\u2019)]*(?=\s|$)/g;
+  let m;
+  while((m = re.exec(head))) end = m.index + m[0].length;
+  if(end > 0){
+    const cut = head.slice(0, end);
+    return (cut.endsWith('.') ? cut.slice(0, -1) : cut) + '\u2026';
+  }
+  const sp = head.lastIndexOf(' ');
+  return (sp > 0 ? head.slice(0, sp) : head).replace(/[\s,;:\u2013-]+$/, '') + '\u2026';
+}
+function shareFullText(p){ return p.text ? p.text + '\n' + p.url : p.url; }
+function quoteLine(t){ return '\u201C' + t + '\u201D'; }
+// The title exactly as the song page shows it (original script first).
+function songShareTitle(s){ return isHebrew(s) ? s.title : (s.title || s.title_translit || 'Laivy Hart'); }
+function songSharePayload(s){
+  const title = songShareTitle(s);
+  const a = artistOf(s);
+  const lines = [SHARE_NOTE + ' ' + title + (a ? ', by ' + artistName(a) : '')];
+  const insp = clipInspiration(s.about);
+  if(insp) lines.push(quoteLine(insp));
+  return { title, text: lines.join('\n'), url: songShareUrl(s) };
+}
+// d: { occasion, recipient, message, sender, anonymous, code }. The phrase
+// table's own headline and sender line; no sender line at all when
+// anonymous (or when there is no sender name to show).
+function dedSharePayload(d){
+  const name = d.recipient || 'them';
+  const headline = dedHeadline(d.occasion, name);
+  const lines = [SHARE_NOTE + ' ' + headline];
+  const msg = (d.message || '').trim();
+  if(msg) lines.push(quoteLine(msg));
+  if(!d.anonymous && d.sender) lines.push(dedSenderLine(d.occasion, d.sender, false));
+  return { title: headline, text: lines.join('\n'), url: dedShareUrl(d.code) };
+}
+function shareWhatsAppUrl(p){ return 'https://wa.me/?text=' + encodeURIComponent(shareFullText(p)); }
+async function shareCopy(p){
+  const full = shareFullText(p);
+  try{ await navigator.clipboard.writeText(full); laivyToast('Copied'); }
+  catch(e){ window.prompt('Copy this:', full); }
+}
+function shareNative(p){
+  return navigator.share({ title: p.title, text: p.text, url: p.url }).catch(() => { /* dismissed */ });
+}
+// The one Share button pattern (song, /d page): the native sheet where
+// there is one, otherwise copy the full text.
+function shareSheetOrCopy(p){
+  if(navigator.share) return shareNative(p);
+  if(navigator.clipboard && navigator.clipboard.writeText) return shareCopy(p);
+  window.prompt('Copy this:', shareFullText(p));
+}
+
 (function(){
   const btn = document.getElementById('now-share-btn');
   if(!btn) return;
@@ -6491,26 +6564,11 @@ function songShareUrl(s){
     if(currentIdx === null) return;
     const s = SONGS[currentIdx];
     if(!s) return;
-    const url = songShareUrl(s);
-    const title = s.title || s.title_translit || 'Laivy Hart';
-    laivyTrack('song_share', { song_id: s.id, song_title: title });
+    const p = songSharePayload(s);
+    laivyTrack('song_share', { song_id: s.id, song_title: p.title });
     const shareChannel = navigator.share ? 'native' : (navigator.clipboard && navigator.clipboard.writeText ? 'copy' : 'prompt');
     logActivity('share', { song_id: s.id, artist_id: s.artist_id, meta: { channel: shareChannel } });
-    /* "Title, by Artist, on Laivy Hart". Not special-cased for the owner: it
-       reads oddly today only because the artist IS the site. The matching OG
-       title is injected by the middleware in 1A-5; this is the client text. */
-    const sa = artistOf(s);
-    const shareText = sa
-      ? `${title}, by ${artistName(sa)}, on Laivy Hart`
-      : `Listen to ${title} on Laivy Hart`;
-    const shareData = { title: title, text: shareText, url: url };
-    if(navigator.share){
-      navigator.share(shareData).catch(() => { /* user cancelled */ });
-    } else if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(url).then(() => laivyToast('Link copied')).catch(() => window.prompt('Copy this link:', url));
-    } else {
-      window.prompt('Copy this link:', url);
-    }
+    shareSheetOrCopy(p);
   });
 })();
 
@@ -6730,7 +6788,7 @@ function dedUpdateCounter(){
         p_is_anonymous: anonymous,
       });
       if(error) throw error;
-      dedShowSuccess(dedicateSong, code, occasion, recipient);
+      dedShowSuccess(dedicateSong, code, occasion, recipient, message, anonymous);
       loadDedicationsStrip();
     }catch(err){
       showDedErr((err && err.message) || 'Could not send that dedication right now.');
@@ -6740,47 +6798,32 @@ function dedUpdateCounter(){
   });
 })();
 
-// DED-3: the WhatsApp/share text is addressed to the recipient and keyed
-// off the headline, except in_memory, which never calls the person "you"
-// since the text is addressed to whoever reads it, not to the departed.
-function dedShareText(occasion, name, songTitle, url){
-  if(occasion === 'in_memory'){
-    return `I dedicated a song in memory of ${name} on Laivy Hart: ${songTitle}. ${url}`;
-  }
-  return `${dedHeadline(occasion, name)}! I dedicated a song to you on Laivy Hart: ${songTitle}. Listen here: ${url}`;
-}
-
-function dedShowSuccess(song, code, occasion, recipient){
+function dedShowSuccess(song, code, occasion, recipient, message, anonymous){
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('[data-ded-pane="form"]').hidden = true;
   const pane = modal.querySelector('[data-ded-pane="success"]');
   pane.hidden = false;
 
-  const url = dedShareUrl(code);
-  const title = song.title || song.title_translit || 'this song';
-  const name = recipient || 'them';
-  const waText = dedShareText(occasion, name, title, url);
-  const headline = dedHeadline(occasion, name);
+  // SHARE-1: headline, the message, the sender line, then the link.
+  const p = dedSharePayload({ occasion, recipient, message, sender: dedMySenderName(), anonymous, code });
   modal.querySelector('#dedicate-success-sub').textContent = `For this song's page, share the link below.`;
-  modal.querySelector('#dedicate-view-link').href = url;
+  modal.querySelector('#dedicate-view-link').href = p.url;
 
   const waBtn = document.getElementById('dedicate-whatsapp');
   waBtn.onclick = () => {
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_whatsapp' } });
-    window.open('https://wa.me/?text=' + encodeURIComponent(waText), '_blank', 'noopener');
+    window.open(shareWhatsAppUrl(p), '_blank', 'noopener');
   };
   const copyBtn = document.getElementById('dedicate-copy');
-  copyBtn.onclick = async () => {
+  copyBtn.onclick = () => {
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_copy' } });
-    try{ await navigator.clipboard.writeText(url); laivyToast('Link copied'); }
-    catch(e){ window.prompt('Copy this link:', url); }
+    shareCopy(p);
   };
   const nativeBtn = document.getElementById('dedicate-native-share');
   nativeBtn.hidden = !navigator.share;
   nativeBtn.onclick = () => {
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_native' } });
-    navigator.share({ title: headline, text: waText, url })
-      .catch(() => { /* dismissed */ });
+    shareNative(p);
   };
 }
 
@@ -7671,6 +7714,7 @@ async function renderDedicationPage(code){
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
         Play
       </button>
+      <button class="home-primary-btn outlined ded-page-share" type="button" id="ded-page-share-btn">Share</button>
       <a class="quiet-link ded-page-link" href="/song/${escHtml(d.song_slug || '')}">Go to the full song page</a>
       <div class="ded-page-cta">
         <p>Dedicate a song to someone you love.</p>
@@ -7683,6 +7727,14 @@ async function renderDedicationPage(code){
     history.pushState({ route: 'listen' }, '', '/listen');
     showPage('listen');
     playSongById(d.song_id);
+  });
+  // SHARE-1: the same text as "Send it to them" (sender line left out for
+  // an anonymous dedication: dedications_public gives no sender_name then).
+  const shareBtn = document.getElementById('ded-page-share-btn');
+  if(shareBtn) shareBtn.addEventListener('click', () => {
+    logActivity('share', { song_id: d.song_id, meta: { channel: navigator.share ? 'dedication_page_native' : 'dedication_page_copy' } });
+    shareSheetOrCopy(dedSharePayload({ occasion: d.occasion, recipient: d.recipient_name, message: d.message,
+      sender: d.sender_name, anonymous: !d.sender_name, code: d.code }));
   });
   const ctaLink = document.getElementById('ded-page-cta-link');
   if(ctaLink) ctaLink.addEventListener('click', (e) => {

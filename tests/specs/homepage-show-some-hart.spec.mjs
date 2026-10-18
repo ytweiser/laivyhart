@@ -359,6 +359,9 @@ async function scenarioHeart(browser, port, r) {
           const t = box.querySelector('.hart-nowrap'); const b = t.getBoundingClientRect(); return [b.left, b.top, b.height].map((v) => Math.round(v * 10) / 10).join(',');
         })[0];
     });
+    // Web fonts first: a font arriving between the two measurements moves
+    // the text (that is font loading, not the beat).
+    await page.evaluate(() => document.fonts.ready);
     const before = await layout();
     await page.hover('.show-some-hart h3');
     const beat = await page.evaluate(() => {
