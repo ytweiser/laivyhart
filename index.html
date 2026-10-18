@@ -759,27 +759,53 @@
      The italic and smaller size already keep it secondary to the heading. */
   .hero-callout-sub{font-family:var(--font-display); font-style:italic; font-size:1.02rem; color:var(--text); margin:0;}
   .hero-callout .home-primary-btn{margin-top:0.35rem;}
-  /* HOME-2: "Show some Hart" -- two actions sharing the tile's own height,
-     stacked (there is no width in this column for anything else). The
-     heading never breaks inside the name: the line may wrap only before
-     "Hart" if it has to, and balance keeps the two lines even. */
+  /* HOME-2 / HOME-2b: "Show some Hart" -- numbered cards, stacked (there is
+     no width in this column for anything else). text-wrap:balance keeps the
+     heading from stranding a word if it ever has to wrap. */
   .hero-callout.show-some-hart{justify-content:stretch;}
-  .show-some-hart .hero-callout-h{text-wrap:balance;}
-  .gi-actions{display:flex; flex-direction:column; gap:0.6rem; width:100%; flex:1; justify-content:space-evenly;}
+  .show-some-hart .hero-callout-h, .show-some-hart .hero-callout-sub{text-wrap:balance;}
+  .gi-actions{display:flex; flex-direction:column; gap:0.55rem; width:100%; flex:1; justify-content:center;}
+  /* Each action is a card, and the whole card is the control. It clips the
+     big number behind it (overflow:hidden), on purpose. */
   .gi-action{
-    display:flex; align-items:flex-start; gap:0.7rem; width:100%; text-align:left;
-    background:none; border:none; cursor:pointer; padding:0.4rem 0; color:inherit; text-decoration:none;
-    font-family:inherit;
+    position:relative; overflow:hidden; isolation:isolate;
+    display:flex; align-items:center; width:100%; min-height:4.4rem; box-sizing:border-box; text-align:left;
+    padding:0.75rem 1rem 0.75rem 4.4rem; border-radius:var(--radius-xs); cursor:pointer;
+    background:var(--bg-2); border:1px solid rgba(var(--accent-2-rgb),0.30);
+    color:inherit; text-decoration:none; font-family:inherit;
   }
-  /* HOME-2: --invite-accent, not --accent-2: accent-2 is 2.6:1 (emerald) and
-     1.8:1 (gold) on --bg-2 in light; invite-accent clears 3:1 everywhere. */
-  .gi-icon{width:1.5rem; height:1.5rem; flex-shrink:0; color:var(--invite-accent); margin-top:0.15rem;}
-  .gi-text{display:flex; flex-direction:column; gap:0.15rem; min-width:0;}
+  .gi-action:focus-visible{outline:2px solid var(--invite-accent); outline-offset:2px;}
+  /* The number: a soft-filled circle 1.6x the card's height, anchored at the
+     card's left and cut by its edges, with the digit in the display serif.
+     Decoration only (aria-hidden). The whole thing is faded to 15% and
+     brightens to 25% on hover/focus; with reduced motion, no transition.
+     --invite-accent (accent-3 in dark, a darker accent in light) so it is
+     visible in every skin; the text over it is checked at 4.5:1. */
+  .gi-num{
+    position:absolute; z-index:-1; left:-1.6rem; top:50%; transform:translateY(-50%);
+    height:160%; aspect-ratio:1 / 1; border-radius:50%;
+    container-type:size;
+    display:flex; align-items:center; justify-content:center;
+    border:0.3rem solid var(--invite-accent);
+    background:color-mix(in srgb, var(--invite-accent) 30%, transparent);
+    color:var(--invite-accent);
+    font-family:var(--font-display); font-weight:700; line-height:1;
+    padding-left:1.6rem; box-sizing:border-box;
+    opacity:0.15; transition:opacity 0.25s var(--ease);
+    pointer-events:none; user-select:none;
+  }
+  /* Sized from the circle (a container can't size its own text, so the digit
+     is a child of it): about 62% of the circle's height. */
+  .gi-num-digit{font-size:4.2rem; font-size:62cqh;}
+  .gi-action:hover .gi-num, .gi-action:focus-visible .gi-num{opacity:0.25;}
+  @media (prefers-reduced-motion: reduce){ .gi-num{transition:none;} }
+  .gi-text{position:relative; display:flex; flex-direction:column; gap:0.15rem; min-width:0;}
   .gi-text strong{font-family:var(--font-display); font-weight:600; font-size:1rem; color:var(--text);}
-  /* --text, not --text-dim: dim is 3.8-4.4:1 on --bg-2 in light (the same
-     reason .hero-callout-sub uses --text); size keeps it secondary. */
+  /* --text, not --text-dim: dim is 3.8-4.4:1 on --bg-2 in light (HOME-2);
+     size keeps it secondary. */
   .gi-text small{font-family:var(--font-ui); font-size:0.8rem; color:var(--text); line-height:1.4;}
-  .gi-action:hover .gi-text strong{color:var(--accent-2);}
+  /* --invite-accent, not --accent-2, which is too faint on light gold. */
+  .gi-action:hover .gi-text strong{color:var(--invite-accent);}
   /* The phone rule gives every .home-primary-btn flex:1 1 0 for the main row;
      inside the callout's column that would stretch the button vertically. */
   .home-hero2 .home-primary-btn{flex:0 0 auto;}
@@ -3652,33 +3678,42 @@ function homepageSections(){
 // contribute callout alone beside it. No play or love counts. The callout
 // exists only when the switch is on AND there is a #1; with the switch off
 // the tile stands alone (.is-solo).
-// HOME-2: "Show some Hart" -- two ways to take part: dedicate a song, or
-// send a song idea. ("Hart" with an a is the name; "heart" with an e in the
-// subline is the word.) HOME-1's upload action left this box; uploading is
-// still one tap away in the header ("Share your music" / "Upload a song"),
-// the account menu, and the "Share your music" section lower on this page.
-// Still gated by the same contribute_cta_enabled switch, which decides
-// whether this whole corner of the homepage exists at all.
-function heroCalloutHTML(){
+// HOME-2 / HOME-2b: "Show some Hart" -- numbered ways to take part, each its
+// own card with a big faded number behind it (decoration, aria-hidden).
+// ("Hart" with an a is the name; "heart" with an e in the subline is the
+// word.) The actions are a list, so the subline's count and the numbers
+// follow whatever is in it. Upload has no switch of its own -- before HOME-2
+// it showed whenever this box did, and it still does; the whole box is
+// gated by contribute_cta_enabled. `opts.upload === false` renders the
+// two-action form ("Two ways", 1 and 2), the form the box takes if upload
+// is ever switched off on its own.
+const HART_COUNT_WORD = { 1: 'One way', 2: 'Two ways', 3: 'Three ways' };
+function heroCalloutHTML(opts){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
+  const withUpload = !(opts && opts.upload === false);
+  const actions = [
+    { open: '<button class="gi-action" id="gi-dedicate" type="button">', close: '</button>',
+      title: 'Dedicate a song', line: 'to someone who deserves it' },
+    { open: '<a class="gi-action" id="gi-idea" href="/your-song">', close: '</a>',
+      title: 'Send us your song idea', line: 'your idea, our music' },
+  ];
+  if(withUpload){
+    actions.push({ open: '<button class="gi-action" id="gi-upload" type="button">', close: '</button>',
+      title: 'Upload your song', line: "You could be next week's #1." });
+  }
+  const cards = actions.map((a, i) =>
+    `${a.open}
+          <span class="gi-num" aria-hidden="true"><span class="gi-num-digit">${i + 1}</span></span>
+          <span class="gi-text">
+            <strong>${escHtml(a.title)}</strong>
+            <small>${escHtml(a.line)}</small>
+          </span>
+        ${a.close}`).join('\n        ');
   return `<section class="hero-callout show-some-hart" aria-labelledby="hero-callout-h">
       <h3 class="hero-callout-h" id="hero-callout-h">Show some Hart</h3>
-      <p class="hero-callout-sub">Two ways to put your heart into the music.</p>
+      <p class="hero-callout-sub">${HART_COUNT_WORD[actions.length]} to put your heart into the music.</p>
       <div class="gi-actions">
-        <button class="gi-action" id="gi-dedicate" type="button">
-          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
-          <span class="gi-text">
-            <strong>Dedicate a song</strong>
-            <small>to someone who deserves it</small>
-          </span>
-        </button>
-        <a class="gi-action" href="/your-song">
-          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.4.3.6.8.6 1.2v.5h6v-.5c0-.4.2-.9.6-1.2A6 6 0 0 0 12 3z"/></svg>
-          <span class="gi-text">
-            <strong>Send us your song idea</strong>
-            <small>your idea, our music</small>
-          </span>
-        </a>
+        ${cards}
       </div>
     </section>`;
 }
@@ -4167,6 +4202,9 @@ function renderHomepage(){
 
   const cta = el.querySelector('#contribute-btn');
   if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));
+  // HOME-2b: upload is back in the box, opening exactly what it did before.
+  const heroUp = el.querySelector('#gi-upload');
+  if(heroUp) heroUp.addEventListener('click', () => openUploadOrSignIn('home_hero'));
   const giDedicate = el.querySelector('#gi-dedicate');
   if(giDedicate) giDedicate.addEventListener('click', () => openDedicationPicker());
   // The #1 title opens its song page without playing (as artist-page cards do).

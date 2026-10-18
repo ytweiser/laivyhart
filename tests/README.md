@@ -289,18 +289,24 @@ over a narrower range.
   nothing to show at all, hover (CSS) and touch (a JS pause class) both
   stop the scroll, `prefers-reduced-motion` renders static and fades
   through one item at a time, and no identity field ever reaches the DOM.
-- `specs/homepage-show-some-hart.spec.mjs` (HOME-1, renamed in HOME-2): the
-  homepage "Show some Hart" box beside the #1 song -- the heading, the
-  subline "Two ways to put your heart into the music.", and exactly two
-  actions ("Dedicate a song" / "to someone who deserves it", then "Send us
-  your song idea" / "your idea, our music" linking to `/your-song`), only
-  when `contribute_cta_enabled` is on (same gate as before), with no "Get
-  involved" left on the page. "Dedicate a song" opens the sign-in modal
-  (with the right reason and a `next` that carries a `dedicate=1` marker)
-  when signed out or the song picker (search, Recent, Popular) when signed
-  in, handing a chosen song straight to the existing dedicate sheet. Also
-  covers the signed-out round trip through `/auth/callback?next=/?dedicate=1`
-  reopening the picker automatically once signed in.
+- `specs/homepage-show-some-hart.spec.mjs` (HOME-1, renamed in HOME-2,
+  numbered cards in HOME-2b): the homepage "Show some Hart" box beside the
+  #1 song -- the heading, "Three ways to put your heart into the music.",
+  and three cards in order ("Dedicate a song", "Send us your song idea"
+  linking to `/your-song`, "Upload your song" opening sign-in with
+  `next=/upload`), each with a big faded number 1-3 (aria-hidden, 15% at
+  rest, 25% on hover/focus, no transition with reduced motion) and no
+  icons; the "Two ways" form numbered 1 and 2 when upload is left out; only
+  when `contribute_cta_enabled` is on; no "Get involved" anywhere. Every
+  skin in light and dark at 375 and 1280 px: heading on one line, cards
+  fit, each circle about 1.6x its card and cut by its top, bottom and left
+  while the digit stays whole, and all text at 4.5:1+ even over a number.
+  "Dedicate a song" opens the sign-in modal (with the right reason and a
+  `next` that carries a `dedicate=1` marker) when signed out or the song
+  picker (search, Recent, Popular) when signed in, handing a chosen song
+  straight to the existing dedicate sheet. Also covers the signed-out round
+  trip through `/auth/callback?next=/?dedicate=1` reopening the picker
+  automatically once signed in.
 - `specs/your-song-nav.spec.mjs` (HOME-1): "Your Song" in the main nav for
   everyone (`site_settings.your_song_nav_enabled`, now on), signed in and
   out, and that the switch itself still works if ever turned back off; plus
