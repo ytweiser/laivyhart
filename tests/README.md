@@ -289,10 +289,13 @@ over a narrower range.
   nothing to show at all, hover (CSS) and touch (a JS pause class) both
   stop the scroll, `prefers-reduced-motion` renders static and fades
   through one item at a time, and no identity field ever reaches the DOM.
-- `specs/homepage-get-involved.spec.mjs` (HOME-1): the homepage "Get
-  involved" box beside the #1 song -- three actions render only when
-  `contribute_cta_enabled` is on (same gate as before), "Send a song idea"
-  links to `/your-song`, and "Dedicate a song" opens the sign-in modal
+- `specs/homepage-show-some-hart.spec.mjs` (HOME-1, renamed in HOME-2): the
+  homepage "Show some Hart" box beside the #1 song -- the heading, the
+  subline "Two ways to put your heart into the music.", and exactly two
+  actions ("Dedicate a song" / "to someone who deserves it", then "Send us
+  your song idea" / "your idea, our music" linking to `/your-song`), only
+  when `contribute_cta_enabled` is on (same gate as before), with no "Get
+  involved" left on the page. "Dedicate a song" opens the sign-in modal
   (with the right reason and a `next` that carries a `dedicate=1` marker)
   when signed out or the song picker (search, Recent, Popular) when signed
   in, handing a chosen song straight to the existing dedicate sheet. Also

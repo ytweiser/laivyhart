@@ -1,8 +1,9 @@
 /* ============================================================
-   HOME-1 -- the homepage "Get involved" box beside the #1 song: three
-   equal actions (Upload, Send a song idea, Dedicate a song), replacing the
-   single upload invitation that used to be the whole box. Gated by the
-   same site_settings.contribute_cta_enabled switch as before. Covers the
+   HOME-2 -- the homepage "Show some Hart" box beside the #1 song (HOME-1's
+   "Get involved"): two actions, "Dedicate a song" and "Send us your song
+   idea", under the subline "Two ways to put your heart into the music."
+   Gated by the same site_settings.contribute_cta_enabled switch as before.
+   Upload left the box and stays reachable elsewhere. Covers the
    "Dedicate a song" picker flow signed in and signed out, including the
    signed-out -> sign in -> straight back into the picker round trip via
    /auth/callback.
@@ -23,8 +24,9 @@ async function gotoHome(page, url, port) {
 }
 
 export async function run(browser, port) {
-  const r = makeReporter('homepage-get-involved.spec.mjs');
-  await scenarioThreeActionsRender(browser, port, r);
+  const r = makeReporter('homepage-show-some-hart.spec.mjs');
+  await scenarioBoxRenders(browser, port, r);
+  await scenarioSkinsAndWidths(browser, port, r);
   await scenarioGatedOff(browser, port, r);
   await scenarioDedicateSignedOut(browser, port, r);
   await scenarioDedicateSignedInPicksAndSearches(browser, port, r);
@@ -32,28 +34,39 @@ export async function run(browser, port) {
   return r;
 }
 
-async function scenarioThreeActionsRender(browser, port, r) {
-  r.section('switch on: three equal actions render, each with an icon');
+async function scenarioBoxRenders(browser, port, r) {
+  r.section('switch on: "Show some Hart", its subline, and the two actions with their icons');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, { siteSettings: SETTINGS_CTA_ON, songs: F.SONGS_ROWS });
   await gotoHome(page, '/', port);
   await page.waitForSelector('.gi-action', { timeout: 10000 });
   const d = await page.evaluate(() => {
+    const box = document.querySelector('.hero-callout.show-some-hart');
     const actions = Array.from(document.querySelectorAll('.gi-action'));
+    const parts = (el) => el && { strong: el.querySelector('strong')?.textContent, small: el.querySelector('small')?.textContent };
     return {
+      heading: box?.querySelector('#hero-callout-h')?.textContent,
+      labelledBy: box?.getAttribute('aria-labelledby'),
+      sub: box?.querySelector('.hero-callout-sub')?.textContent,
       count: actions.length,
       iconCount: document.querySelectorAll('.gi-action .gi-icon').length,
-      uploadLine: document.getElementById('gi-upload')?.querySelector('small')?.textContent,
-      ideaHref: document.querySelector('a.gi-action[href="/your-song"]')?.textContent,
-      dedicateText: document.getElementById('gi-dedicate')?.textContent,
+      first: parts(actions[0]), second: parts(actions[1]),
+      firstIsDedicate: actions[0]?.id === 'gi-dedicate',
+      ideaHref: actions[1]?.getAttribute('href'),
+      upload: !!document.getElementById('gi-upload'),
+      oldWording: /get involved/i.test(document.body.innerText),
     };
   });
-  r.check('three actions render', d.count === 3, d.count);
-  r.check('each action has its own icon', d.iconCount === 3, d.iconCount);
-  r.check('Upload keeps "You could be next week\'s #1."', d.uploadLine === "You could be next week's #1.", d.uploadLine);
-  r.check('Send a song idea links to /your-song with the right copy', d.ideaHref?.includes('Send a song idea') && d.ideaHref?.includes('We pick one every week and turn it into a song.'), d.ideaHref);
-  r.check('Dedicate a song has the right copy', d.dedicateText?.includes('Dedicate a song') && d.dedicateText?.includes('Send a song to someone for any occasion.'), d.dedicateText);
+  r.check('heading reads "Show some Hart" (Hart with an a)', d.heading === 'Show some Hart', d.heading);
+  r.check('the box is labelled by that heading', d.labelledBy === 'hero-callout-h');
+  r.check('subline reads "Two ways to put your heart into the music." (heart with an e)', d.sub === 'Two ways to put your heart into the music.', d.sub);
+  r.check('exactly two actions, each with its icon', d.count === 2 && d.iconCount === 2, JSON.stringify(d));
+  r.check('first: "Dedicate a song" / "to someone who deserves it"', d.firstIsDedicate && d.first?.strong === 'Dedicate a song' && d.first?.small === 'to someone who deserves it', JSON.stringify(d.first));
+  r.check('second: "Send us your song idea" / "your idea, our music", linking to /your-song',
+    d.second?.strong === 'Send us your song idea' && d.second?.small === 'your idea, our music' && d.ideaHref === '/your-song', JSON.stringify(d.second));
+  r.check('the upload action is no longer in this box', d.upload === false);
+  r.check('"Get involved" appears nowhere on the page', d.oldWording === false);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -65,8 +78,8 @@ async function scenarioGatedOff(browser, port, r) {
   await wireSupabaseStubs(page, { siteSettings: SETTINGS_CTA_OFF, songs: F.SONGS_ROWS });
   await gotoHome(page, '/', port);
   await page.waitForLoadState('networkidle');
-  const present = await page.evaluate(() => !!document.querySelector('.get-involved'));
-  r.check('Get involved box is absent', present === false, present);
+  const present = await page.evaluate(() => !!document.querySelector('.show-some-hart'));
+  r.check('Show some Hart box is absent', present === false, present);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -152,4 +165,63 @@ async function scenarioAuthCallbackReopensPicker(browser, port, r) {
   r.check('the dedicate=1 marker is cleaned out of the address', d.search === '', d.search);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
+}
+
+/* Every skin, both lightings, at a 375 px phone and at 1280: the heading
+   never breaks inside "Show some Hart" awkwardly (one line, or two with
+   "Hart" never stranded alone mid-name -- i.e. no line is a lone "some"),
+   and every piece of text in the box reads at 4.5:1 or better on the box. */
+async function scenarioSkinsAndWidths(browser, port, r) {
+  r.section('four skins x light/dark, at 375 px and 1280 px: heading wraps sensibly, text is readable');
+  for (const width of [375, 1280]) {
+    const page = await newPage(browser, { width, height: 900 });
+    const errors = collectErrors(page);
+    await wireSupabaseStubs(page, { siteSettings: SETTINGS_CTA_ON, songs: F.SONGS_ROWS });
+    await gotoHome(page, '/', port);
+    await page.waitForSelector('.show-some-hart .gi-action', { timeout: 10000 });
+    for (const color of ['bordeaux', 'emerald', 'royal', 'gold']) {
+      for (const theme of ['dark', 'light']) {
+        const d = await page.evaluate(({ color, theme }) => {
+          document.documentElement.setAttribute('data-color', color);
+          document.documentElement.setAttribute('data-theme', theme);
+          const box = document.querySelector('.show-some-hart');
+          const h = box.querySelector('#hero-callout-h');
+          // Which words sit on which line.
+          const words = [];
+          const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            const re = /\S+/g; let m;
+            while ((m = re.exec(node.data))) {
+              const range = document.createRange(); range.setStart(node, m.index); range.setEnd(node, m.index + m[0].length);
+              const rects = range.getClientRects();
+              words.push({ w: m[0], top: Math.round(rects[0].top), pieces: rects.length });
+            }
+          }
+          const lines = [...new Set(words.map((x) => x.top))].map((t) => words.filter((x) => x.top === t).map((x) => x.w).join(' '));
+          const parse = (str) => str.match(/[\d.]+/g).map(Number);
+          const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+          const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+          const bg = parse(getComputedStyle(box).backgroundColor);
+          const texts = { heading: h, sub: box.querySelector('.hero-callout-sub') };
+          box.querySelectorAll('.gi-text strong').forEach((el, i) => { texts['action' + (i + 1)] = el; });
+          box.querySelectorAll('.gi-text small').forEach((el, i) => { texts['line' + (i + 1)] = el; });
+          const contrast = {};
+          for (const [k, el] of Object.entries(texts)) contrast[k] = Math.round(ratio(parse(getComputedStyle(el).color), bg) * 100) / 100;
+          const icon = Math.round(ratio(parse(getComputedStyle(box.querySelector('.gi-icon')).color), bg) * 100) / 100;
+          const br = box.getBoundingClientRect();
+          return { lines, splitWord: words.some((x) => x.pieces > 1), contrast, icon, fits: br.left >= 0 && br.right <= window.innerWidth + 0.5 };
+        }, { color, theme });
+        const tag = `[${width}px ${color}/${theme}]`;
+        const sensible = d.lines.length === 1 || (d.lines.length === 2 && !d.splitWord && d.lines.every((l) => l !== 'some' && l !== 'Show'));
+        r.check(`${tag} heading wraps sensibly: ${d.lines.map((l) => '"' + l + '"').join(' / ')}`, sensible, JSON.stringify(d.lines));
+        const low = Object.entries(d.contrast).filter(([, v]) => v < 4.5);
+        r.check(`${tag} all text 4.5:1+ (lowest ${Math.min(...Object.values(d.contrast))})`, low.length === 0, JSON.stringify(low));
+        r.check(`${tag} icons 3:1+ (${d.icon})`, d.icon >= 3, d.icon);
+        r.check(`${tag} the box fits the screen`, d.fits);
+      }
+    }
+    r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+    await page.close();
+  }
 }

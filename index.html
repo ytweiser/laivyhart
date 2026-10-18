@@ -759,20 +759,26 @@
      The italic and smaller size already keep it secondary to the heading. */
   .hero-callout-sub{font-family:var(--font-display); font-style:italic; font-size:1.02rem; color:var(--text); margin:0;}
   .hero-callout .home-primary-btn{margin-top:0.35rem;}
-  /* HOME-1: "Get involved" replaces the single upload invitation here --
-     three equal actions sharing the tile's own height, stacked (there is
-     no width in this column for anything else). */
-  .hero-callout.get-involved{justify-content:stretch;}
+  /* HOME-2: "Show some Hart" -- two actions sharing the tile's own height,
+     stacked (there is no width in this column for anything else). The
+     heading never breaks inside the name: the line may wrap only before
+     "Hart" if it has to, and balance keeps the two lines even. */
+  .hero-callout.show-some-hart{justify-content:stretch;}
+  .show-some-hart .hero-callout-h{text-wrap:balance;}
   .gi-actions{display:flex; flex-direction:column; gap:0.6rem; width:100%; flex:1; justify-content:space-evenly;}
   .gi-action{
     display:flex; align-items:flex-start; gap:0.7rem; width:100%; text-align:left;
     background:none; border:none; cursor:pointer; padding:0.4rem 0; color:inherit; text-decoration:none;
     font-family:inherit;
   }
-  .gi-icon{width:1.5rem; height:1.5rem; flex-shrink:0; color:var(--accent-2); margin-top:0.15rem;}
+  /* HOME-2: --invite-accent, not --accent-2: accent-2 is 2.6:1 (emerald) and
+     1.8:1 (gold) on --bg-2 in light; invite-accent clears 3:1 everywhere. */
+  .gi-icon{width:1.5rem; height:1.5rem; flex-shrink:0; color:var(--invite-accent); margin-top:0.15rem;}
   .gi-text{display:flex; flex-direction:column; gap:0.15rem; min-width:0;}
   .gi-text strong{font-family:var(--font-display); font-weight:600; font-size:1rem; color:var(--text);}
-  .gi-text small{font-family:var(--font-ui); font-size:0.8rem; color:var(--text-dim); line-height:1.4;}
+  /* --text, not --text-dim: dim is 3.8-4.4:1 on --bg-2 in light (the same
+     reason .hero-callout-sub uses --text); size keeps it secondary. */
+  .gi-text small{font-family:var(--font-ui); font-size:0.8rem; color:var(--text); line-height:1.4;}
   .gi-action:hover .gi-text strong{color:var(--accent-2);}
   /* The phone rule gives every .home-primary-btn flex:1 1 0 for the main row;
      inside the callout's column that would stretch the button vertically. */
@@ -2000,7 +2006,7 @@
   </div>
 </div>
 
-<!-- HOME-1: "Dedicate a song" from the homepage's Get involved box, with
+<!-- HOME-1: "Dedicate a song" from the homepage's Show some Hart box (HOME-2), with
      no song already playing -- search the catalog, or tap from Recent or
      Popular. Picking a song hands off to the existing dedicate sheet. -->
 <div class="picker-overlay hidden" id="dedicate-picker-overlay">
@@ -3646,37 +3652,33 @@ function homepageSections(){
 // contribute callout alone beside it. No play or love counts. The callout
 // exists only when the switch is on AND there is a #1; with the switch off
 // the tile stands alone (.is-solo).
-// HOME-1: three equal ways to take part, replacing the single upload
-// invitation that used to be the whole box. Still gated by the same
-// contribute_cta_enabled switch as before -- that switch decides whether
-// this whole corner of the homepage exists at all; it says nothing about
-// which of the (now three) actions show once it is on.
+// HOME-2: "Show some Hart" -- two ways to take part: dedicate a song, or
+// send a song idea. ("Hart" with an a is the name; "heart" with an e in the
+// subline is the word.) HOME-1's upload action left this box; uploading is
+// still one tap away in the header ("Share your music" / "Upload a song"),
+// the account menu, and the "Share your music" section lower on this page.
+// Still gated by the same contribute_cta_enabled switch, which decides
+// whether this whole corner of the homepage exists at all.
 function heroCalloutHTML(){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
-  return `<section class="hero-callout get-involved" aria-labelledby="hero-callout-h">
-      <h3 class="hero-callout-h" id="hero-callout-h">Get involved</h3>
+  return `<section class="hero-callout show-some-hart" aria-labelledby="hero-callout-h">
+      <h3 class="hero-callout-h" id="hero-callout-h">Show some Hart</h3>
+      <p class="hero-callout-sub">Two ways to put your heart into the music.</p>
       <div class="gi-actions">
-        <button class="gi-action" id="gi-upload" type="button">
-          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+        <button class="gi-action" id="gi-dedicate" type="button">
+          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
           <span class="gi-text">
-            <strong data-label>${escHtml(contributeLabel())}</strong>
-            <small>You could be next week's #1.</small>
+            <strong>Dedicate a song</strong>
+            <small>to someone who deserves it</small>
           </span>
         </button>
         <a class="gi-action" href="/your-song">
           <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.4.3.6.8.6 1.2v.5h6v-.5c0-.4.2-.9.6-1.2A6 6 0 0 0 12 3z"/></svg>
           <span class="gi-text">
-            <strong>Send a song idea</strong>
-            <small>We pick one every week and turn it into a song.</small>
+            <strong>Send us your song idea</strong>
+            <small>your idea, our music</small>
           </span>
         </a>
-        <button class="gi-action" id="gi-dedicate" type="button">
-          <svg class="gi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
-          <span class="gi-text">
-            <strong>Dedicate a song</strong>
-            <small>Send a song to someone for any occasion.</small>
-          </span>
-        </button>
       </div>
     </section>`;
 }
@@ -3739,15 +3741,6 @@ function openUploadOrSignIn(where){
   // Sign-in lands on /upload (auth callback next=), not back on the homepage.
   if(window.laivy && window.laivy.accountUI) window.laivy.accountUI.openModal({ next: '/upload' });
 }
-function contributeLabel(){
-  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
-  return signedIn ? 'Upload a song' : 'Upload your song';
-}
-function applyContributeChrome(){
-  const btn = document.getElementById('gi-upload');
-  if(btn) btn.querySelector('[data-label]').textContent = contributeLabel();
-}
-window.addEventListener('laivy:auth', applyContributeChrome);
 
 function contributeCtaHTML(){
   if(PUBLIC_SETTINGS.contribute_cta_enabled !== true) return '';
@@ -4174,8 +4167,6 @@ function renderHomepage(){
 
   const cta = el.querySelector('#contribute-btn');
   if(cta) cta.addEventListener('click', () => openUploadOrSignIn('home_bottom'));
-  const heroUp = el.querySelector('#gi-upload');
-  if(heroUp) heroUp.addEventListener('click', () => openUploadOrSignIn('home_hero'));
   const giDedicate = el.querySelector('#gi-dedicate');
   if(giDedicate) giDedicate.addEventListener('click', () => openDedicationPicker());
   // The #1 title opens its song page without playing (as artist-page cards do).
@@ -6094,7 +6085,7 @@ document.getElementById('picker-done').addEventListener('click', closePicker);
 document.getElementById('picker-search').addEventListener('input', (e) => { pickerSearch = e.target.value; renderPickerList(); });
 
 /* ============================================================
-   HOME-1: "Dedicate a song" picker (homepage Get involved box). Same
+   HOME-1: "Dedicate a song" picker (homepage Show some Hart box). Same
    overlay/list pattern as the playlist picker above, its own state so the
    two never collide. Signed out: the sign-in modal's own `next` carries a
    `dedicate=1` marker through the magic-link/OAuth round trip (which can

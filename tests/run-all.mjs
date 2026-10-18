@@ -47,7 +47,7 @@ const SPECS = [
   { name: 'admin-pulse', path: './specs/admin-pulse.spec.mjs', kind: 'browser' },
   { name: 'homepage-pulse', path: './specs/homepage-pulse.spec.mjs', kind: 'browser' },
   { name: 'homepage-ticker', path: './specs/homepage-ticker.spec.mjs', kind: 'browser' },
-  { name: 'homepage-get-involved', path: './specs/homepage-get-involved.spec.mjs', kind: 'browser' },
+  { name: 'homepage-show-some-hart', path: './specs/homepage-show-some-hart.spec.mjs', kind: 'browser' },
   { name: 'admin-dedications', path: './specs/admin-dedications.spec.mjs', kind: 'browser' },
   { name: 'dedicate', path: './specs/dedicate.spec.mjs', kind: 'browser' },
   { name: 'now-playing-layout', path: './specs/now-playing-layout.spec.mjs', kind: 'browser' },
