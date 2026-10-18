@@ -236,8 +236,10 @@ over a narrower range.
   <artist>", the inspiration in quotes (left out when empty; cut at a full
   sentence, else a whole word, with "…" within ~280 characters), then the
   canonical /song/<slug> link alone as the last line. Dedication: note +
-  the phrase table's headline, the message in quotes, its sender line
-  (none when anonymous), the canonical /d/<code> link. Normal, anonymous,
+  the phrase table's headline (SHARE-1b: for Something else, followed by
+  ": <the write-in>", trimmed, as typed; the /d page itself unchanged), the
+  message in quotes, its sender line (none when anonymous), the canonical
+  /d/<code> link. Normal, anonymous,
   no message, In memory, Something else, a Hebrew title and a Hebrew
   message; wa.me text decodes back exactly; the native sheet gets the link
   once, as url, never also in text; one emoji, the note. The single

@@ -9,7 +9,8 @@
    characters; left out when empty), then the canonical /song/<slug> link
    alone as the last line. Dedication: note + the phrase table's headline,
    the message in quotes, the sender line (none for anonymous), then the
-   canonical /d/<code> link. WhatsApp text survives encoding (Hebrew, quotes,
+   canonical /d/<code> link (SHARE-1b: for Something else the headline is
+   followed by ": <the write-in>"). WhatsApp text survives encoding (Hebrew, quotes,
    line breaks, the note); the native sheet gets the link once, as `url`,
    never inside `text` too. One emoji only: the note. (The single-og:image
    check for /song/ and /d/ is share-og.spec.mjs's, run alongside.)
@@ -82,6 +83,7 @@ export async function run(browser, port) {
   await scenarioClip(browser, port, r);
   await scenarioDedicationTexts(browser, port, r);
   await scenarioDedicationSuccess(browser, port, r);
+  await scenarioDedicationSuccessOther(browser, port, r);
   await scenarioDedicationPage(browser, port, r);
   return r;
 }
@@ -171,6 +173,11 @@ async function scenarioDedicationTexts(browser, port, r) {
       normal: go({}), anon: go({ anonymous: true }), noMsg: go({ message: '' }), noName: go({ sender: null }),
       memory: go({ occasion: 'in_memory', recipient: 'Grandpa Avi', message: 'We miss you.' }),
       other: go({ occasion: 'other', recipient: 'Dina' }),
+      // SHARE-1b: the write-in after a colon, trimmed, otherwise as typed.
+      otherWritten: go({ occasion: 'other', recipient: 'Dad', other: '  finishing Shas  ' }),
+      otherHebrew: go({ occasion: 'other', recipient: '\u05D0\u05D1\u05D0', other: 'סיום הש"ס' }),
+      otherPunct: go({ occasion: 'other', recipient: 'Dad', other: 'finishing Shas!' }),
+      birthdayIgnoresOther: go({ other: 'finishing Shas' }),
       hebrew: go({ recipient: 'אמא', message: 'אוהבת אותך\nתמיד' }),
       table: { b: dedHeadline('birthday', 'Mom'), m: dedHeadline('in_memory', 'Grandpa Avi'), o: dedHeadline('other', 'Dina'), s: dedSenderLine('birthday', 'Tzvi', false), sm: dedSenderLine('in_memory', 'Tzvi', false) },
     };
@@ -184,7 +191,13 @@ async function scenarioDedicationTexts(browser, port, r) {
   checkFull(r, '[no sender name]', d.noName.full, url, [`${NOTE} Happy birthday, Mom`, '“Love you!”']);
   checkFull(r, '[In memory]', d.memory.full, url, [`${NOTE} ${d.table.m}`, '“We miss you.”', d.table.sm]);
   r.check('[In memory] "In loving memory of ..." and "Dedicated by ..."', d.table.m === 'In loving memory of Grandpa Avi' && d.table.sm === 'Dedicated by Tzvi');
-  checkFull(r, '[Something else]', d.other.full, url, [`${NOTE} ${d.table.o}`, '“Love you!”', 'With love, Tzvi']);
+  checkFull(r, '[Something else, no write-in]', d.other.full, url, [`${NOTE} ${d.table.o}`, '“Love you!”', 'With love, Tzvi']);
+  checkFull(r, '[Something else + write-in]', d.otherWritten.full, url, [`${NOTE} This one's for you, Dad: finishing Shas`, '“Love you!”', 'With love, Tzvi']);
+  r.check('[Something else + write-in] the native-sheet title carries it too', d.otherWritten.p.title === "This one's for you, Dad: finishing Shas", d.otherWritten.p.title);
+  checkFull(r, '[Something else + Hebrew write-in]', d.otherHebrew.full, url, [`${NOTE} This one's for you, \u05D0\u05D1\u05D0: סיום הש"ס`, '“Love you!”', 'With love, Tzvi']);
+  r.check('[Something else] the write-in exactly as typed (its own punctuation kept, no quotes added)',
+    d.otherPunct.full.split('\n')[0] === `${NOTE} This one's for you, Dad: finishing Shas!`, d.otherPunct.full.split('\n')[0]);
+  checkFull(r, '[birthday, a stray write-in] other occasions unchanged', d.birthdayIgnoresOther.full, url, [`${NOTE} Happy birthday, Mom`, '“Love you!”', 'With love, Tzvi']);
   checkFull(r, '[Hebrew]', d.hebrew.full, url, [`${NOTE} Happy birthday, אמא`, '“אוהבת אותך', 'תמיד”', 'With love, Tzvi']);
   r.check('[Hebrew] the message is exactly as written (its own line break kept)', d.hebrew.full.includes('אותך\nתמיד'));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
@@ -222,6 +235,33 @@ async function scenarioDedicationSuccess(browser, port, r) {
   await page.close();
 }
 
+async function scenarioDedicationSuccessOther(browser, port, r) {
+  r.section('SHARE-1b: "Send it to them" for Something else carries the write-in (WhatsApp, Copy, Share)');
+  const { page, errors } = await setup(browser, port, 'native',
+    { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH], createDedicationResult: 'ABCD2345' }, F.SESSION_USERS.NOVA);
+  await openSong(page, port, SUPER.slug);
+  await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
+  await page.click('#now-dedicate-btn');
+  await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
+  await page.fill('#dedicate-recipient', 'Dad');
+  await page.selectOption('#dedicate-occasion', 'other');
+  await page.fill('#dedicate-occasion-other', '  finishing Shas ');
+  await page.click('#dedicate-submit');
+  await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
+  const url = `${SITE}/d/ABCD2345`;
+  const lines = [`${NOTE} This one's for you, Dad: finishing Shas`, 'With love, Nova Ash'];
+  await page.click('#dedicate-whatsapp');
+  await page.waitForFunction(() => window.__opened.length > 0, null, { timeout: 5000 });
+  const waText = decodeURIComponent((await page.evaluate(() => window.__opened[0])).slice('https://wa.me/?text='.length));
+  checkFull(r, '[WhatsApp]', waText, url, lines);
+  r.check('[Copy] the same full text', await clipboardAfter(page, '#dedicate-copy') === waText);
+  await page.click('#dedicate-native-share');
+  await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
+  checkNative(r, '[Share]', await lastShared(page), url, lines);
+  r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+
 async function scenarioDedicationPage(browser, port, r) {
   r.section('the /d/<code> page Share button: named and anonymous, native sheet and copy');
   const row = (o) => ({ code: 'ABCD2345', song_id: SUPER.id, song_title: SUPER.title, song_slug: SUPER.slug, cover_url: null,
@@ -232,11 +272,17 @@ async function scenarioDedicationPage(browser, port, r) {
     ['[named]', {}, [`${NOTE} Happy birthday, Mom`, '“Love you so much!”', 'With love, Tzvi']],
     ['[anonymous]', { sender_name: null }, [`${NOTE} Happy birthday, Mom`, '“Love you so much!”']],
     ['[In memory, no message]', { occasion: 'in_memory', message: null }, [`${NOTE} In loving memory of Mom`, 'Dedicated by Tzvi']],
+    ['[Something else + Hebrew write-in]', { occasion: 'other', occasion_other: 'סיום הש"ס' }, [`${NOTE} This one's for you, Mom: סיום הש"ס`, '“Love you so much!”', 'With love, Tzvi']],
   ]) {
     for (const mode of ['native', 'copy']) {
       const { page, errors } = await setup(browser, port, mode, { dedicationsPublic: [row(o)] });
       await page.goto(`http://localhost:${port}/d/ABCD2345`, { waitUntil: 'load' });
       await page.waitForSelector('#ded-page-share-btn', { timeout: 10000 });
+      if (o.occasion === 'other') {
+        const pg = await page.evaluate(() => ({ h: document.querySelector('.ded-page-headline').textContent, l: document.querySelector('.ded-page-line').textContent }));
+        r.check(`${tag} [${mode}] the /d page itself is unchanged (headline without the write-in; it stays in the line)`,
+          pg.h === "This one's for you, Mom" && pg.l === 'A song for Mom: סיום הש"ס', JSON.stringify(pg));
+      }
       if (mode === 'native') {
         await page.click('#ded-page-share-btn');
         await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });

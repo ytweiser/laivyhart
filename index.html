@@ -6528,12 +6528,16 @@ function songSharePayload(s){
   if(insp) lines.push(quoteLine(insp));
   return { title, text: lines.join('\n'), url: songShareUrl(s) };
 }
-// d: { occasion, recipient, message, sender, anonymous, code }. The phrase
-// table's own headline and sender line; no sender line at all when
-// anonymous (or when there is no sender name to show).
+// d: { occasion, other, recipient, message, sender, anonymous, code }. The
+// phrase table's own headline and sender line; no sender line at all when
+// anonymous (or when there is no sender name to show). SHARE-1b: for
+// "Something else", the write-in follows the headline after a colon,
+// trimmed and otherwise exactly as typed ("This one's for you, Dad:
+// finishing Shas"); every other occasion is just the headline.
 function dedSharePayload(d){
   const name = d.recipient || 'them';
-  const headline = dedHeadline(d.occasion, name);
+  const other = d.occasion === 'other' ? String(d.other || '').trim() : '';
+  const headline = dedHeadline(d.occasion, name) + (other ? ': ' + other : '');
   const lines = [SHARE_NOTE + ' ' + headline];
   const msg = (d.message || '').trim();
   if(msg) lines.push(quoteLine(msg));
@@ -6788,7 +6792,7 @@ function dedUpdateCounter(){
         p_is_anonymous: anonymous,
       });
       if(error) throw error;
-      dedShowSuccess(dedicateSong, code, occasion, recipient, message, anonymous);
+      dedShowSuccess(dedicateSong, code, occasion, recipient, message, anonymous, other);
       loadDedicationsStrip();
     }catch(err){
       showDedErr((err && err.message) || 'Could not send that dedication right now.');
@@ -6798,14 +6802,14 @@ function dedUpdateCounter(){
   });
 })();
 
-function dedShowSuccess(song, code, occasion, recipient, message, anonymous){
+function dedShowSuccess(song, code, occasion, recipient, message, anonymous, other){
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('[data-ded-pane="form"]').hidden = true;
   const pane = modal.querySelector('[data-ded-pane="success"]');
   pane.hidden = false;
 
   // SHARE-1: headline, the message, the sender line, then the link.
-  const p = dedSharePayload({ occasion, recipient, message, sender: dedMySenderName(), anonymous, code });
+  const p = dedSharePayload({ occasion, other, recipient, message, sender: dedMySenderName(), anonymous, code });
   modal.querySelector('#dedicate-success-sub').textContent = `For this song's page, share the link below.`;
   modal.querySelector('#dedicate-view-link').href = p.url;
 
@@ -7733,7 +7737,7 @@ async function renderDedicationPage(code){
   const shareBtn = document.getElementById('ded-page-share-btn');
   if(shareBtn) shareBtn.addEventListener('click', () => {
     logActivity('share', { song_id: d.song_id, meta: { channel: navigator.share ? 'dedication_page_native' : 'dedication_page_copy' } });
-    shareSheetOrCopy(dedSharePayload({ occasion: d.occasion, recipient: d.recipient_name, message: d.message,
+    shareSheetOrCopy(dedSharePayload({ occasion: d.occasion, other: d.occasion_other, recipient: d.recipient_name, message: d.message,
       sender: d.sender_name, anonymous: !d.sender_name, code: d.code }));
   });
   const ctaLink = document.getElementById('ded-page-cta-link');
