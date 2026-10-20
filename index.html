@@ -288,14 +288,21 @@
   .engage.hidden{display:none !important;}
   .lyrics-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;}
   .lyrics-head .lbl{font-size:0.6rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-faint);}
-  .lang-toggle{display:flex; gap:0.3rem;}
-  .lang-toggle button{
-    font-family:var(--font-ui); font-size:0.66rem; letter-spacing:0.05em; text-transform:uppercase;
-    padding:0.28rem 0.62rem; border-radius:16px; cursor:pointer;
-    background:transparent; border:1px solid var(--chip-border); color:var(--text-dim);
-    transition:all 0.2s var(--ease);
+  /* LYRICS-1: one toggle, only on Hebrew songs that carry an English
+     translation. Larger than the old pills; 44px tap target. */
+  .lyrics-lang-btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:0.45rem;
+    min-height:44px; padding:0 1.1rem; border-radius:999px; cursor:pointer;
+    font-family:var(--font-ui); font-size:0.9rem; font-weight:600; letter-spacing:0.01em;
+    background:var(--accent-grad); border:none; color:#fff;
+    box-shadow:0 2px 10px rgba(0,0,0,0.18);
+    transition:transform 0.15s var(--ease), filter 0.2s var(--ease);
   }
-  .lang-toggle button.active{background:var(--accent-grad); border-color:transparent; color:#fff;}
+  .lyrics-lang-btn:hover{filter:brightness(1.08);}
+  .lyrics-lang-btn:active{transform:scale(0.97);}
+  .lyrics-lang-btn:focus-visible{outline:2px solid var(--text); outline-offset:2px;}
+  .lyrics-lang-btn.hidden{display:none;}
+  .lyrics-lang-btn .he{font-family:var(--font-heb); font-size:1.05rem; font-weight:500;}
   .lyrics{font-size:1.45rem; line-height:1.95; white-space:pre-line; font-family:var(--font-display);}
   .lyrics.is-heb{font-family:var(--font-heb); direction:rtl; text-align:right; font-size:1.7rem; line-height:1.85;}
   .lyrics.hidden{display:none;}
@@ -1876,12 +1883,12 @@
     <div class="lyrics-wrap" id="lyrics-wrap">
       <div class="lyrics-head">
         <span class="lbl">Lyrics</span>
-        <div class="lang-toggle" id="lang-toggle"></div>
+        <button type="button" class="lyrics-lang-btn hidden" id="lyrics-lang-btn" aria-pressed="false"></button>
       </div>
       <div class="lyrics-scroll" id="lyrics-scroll">
         <div class="now-empty" id="now-empty">Pick a song, hit Radio, or spin a category to begin.</div>
         <div class="lyrics is-heb hidden" id="lyrics-orig"></div>
-        <div class="lyrics hidden" id="lyrics-trans"></div>
+        <div class="lyrics hidden" id="lyrics-trans" lang="en" dir="ltr"></div>
       </div>
     </div>
 
@@ -4397,7 +4404,7 @@ function renderNow(){
   const bannerSub = document.getElementById('now-banner-sub');
   const nowTags = document.getElementById('now-tags');
   const about = document.getElementById('now-about');
-  const langToggle = document.getElementById('lang-toggle');
+  const langBtn = document.getElementById('lyrics-lang-btn');
   const dockReact = document.getElementById('dock-react');
   const engage = document.getElementById('engage');
   const panelFeed = document.getElementById('panel-feed');
@@ -4413,7 +4420,7 @@ function renderNow(){
     thumb.style.cssText = genArtStyle('laivy hart');
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
     topline.classList.remove('hidden');
-    nowTags.innerHTML = ''; about.classList.add('hidden'); langToggle.innerHTML = '';
+    nowTags.innerHTML = ''; about.classList.add('hidden'); langBtn.classList.add('hidden');
     const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
     const nicIdle = document.getElementById('now-idea-credit'); if(nicIdle){ nicIdle.classList.add('hidden'); nicIdle.innerHTML = ''; }
@@ -4534,29 +4541,56 @@ function renderNow(){
   }
 
   // Lyrics: original in its own script, translation always Fraunces.
-  const hasTrans = !!s.lyrics_translation;
   orig.textContent = s.lyrics_original;
   orig.className = 'lyrics ' + (heb ? 'is-heb' : '');
+  orig.setAttribute('lang', heb ? 'he' : 'en');
+  orig.setAttribute('dir', heb ? 'rtl' : 'ltr');
   trans.textContent = s.lyrics_translation;
   trans.className = 'lyrics';
 
-  // Smart language toggle: only shown when there really are two languages.
-  if(hasTrans){
-    const origLabel = heb ? 'עברית' : 'English';
-    langToggle.innerHTML =
-      `<button data-view="orig" class="${langView==='orig'?'active':''}">${origLabel}</button>` +
-      `<button data-view="trans" class="${langView==='trans'?'active':''}">EN</button>`;
-    langToggle.querySelectorAll('button').forEach(b => {
-      b.addEventListener('click', () => { langView = b.dataset.view; renderNow(); });
-    });
-  } else {
-    langView = 'orig';
-    langToggle.innerHTML = '';
-  }
+  // LYRICS-1: the audience reads English, so the only language control is an
+  // "English translation" toggle on Hebrew songs that have one. English songs
+  // and untranslated Hebrew songs get no control at all.
+  if(!hasEnglishTranslation(s)) langView = 'orig';
+  langBtn.onclick = () => switchLyricsLang(langView === 'trans' ? 'orig' : 'trans');
+  paintLyricsLang();
+}
 
-  const showTrans = hasTrans && langView === 'trans';
+function hasEnglishTranslation(s){
+  return !!s && isHebrew(s) && !!(s.lyrics_translation || '').trim();
+}
+function paintLyricsLang(){
+  const s = currentIdx === null ? null : SONGS[currentIdx];
+  const btn = document.getElementById('lyrics-lang-btn');
+  const orig = document.getElementById('lyrics-orig');
+  const trans = document.getElementById('lyrics-trans');
+  const can = hasEnglishTranslation(s);
+  const showTrans = can && langView === 'trans';
+  btn.classList.toggle('hidden', !can);
+  btn.setAttribute('aria-pressed', showTrans ? 'true' : 'false');
+  btn.innerHTML = showTrans
+    ? '<span class="he" lang="he" dir="rtl">עברית</span><span>Hebrew</span>'
+    : 'English translation';
+  btn.setAttribute('aria-label', showTrans ? 'Show the original Hebrew lyrics' : 'Show the English translation');
   orig.classList.toggle('hidden', showTrans);
   trans.classList.toggle('hidden', !showTrans);
+}
+// Swap in place (no renderNow) and hold the toggle where it sits on screen,
+// so the reader stays at the top of the lyrics whichever version is longer.
+function switchLyricsLang(view){
+  const btn = document.getElementById('lyrics-lang-btn');
+  const before = btn.getBoundingClientRect().top;
+  langView = view;
+  paintLyricsLang();
+  const delta = btn.getBoundingClientRect().top - before;
+  if(!delta) return;
+  let el = btn.parentElement;
+  while(el && el !== document.body){
+    const oy = getComputedStyle(el).overflowY;
+    if((oy === 'auto' || oy === 'scroll') && el.scrollHeight > el.clientHeight){ el.scrollTop += delta; return; }
+    el = el.parentElement;
+  }
+  (document.scrollingElement || document.documentElement).scrollTop += delta;
 }
 
 /* ============================================================

@@ -143,16 +143,16 @@ async function scenarioPageScrollReachesComments(browser, port, r) {
 }
 
 async function scenarioLangToggleWithLyricsHeading(browser, port, r) {
-  r.section('the language toggle still sits with the lyrics heading');
+  r.section('the English-translation toggle sits with the lyrics heading');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page);
   await gotoSong(page, port);
   const together = await page.evaluate(() => {
     const head = document.querySelector('.lyrics-head');
-    return !!(head && head.querySelector('#lang-toggle') && head.querySelector('.lbl'));
+    return !!(head && head.querySelector('#lyrics-lang-btn') && head.querySelector('.lbl'));
   });
-  r.check('lang-toggle and the "Lyrics" label are in the same .lyrics-head', together);
+  r.check('lyrics-lang-btn and the "Lyrics" label are in the same .lyrics-head', together);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
