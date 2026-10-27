@@ -76,6 +76,7 @@ const SPECS = [
   { name: 'stations', path: './specs/stations.spec.mjs', kind: 'browser' },
   { name: 'sleep-timer', path: './specs/sleep-timer.spec.mjs', kind: 'browser' },
   { name: 'thoughts-block', path: './specs/thoughts-block.spec.mjs', kind: 'browser' },
+  { name: 'meta-row', path: './specs/meta-row.spec.mjs', kind: 'browser' },
   { name: 'share-text', path: './specs/share-text.spec.mjs', kind: 'browser' },
 ];
 

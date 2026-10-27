@@ -347,17 +347,18 @@
 
   /* player dock */
   /* GAP-1: the stack under the cover is spaced by margins on purpose, not a
-     flex gap: the station line sits right on "Your thoughts matter" (whose
-     heading row sets its own top room, see .thoughts-head), while the
-     Dedications strip keeps the room it always had. */
+     flex gap. META-1: the station moved up beside the badges, so the divider
+     (this border) now sits 12px under that row and 12px over the "Your
+     thoughts matter" heading row; the Dedications strip keeps the room it
+     always had. */
   .dock{
-    margin-top:0.875rem; padding-top:0.5rem; border-top:1px solid var(--line);
+    margin-top:0.75rem; padding-top:0.75rem; border-top:1px solid var(--line);
     display:flex; flex-direction:column; gap:0;
   }
   .dock > .dedications-strip{margin-top:1.8rem;}
   /* RADIO-2: the stations. One component -- .station-btn -- in three places:
      the row on /listen, the "Change station" panel, and (through that panel)
-     the mini-player. RADIO (all songs) is the first station, then one per
+     the mini-player. Mix radio (all songs) is the first station, then one per
      channel. The station that is playing is filled; every other one is
      outlined. Filled uses --station-on-1/2 (theme.css), chosen so white text
      clears 4.5:1 in all four colors; outlined uses --text on a faint accent
@@ -393,24 +394,39 @@
     box-shadow:0 5px 16px rgba(var(--accent-1-rgb),0.40);
   }
 
-  /* The station line, directly under the play controls. */
+  /* META-1: the row under the byline. Badges on the left (wrapping among
+     themselves), the station group on the right end of the first line;
+     when both cannot share a line the station drops under the badges,
+     still right-aligned. Both groups are ~28px tall, so top-aligned they
+     also read as centred on one line. */
+  .now-meta{
+    display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between;
+    gap:0.5rem 1rem; margin-top:0.625rem;
+  }
+  .now-meta .now-badges{flex:1 1 16rem; min-width:0; margin-top:0;}
+  /* The station group: gold broadcast mark, "Now playing:" muted, the name,
+     then Change station. Its transparent 1px border and side padding are
+     the room its glow uses, kept small so the glow stays inside the gap. */
   .station-line{
-    display:flex; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;
-    padding:0.4rem 0.75rem; border-radius:999px;
+    margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:0.5rem;
+    min-height:28px; padding:0 0.15rem 0 0.55rem; border-radius:999px;
     font-family:var(--font-ui); font-size:0.8rem; color:var(--text);
     border:1px solid transparent;
   }
-  .station-line.hidden{display:none;}
-  .station-line-text:empty{display:none;}
-  .station-line-text b{font-weight:700;}
+  .station-line-ic{width:1rem; height:1rem; flex-shrink:0; color:var(--badge-gold);}
+  .station-line-text{white-space:nowrap;}
+  .station-line-lbl{color:var(--text-dim);}
+  .station-line-name{font-weight:500;}
   .station-change{
+    position:relative; flex-shrink:0;
     background:none; border:1px solid rgba(var(--accent-2-rgb),0.55); border-radius:999px; cursor:pointer;
     padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.74rem; font-weight:600; color:var(--text);
   }
   .station-change:hover{background:rgba(var(--accent-2-rgb),0.14);}
   .station-change:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
-  /* Radio just took over: glow for ~3s. Reduced motion: the same highlight,
-     held still. */
+  /* Radio just took over: glow for ~3s. A tight glow (7px at its widest)
+     that stays inside the row's 8px gaps. Reduced motion: the same
+     highlight, held still. */
   .station-line.is-glow{
     border-color:rgba(var(--accent-2-rgb),0.7);
     background:rgba(var(--accent-2-rgb),0.12);
@@ -418,10 +434,18 @@
   }
   @keyframes station-glow{
     0%,100%{box-shadow:0 0 0 0 rgba(var(--accent-2-rgb),0);}
-    50%{box-shadow:0 0 18px 2px rgba(var(--accent-2-rgb),0.55);}
+    50%{box-shadow:0 0 6px 1px rgba(var(--accent-2-rgb),0.6);}
   }
   @media (prefers-reduced-motion: reduce){
     .station-line.is-glow{animation:none; box-shadow:0 0 0 2px rgba(var(--accent-2-rgb),0.45);}
+  }
+  /* Phones: the station gets its own line under the badges, the name on
+     the left and Change station on the right, and the pill a 44px-tall tap
+     area (an invisible hit box; the pill itself keeps its size). */
+  @media (max-width:560px){
+    .now-meta .station-line{flex:1 1 100%; justify-content:space-between; padding-left:0.4rem; min-height:26px;}
+    .station-line-text{flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;}
+    .station-change::before{content:""; position:absolute; left:-4px; right:-4px; top:50%; height:44px; transform:translateY(-50%);}
   }
 
   /* The "Change station" panel: one compact sheet for the now-playing panel
@@ -1764,7 +1788,8 @@
        Songs/Playlists drop below it. */
     .tabs-list{margin-top:0.15rem;}
     /* Dock spacing trimmed on phones. */
-    .dock{padding-top:0.25rem; margin-top:0.7rem;}
+    /* 11px either side of the divider on a phone (the heading row adds 4px). */
+    .dock{padding-top:0.4375rem; margin-top:0.6875rem;}
     .dock > .dedications-strip{margin-top:1.6rem;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame.
        Sections just stack and flow so the PAGE scrolls to reveal the like
@@ -1936,7 +1961,18 @@
       <div class="now-idea-credit hidden" id="now-idea-credit"></div>
       <!-- BADGE-2: the expansive set. /song/<slug> IS this panel, so this one
            element serves both the now-playing dock and the song page. -->
-      <div class="now-badges" id="now-badges"></div>
+      <!-- META-1: one row under the byline: the badges on the left, the
+           station on the right ("Now playing: Mix radio" + Change station).
+           Always shown; the station name is what plays now or, for a song
+           picked by hand, what carries on after it. -->
+      <div class="now-meta">
+        <div class="now-badges" id="now-badges"></div>
+        <div class="station-line" id="station-line">
+          <svg class="station-line-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8"/><path d="M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>
+          <span class="station-line-text"><span class="station-line-lbl">Now playing:</span> <span class="station-line-name" id="station-line-name" aria-live="polite">Mix radio</span></span>
+          <button class="station-change" id="station-change" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="station-panel">Change station</button>
+        </div>
+      </div>
       <div class="now-tags" id="now-tags"></div>
       <div class="pullquote hidden" id="now-about"></div>
     </div>
@@ -1945,12 +1981,6 @@
          music stars, Dedicate, Share; Dedications strip. PLAYER-5: the
          progress bar and prev/play/next/Sleep live in the cover now. -->
     <div class="dock">
-      <!-- RADIO-2: what is playing ("On Radio: All songs", "On Radio: <mood>",
-           "Playing: <queue>") and the way to switch. -->
-      <div class="station-line hidden" id="station-line">
-        <span class="station-line-text" id="station-line-text" aria-live="polite"></span>
-        <button class="station-change" id="station-change" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="station-panel">Change station</button>
-      </div>
       <!-- RATE-2: "Your thoughts matter". The heart (one tap, anonymous,
            public count), the words and the music (1 to 5, signed in, through
            rate_song()) and the comment box, on one grid; Dedicate + Share at
@@ -2055,9 +2085,9 @@
            channels load. One tap switches. -->
       <div class="tabs-stations">
         <div class="station-row" id="station-row" role="group" aria-label="Radio stations">
-          <button class="station-btn is-all radio-btn" id="radio-btn" data-station="all" type="button" aria-pressed="false" aria-label="Radio: all songs">
+          <button class="station-btn is-all radio-btn" id="radio-btn" data-station="all" type="button" aria-pressed="false" aria-label="Mix radio">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="2"/><path d="M6.3 6.3a8 8 0 000 11.4"/><path d="M17.7 6.3a8 8 0 010 11.4"/><path d="M3.5 3.5a12 12 0 000 17"/><path d="M20.5 3.5a12 12 0 010 17"/></svg>
-            Radio
+            Mix radio
           </button>
         </div>
       </div>
@@ -3226,6 +3256,9 @@ let activeSort = loadSort();
 let currentIdx = null;
 let langView = 'orig';   // 'orig' | 'trans'
 let mode = 'manual';     // manual | radio | channelRadio | playlist
+// META-1: the default station, the mix of all songs, as people see and hear
+// it. Display text only -- its key stays 'all' everywhere in code.
+const MIX_RADIO = 'Mix radio';
 let queue = [];
 let queuePos = 0;
 // Small ordered queue for a homepage rail's "Play all" (manual mode has no
@@ -4873,7 +4906,7 @@ function radioLabel(){
   if(mode !== 'radio' && mode !== 'channelRadio') return '';
   const ch = radioChannelFor(mode);
   const c = ch && CHANNELS.find(x => x.id === ch);
-  return c ? 'Radio · ' + c.title : 'Radio';
+  return c ? 'Radio · ' + c.title : MIX_RADIO;
 }
 function paintPlayMode(){
   paintStations();
@@ -6194,7 +6227,7 @@ function stationButtonHTML(c){
   return `<button class="station-btn" data-station="${escHtml(c.id)}" type="button" aria-pressed="false">${escHtml(c.title)}</button>`;
 }
 function allStationHTML(){
-  return `<button class="station-btn is-all" data-station="all" type="button" aria-pressed="false" aria-label="Radio: all songs">${RADIO_ICON} Radio</button>`;
+  return `<button class="station-btn is-all" data-station="all" type="button" aria-pressed="false" aria-label="Mix radio">${RADIO_ICON} Mix radio</button>`;
 }
 function renderStations(){
   const row = document.getElementById('station-row');
@@ -6230,33 +6263,35 @@ function paintStations(){
   }
   updateStationFade(row);
 }
-function stationLineHTML(){
+/* The name after "Now playing:". Radio and a mood name themselves; a
+   playlist or a "Play all" its own name, as before. A song picked by hand
+   (and a song page opened directly) has no station of its own: it shows the
+   one that carries on after it -- the mood whose list it came from, else
+   Mix radio. So there is never a "no station" line. */
+function stationName(){
   if(mode === 'radio' || mode === 'channelRadio'){
     const c = mode === 'channelRadio' && activeChannel ? channelById(activeChannel) : null;
-    return 'On Radio: <b>' + escHtml(c ? c.title : 'All songs') + '</b>';
+    return c ? c.title : MIX_RADIO;
   }
-  if(mode === 'playlist' && playlistName) return 'Playing: <b>' + escHtml(playlistName) + '</b>';
-  if(mode === 'manual' && manualQueue && manualQueue.length && manualQueueName){
-    return 'Playing: <b>' + escHtml(manualQueueName) + '</b>';
-  }
-  return '';
+  if(mode === 'playlist' && playlistName) return playlistName;
+  if(mode === 'manual' && manualQueue && manualQueue.length && manualQueueName) return manualQueueName;
+  const c = activeChannel ? channelById(activeChannel) : null;
+  return c ? c.title : MIX_RADIO;
 }
-// "Radio · Fire me up" for the mini-player; '' when no station is playing.
+// "Radio · Fire me up" / "Mix radio" for the mini-player; '' when no station is playing.
 function stationShortLabel(){
   if(mode === 'radio' || mode === 'channelRadio'){
     const c = mode === 'channelRadio' && activeChannel ? channelById(activeChannel) : null;
-    return 'Radio · ' + (c ? c.title : 'All songs');
+    return c ? 'Radio · ' + c.title : MIX_RADIO;
   }
   if(mode === 'playlist' && playlistName) return playlistName;
   if(mode === 'manual' && manualQueue && manualQueue.length && manualQueueName) return manualQueueName;
   return '';
 }
 function paintStationLine(){
-  const line = document.getElementById('station-line');
-  if(!line) return;
-  line.classList.toggle('hidden', currentIdx === null);
-  const t = document.getElementById('station-line-text');
-  if(t) t.innerHTML = stationLineHTML();
+  const n = document.getElementById('station-line-name');
+  const name = stationName();
+  if(n && n.textContent !== name) n.textContent = name;   // aria-live: read only when it changes
 }
 let stationGlowTimer = null;
 function glowStationLine(){

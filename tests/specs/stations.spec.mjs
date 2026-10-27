@@ -50,7 +50,8 @@ async function openListen(page, port, path) {
 const stations = (page, sel) => page.evaluate((sel) => [...document.querySelectorAll(sel + ' [data-station]')].map((b) => ({
   key: b.dataset.station, text: b.textContent.trim(), on: b.classList.contains('is-on'), pressed: b.getAttribute('aria-pressed'),
 })), sel);
-const lineText = (page) => page.evaluate(() => document.getElementById('station-line-text').textContent);
+// META-1: "Now playing: <station>", beside the badges.
+const lineText = (page) => page.evaluate(() => document.querySelector('#station-line .station-line-text').textContent.replace(/\s+/g, ' ').trim());
 const visibleSongIds = (page) => page.evaluate(() => [...document.querySelectorAll('#rows .row')].map((r) => SONGS[Number(r.dataset.idx)].id));
 async function clickFirstRow(page) {
   for (let i = 0; i < 15; i++) {
@@ -100,7 +101,7 @@ async function scenarioRow(browser, port, r) {
   r.check('the list is filtered to that mood', vis.length === members.size && vis.every((id) => members.has(id)), JSON.stringify(vis));
   r.check('the station is named (banner + address)', await page.evaluate((t) => document.querySelector('.channel-banner-title')?.textContent === t
     && new URLSearchParams(location.search).get('channel') !== null, mood.title));
-  r.check('station line: "On Radio: <mood>"', await lineText(page) === 'On Radio: ' + mood.title, await lineText(page));
+  r.check('station line: "Now playing: <mood>"', await lineText(page) === 'Now playing: ' + mood.title, await lineText(page));
 
   // RADIO back to all songs.
   await page.click('#station-row [data-station="all"]');
@@ -109,7 +110,7 @@ async function scenarioRow(browser, port, r) {
   r.check('RADIO is highlighted, the mood is not', st3.filter((s) => s.on).map((s) => s.key).join() === 'all', JSON.stringify(st3));
   r.check('the list is back to all songs', (await visibleSongIds(page)).length === SONGS.length);
   r.check('the mood banner and ?channel= are gone', await page.evaluate(() => !document.querySelector('.channel-banner') && !location.search.includes('channel')));
-  r.check('station line: "On Radio: All songs"', await lineText(page) === 'On Radio: All songs', await lineText(page));
+  r.check('station line: "Now playing: Mix radio"', await lineText(page) === 'Now playing: Mix radio', await lineText(page));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -121,9 +122,10 @@ async function scenarioLineAndPanel(browser, port, r) {
   await page.waitForSelector('#artist-playall', { timeout: 10000 });
   await page.click('#artist-playall');
   await page.waitForFunction(() => currentIdx !== null && manualQueue && manualQueue.length, null, { timeout: 10000 });
-  r.check('Play all: "Playing: Nova Ash: Play all"', await lineText(page) === 'Playing: Nova Ash: Play all', await lineText(page));
-  r.check('the line opens the dock, right under the song details (the play controls are in the cover)', await page.evaluate(() =>
-    document.querySelector('.dock').firstElementChild === document.getElementById('station-line')));
+  r.check('Play all: "Now playing: Nova Ash: Play all"', await lineText(page) === 'Now playing: Nova Ash: Play all', await lineText(page));
+  r.check('META-1: the station sits in the row under the byline, beside the badges', await page.evaluate(() =>
+    document.getElementById('station-line').parentElement === document.getElementById('now-badges').parentElement
+      && !document.querySelector('.dock #station-line')));
   r.check('nothing highlighted during a queue', (await page.evaluate(() => [...document.querySelectorAll('.station-row .is-on')].length)) === 0);
 
   await page.click('#station-change');
@@ -135,7 +137,7 @@ async function scenarioLineAndPanel(browser, port, r) {
   await page.click(`#station-panel-row [data-station="${mood.id}"]`);
   await page.waitForFunction((id) => activeChannel === id && mode === 'channelRadio', mood.id, { timeout: 10000 });
   r.check('a pick switches the station and closes the panel', await page.evaluate(() => document.getElementById('station-panel').hidden)
-    && await lineText(page) === 'On Radio: ' + mood.title, await lineText(page));
+    && await lineText(page) === 'Now playing: ' + mood.title, await lineText(page));
   r.check('the panel\'s own copy shows the new station highlighted', (await stations(page, '#station-panel-row')).find((s) => s.on)?.key === mood.id);
 
   await page.click('#station-change');
@@ -166,10 +168,10 @@ async function scenarioGlow(browser, port, r) {
     const g = await page.evaluate(() => {
       const el = document.getElementById('station-line');
       const cs = getComputedStyle(el);
-      return { glow: el.classList.contains('is-glow'), anim: cs.animationName, shadow: cs.boxShadow, text: document.getElementById('station-line-text').textContent };
+      return { glow: el.classList.contains('is-glow'), anim: cs.animationName, shadow: cs.boxShadow, text: document.querySelector('#station-line .station-line-text').textContent.replace(/\s+/g, ' ').trim() };
     });
     const label = reduced ? '[reduced motion]' : '[motion]';
-    r.check(`${label} takeover: "On Radio: All songs" and the line glows`, g.glow && g.text === 'On Radio: All songs', JSON.stringify(g));
+    r.check(`${label} takeover: "Now playing: Mix radio" and the line glows`, g.glow && g.text === 'Now playing: Mix radio', JSON.stringify(g));
     r.check(reduced ? `${label} no animation, a still highlight instead` : `${label} animated`,
       reduced ? (g.anim === 'none' && g.shadow !== 'none') : g.anim === 'station-glow', JSON.stringify(g));
     await page.waitForFunction(() => !document.getElementById('station-line').classList.contains('is-glow'), null, { timeout: 5000 });

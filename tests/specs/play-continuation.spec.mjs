@@ -50,14 +50,15 @@ async function setup(browser, songs, extra) {
 }
 
 const state = (page) => page.evaluate(() => {
-  // RADIO-2: the station line replaced PLAY-1's "Radio" tag.
-  const line = document.getElementById('station-line-text');
+  // RADIO-2: the station line replaced PLAY-1's "Radio" tag. META-1: it
+  // reads "Now playing: <station>" beside the badges.
+  const line = document.querySelector('#station-line .station-line-text');
   return {
     id: currentIdx === null ? null : SONGS[currentIdx].id,
     src: audioEl.currentSrc || audioEl.src,
     paused: audioEl.paused,
     mode,
-    tag: line ? line.textContent : '',
+    tag: line ? line.textContent.replace(/\s+/g, ' ').trim() : '',
     source: currentSource,
   };
 });
@@ -131,7 +132,7 @@ async function scenarioListenRow(browser, port, r) {
   const b = await state(page);
   r.check('ended -> the pre-picked next song starts', b.id === queued.id && !b.paused, JSON.stringify(b));
   r.check('the src switched to the new song', b.src.includes(b.id), b.src);
-  r.check('now-playing says "On Radio: All songs"', b.tag === 'On Radio: All songs', b.tag);
+  r.check('now-playing says "Now playing: Mix radio"', b.tag === 'Now playing: Mix radio', b.tag);
   r.check('mode is radio, marked as a takeover', b.mode === 'radio' && await page.evaluate(() => radioTakeover), b.mode);
   const meta2 = await page.evaluate(() => navigator.mediaSession.metadata.title);
   r.check('Media Session metadata follows the radio song', meta2 === await page.evaluate(() => SONGS[currentIdx].title), meta2);
@@ -143,7 +144,7 @@ async function scenarioListenRow(browser, port, r) {
   await fireEnded(page);
   await waitSongChange(page, b.id);
   const c = await state(page);
-  r.check('radio keeps going after that', c.id !== b.id && c.tag === 'On Radio: All songs' && c.source === 'autoplay', JSON.stringify(c));
+  r.check('radio keeps going after that', c.id !== b.id && c.tag === 'Now playing: Mix radio' && c.source === 'autoplay', JSON.stringify(c));
 
   // previoustrack inside radio steps back through what was played.
   await page.evaluate(() => playPrev());
@@ -169,7 +170,7 @@ async function scenarioNaturalEnd(browser, port, r) {
   await page.evaluate(() => { audioEl.currentTime = Math.max(0, audioEl.duration - 0.15); });
   await waitSongChange(page, a.id);
   const b = await state(page);
-  r.check('a different song is playing on its own', b.id !== a.id && !b.paused && b.tag === 'On Radio: All songs', JSON.stringify(b));
+  r.check('a different song is playing on its own', b.id !== a.id && !b.paused && b.tag === 'Now playing: Mix radio', JSON.stringify(b));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -186,7 +187,7 @@ async function scenarioSongPage(browser, port, r) {
   await waitSongChange(page, song.id);
   const b = await state(page);
   r.check('the next song starts from a song page', b.id && b.id !== song.id && !b.paused, JSON.stringify(b));
-  r.check('labelled On Radio', b.tag === 'On Radio: All songs', b.tag);
+  r.check('labelled Now playing: Mix radio', b.tag === 'Now playing: Mix radio', b.tag);
   r.check('the address follows the new song', await page.evaluate(() => location.pathname) === '/song/' + BASE_SONGS.find((s) => s.id === b.id).slug);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -209,7 +210,7 @@ async function scenarioDedicationPage(browser, port, r) {
   await fireEnded(page);
   await waitSongChange(page, song.id);
   const b = await state(page);
-  r.check('the next song starts after a dedication', b.id !== song.id && !b.paused && b.tag === 'On Radio: All songs', JSON.stringify(b));
+  r.check('the next song starts after a dedication', b.id !== song.id && !b.paused && b.tag === 'Now playing: Mix radio', JSON.stringify(b));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -271,7 +272,7 @@ async function scenarioMood(browser, port, r) {
   const seq = await runChain(page, 12);
   r.check('every song is from the inspire-me channel', seq.every((id) => members.has(id)), JSON.stringify(seq));
   const tag = (await state(page)).tag;
-  r.check('now-playing says "On Radio: <mood>"', /^On Radio: /.test(tag) && tag !== 'On Radio: All songs', tag);
+  r.check('now-playing says "Now playing: <mood>"', /^Now playing: /.test(tag) && tag !== 'Now playing: Mix radio', tag);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -353,7 +354,7 @@ async function scenarioPlayAll(browser, port, r) {
   await fireEnded(page);
   await waitSongChange(page, before.id);
   const after = await state(page);
-  r.check('after the last one, radio takes over', after.tag === 'On Radio: All songs' && after.mode === 'radio' && after.source === 'autoplay', JSON.stringify(after));
+  r.check('after the last one, radio takes over', after.tag === 'Now playing: Mix radio' && after.mode === 'radio' && after.source === 'autoplay', JSON.stringify(after));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
