@@ -164,7 +164,9 @@ async function scenarioLayout(browser, port, r) {
         };
       });
       const tag = `[${width}px, ${key || 'no timer'}]`;
-      r.check(`${tag} Sleep is the moon at the end of the cover's control bar, reading "${text}"`, d.inBar && d.moon && d.text === text, JSON.stringify(d));
+      // Real clock here: a busy machine can tick 30:00 over to 29:59 before the read.
+      const textOk = d.text === text || (text === '30:00' && d.text === '29:59');
+      r.check(`${tag} Sleep is the moon at the end of the cover's control bar, reading "${text}"`, d.inBar && d.moon && textOk, JSON.stringify(d));
       r.check(`${tag} on the same line as play, at the bar's right end`, d.sameLine && d.rightEnd && d.afterNext, JSON.stringify(d));
       r.check(`${tag} every control inside the cover`, d.insideCover, JSON.stringify(d));
       r.check(`${tag} 44 px touch targets that never shrink`, d.sizes.every((w) => w >= 43.9), JSON.stringify(d));

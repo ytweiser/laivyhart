@@ -168,12 +168,19 @@ async function scenarioKeyboardAndHover(browser, port, r) {
   r.check('three Arrow Rights from 1: four V\'s filled, focus and aria-checked on the 4th', k.filled === 4 && k.focus === '4' && k.checked === 'true', JSON.stringify(k));
   r.check('a visible focus ring on the focused V', k.ring, JSON.stringify(k));
   r.check('no call yet while the keys are still moving', calls.length === 0, calls.length);
-  await page.waitForTimeout(1000);
+  // Polled, not slept: the call lands ~0.7s after the last key plus the
+  // round trip, which a busy machine stretches. Then a beat more, to be sure
+  // no second call follows.
+  for (let i = 0; i < 50 && calls.length === 0; i++) await page.waitForTimeout(100);
+  await page.waitForTimeout(900);
   r.check('one rate_song call once they settle', calls.length === 1, calls.length);
   await page.keyboard.press('ArrowLeft');
   r.check('Arrow Left steps back to 3', await page.evaluate(() => document.querySelectorAll('.vrow[data-facet="words"] .vbtn.is-on').length) === 3);
 
-  // Hover preview on the music row.
+  // Hover preview on the music row -- once that Arrow Left's rating has been
+  // sent: its repaint would otherwise land mid-hover and clear the preview.
+  await page.waitForFunction(() => Object.keys(pendingRates).length === 0, null, { timeout: 5000 });
+  await page.waitForTimeout(300);
   await page.hover('.vrow[data-facet="music"] .vbtn[data-score="3"]');
   const shown = await page.evaluate(() => [...document.querySelectorAll('.vrow[data-facet="music"] .vbtn')].map((b) => getComputedStyle(b.querySelector('.v-on')).display !== 'none'));
   r.check('hovering the 3rd music V previews three filled', JSON.stringify(shown) === JSON.stringify([true, true, true, false, false]), JSON.stringify(shown));

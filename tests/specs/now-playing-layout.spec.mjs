@@ -313,9 +313,16 @@ async function scenarioCoverControls(browser, port, r) {
     r.check('...every indicator in sync: bar button says Pause, mini-player shows pause', st.label === 'Pause' && !st.paused && st.mini === '❚❚', JSON.stringify(st));
     r.check('nothing enlarged: no lightbox, no scroll lock', await page.evaluate(() =>
       !document.querySelector('.lightbox, #lightbox, .lightbox-img') && document.body.style.overflow === ''));
+    // Record the icon as it is set: the flash clears itself after 1.2s,
+    // which a busy machine can outrun before the read below.
+    await page.evaluate(() => {
+      const f = document.getElementById('now-flash');
+      window.__flashIcon = '';
+      new MutationObserver(() => { if (f.innerHTML) window.__flashIcon = f.innerHTML; }).observe(f, { childList: true });
+    });
     await page.click('#now-tap', { position: { x: 30, y: 20 } });   // the top-left corner, over the English title
     await page.waitForFunction(() => audioEl.paused, null, { timeout: 5000 });
-    st = await page.evaluate(() => ({ icon: document.getElementById('now-flash').innerHTML, label: document.getElementById('play-btn').getAttribute('aria-label') }));
+    st = await page.evaluate(() => ({ icon: window.__flashIcon, label: document.getElementById('play-btn').getAttribute('aria-label') }));
     r.check('a tap anywhere (even on a title) pauses and flashes the pause symbol', /rect/.test(st.icon) && st.label === 'Play', JSON.stringify(st));
 
     // Playing, pointer away: the bar goes; hover brings it back.

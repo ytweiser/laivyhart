@@ -346,10 +346,15 @@
   .now-empty{margin:2.5rem auto; text-align:center; color:var(--text-faint); font-family:var(--font-display); font-style:italic; font-size:1.1rem; max-width:22rem;}
 
   /* player dock */
+  /* GAP-1: the stack under the cover is spaced by margins on purpose, not a
+     flex gap: the station line sits right on "Your thoughts matter" (whose
+     heading row sets its own top room, see .thoughts-head), while the
+     Dedications strip keeps the room it always had. */
   .dock{
-    margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line);
-    display:flex; flex-direction:column; gap:0.7rem;
+    margin-top:0.875rem; padding-top:0.5rem; border-top:1px solid var(--line);
+    display:flex; flex-direction:column; gap:0;
   }
+  .dock > .dedications-strip{margin-top:1.8rem;}
   /* RADIO-2: the stations. One component -- .station-btn -- in three places:
      the row on /listen, the "Change station" panel, and (through that panel)
      the mini-player. RADIO (all songs) is the first station, then one per
@@ -391,7 +396,7 @@
   /* The station line, directly under the play controls. */
   .station-line{
     display:flex; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;
-    margin-top:0.55rem; padding:0.4rem 0.75rem; border-radius:999px;
+    padding:0.4rem 0.75rem; border-radius:999px;
     font-family:var(--font-ui); font-size:0.8rem; color:var(--text);
     border:1px solid transparent;
   }
@@ -538,6 +543,7 @@
   }
   /* Small, quiet, clickable tag chips in the now-playing panel. */
   .now-tags{display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.45rem;}
+  .now-tags:empty{display:none;}
   .now-tag{
     background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:999px;
     padding:0.15rem 0.6rem; font-family:var(--font-ui); font-size:0.72rem; color:var(--text-faint);
@@ -1275,7 +1281,7 @@
   }
 
   /* EXPANSIVE (now-playing and the song page): icon + label pill. */
-  .now-badges{margin-top:0.55rem;}
+  .now-badges{margin-top:0.625rem;}
   .now-badges:empty{display:none;}
   .badge-strip.is-full{display:flex; flex-wrap:wrap; gap:0.35rem;}
   .badge-pill{
@@ -1417,7 +1423,7 @@
      #v-outline) in --badge-gold, which is bright gold on the dark grounds and
      deep brass on the light ones. */
   .thoughts{container:thoughts / inline-size; --vlabel:92px; --v:28px;}
-  .thoughts-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem 0.75rem; margin-bottom:0.55rem;}
+  .thoughts-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem 0.75rem; margin:0.25rem 0 0.55rem;}
   .thoughts-q{margin:0; font-family:var(--font-display); font-style:italic; font-weight:600; font-size:1.12rem; line-height:1.2; color:var(--text);}
   .thoughts-actions{position:relative; display:flex; align-items:center; gap:0.5rem; margin-left:auto;}
   .thoughts-grid{display:grid; grid-template-columns:minmax(0,1fr); gap:0.85rem;}
@@ -1516,7 +1522,11 @@
     .vrow-label{padding-top:0.35rem;}
   }
   @container thoughts (min-width:600px){
-    .thoughts-head{margin-bottom:0.8rem;}
+    /* The heading is centred on the 48px Dedicate/Share row here, which
+       already puts ~11px above its text, so the row needs no top room of
+       its own (any less and the buttons would touch the station line's
+       glow). */
+    .thoughts-head{margin-top:0; margin-bottom:0.8rem;}
     .thoughts-q{font-size:1.35rem;}
     .vrow-label{font-size:0.9rem;}
     .thoughts-grid{--vlabel:112px; --v:30px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:1.5rem; align-items:stretch;}
@@ -1714,7 +1724,8 @@
        Songs/Playlists drop below it. */
     .tabs-list{margin-top:0.15rem;}
     /* Dock spacing trimmed on phones. */
-    .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
+    .dock{padding-top:0.25rem; margin-top:0.7rem;}
+    .dock > .dedications-strip{margin-top:1.6rem;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame.
        Sections just stack and flow so the PAGE scrolls to reveal the like
        heart, the comment form, and the comments -- LISTEN-1 made this
