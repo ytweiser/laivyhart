@@ -450,7 +450,7 @@ function dedLine(occasion, name, occasionOther) {
   return fn ? fn(name).line : 'A song for ' + name;
 }
 function dedSenderLine(occasion, senderName) {
-  // sender_name is already null for an anonymous sender -- dedications_public
+  // sender_name is already null for an anonymous sender -- dedication_by_code
   // nulls it itself -- so there is no separate "anonymous" flag to check here.
   if (occasion === 'in_memory') {
     return senderName ? 'Dedicated by ' + senderName : 'Dedicated by someone who cares';
@@ -458,18 +458,20 @@ function dedSenderLine(occasion, senderName) {
   return senderName ? 'With love, ' + senderName : 'With love, from someone who cares';
 }
 
-// A plain fetch against dedications_public (anon-readable, 022_dedications.sql):
-// only the columns this page needs. Never user_id, device_id or meta -- that
-// view has no such columns to ask for in the first place. fetchImpl is
-// injectable so this is testable without a real network call.
+// SHOW-1: dedication_by_code() (sql/032, anon-callable): one live
+// dedication by its code, whether or not its sender chose to show it on the
+// site -- the link is how the person it is for opens it, preview included.
+// Its columns are the page's own: never user_id, device_id, meta or any
+// email column. fetchImpl is injectable so this is testable without a real
+// network call.
 async function fetchDedication(code, fetchImpl) {
   if (!code) return null;
   try {
-    const url = DED_SUPABASE_URL + '/rest/v1/dedications_public'
-      + '?code=eq.' + encodeURIComponent(code)
-      + '&select=code,song_id,song_title,song_slug,cover_url,recipient_name,occasion,occasion_other,message,sender_name,created_at';
+    const url = DED_SUPABASE_URL + '/rest/v1/rpc/dedication_by_code';
     const res = await fetchImpl(url, {
-      headers: { apikey: DED_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + DED_SUPABASE_ANON_KEY },
+      method: 'POST',
+      headers: { apikey: DED_SUPABASE_ANON_KEY, Authorization: 'Bearer ' + DED_SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_code: code }),
     });
     if (!res.ok) return null;
     const rows = await res.json();
@@ -479,10 +481,11 @@ async function fetchDedication(code, fetchImpl) {
   }
 }
 
-/* Personal and ephemeral: noindex always, regardless of status. Anonymous
-   stays anonymous here on purpose -- sender_name is already null for those
-   rows (dedications_public itself nulls it), so there is nothing to show
-   even if this function wanted to. */
+/* Personal and ephemeral: noindex always, regardless of status -- and so
+   regardless of show_publicly (SHOW-1): a private one is noindex like every
+   other. Anonymous stays anonymous here on purpose -- sender_name is already
+   null for those rows (dedication_by_code itself nulls it), so there is
+   nothing to show even if this function wanted to. */
 function renderDedication(html, d) {
   const canonical = SITE + '/d/' + encodeURIComponent(d.code);
   const headline = dedHeadline(d.occasion, d.recipient_name);
@@ -622,7 +625,7 @@ function renderMemberProfile(html, p) {
    Returns { kind: 'redirect', location } | { kind: 'render', fn } | null.
 
    async because of one route: /d/<code> has no build-time snapshot to read
-   synchronously, so it fetches dedications_public live. Every other route
+   synchronously, so it fetches dedication_by_code() live. Every other route
    still resolves synchronously underneath; awaiting a non-promise is a
    no-op, so this is not a behavior change for them. fetchImpl is injectable
    so a test never needs a real network call.
@@ -681,7 +684,7 @@ export async function decide(pathname, searchParams, fetchImpl = fetch) {
   if (m) {
     let code; try { code = decodeURIComponent(m[1]); } catch (e) { code = m[1]; }
     const dedication = await fetchDedication(code, fetchImpl);
-    // Unknown or removed (dedications_public only ever returns a live one
+    // Unknown or removed (dedication_by_code only ever returns a live one
     // for an approved song) -- noindex, same as any other 404 here.
     if (!dedication) return { kind: 'render', fn: addNoindex, tag: 'dedication-404' };
     return { kind: 'render', fn: (h) => renderDedication(h, dedication), tag: 'dedication' };

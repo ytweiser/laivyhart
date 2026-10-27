@@ -67,10 +67,14 @@ export async function run() {
       cover_url: 'https://example.com/brand-new.png', cover_focus_x: 50, cover_focus_y: 50, language: 'English',
       artist: { handle: 'nova-ash', display_name: 'Nova Ash', avatar_url: null },
     };
-    globalThis.fetch = async (input) => {
+    globalThis.fetch = async (input, init) => {
       const url = String(input && input.url ? input.url : input);
       if (url.endsWith('/index.html')) return new Response(shell, { status: 200, headers: { 'content-type': 'text/html' } });
-      if (url.includes('/rest/v1/dedications_public')) return new Response(JSON.stringify(url.includes('WAPP0001') ? [dedRow] : []), { status: 200 });
+      // SHOW-1: /d/<code> reads one dedication by its code (POST rpc).
+      if (url.includes('/rest/v1/rpc/dedication_by_code')) {
+        const code = JSON.parse((init && init.body) || '{}').p_code;
+        return new Response(JSON.stringify(code === 'WAPP0001' ? [dedRow] : []), { status: 200 });
+      }
       if (url.includes('/rest/v1/songs')) return new Response(JSON.stringify(url.includes('slug=eq.brand-new-song-f000') ? [liveSong] : []), { status: 200 });
       return new Response('not stubbed: ' + url, { status: 599 });
     };

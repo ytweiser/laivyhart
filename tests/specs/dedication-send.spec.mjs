@@ -36,7 +36,6 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const NOTE = '\u{1F3B5}';
 const CODE = 'ABCD2345';
 const LINK = 'https://laivyhart.com/d/' + CODE;
 const SUPER = F.SONGS_ROWS.find((s) => s.id === F.SONGS.SUPERNOVA);
@@ -121,14 +120,14 @@ async function scenarioFormUnchanged(browser, port, r) {
       text: document.getElementById('dedicate-modal').textContent,
     };
   });
-  r.check('the same fields, in order', JSON.stringify(d.fields) === JSON.stringify(['dedicate-recipient', 'dedicate-occasion', 'dedicate-occasion-other', 'dedicate-message', 'dedicate-anonymous', 'dedicate-submit']), JSON.stringify(d.fields));
+  r.check('the same fields, in order (SHOW-1 adds "Also show this on Laivy Hart" after "Keep my name private")', JSON.stringify(d.fields) === JSON.stringify(['dedicate-recipient', 'dedicate-occasion', 'dedicate-occasion-other', 'dedicate-message', 'dedicate-anonymous', 'dedicate-public', 'dedicate-submit']), JSON.stringify(d.fields));
   r.check('labels: Who is it for?, Occasion, Message', JSON.stringify(d.labels) === JSON.stringify(['Who is it for?', 'Occasion', 'Message (optional)']), JSON.stringify(d.labels));
   r.check('the button still says "Dedicate this song"', d.submit === 'Dedicate this song', d.submit);
   r.check('no email field in the form', !d.emailInForm);
-  // Measured at 380px on the code before SEND-1: form pane 468px, the whole
-  // sheet 511.6px. Both were the same after; this guards that they stay so.
-  r.check(`the form pane is no taller than before (${d.formH}px <= 468)`, d.formH <= 468, d.formH + ' ' + d.parts);
-  r.check(`the sheet is no taller than before (${d.sheetH}px <= 512)`, d.sheetH <= 512, d.sheetH);
+  // Measured at 380px: 468px form pane / 511.6px sheet before SHOW-1; its
+  // one checkbox (label + helper) adds 59.3px. Guards against more growth.
+  r.check(`the form pane is no taller than with the SHOW-1 box (${d.formH}px <= 528)`, d.formH <= 528, d.formH + ' ' + d.parts);
+  r.check(`the sheet is no taller than with the SHOW-1 box (${d.sheetH}px <= 571)`, d.sheetH <= 571, d.sheetH);
   r.check('nowhere says "someone you love"', !/someone you love/i.test(d.text));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -171,7 +170,7 @@ async function scenarioSuccess(browser, port, r, width, theme) {
   r.check(`${tag} no sideways scrolling`, d.pageW <= d.vw, JSON.stringify(d));
 
   const text = await waText(page);
-  const want = ['Nova Ash dedicated a song to you: a birthday song for Sarah', `${NOTE} Supernova`, '“Love you always”', 'Listen here: ' + LINK];
+  const want = ['Nova Ash dedicated a song to you.', 'A birthday song for Sarah.', 'Supernova', '“Love you always”', 'Listen here: ' + LINK];
   r.check(`${tag} the WhatsApp text: sender, occasion line, title, message, link`, JSON.stringify(text.split('\n')) === JSON.stringify(want), JSON.stringify(text.split('\n')));
   r.check(`${tag} never the sender's email`, !text.includes('nova@example.test') && !text.includes('@'));
 
@@ -188,7 +187,7 @@ async function scenarioSuccess(browser, port, r, width, theme) {
   await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
   const sh = await page.evaluate(() => window.__shared[0]);
   r.check(`${tag} More options opens the share sheet with the same text and the link`,
-    sh.url === LINK && sh.text === want.slice(0, 3).join('\n') + '\nListen here:', JSON.stringify(sh));
+    sh.url === LINK && sh.text === want.slice(0, 4).join('\n') + '\nListen here:', JSON.stringify(sh));
 
   await page.click('#dedicate-done');
   r.check(`${tag} Done closes the sheet`, await page.evaluate(() => document.getElementById('dedicate-modal').hidden));
@@ -201,8 +200,8 @@ async function scenarioPrivateSender(browser, port, r) {
   const { page, errors } = await open(browser, port, { share: false });
   await save(page, { recipient: 'Grandpa', occasion: 'in_memory', message: '', anonymous: true });
   const text = await waText(page);
-  r.check('"Someone dedicated a song to you: a song in memory of Grandpa"',
-    JSON.stringify(text.split('\n')) === JSON.stringify(['Someone dedicated a song to you: a song in memory of Grandpa', `${NOTE} Supernova`, 'Listen here: ' + LINK]), JSON.stringify(text.split('\n')));
+  r.check('"Someone dedicated a song to you." then "A song in memory of Grandpa."',
+    JSON.stringify(text.split('\n')) === JSON.stringify(['Someone dedicated a song to you.', 'A song in memory of Grandpa.', 'Supernova', 'Listen here: ' + LINK]), JSON.stringify(text.split('\n')));
   r.check('no sender name anywhere', !/Nova Ash/.test(text));
   r.check('"More options" is hidden without navigator.share', await page.evaluate(() => document.getElementById('dedicate-native-share').hidden));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
@@ -478,8 +477,10 @@ function scenarioPrivacy(r) {
   const mw = readFileSync(join(ROOT, 'middleware.js'), 'utf8');
   const page = readFileSync(join(ROOT, 'index.html'), 'utf8');
   const selects = [...(mw + page).matchAll(/dedications_public[\s\S]{0,200}?select[=(]['"]?([^'")&]+)/g)].map((x) => x[1]);
-  r.check('every dedications_public select (page, strip, middleware) lists only safe columns',
-    selects.length >= 3 && selects.every((s) => !s.includes('*') && EMAIL_COLS.every((c) => !s.includes(c))), JSON.stringify(selects));
+  // SHOW-1: only the strip reads the view now; the /d/ page and its preview
+  // use dedication_by_code(), whose columns show-publicly.spec.mjs checks.
+  r.check('every dedications_public select (the strip) lists only safe columns',
+    selects.length >= 1 && selects.every((s) => !s.includes('*') && EMAIL_COLS.every((c) => !s.includes(c))), JSON.stringify(selects));
   r.check('no client code reads the dedications table directly', !/from\(['"]dedications['"]\)/.test(page) && !/rest\/v1\/dedications\?/.test(mw));
   const songsJson = readFileSync(join(ROOT, 'songs.json'), 'utf8');
   r.check('songs.json (the public snapshot) carries none of them', EMAIL_COLS.every((c) => !songsJson.includes(c)));

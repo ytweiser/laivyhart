@@ -222,7 +222,8 @@ async function scenarioSuccessShareActions(browser, port, r) {
   r.check('SEND-1: "Dedication saved", then "Now send it to Mom."', after.title === 'Dedication saved' && after.sub === 'Now send it to Mom.', JSON.stringify(after));
   r.check('the view link points at the real dedication page', after.viewLink === 'https://laivyhart.com/d/ABCD2345', after.viewLink);
   // SEND-1: a real link the sender taps, to the person, not "about" them.
-  const expectedText = 'Nova Ash dedicated a song to you: a birthday song for Mom\n\u{1F3B5} Supernova\n“Love you!”\nListen here: https://laivyhart.com/d/ABCD2345';
+  // SHOW-1: reads like the email; no emoji (it broke on the wa.me hop).
+  const expectedText = 'Nova Ash dedicated a song to you.\nA birthday song for Mom.\nSupernova\n“Love you!”\nListen here: https://laivyhart.com/d/ABCD2345';
   r.check('WhatsApp is a link to wa.me with the exact expected text, URL-encoded', after.waTag === 'A' && after.wa === 'https://wa.me/?text=' + encodeURIComponent(expectedText), after.wa);
 
   await page.click('#dedicate-copy');

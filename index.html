@@ -1603,6 +1603,8 @@
     font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); cursor:pointer;
   }
   .ded-checkbox-row input{margin-top:0.2rem;}
+  .ded-checkbox-row.is-public{margin-top:0.55rem;}
+  .ded-checkbox-help{display:block; font-size:0.74rem; line-height:1.35; color:var(--text-dim); margin-top:0.1rem;}
   .ded-preview{
     margin-top:1rem; padding:0.7rem 0.85rem; border-radius:12px; background:var(--chip-bg);
     border:1px solid var(--chip-border); font-family:var(--font-display); font-style:italic;
@@ -2327,6 +2329,13 @@
       <label class="ded-checkbox-row">
         <input type="checkbox" id="dedicate-anonymous">
         Keep my name private (shows as &ldquo;Someone&rdquo;)
+      </label>
+      <!-- SHOW-1: opt-in, off by default. Off, the dedication is only on its
+           own /d/ link; on, it also shows in the song's Dedications strip,
+           the ticker and the sender's profile (sql/032). -->
+      <label class="ded-checkbox-row is-public">
+        <input type="checkbox" id="dedicate-public">
+        <span>Also show this on Laivy Hart<span class="ded-checkbox-help">Everyone listening to this song can see it. If you leave this off, only the person you send it to will see it.</span></span>
       </label>
 
       <div class="ded-preview" id="dedicate-preview"></div>
@@ -7010,6 +7019,7 @@ function openDedicateModalForSong(s){
   document.getElementById('dedicate-message').value = '';
   dedUpdateCounter();
   document.getElementById('dedicate-anonymous').checked = false;
+  document.getElementById('dedicate-public').checked = false;
   document.getElementById('dedicate-err').hidden = true;
   document.getElementById('dedicate-submit').disabled = false;
   dedUpdatePreview();
@@ -7077,6 +7087,7 @@ function dedUpdateCounter(){
     const other = occasionOther.value.trim();
     const message = document.getElementById('dedicate-message').value.trim();
     const anonymous = document.getElementById('dedicate-anonymous').checked;
+    const showPublicly = document.getElementById('dedicate-public').checked;
     showDedErr('');
     if(!recipient){ showDedErr('Please say who this is for.'); return; }
     if(recipient.length > 60){ showDedErr('That name is a bit long: 60 characters or fewer.'); return; }
@@ -7093,6 +7104,7 @@ function dedUpdateCounter(){
         p_occasion_other: occasion === 'other' ? other : null,
         p_message: message || null,
         p_is_anonymous: anonymous,
+        p_show_publicly: showPublicly,
       });
       if(error) throw error;
       dedShowSuccess(dedicateSong, code, occasion, recipient, message, anonymous, other);
@@ -7107,18 +7119,19 @@ function dedUpdateCounter(){
 
 /* SEND-1: what goes to the person it is for, on WhatsApp and through the
    share sheet. Never the sender's email: only their display name, or
-   "Someone" when they kept it private.
-     Dana dedicated a song to you: a birthday song for Sarah
-     🎵 Supernova
-     "Happy birthday, love you"
+   "Someone" when they kept it private. SHOW-1: it reads like the email:
+     Dana dedicated a song to you.
+     A song for Yankel's siyum.
+     Supernova
+     "Mazel tov"
      Listen here: https://laivyhart.com/d/ABCD2345
-   The occasion is the form preview's own line (dedLine), so the wording
-   matches what the sender saw. */
+   The occasion line is the form preview's own (dedLine), as the email's is.
+   No emoji: the music note came through WhatsApp's wa.me hop as "�" for
+   some people, so it is gone from this text. */
 function dedSendPayload(d){
   const who = (!d.anonymous && d.sender) ? d.sender : 'Someone';
-  const line = dedLine(d.occasion, d.recipient || 'you', d.other);
-  const lines = [`${who} dedicated a song to you: ${line.charAt(0).toLowerCase()}${line.slice(1)}`];
-  if(d.songTitle) lines.push(SHARE_NOTE + ' ' + d.songTitle);
+  const lines = [`${who} dedicated a song to you.`, dedLine(d.occasion, d.recipient || 'you', d.other) + '.'];
+  if(d.songTitle) lines.push(d.songTitle);
   const msg = (d.message || '').trim();
   if(msg) lines.push(quoteLine(msg));
   const url = dedShareUrl(d.code);
@@ -8071,11 +8084,10 @@ async function renderDedicationPage(code){
   root.innerHTML = `<div class="ded-page"><p class="ded-page-loading">Loading&hellip;</p></div>`;
   if(!code){ renderDedicationMissing(root); return; }
 
-  const { data, error } = await supabaseClient
-    .from('dedications_public')
-    .select('code, song_id, song_title, song_slug, cover_url, recipient_name, occasion, occasion_other, message, sender_name, sender_handle, created_at')
-    .eq('code', code)
-    .maybeSingle();
+  // SHOW-1: by its code, whether or not it is shown on the site -- the link
+  // is how the person it is for opens it. Lists use dedications_public.
+  const { data: rows, error } = await supabaseClient.rpc('dedication_by_code', { p_code: code });
+  const data = Array.isArray(rows) && rows.length ? rows[0] : null;
   if(token !== dedicationPageToken) return;
   if(error || !data){ renderDedicationMissing(root); return; }
 

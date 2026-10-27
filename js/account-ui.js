@@ -1022,8 +1022,8 @@ async function renderFollowing(container, user) {
 }
 
 /* ---------------- My dedications (DED-2) ----------------
-   my_dedications() (sql/022_dedications.sql): the sender's own, any status,
-   newest first. Open goes to the real /d/<code> page; Remove calls
+   my_dedications() (sql/022_dedications.sql, show_publicly since 032): the
+   sender's own, any status, newest first. Open goes to the real /d/<code> page; Remove calls
    remove_my_dedication(), the sender's own removal path -- the same RPC
    the dedication page itself could call, just reached from here instead.
    DED_OCCASION_LABEL/SITE_ORIGIN are duplicated from index.html: this
@@ -1065,6 +1065,7 @@ async function renderMyDedications(container) {
           <span class="lv-ded-meta">${esc(dedOccasionLabel(d.occasion, d.occasion_other))} &middot; ${esc(d.song_title || '')} &middot; ${esc(fmtDedDate(d.created_at))}</span>
         </div>
         <span class="lv-ded-status${d.status === 'removed' ? ' is-removed' : ''}">${d.status === 'removed' ? 'Removed' : 'Live'}</span>
+        ${d.status === 'live' ? `<label class="lv-ded-public"><input type="checkbox" role="switch" data-ded-public="${esc(d.code)}"${d.show_publicly ? ' checked' : ''}> Shown on site</label>` : ''}
         <div class="lv-ded-actions">
           ${d.status === 'live' ? `<a class="lv-btn outlined" href="/d/${encodeURIComponent(d.code)}" target="_blank" rel="noopener">Open</a>` : ''}
           ${d.status === 'live' ? `<button type="button" class="lv-btn outlined" data-ded-copy="${esc(d.code)}">Copy link</button>` : ''}
@@ -1077,6 +1078,23 @@ async function renderMyDedications(container) {
         const url = SITE_ORIGIN + '/d/' + encodeURIComponent(btn.dataset.dedCopy);
         try { await navigator.clipboard.writeText(url); }
         catch (e) { window.prompt('Copy this link:', url); }
+      });
+    });
+    // SHOW-1: "Shown on site" -- the sender can turn it on or off later.
+    // Off, the dedication stays on its own link and leaves every public list.
+    host.querySelectorAll('[data-ded-public]').forEach((box) => {
+      box.addEventListener('change', async () => {
+        const want = box.checked;
+        box.disabled = true;
+        try {
+          const { error } = await supabase.rpc('set_my_dedication_public', { p_code: box.dataset.dedPublic, p_show: want });
+          if (error) throw error;
+        } catch (e) {
+          box.checked = !want;
+          alert('Could not change that: ' + (e && e.message));
+        } finally {
+          box.disabled = false;
+        }
       });
     });
     host.querySelectorAll('[data-ded-remove]').forEach((btn) => {

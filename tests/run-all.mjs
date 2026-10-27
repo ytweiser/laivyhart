@@ -51,6 +51,7 @@ const SPECS = [
   { name: 'admin-dedications', path: './specs/admin-dedications.spec.mjs', kind: 'browser' },
   { name: 'dedicate', path: './specs/dedicate.spec.mjs', kind: 'browser' },
   { name: 'dedication-send', path: './specs/dedication-send.spec.mjs', kind: 'browser' },
+  { name: 'show-publicly', path: './specs/show-publicly.spec.mjs', kind: 'browser' },
   { name: 'now-playing-layout', path: './specs/now-playing-layout.spec.mjs', kind: 'browser' },
   { name: 'lyrics-lang', path: './specs/lyrics-lang.spec.mjs', kind: 'browser' },
   { name: 'site-header', path: './specs/site-header.spec.mjs', kind: 'browser' },

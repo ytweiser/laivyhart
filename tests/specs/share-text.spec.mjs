@@ -205,9 +205,9 @@ async function scenarioDedicationTexts(browser, port, r) {
   await page.close();
 }
 
-/* SEND-1: the success pane sends a message written TO the person:
-     "<sender> dedicated a song to you: <the form's own occasion line>",
-     the note + the song title, the message in quotes, "Listen here: <link>".
+/* SEND-1 / SHOW-1: the success pane sends a message written TO the person,
+   like the email: "<sender> dedicated a song to you.", the occasion line,
+   the song title, the message in quotes, "Listen here: <link>". No emoji.
    WhatsApp is a real wa.me link (no window.open after the save); Copy link
    copies the link alone; the share sheet gets the same lines as `text` and
    the link once, as `url`. */
@@ -229,7 +229,7 @@ async function checkSend(r, tag, page, lines) {
   r.check(`${tag} WhatsApp is a real wa.me link`, wa.startsWith('https://wa.me/?text=') && !/\s/.test(wa), wa);
   const waText = decodeURIComponent(wa.slice('https://wa.me/?text='.length));
   r.check(`${tag} [WhatsApp] lines exactly as expected`, JSON.stringify(waText.split('\n')) === JSON.stringify([...lines, 'Listen here: ' + url]), JSON.stringify(waText.split('\n')));
-  r.check(`${tag} [WhatsApp] one emoji, the note`, emojiCount(waText) === 1, waText);
+  r.check(`${tag} [WhatsApp] no emoji, no replacement character`, emojiCount(waText) === 0 && !waText.includes('\uFFFD'), waText);
   r.check(`${tag} [Copy link] copies the link alone`, await clipboardAfter(page, '#dedicate-copy') === url);
   await page.click('#dedicate-native-share');
   await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
@@ -247,9 +247,9 @@ async function scenarioDedicationSuccess(browser, port, r) {
     await page.fill('#dedicate-message', 'Love you, "always"!');
   });
   const waText = await checkSend(r, '[birthday]', page,
-    ['Nova Ash dedicated a song to you: a birthday song for אמא Mom', `${NOTE} Supernova`, '“Love you, "always"!”']);
+    ['Nova Ash dedicated a song to you.', 'A birthday song for אמא Mom.', 'Supernova', '“Love you, "always"!”']);
   const wa = await page.evaluate(() => document.getElementById('dedicate-whatsapp').getAttribute('href'));
-  r.check('[WhatsApp] Hebrew, quotes, line breaks and the note survive encoding', wa.includes('%0A') && wa.includes('%22always%22') && wa.includes('%F0%9F%8E%B5') && /[֐-׿]/.test(waText));
+  r.check('[WhatsApp] Hebrew, quotes and line breaks survive encoding', wa.includes('%0A') && wa.includes('%22always%22') && /[֐-׿]/.test(waText));
   r.check('[WhatsApp] never the sender\'s email', !/nova@example\.test|@/.test(waText), waText);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -264,7 +264,7 @@ async function scenarioDedicationSuccessOther(browser, port, r) {
     await page.check('#dedicate-anonymous');
   });
   await checkSend(r, '[Something else, private]', page,
-    ['Someone dedicated a song to you: a song for Dad: finishing Shas', `${NOTE} Supernova`]);
+    ['Someone dedicated a song to you.', 'A song for Dad: finishing Shas.', 'Supernova']);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }

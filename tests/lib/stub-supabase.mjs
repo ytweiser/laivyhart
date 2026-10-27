@@ -63,7 +63,7 @@ export function buildFixtureResponses(overrides) {
     myDedications: [],
     removeMyDedicationResult: null,
     createDedicationResult: 'NEWCODE1', // the code create_dedication() returns, or a full fulfill() object for the error path
-    dedicationsPublic: [],       // dedications_public rows: the strip (filtered by song_id) and /d/<code> (filtered by code) both read this
+    dedicationsPublic: [],       // dedication rows. SHOW-1: dedications_public (the strip, filtered by song_id) returns only those not marked show_publicly:false; rpc/dedication_by_code (/d/<code>) returns any one by its code
     // PROFILE-1. memberProfiles: keyed by handle (lowercase), the exact
     // json shape member_profile() returns; an absent key means "not found"
     // (null), same convention the RPC itself uses. memberHandles:
@@ -359,11 +359,17 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       return fulfill(null);
     }
 
+    // SHOW-1: one dedication by its code, shown on the site or not.
+    if (url.includes('/rest/v1/rpc/dedication_by_code')) {
+      notify('rpc:dedication_by_code', req);
+      const code = (JSON.parse(req.postData() || '{}').p_code) || '';
+      return fulfill(F2.dedicationsPublic.filter((d) => d.code === code));
+    }
     // DED-2.
     if (url.includes('/rest/v1/dedications_public')) {
       notify('dedicationsPublic');
       const params = new URL(url).searchParams;
-      const list = F2.dedicationsPublic;
+      const list = F2.dedicationsPublic.filter((d) => d.show_publicly !== false);
       if (params.has('code')) {
         const code = (params.get('code') || '').replace(/^eq\./, '');
         return fulfill(list.find((d) => d.code === code) || null);
@@ -390,6 +396,12 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
       return fulfill(null);
     }
     if (url.includes('/rest/v1/rpc/my_dedications')) { notify('rpc:my_dedications'); return fulfill(F2.myDedications); }
+    // SHOW-1: the "Shown on site" switch; a full fulfill() object forces the error path.
+    if (url.includes('/rest/v1/rpc/set_my_dedication_public')) {
+      notify('rpc:set_my_dedication_public');
+      if (F2.setMyDedicationPublicResult && typeof F2.setMyDedicationPublicResult === 'object') return route.fulfill(F2.setMyDedicationPublicResult);
+      return fulfill(JSON.parse(req.postData() || '{}').p_show === true);
+    }
 
     // SONG-1.
     if (url.includes('/rest/v1/rpc/admin_list_song_ideas')) {
