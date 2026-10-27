@@ -93,7 +93,8 @@ async function save(page, { recipient = 'Sarah', occasion = 'birthday', message 
   await page.fill('#dedicate-recipient', recipient);
   await page.selectOption('#dedicate-occasion', occasion);
   if (message) await page.fill('#dedicate-message', message);
-  if (anonymous) await page.check('#dedicate-anonymous');
+  // NAME-1: "Post without my name" only exists once the opt-in is ticked.
+  if (anonymous) { await page.check('#dedicate-public'); await page.check('#dedicate-anonymous'); }
   await page.click('#dedicate-submit');
   await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
 }
@@ -120,14 +121,14 @@ async function scenarioFormUnchanged(browser, port, r) {
       text: document.getElementById('dedicate-modal').textContent,
     };
   });
-  r.check('the same fields, in order (SHOW-1 adds "Also show this on Laivy Hart" after "Keep my name private")', JSON.stringify(d.fields) === JSON.stringify(['dedicate-recipient', 'dedicate-occasion', 'dedicate-occasion-other', 'dedicate-message', 'dedicate-anonymous', 'dedicate-public', 'dedicate-submit']), JSON.stringify(d.fields));
+  r.check('the same fields, in order (NAME-1: "Also show this on Laivy Hart", then "Post without my name" under it)', JSON.stringify(d.fields) === JSON.stringify(['dedicate-recipient', 'dedicate-occasion', 'dedicate-occasion-other', 'dedicate-message', 'dedicate-public', 'dedicate-anonymous', 'dedicate-submit']), JSON.stringify(d.fields));
   r.check('labels: Who is it for?, Occasion, Message', JSON.stringify(d.labels) === JSON.stringify(['Who is it for?', 'Occasion', 'Message (optional)']), JSON.stringify(d.labels));
   r.check('the button still says "Dedicate this song"', d.submit === 'Dedicate this song', d.submit);
   r.check('no email field in the form', !d.emailInForm);
-  // Measured at 380px: 468px form pane / 511.6px sheet before SHOW-1; its
-  // one checkbox (label + helper) adds 59.3px. Guards against more growth.
-  r.check(`the form pane is no taller than with the SHOW-1 box (${d.formH}px <= 528)`, d.formH <= 528, d.formH + ' ' + d.parts);
-  r.check(`the sheet is no taller than with the SHOW-1 box (${d.sheetH}px <= 571)`, d.sheetH <= 571, d.sheetH);
+  // Measured at 380px: 468px form pane / 511.6px sheet before the opt-in;
+  // 527.3px with SHOW-1; NAME-1 (one box, its second hidden) 483.4px.
+  r.check(`the form pane is no taller than NAME-1's (${d.formH}px <= 484)`, d.formH <= 484, d.formH + ' ' + d.parts);
+  r.check(`the sheet is no taller than NAME-1's (${d.sheetH}px <= 528)`, d.sheetH <= 528, d.sheetH);
   r.check('nowhere says "someone you love"', !/someone you love/i.test(d.text));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -196,13 +197,13 @@ async function scenarioSuccess(browser, port, r, width, theme) {
 }
 
 async function scenarioPrivateSender(browser, port, r) {
-  r.section('SEND-1: kept private shows as "Someone"; In memory keeps its wording; no share sheet where there is none');
+  r.section('NAME-1: "Post without my name" still sends the name to the person; In memory keeps its wording; no share sheet where there is none');
   const { page, errors } = await open(browser, port, { share: false });
   await save(page, { recipient: 'Grandpa', occasion: 'in_memory', message: '', anonymous: true });
   const text = await waText(page);
-  r.check('"Someone dedicated a song to you." then "A song in memory of Grandpa."',
-    JSON.stringify(text.split('\n')) === JSON.stringify(['Someone dedicated a song to you.', 'A song in memory of Grandpa.', 'Supernova', 'Listen here: ' + LINK]), JSON.stringify(text.split('\n')));
-  r.check('no sender name anywhere', !/Nova Ash/.test(text));
+  r.check('"Nova Ash dedicated a song to you." then "A song in memory of Grandpa."',
+    JSON.stringify(text.split('\n')) === JSON.stringify(['Nova Ash dedicated a song to you.', 'A song in memory of Grandpa.', 'Supernova', 'Listen here: ' + LINK]), JSON.stringify(text.split('\n')));
+  r.check('never "Someone"', !/Someone/.test(text));
   r.check('"More options" is hidden without navigator.share', await page.evaluate(() => document.getElementById('dedicate-native-share').hidden));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
@@ -375,7 +376,7 @@ async function scenarioWorker(r) {
     // Private sender.
     f = fakeFetch({ ...CLAIM_OK, sender_name: null });
     await W.handleDedicationEmail(req(token, { code: CODE, email: 'nina@gmail.com' }), ENV, {}, f.impl);
-    r.check('kept private: "Someone dedicated a song to you", no name', /Someone<\/strong> dedicated a song to you/.test(f.calls.resend[0].body.html) && !/Nova Ash/.test(f.calls.resend[0].body.html));
+    r.check('an account with no name at all (the only case left): "Someone dedicated a song to you"', /Someone<\/strong> dedicated a song to you/.test(f.calls.resend[0].body.html) && !/Nova Ash/.test(f.calls.resend[0].body.html));
 
     // Resend fails: the dedication stays, the sender is told, finish(failed).
     f = fakeFetch(CLAIM_OK, { resendOk: false });

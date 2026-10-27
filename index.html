@@ -1603,8 +1603,18 @@
     font-family:var(--font-ui); font-size:0.88rem; color:var(--text-dim); cursor:pointer;
   }
   .ded-checkbox-row input{margin-top:0.2rem;}
-  .ded-checkbox-row.is-public{margin-top:0.55rem;}
   .ded-checkbox-help{display:block; font-size:0.74rem; line-height:1.35; color:var(--text-dim); margin-top:0.1rem;}
+  /* NAME-1: "Post without my name" opens under the opt-in, indented, only
+     while it is ticked: a height-only reveal (grid rows 0fr -> 1fr), so
+     nothing below jumps; inert while closed, so it is out of the tab order
+     and hidden from screen readers. Reduced motion: no animation. */
+  .ded-anon-wrap{display:grid; grid-template-rows:0fr; transition:grid-template-rows 0.22s var(--ease);}
+  .ded-anon-wrap.is-open{grid-template-rows:1fr;}
+  .ded-anon-inner{overflow:hidden; min-height:0;}
+  .ded-checkbox-row.is-sub{margin:0.5rem 0 0.1rem 1.6rem;}
+  @media (prefers-reduced-motion: reduce){ .ded-anon-wrap{transition:none;} }
+  /* Read by screen readers, never seen. */
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;}
   .ded-preview{
     margin-top:1rem; padding:0.7rem 0.85rem; border-radius:12px; background:var(--chip-bg);
     border:1px solid var(--chip-border); font-family:var(--font-display); font-style:italic;
@@ -2326,17 +2336,24 @@
                 placeholder="A few words..." aria-label="Message (optional)"></textarea>
       <div class="ded-counter" id="dedicate-counter">280 characters left</div>
 
-      <label class="ded-checkbox-row">
-        <input type="checkbox" id="dedicate-anonymous">
-        Keep my name private (shows as &ldquo;Someone&rdquo;)
-      </label>
       <!-- SHOW-1: opt-in, off by default. Off, the dedication is only on its
            own /d/ link; on, it also shows in the song's Dedications strip,
-           the ticker and the sender's profile (sql/032). -->
-      <label class="ded-checkbox-row is-public">
-        <input type="checkbox" id="dedicate-public">
-        <span>Also show this on Laivy Hart<span class="ded-checkbox-help">Everyone listening to this song can see it. If you leave this off, only the person you send it to will see it.</span></span>
+           the ticker and the sender's profile (sql/032). NAME-1: only then
+           can it go up without the sender's name -- in those public places
+           only; whatever is sent to the person always carries the name. -->
+      <label class="ded-checkbox-row">
+        <input type="checkbox" id="dedicate-public" aria-controls="dedicate-anon-wrap">
+        <span>Also show this on Laivy Hart<span class="ded-checkbox-help">Anyone listening to this song can see it.</span></span>
       </label>
+      <div class="ded-anon-wrap" id="dedicate-anon-wrap" inert>
+        <div class="ded-anon-inner">
+          <label class="ded-checkbox-row is-sub">
+            <input type="checkbox" id="dedicate-anonymous">
+            Post without my name (shows as &ldquo;Someone&rdquo;)
+          </label>
+        </div>
+      </div>
+      <span class="sr-only" id="dedicate-anon-live" aria-live="polite"></span>
 
       <div class="ded-preview" id="dedicate-preview"></div>
       <p class="lv-err" id="dedicate-err" hidden></p>
@@ -7018,8 +7035,8 @@ function openDedicateModalForSong(s){
   document.getElementById('dedicate-occasion-other').hidden = true;
   document.getElementById('dedicate-message').value = '';
   dedUpdateCounter();
-  document.getElementById('dedicate-anonymous').checked = false;
   document.getElementById('dedicate-public').checked = false;
+  dedSetAnonOpen(false, true);
   document.getElementById('dedicate-err').hidden = true;
   document.getElementById('dedicate-submit').disabled = false;
   dedUpdatePreview();
@@ -7027,6 +7044,21 @@ function openDedicateModalForSong(s){
   setTimeout(() => { try{ document.getElementById('dedicate-recipient').focus(); }catch(e){} }, 30);
 }
 function closeDedicateModal(){ document.getElementById('dedicate-modal').hidden = true; }
+
+/* NAME-1: "Post without my name" exists only while "Also show this on
+   Laivy Hart" is ticked. Closing it unticks it. `quiet` skips the
+   screen-reader announcement (a reset when the sheet opens). */
+function dedSetAnonOpen(open, quiet){
+  const wrap = document.getElementById('dedicate-anon-wrap');
+  const box = document.getElementById('dedicate-anonymous');
+  wrap.classList.toggle('is-open', open);
+  wrap.inert = !open;
+  if(!open) box.checked = false;
+  if(!quiet){
+    document.getElementById('dedicate-anon-live').textContent = open
+      ? 'More options: Post without my name.' : '';
+  }
+}
 
 function dedMySenderName(){
   const artist = window.laivy && window.laivy.auth && window.laivy.auth.artist;
@@ -7036,12 +7068,13 @@ function dedUpdatePreview(){
   const recipient = document.getElementById('dedicate-recipient').value.trim();
   const occasion = document.getElementById('dedicate-occasion').value;
   const occasionOther = document.getElementById('dedicate-occasion-other').value.trim();
-  const anon = document.getElementById('dedicate-anonymous').checked;
   const name = recipient || 'them';
   // DED-3: "reads like the page" -- the line, then the sender line, each a
   // full sentence, no tag-style middots here (those stayed on the strip).
+  // NAME-1: what the person it is for receives, so always the sender's
+  // name -- "Post without my name" only changes the public places.
   const line = dedLine(occasion, name, occasionOther);
-  const senderLine = dedSenderLine(occasion, dedMySenderName(), anon);
+  const senderLine = dedSenderLine(occasion, dedMySenderName(), false);
   document.getElementById('dedicate-preview').textContent = `${line}. ${senderLine}.`;
   document.getElementById('dedicate-message').placeholder = dedMessagePlaceholder(occasion, recipient);
 }
@@ -7071,7 +7104,7 @@ function dedUpdateCounter(){
   });
   document.getElementById('dedicate-recipient').addEventListener('input', dedUpdatePreview);
   occasionOther.addEventListener('input', dedUpdatePreview);
-  document.getElementById('dedicate-anonymous').addEventListener('change', dedUpdatePreview);
+  document.getElementById('dedicate-public').addEventListener('change', (e) => dedSetAnonOpen(e.target.checked));
 
   document.getElementById('dedicate-message').addEventListener('input', dedUpdateCounter);
 
@@ -7086,8 +7119,9 @@ function dedUpdateCounter(){
     const occasion = occasionSel.value;
     const other = occasionOther.value.trim();
     const message = document.getElementById('dedicate-message').value.trim();
-    const anonymous = document.getElementById('dedicate-anonymous').checked;
     const showPublicly = document.getElementById('dedicate-public').checked;
+    // NAME-1: anonymous only in public places, so only when both are ticked.
+    const anonymous = showPublicly && document.getElementById('dedicate-anonymous').checked;
     showDedErr('');
     if(!recipient){ showDedErr('Please say who this is for.'); return; }
     if(recipient.length > 60){ showDedErr('That name is a bit long: 60 characters or fewer.'); return; }
@@ -7107,7 +7141,7 @@ function dedUpdateCounter(){
         p_show_publicly: showPublicly,
       });
       if(error) throw error;
-      dedShowSuccess(dedicateSong, code, occasion, recipient, message, anonymous, other);
+      dedShowSuccess(dedicateSong, code, occasion, recipient, message, other);
       loadDedicationsStrip();
     }catch(err){
       showDedErr((err && err.message) || 'Could not send that dedication right now.');
@@ -7118,8 +7152,9 @@ function dedUpdateCounter(){
 })();
 
 /* SEND-1: what goes to the person it is for, on WhatsApp and through the
-   share sheet. Never the sender's email: only their display name, or
-   "Someone" when they kept it private. SHOW-1: it reads like the email:
+   share sheet. Never the sender's email: only their display name (NAME-1:
+   always, even when the public places show "Someone"). SHOW-1: it reads
+   like the email:
      Dana dedicated a song to you.
      A song for Yankel's siyum.
      Supernova
@@ -7129,7 +7164,9 @@ function dedUpdateCounter(){
    No emoji: the music note came through WhatsApp's wa.me hop as "�" for
    some people, so it is gone from this text. */
 function dedSendPayload(d){
-  const who = (!d.anonymous && d.sender) ? d.sender : 'Someone';
+  // NAME-1: always the sender's name -- "Post without my name" is about the
+  // public places only. "Someone" only if the account has no name at all.
+  const who = d.sender || 'Someone';
   const lines = [`${who} dedicated a song to you.`, dedLine(d.occasion, d.recipient || 'you', d.other) + '.'];
   if(d.songTitle) lines.push(d.songTitle);
   const msg = (d.message || '').trim();
@@ -7143,14 +7180,14 @@ const DED_WORKER = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
 // The same shape check as the Worker and sql/031: something@host.tld.
 function dedEmailValid(e){ return e.length > 0 && e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); }
 
-function dedShowSuccess(song, code, occasion, recipient, message, anonymous, other){
+function dedShowSuccess(song, code, occasion, recipient, message, other){
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('[data-ded-pane="form"]').hidden = true;
   modal.querySelector('.ded-sheet').classList.add('is-success');
   const pane = modal.querySelector('[data-ded-pane="success"]');
   pane.hidden = false;
 
-  const d = { occasion, other, recipient, message, anonymous, code, sender: dedMySenderName(), songTitle: songShareTitle(song) };
+  const d = { occasion, other, recipient, message, code, sender: dedMySenderName(), songTitle: songShareTitle(song) };
   const p = dedSendPayload(d);
   const track = (name) => laivyTrack(name, { song_id: song.id, dedication_code: code });
   document.getElementById('dedicate-success-sub').textContent = `Now send it to ${recipient}.`;
@@ -7310,8 +7347,13 @@ async function loadDedicationsStrip(){
     const fromHTML = d.sender_handle
       ? `<a href="/u/${encodeURIComponent(d.sender_handle)}">${escHtml(from)}</a>`
       : escHtml(from);
+    // NAME-1: a "from someone" card has no link -- its /d/ page names the
+    // sender (it is the recipient's), so it is reached only from that link.
+    const lineHTML = d.sender_name
+      ? `<a href="/d/${encodeURIComponent(d.code)}">${escHtml(line)}</a>`
+      : `<span>${escHtml(line)}</span>`;
     return `<div class="dedications-strip-card">
-        <a href="/d/${encodeURIComponent(d.code)}">${escHtml(line)}</a> &middot; ${fromHTML}
+        ${lineHTML} &middot; ${fromHTML}
       </div>`;
   }).join('');
 }

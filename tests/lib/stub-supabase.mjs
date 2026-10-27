@@ -363,7 +363,10 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     if (url.includes('/rest/v1/rpc/dedication_by_code')) {
       notify('rpc:dedication_by_code', req);
       const code = (JSON.parse(req.postData() || '{}').p_code) || '';
-      return fulfill(F2.dedicationsPublic.filter((d) => d.code === code));
+      // NAME-1: by its code the sender is always named; a row may carry the
+      // real name as sender_name_private where the public view hides it.
+      return fulfill(F2.dedicationsPublic.filter((d) => d.code === code)
+        .map(({ sender_name_private, ...d }) => (sender_name_private ? { ...d, sender_name: sender_name_private } : d)));
     }
     // DED-2.
     if (url.includes('/rest/v1/dedications_public')) {
@@ -397,6 +400,12 @@ export async function wireSupabaseStubs(page, overrides, onCall) {
     }
     if (url.includes('/rest/v1/rpc/my_dedications')) { notify('rpc:my_dedications'); return fulfill(F2.myDedications); }
     // SHOW-1: the "Shown on site" switch; a full fulfill() object forces the error path.
+    // NAME-1: "Without my name"; a full fulfill() object forces the error path.
+    if (url.includes('/rest/v1/rpc/set_my_dedication_anonymous')) {
+      notify('rpc:set_my_dedication_anonymous');
+      if (F2.setMyDedicationAnonResult && typeof F2.setMyDedicationAnonResult === 'object') return route.fulfill(F2.setMyDedicationAnonResult);
+      return fulfill(JSON.parse(req.postData() || '{}').p_anon === true);
+    }
     if (url.includes('/rest/v1/rpc/set_my_dedication_public')) {
       notify('rpc:set_my_dedication_public');
       if (F2.setMyDedicationPublicResult && typeof F2.setMyDedicationPublicResult === 'object') return route.fulfill(F2.setMyDedicationPublicResult);

@@ -1065,7 +1065,8 @@ async function renderMyDedications(container) {
           <span class="lv-ded-meta">${esc(dedOccasionLabel(d.occasion, d.occasion_other))} &middot; ${esc(d.song_title || '')} &middot; ${esc(fmtDedDate(d.created_at))}</span>
         </div>
         <span class="lv-ded-status${d.status === 'removed' ? ' is-removed' : ''}">${d.status === 'removed' ? 'Removed' : 'Live'}</span>
-        ${d.status === 'live' ? `<label class="lv-ded-public"><input type="checkbox" role="switch" data-ded-public="${esc(d.code)}"${d.show_publicly ? ' checked' : ''}> Shown on site</label>` : ''}
+        ${d.status === 'live' ? `<label class="lv-ded-public"><input type="checkbox" role="switch" data-ded-public="${esc(d.code)}"${d.show_publicly ? ' checked' : ''}> Shown on site</label>
+        <label class="lv-ded-public lv-ded-anon"${d.show_publicly ? '' : ' hidden'}><input type="checkbox" role="switch" data-ded-anon="${esc(d.code)}"${d.show_publicly && d.is_anonymous ? ' checked' : ''}> Without my name</label>` : ''}
         <div class="lv-ded-actions">
           ${d.status === 'live' ? `<a class="lv-btn outlined" href="/d/${encodeURIComponent(d.code)}" target="_blank" rel="noopener">Open</a>` : ''}
           ${d.status === 'live' ? `<button type="button" class="lv-btn outlined" data-ded-copy="${esc(d.code)}">Copy link</button>` : ''}
@@ -1082,12 +1083,49 @@ async function renderMyDedications(container) {
     });
     // SHOW-1: "Shown on site" -- the sender can turn it on or off later.
     // Off, the dedication stays on its own link and leaves every public list.
+    // NAME-1: "Without my name" sits beside it, only while it is on, and is
+    // cleared first whenever it is turned off (set_my_dedication_anonymous,
+    // sql/033, refuses to turn it ON for a dedication that is not shown).
+    // Either switch puts itself (and its partner) back if the server says no.
+    const setAnon = (code, on) => supabase.rpc('set_my_dedication_anonymous', { p_code: code, p_anon: on });
+    const setPublic = (code, on) => supabase.rpc('set_my_dedication_public', { p_code: code, p_show: on });
     host.querySelectorAll('[data-ded-public]').forEach((box) => {
+      const row = box.closest('.lv-ded-row');
+      const anonBox = row.querySelector('[data-ded-anon]');
+      const anonLabel = anonBox && anonBox.closest('label');
+      box.addEventListener('change', async () => {
+        const code = box.dataset.dedPublic;
+        const want = box.checked;
+        const wasAnon = !!(anonBox && anonBox.checked);
+        box.disabled = true;
+        if (anonBox) anonBox.disabled = true;
+        try {
+          if (!want && wasAnon) {
+            const r1 = await setAnon(code, false);
+            if (r1.error) throw r1.error;
+            anonBox.checked = false;
+          }
+          const r2 = await setPublic(code, want);
+          if (r2.error) {
+            if (!want && wasAnon) { await setAnon(code, true); anonBox.checked = true; }
+            throw r2.error;
+          }
+          if (anonLabel) anonLabel.hidden = !want;
+        } catch (e) {
+          box.checked = !want;
+          alert('Could not change that: ' + (e && e.message));
+        } finally {
+          box.disabled = false;
+          if (anonBox) anonBox.disabled = false;
+        }
+      });
+    });
+    host.querySelectorAll('[data-ded-anon]').forEach((box) => {
       box.addEventListener('change', async () => {
         const want = box.checked;
         box.disabled = true;
         try {
-          const { error } = await supabase.rpc('set_my_dedication_public', { p_code: box.dataset.dedPublic, p_show: want });
+          const { error } = await setAnon(box.dataset.dedAnon, want);
           if (error) throw error;
         } catch (e) {
           box.checked = !want;

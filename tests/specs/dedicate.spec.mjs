@@ -288,7 +288,8 @@ async function scenarioStripShowsAndHides(browser, port, r) {
   r.check('strip is visible when the song has dedications', shown.hidden === false);
   r.check('card shows the line, then "from Tzvi"', /A birthday song for Mom.*from Tzvi/s.test(shown.cards[0]?.text), shown.cards[0]);
   r.check('an anonymous sender renders "from someone", and "Something else" renders its own text', /A song for Yossi: Getting better.*from someone/s.test(shown.cards[1]?.text), shown.cards[1]);
-  r.check('each card links to its own /d/<code> page', shown.cards[0]?.href === '/d/AAAA1111' && shown.cards[1]?.href === '/d/BBBB2222', shown.cards);
+  // NAME-1: a "from someone" card has no link (its /d/ page names the sender).
+  r.check('a named card links to its own /d/<code> page; a "from someone" card has no link', shown.cards[0]?.href === '/d/AAAA1111' && shown.cards[1]?.href === undefined, shown.cards);
   r.check('no console/page errors', errors1.length === 0, errors1.join(' | '));
   await withDedications.close();
 

@@ -256,15 +256,16 @@ async function scenarioDedicationSuccess(browser, port, r) {
 }
 
 async function scenarioDedicationSuccessOther(browser, port, r) {
-  r.section('SEND-1: Something else carries the write-in; private sender shows as Someone');
+  r.section('SEND-1: Something else carries the write-in; NAME-1: "Post without my name" still sends the name');
   const { page, errors } = await sendSuccess(browser, port, async (page) => {
     await page.fill('#dedicate-recipient', 'Dad');
     await page.selectOption('#dedicate-occasion', 'other');
     await page.fill('#dedicate-occasion-other', '  finishing Shas ');
+    await page.check('#dedicate-public');
     await page.check('#dedicate-anonymous');
   });
   await checkSend(r, '[Something else, private]', page,
-    ['Someone dedicated a song to you.', 'A song for Dad: finishing Shas.', 'Supernova']);
+    ['Nova Ash dedicated a song to you.', 'A song for Dad: finishing Shas.', 'Supernova']);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
