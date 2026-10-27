@@ -5,8 +5,11 @@
    what's left for the frontend to get right: a signed-in account, however
    new, sees active stars; signed-out still gets the sign-in prompt; the
    "New accounts can rate after 48 hours." message is gone from the page
-   entirely; and the reflection copy fix. Also covers the heart button's
-   label/count spacing at 390px (POLISH-1 item 6).
+   entirely; and the comment box copy. Also covers the heart button's
+   touch target and count at 390px (POLISH-1 item 6).
+
+   RATE-2: the stars and the heart circle are brand V's now (.vbtn in a
+   .vrow, .love-btn with its V); the behaviour checked here is unchanged.
    ============================================================ */
 import { newPage, collectErrors } from '../lib/browser.mjs';
 import { wireSupabaseStubs } from '../lib/stub-supabase.mjs';
@@ -22,7 +25,7 @@ export async function run(browser, port) {
   await scenarioSignedOutKeyboard(browser, port, r);
   await scenarioFreshAccount(browser, port, r);
   await scenarioRateError(browser, port, r);
-  await scenarioReflectionCopy(browser, port, r);
+  await scenarioCommentCopy(browser, port, r);
   await scenarioHeartLabelRoom(browser, port, r);
   await scenarioHeartState(browser, port, r);
   return r;
@@ -34,7 +37,7 @@ async function gotoSong(page, port, slug) {
   // paintRatings() has run (it appends #rating-msg last) -- the real
   // condition every scenario below actually needs before reading a star
   // or a row's locked state.
-  await page.waitForSelector('#rating-rows .rating-row', { timeout: 10000 });
+  await page.waitForSelector('#rating-rows .vrow', { timeout: 10000 });
 }
 
 async function scenarioSignedOut(browser, port, r) {
@@ -51,21 +54,20 @@ async function scenarioSignedOut(browser, port, r) {
   });
 
   const before = await page.evaluate(() => {
-    const row = document.querySelector('.rating-row');
+    const row = document.querySelector('#rating-rows .vrow');
     return {
       locked: row ? row.classList.contains('is-locked') : null,
-      note: row ? row.querySelector('.rating-note')?.textContent : null,
+      note: document.getElementById('thoughts-note')?.textContent,
     };
   });
   r.check('rating row is locked when signed out', before.locked === true);
-  r.check('note says "Sign in to rate"', before.note === 'Sign in to rate', before.note);
+  r.check('the note under the rows says "Sign in to rate"', /Sign in to rate$/.test(before.note || ''), before.note);
 
-  await page.click('.star[data-facet="words"][data-score="3"]');
+  await page.click('.vbtn[data-facet="words"][data-score="3"]');
   await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const after = await page.evaluate(() => ({
     calls: window.__openModalCalls,
-    filled: Array.from(document.querySelectorAll('.rating-row[data-facet="words"] .star svg'))
-      .filter((svg) => svg.classList.contains('is-on')).length,
+    filled: document.querySelectorAll('.vrow[data-facet="words"] .vbtn.is-on').length,
   }));
   r.check('tapping a star signed-out opens the sign-in modal instead of rating', after.calls.length === 1, after.calls);
   r.check('FIX-3: the modal is told why, in one line', after.calls[0] && after.calls[0].reason === 'Sign in to rate the words and the music', after.calls[0]);
@@ -90,13 +92,12 @@ async function scenarioSignedOutKeyboard(browser, port, r) {
     window.laivy.accountUI.openModal = (opts) => { window.__openModalCalls.push(opts); return orig(opts); };
   });
 
-  await page.focus('.star[data-facet="music"][data-score="2"]');
+  await page.focus('.vbtn[data-facet="music"][data-score="2"]');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => window.__openModalCalls && window.__openModalCalls.length > 0, { timeout: 10000 });
   const d = await page.evaluate(() => ({
     calls: window.__openModalCalls.length,
-    filled: Array.from(document.querySelectorAll('.rating-row[data-facet="music"] .star svg'))
-      .filter((svg) => svg.classList.contains('is-on')).length,
+    filled: document.querySelectorAll('.vrow[data-facet="music"] .vbtn.is-on').length,
   }));
   r.check('Enter on a focused star opens the sign-in modal', d.calls === 1, d.calls);
   r.check('no star fills from keyboard activation either', d.filled === 0, d.filled);
@@ -115,28 +116,26 @@ async function scenarioFreshAccount(browser, port, r) {
   // the words row un-locking is the real signal that the repaint it triggers
   // (see index.html's own laivy:auth listener on paintRatings) has happened.
   await page.waitForFunction(() => {
-    const row = document.querySelector('.rating-row[data-facet="words"]');
+    const row = document.querySelector('.vrow[data-facet="words"]');
     return row && !row.classList.contains('is-locked');
   }, { timeout: 10000 });
 
   const before = await page.evaluate(() => {
-    const row = document.querySelector('.rating-row[data-facet="words"]');
+    const row = document.querySelector('.vrow[data-facet="words"]');
     return {
       locked: row ? row.classList.contains('is-locked') : null,
-      starCount: row ? row.querySelectorAll('.star').length : 0,
+      starCount: row ? row.querySelectorAll('.vbtn').length : 0,
     };
   });
   r.check('rating row is NOT locked for a brand-new signed-in account', before.locked === false);
   r.check('stars render (not withheld for a new account)', before.starCount === 5, before.starCount);
 
-  await page.click('.star[data-facet="words"][data-score="4"]');
+  await page.click('.vbtn[data-facet="words"][data-score="4"]');
   await page.waitForFunction(() => {
-    const stars = document.querySelectorAll('.rating-row[data-facet="words"] .star svg');
-    return Array.from(stars).filter((svg) => svg.classList.contains('is-on')).length === 4;
+    return document.querySelectorAll('.vrow[data-facet="words"] .vbtn.is-on').length === 4;
   }, { timeout: 10000 });
   const after = await page.evaluate(() => {
-    const stars = Array.from(document.querySelectorAll('.rating-row[data-facet="words"] .star'));
-    const filled = stars.filter((b) => b.querySelector('svg').classList.contains('is-on')).length;
+    const filled = document.querySelectorAll('.vrow[data-facet="words"] .vbtn.is-on').length;
     const msg = document.getElementById('rating-msg');
     return { filled, msgHidden: msg ? msg.hidden : null, msgText: msg ? msg.textContent : null };
   });
@@ -164,11 +163,11 @@ async function scenarioRateError(browser, port, r) {
   await signInAs(page, { ...F.SESSION_USERS.LISTENER, createdAt: new Date(Date.now() - 60000) });
   await gotoSong(page, port, SLUG);
   await page.waitForFunction(() => {
-    const row = document.querySelector('.rating-row[data-facet="music"]');
+    const row = document.querySelector('.vrow[data-facet="music"]');
     return row && !row.classList.contains('is-locked');
   }, { timeout: 10000 });
 
-  await page.click('.star[data-facet="music"][data-score="5"]');
+  await page.click('.vbtn[data-facet="music"][data-score="5"]');
   // rate_song() is rejected and the optimistic fill reverted, then the
   // server's own message shown -- the message actually appearing is the
   // real signal that round trip (and the revert) has finished.
@@ -177,10 +176,9 @@ async function scenarioRateError(browser, port, r) {
     return msg && msg.hidden === false && msg.textContent.length > 0;
   }, { timeout: 10000 });
   const after = await page.evaluate(() => {
-    const stars = Array.from(document.querySelectorAll('.rating-row[data-facet="music"] .star svg'));
     const msg = document.getElementById('rating-msg');
     return {
-      filled: stars.filter((svg) => svg.classList.contains('is-on')).length,
+      filled: document.querySelectorAll('.vrow[data-facet="music"] .vbtn.is-on').length,
       msgHidden: msg ? msg.hidden : null,
       msgText: msg ? msg.textContent : null,
       msgBad: msg ? msg.classList.contains('is-bad') : null,
@@ -202,48 +200,42 @@ async function scenarioRateError(browser, port, r) {
   await page.close();
 }
 
-async function scenarioReflectionCopy(browser, port, r) {
-  r.section('reflection invite copy');
+async function scenarioCommentCopy(browser, port, r) {
+  r.section('comment box copy (RATE-2: "reflection" is "comment" now)');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page);
   await gotoSong(page, port, SLUG);
-  const text = await page.evaluate(() => document.querySelector('.reflect-sub')?.textContent);
-  r.check(
-    'reflection line reads "Did this song stir something in you? ..."',
-    text === 'Did this song stir something in you? Leave a few words. A single line is plenty.',
-    text
-  );
+  const d = await page.evaluate(() => ({
+    placeholder: document.getElementById('comment-body').placeholder,
+    help: document.querySelector('.comment-help')?.textContent,
+    button: document.getElementById('comment-submit').textContent,
+    listHeading: document.querySelector('#comments-wrap .comments-h')?.textContent,
+  }));
+  r.check('placeholder "Write a comment..."', d.placeholder === 'Write a comment...', d.placeholder);
+  r.check('helper "A single line is plenty."', d.help === 'A single line is plenty.', d.help);
+  r.check('button "Post comment"', d.button === 'Post comment', d.button);
+  r.check('the list is headed "Comments"', d.listHeading === 'Comments', d.listHeading);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
 
 async function scenarioHeartLabelRoom(browser, port, r) {
-  r.section('390px: the heart label and count have room, not touching the focus outline');
+  r.section('390px: the heart is a full-size touch target, its count beside the V');
   const page = await newPage(browser, { width: 390, height: 800 });
   const errors = collectErrors(page);
   await wireSupabaseStubs(page);
   await gotoSong(page, port, SLUG);
 
   const d = await page.evaluate(() => {
-    const btn = document.querySelector('.love-btn');
-    const label = document.querySelector('.love-label');
-    const count = document.querySelector('.love-count');
-    const b = btn.getBoundingClientRect();
-    const l = label.getBoundingClientRect();
-    const c = count.getBoundingClientRect();
-    const OUTLINE_OFFSET = 3; // .love-btn:focus-visible's outline-offset in theme CSS
-    return {
-      // Room between the label/count box and where the focus outline is
-      // drawn (the button's own border box, pushed out by outline-offset).
-      leftRoom: l.left - b.left + OUTLINE_OFFSET,
-      rightRoom: b.right - c.right + OUTLINE_OFFSET,
-      bottomRoom: b.bottom - c.bottom + OUTLINE_OFFSET,
-    };
+    const b = document.querySelector('.love-btn').getBoundingClientRect();
+    const v = document.querySelector('.love-btn .v-off').getBoundingClientRect();
+    const c = document.querySelector('.love-btn .love-count').getBoundingClientRect();
+    return { w: b.width, h: b.height, vW: v.width, countRightOfV: c.left >= v.right, countInside: c.right <= b.right };
   });
-  r.check('label has room from the outline on the left', d.leftRoom >= 6, d.leftRoom);
-  r.check('count has room from the outline on the right', d.rightRoom >= 6, d.rightRoom);
-  r.check('count has room from the outline at the bottom', d.bottomRoom >= 6, d.bottomRoom);
+  r.check('at least 44px tall and 36px wide', d.h >= 44 && d.w >= 36, d);
+  r.check('the V is ~28px on a phone', Math.abs(d.vW - 28) < 1, d);
+  r.check('the count sits beside the V, inside the button', d.countRightOfV && d.countInside, d);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
@@ -263,7 +255,7 @@ async function scenarioHeartState(browser, port, r) {
       count: btn.querySelector('.love-count')?.textContent,
     };
   });
-  r.check('a fresh device starts with the heart as an outline, not filled', before.on === false, before);
+  r.check('a fresh device starts with the V as an outline, not filled', before.on === false, before);
   r.check('aria-pressed is false to match', before.pressed === 'false', before.pressed);
   const startCount = Number(before.count);
 
@@ -277,7 +269,7 @@ async function scenarioHeartState(browser, port, r) {
       count: Number(btn.querySelector('.love-count')?.textContent),
     };
   });
-  r.check('tapping fills the heart', afterTap.on === true);
+  r.check('tapping fills the V', afterTap.on === true);
   r.check('aria-pressed flips to true', afterTap.pressed === 'true');
   r.check('the count goes up by one, the same total shown either way', afterTap.count === startCount + 1, afterTap.count);
 

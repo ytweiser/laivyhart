@@ -74,7 +74,7 @@ export async function run(browser, port) {
 }
 
 async function scenarioDomOrder(browser, port, r) {
-  r.section('everything acted on sits above the lyrics, in order: the cover player (titles, progress, prev/play/next, Sleep), artist+Follow, heart+stars, Dedicate+Share, Dedications strip, THEN lyrics, THEN comments');
+  r.section('everything acted on sits above the lyrics, in order: the cover player (titles, progress, prev/play/next, Sleep), artist+Follow, Your thoughts matter (Dedicate+Share, heart, words, music, comment box), Dedications strip, THEN lyrics, THEN comments');
   const page = await newPage(browser);
   const errors = collectErrors(page);
   await wireSupabaseStubs(page, { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH] });
@@ -84,7 +84,7 @@ async function scenarioDomOrder(browser, port, r) {
   const d = await page.evaluate(() => {
     const ids = [
       'now-banner', 'now-artist', 'now-idea-credit',
-      'loves', 'dock-react', 'dedications-strip', 'lyrics-wrap', 'engage',
+      'loves', 'dedications-strip', 'lyrics-wrap', 'engage',
     ];
     const banner = document.getElementById('now-banner');
     const inCover = ['now-banner-en', 'scrub', 'prev-btn', 'play-btn', 'next-btn', 't-elapsed', 't-total', 'sleep-btn']
@@ -99,18 +99,21 @@ async function scenarioDomOrder(browser, port, r) {
       if (i === 0 || !n || !nodes[i - 1]) return true;
       return !!(nodes[i - 1].compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
-    // Heart before the words/music stars within .loves specifically.
+    // RATE-2: Dedicate + Share ride in the block's own heading row.
+    const reactInBlock = document.getElementById('loves').contains(document.getElementById('dock-react'));
+    // Heart before the words/music ratings within the block.
     const loves = document.getElementById('loves');
-    const lovesRow = loves.querySelector('.loves-row');
+    const lovesRow = loves.querySelector('.vrow-love');
     const ratingRows = loves.querySelector('#rating-rows');
     const heartBeforeStars = !!(lovesRow && ratingRows && (lovesRow.compareDocumentPosition(ratingRows) & Node.DOCUMENT_POSITION_FOLLOWING));
     // Visually too, not just in the DOM -- each section strictly below the
     // one before it.
-    const rowIds = ['now-banner', 'now-artist', 'loves', 'dock-react', 'lyrics-wrap', 'engage'];
+    const rowIds = ['now-banner', 'now-artist', 'loves', 'lyrics-wrap', 'engage'];
     const tops = rowIds.map((id) => document.getElementById(id).getBoundingClientRect().top);
     const visuallyInOrder = tops.every((t, i) => i === 0 || t > tops[i - 1]);
     return {
       allIdsFound: nodes.every((n) => !!n),
+      reactInBlock,
       inCover,
       oldGone,
       inOrder,
@@ -123,7 +126,8 @@ async function scenarioDomOrder(browser, port, r) {
   r.check('the titles, progress, time, prev/play/next and Sleep are all inside the cover', d.inCover, d);
   r.check('the old controls row under the cover, the thumb line and the lightbox are gone', d.oldGone, d);
   r.check('document order matches the prompt\'s list exactly', d.inOrder, d);
-  r.check('within the loves: heart first, words/music stars after', d.heartBeforeStars, d);
+  r.check('within "Your thoughts matter": the heart first, the words/music ratings after', d.heartBeforeStars, d);
+  r.check('Dedicate + Share sit in that block\'s heading row', d.reactInBlock, d);
   r.check('visually too -- each section sits strictly below the one before it', d.visuallyInOrder, d.tops);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

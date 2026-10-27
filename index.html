@@ -312,7 +312,7 @@
      bounded, internally-scrolling box any more (removed: the fixed/
      drag-resizable height and .lyrics-resize's handle entirely). */
   .lyrics-wrap{margin-top:0.45rem;}
-  /* Engagement zone (like + reflections). It flows at its natural height below
+  /* Engagement zone (like + comments). It flows at its natural height below
      the controls so the like heart and every comment are reachable by
      scrolling the PAGE, never trapped in a short inner scroller. */
   .engage{
@@ -1285,12 +1285,8 @@
     border:1px solid rgba(var(--accent-2-rgb),0.26);
     color:var(--text);
   }
-  /* --star-accent, not --accent-2: accent-2 is the bright shade and dies on a
-     light ground (gold/light measures 1.92:1, emerald/light 2.77:1). That
-     token already encodes the site's rule -- accent-2 in dark, accent-1 in
-     light, with a deeper gold for gold/light -- and was measured when the
-     rating stars were lit, so the badge glyph reuses it rather than repeating
-     the mistake or inventing a second token. */
+  /* --badge-gold, not --accent-2: accent-2 is the bright shade and dies on a
+     light ground (gold/light measures 1.92:1, emerald/light 2.77:1). */
   .badge-pill .badge-ic{color:var(--badge-gold); width:1.15rem; height:1.15rem;}
   .badge-pill-t{font-family:var(--font-ui); font-size:0.68rem; font-weight:600;
     letter-spacing:0.03em; white-space:nowrap;}
@@ -1410,53 +1406,121 @@
   .pick-title.en{font-family:var(--font-display); direction:ltr; font-style:italic;}
   .picker-foot{display:flex; align-items:center; justify-content:space-between; margin-top:0.7rem; padding-top:0.7rem; border-top:1px solid var(--line); flex-shrink:0;}
 
-  /* ---------- The three loves (dock row 3) ----------
-     "the words", "the music", "the song" — three INDEPENDENT toggles, each a
-     big circle (64px desktop / 56px mobile, larger than the 48px play button)
-     with its label beneath in the body font at 0.95rem. Off = muted glass
-     outline; on = accent fill with a white icon. The heart carries its count
-     small beside the label; the other two never show numbers. */
-  .loves{display:flex; flex-direction:column; align-items:center; gap:0.5rem; margin-top:0.1rem;}
-  .loves.hidden{display:none;}
-  /* The question: display serif italic, one step below .reflect-title (1.4rem). */
-  .loves-q{font-family:var(--font-display); font-style:italic; font-weight:600;
-    font-size:1.2rem; line-height:1.2; color:var(--text); text-align:center;}
-  .loves-row{display:flex; align-items:flex-start; justify-content:center; gap:2.4rem;}
-  .love-btn{
-    display:flex; flex-direction:column; align-items:center; gap:0.4rem;
-    background:none; border:none; padding:0; cursor:pointer; flex:0 0 auto;
+  /* ---------- RATE-2: "Your thoughts matter" ----------
+     Heading on the left, Dedicate + Share at the right end of the same row;
+     then the ratings and the comment box. The block is a size container:
+     600px wide or more (a desktop panel, or a screen from about 760px up)
+     puts the ratings and the comment box side by side, two equal columns
+     with the same top and bottom; narrower, everything stacks. Every rating
+     row is the same grid -- a fixed label column, then the V's -- so the V's
+     of all three rows start on one line. The V's are the brand V (#v-fill /
+     #v-outline) in --badge-gold, which is bright gold on the dark grounds and
+     deep brass on the light ones. */
+  .thoughts{container:thoughts / inline-size; --vlabel:92px; --v:28px;}
+  .thoughts-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem 0.75rem; margin-bottom:0.55rem;}
+  .thoughts-q{margin:0; font-family:var(--font-display); font-style:italic; font-weight:600; font-size:1.12rem; line-height:1.2; color:var(--text);}
+  .thoughts-actions{position:relative; display:flex; align-items:center; gap:0.5rem; margin-left:auto;}
+  .thoughts-grid{display:grid; grid-template-columns:minmax(0,1fr); gap:0.85rem;}
+  .thoughts-rates{display:flex; flex-direction:column; min-width:0;}
+  .vrow{display:grid; grid-template-columns:var(--vlabel) minmax(0,1fr); align-items:center; min-height:44px;}
+  .vrow-label{font-family:var(--font-ui); font-size:0.82rem; line-height:1.2; color:var(--text); white-space:nowrap;}
+  .vrow-vals{display:flex; flex-wrap:wrap; align-items:center; column-gap:0.45rem; min-width:0;}
+  .vgroup{display:flex; align-items:center;}
+  .v-ic{width:var(--v); height:var(--v); display:block; flex-shrink:0; fill:var(--badge-gold); pointer-events:none;}
+  /* Each V is drawn twice, solid and as an outline; the state shows one. */
+  .v-ic.v-on{display:none;}
+  .love-btn.on .v-on, .vbtn.is-on .v-on{display:block;}
+  .love-btn.on .v-off, .vbtn.is-on .v-off{display:none;}
+  /* Touch targets: 3px either side of the glyph (36px wide at 30px) and
+     44px tall, from padding, never from a bigger glyph. */
+  .love-btn, .vbtn{
+    display:inline-flex; align-items:center; justify-content:center; min-height:44px;
+    background:none; border:0; border-radius:10px; cursor:pointer; color:var(--text);
+    -webkit-tap-highlight-color:transparent;
   }
-  .love-ic{
-    width:64px; height:64px; border-radius:50%; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center;
-    background:var(--glass-hi); border:1px solid var(--glass-border); color:var(--text-dim);
-    transition:transform 0.18s var(--ease), background 0.2s var(--ease),
-      border-color 0.2s var(--ease), color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  .thoughts-grid{--vbtn:max(36px, calc(var(--v) + 6px));}
+  .vbtn{width:var(--vbtn); padding:0;}
+  /* The heart's V sits exactly where a rating row's first V does. */
+  .love-btn{gap:0.5rem; padding:0 0.55rem 0 calc((var(--vbtn) - var(--v)) / 2); justify-self:start;}
+  .love-btn:focus-visible, .vbtn:focus-visible{outline:2px solid var(--badge-gold); outline-offset:-1px;}
+  .love-count{font-family:var(--font-ui); font-size:0.9rem; font-weight:600; color:var(--text-dim); font-variant-numeric:tabular-nums;}
+  .love-btn.on .love-count{color:var(--text);}
+  .love-btn.pulse .v-ic{animation:v-pop 0.34s var(--ease);}
+  @keyframes v-pop{0%{transform:scale(1);} 40%{transform:scale(1.3);} 100%{transform:scale(1);}}
+  @media (prefers-reduced-motion: reduce){ .love-btn.pulse .v-ic{animation:none;} }
+  /* Hover preview, pointer devices only: the V under the pointer and every V
+     before it fill; the ones after it show as outlines. data-preview on the
+     group carries the position (set in JS). */
+  @media (hover:hover){
+    .vrow:not(.is-locked) .vgroup[data-preview] .vbtn .v-on{display:none;}
+    .vrow:not(.is-locked) .vgroup[data-preview] .vbtn .v-off{display:block;}
+    .vrow:not(.is-locked) .vgroup[data-preview="1"] .vbtn:nth-child(-n+1) .v-on,
+    .vrow:not(.is-locked) .vgroup[data-preview="2"] .vbtn:nth-child(-n+2) .v-on,
+    .vrow:not(.is-locked) .vgroup[data-preview="3"] .vbtn:nth-child(-n+3) .v-on,
+    .vrow:not(.is-locked) .vgroup[data-preview="4"] .vbtn:nth-child(-n+4) .v-on,
+    .vrow:not(.is-locked) .vgroup[data-preview="5"] .vbtn:nth-child(-n+5) .v-on{display:block;}
+    .vrow:not(.is-locked) .vgroup[data-preview="1"] .vbtn:nth-child(-n+1) .v-off,
+    .vrow:not(.is-locked) .vgroup[data-preview="2"] .vbtn:nth-child(-n+2) .v-off,
+    .vrow:not(.is-locked) .vgroup[data-preview="3"] .vbtn:nth-child(-n+3) .v-off,
+    .vrow:not(.is-locked) .vgroup[data-preview="4"] .vbtn:nth-child(-n+4) .v-off,
+    .vrow:not(.is-locked) .vgroup[data-preview="5"] .vbtn:nth-child(-n+5) .v-off{display:none;}
   }
-  .love-ic svg{width:1.9rem; height:1.9rem; display:block; overflow:visible;}
-  .love-label{
-    font-family:var(--font-ui); font-size:0.95rem; line-height:1.2; color:var(--text-dim);
-    display:inline-flex; align-items:baseline; gap:0.35rem; white-space:nowrap;
-    transition:color 0.18s var(--ease);
+  .rating-avg{font-family:var(--font-ui); color:var(--text); font-variant-numeric:tabular-nums; font-size:0.95rem; font-weight:600;}
+  /* One muted line under all three rows (not one per row). */
+  .thoughts-note{font-family:var(--font-ui); font-size:0.78rem; line-height:1.3; color:var(--text-dim); margin-top:0.2rem;}
+  .thoughts-note:empty{display:none;}
+  .rating-msg{font-family:var(--font-ui); font-size:0.74rem; color:var(--accent-3); margin-top:0.2rem;}
+  .rating-msg.is-bad{color:#ff8497;}
+
+  /* Dedicate: one pill button, the gift icon inside it as decoration. White
+     on the --station-on pair, which theme.css picks to clear 4.5:1 for white
+     text in all four colours and both lightings. */
+  .dedicate-pill{
+    display:inline-flex; align-items:center; gap:0.45rem; min-height:44px; padding:0 1.05rem 0 0.9rem;
+    border:0; border-radius:999px; cursor:pointer; white-space:nowrap;
+    background:linear-gradient(135deg, var(--station-on-1), var(--station-on-2)); color:#fff;
+    font-family:var(--font-ui); font-size:0.92rem; font-weight:600; letter-spacing:0.01em;
+    box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.32);
+    transition:transform 0.18s var(--ease), filter 0.18s var(--ease), box-shadow 0.18s var(--ease);
   }
-  .love-count{font-size:0.78rem; font-weight:600; color:var(--text-faint); font-variant-numeric:tabular-nums;}
-  .love-btn:hover .love-ic{transform:translateY(-1px); border-color:var(--accent-2); color:var(--accent-2);}
-  .love-btn:hover .love-label{color:var(--text);}
-  .love-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px; border-radius:14px;}
-  /* On: filled in the theme accent, white glyph, label at full strength. */
-  .love-btn.on .love-ic{
-    background:var(--accent-grad); border-color:transparent; color:#fff;
-    box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.38);
+  .dedicate-pill svg{width:1.15rem; height:1.15rem; flex-shrink:0; pointer-events:none;}
+  .dedicate-pill:hover{transform:translateY(-1px); filter:brightness(1.08);}
+  .dedicate-pill:focus-visible{outline:2px solid var(--accent-2); outline-offset:3px;}
+  /* The one-time hint: a soft glow on the pill for ~3s, and a bubble above
+     it whose pointer aims at the pill (--hint-arrow, set in JS). */
+  .dedicate-pill.is-hinting{animation:ded-glow 1s ease-in-out 3;}
+  @keyframes ded-glow{
+    0%, 100%{box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.32);}
+    50%{box-shadow:0 0 0 6px rgba(var(--accent-2-rgb),0.3), 0 6px 22px rgba(var(--accent-1-rgb),0.5);}
   }
-  .love-btn.on .love-label{color:var(--text);}
-  .love-btn.on .love-heart{fill:#fff;}
-  .love-btn.on .love-count{color:var(--accent-2);}
-  /* Soft pulse on tap (the old heart's pop, applied to whichever was tapped). */
-  .love-btn.pulse .love-ic{animation:heart-pop 0.34s var(--ease);}
-  @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
-  /* LISTEN-1: Dedicate + Share, their own centered row after .loves. */
-  .dock-react{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-top:0.2rem;}
-  .dock-react.hidden{display:none;}
+  @media (prefers-reduced-motion: reduce){ .dedicate-pill.is-hinting{animation:none;} }
+  .ded-hint{
+    position:absolute; z-index:30; right:0; bottom:calc(100% + 12px);
+    width:max-content; max-width:min(15rem, calc(100vw - 2.5rem));
+    padding:0.55rem 0.8rem; border-radius:12px;
+    background:var(--text); color:var(--bg); box-shadow:0 10px 28px rgba(0,0,0,0.3);
+    font-family:var(--font-ui); font-size:0.85rem; font-weight:500; line-height:1.35;
+    pointer-events:none;
+  }
+  .ded-hint[hidden]{display:none;}
+  .ded-hint::after{
+    content:""; position:absolute; top:100%; right:calc(var(--hint-arrow, 3rem) - 8px);
+    border:8px solid transparent; border-top-color:var(--text);
+  }
+
+  /* Too narrow for label + five 36px targets on one line (under ~280px,
+     e.g. a 300px screen): each label sits above its V's, which still line
+     up across the rows. */
+  @container thoughts (max-width:279px){
+    .vrow{grid-template-columns:minmax(0,1fr);}
+    .vrow-label{padding-top:0.35rem;}
+  }
+  @container thoughts (min-width:600px){
+    .thoughts-head{margin-bottom:0.8rem;}
+    .thoughts-q{font-size:1.35rem;}
+    .vrow-label{font-size:0.9rem;}
+    .thoughts-grid{--vlabel:112px; --v:30px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); column-gap:1.5rem; align-items:stretch;}
+  }
   /* PLAY-1 "Keep playing after each song" (was Autoplay). PLAYER-4: it lives
      at the bottom of the Sleep menu, under a thin divider. */
   .sleep-divider{height:1px; background:var(--line); margin:0.75rem 0 0.65rem;}
@@ -1533,15 +1597,12 @@
     font-family:var(--font-ui); font-size:0.85rem; text-decoration:underline;
   }
 
-  /* ---------- Reflections (comments): a warm, prominent invitation ---------- */
-  /* No border here: .engage already draws the single divider that separates
-     the dock from this zone. A second rule 1.3rem below it read as a doubled
-     line under the loves row. */
+  /* ---------- Comments: this song's list (the box is up in .thoughts) ----------
+     No border here: .engage already draws the single divider that separates
+     the dock from this zone. */
   .comments-wrap{margin:0; padding-top:0.15rem;}
   .comments-wrap.hidden{display:none;}
-  .reflect-invite{margin-bottom:0.9rem;}
-  .reflect-title{font-family:var(--font-display); font-size:1.4rem; font-weight:600; color:var(--text); line-height:1.15;}
-  .reflect-sub{font-family:var(--font-ui); font-size:0.92rem; color:var(--text-dim); margin-top:0.25rem;}
+  .comments-h{margin:0 0 0.8rem; font-family:var(--font-display); font-size:1.3rem; font-weight:600; color:var(--text); line-height:1.15;}
   .comments-list{display:flex; flex-direction:column; gap:0.95rem; margin-bottom:0.4rem;}
   .comments-empty{font-family:var(--font-display); font-style:italic; color:var(--text-faint); font-size:0.92rem;}
   .comment{border-left:2px solid transparent; border-image:var(--accent-grad) 1; padding:0.05rem 0 0.05rem 0.85rem;}
@@ -1550,38 +1611,61 @@
   .comment-who{color:var(--text-dim);}
   .comment-who a{color:inherit; text-decoration:none;}
   .comment-who a:hover{color:var(--accent-2); text-decoration:underline;}
-  .comment-form{display:flex; flex-direction:column; gap:0.55rem; margin-bottom:1.3rem;}
-  /* Compact until the visitor clicks in: an inviting one-line prompt that
-     expands into the full form (framing line, name, city, Share button). */
-  .comment-form.is-collapsed{gap:0;}
-  .comment-form.is-collapsed .comment-optnote,
-  .comment-form.is-collapsed .comment-idrow,
-  .comment-form.is-collapsed .comment-formfoot{display:none;}
-  .comment-form.is-collapsed .comment-textarea{
-    min-height:3.4rem; resize:none; cursor:text;
-    background:var(--glass-hi); border-color:var(--accent-2);
+  /* RATE-2: the comment box, in "Your thoughts matter". Stacked (phones): a
+     ~2-row field that grows as the visitor types, "Post" on the same row, no
+     helper line. Side by side (the container query below): the field fills
+     the column to the height of the ratings beside it, with "A single line
+     is plenty." and "Post comment" under it. Name, city and their note stay
+     folded away until the visitor clicks in, as before. */
+  .comment-form{
+    display:grid; grid-template-columns:minmax(0,1fr) auto; align-content:start; gap:0 0.5rem;
+    grid-template-areas:"body btn" "opt opt" "id id" "status status"; min-width:0;
   }
+  /* Row spacing as margins, not row-gap: the folded-away rows must not
+     leave gaps behind (they would shorten the field beside the ratings). */
+  .comment-optnote, .comment-idrow, .comment-status{margin-top:0.5rem;}
+  .comment-textarea{grid-area:body;}
+  .comment-optnote{grid-area:opt;}
+  .comment-idrow{grid-area:id;}
+  .comment-help{grid-area:help; display:none;}
+  .comment-status{grid-area:status;}
+  .comment-form.is-collapsed .comment-optnote,
+  .comment-form.is-collapsed .comment-idrow{display:none;}
   .comment-input, .comment-textarea{
     width:100%; background:var(--chip-bg); border:1px solid var(--chip-border); border-radius:12px;
-    padding:0.7rem 0.95rem; font-family:var(--font-ui); font-size:0.98rem; color:var(--text);
+    padding:0.6rem 0.85rem; font-family:var(--font-ui); font-size:0.98rem; color:var(--text);
   }
   .comment-input:focus, .comment-textarea:focus{outline:none; border-color:var(--accent-2);}
   .comment-input::placeholder, .comment-textarea::placeholder{color:var(--text-faint);}
-  .comment-textarea{min-height:4.6rem; resize:vertical; line-height:1.5; font-family:var(--font-ui);}
-  .comment-optnote{font-family:var(--font-display); font-style:italic; font-size:0.85rem; color:var(--text-faint); margin:0.1rem 0 0.1rem;}
+  .comment-textarea{min-height:0; resize:none; overflow:hidden; line-height:1.45; display:block;}
+  .comment-optnote{font-family:var(--font-display); font-style:italic; font-size:0.85rem; color:var(--text-faint);}
   .comment-idrow{display:flex; gap:0.55rem;}
   .comment-idrow .comment-input{flex:1; min-width:0;}
-  .comment-formfoot{display:flex; align-items:center; justify-content:space-between; gap:0.7rem;}
-  .comment-status{font-family:var(--font-ui); font-size:0.74rem; color:var(--text-dim); flex:1;}
+  .comment-help{font-family:var(--font-display); font-style:italic; font-size:0.88rem; color:var(--text-dim); align-self:center;}
+  .comment-status{font-family:var(--font-ui); font-size:0.74rem; color:var(--text-dim);}
+  .comment-status:empty{display:none;}
   .comment-status.ok{color:var(--accent-2);}
   .comment-status.err{color:var(--accent-1);}
   .comment-submit{
-    font-family:var(--font-ui); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
-    padding:0.5rem 1.1rem; border-radius:12px; border:none; background:var(--accent-grad); color:#fff; cursor:pointer;
-    transition:filter 0.18s var(--ease); flex-shrink:0;
+    grid-area:btn; align-self:start; min-height:44px; padding:0 1.1rem; border-radius:12px; border:none;
+    font-family:var(--font-ui); font-size:0.88rem; font-weight:600; white-space:nowrap;
+    background:linear-gradient(135deg, var(--station-on-1), var(--station-on-2)); color:#fff; cursor:pointer;
+    transition:filter 0.18s var(--ease);
   }
   .comment-submit:hover{filter:brightness(1.08);}
+  .comment-submit:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
   .comment-submit:disabled{opacity:0.55; cursor:default;}
+  .post-long{display:none;}
+  @container thoughts (min-width:600px){
+    .comment-form{
+      grid-template-rows:minmax(4.6rem, 1fr) auto auto auto auto;
+      grid-template-areas:"body body" "opt opt" "id id" "help btn" "status status";
+    }
+    .comment-textarea{height:auto; align-self:stretch; overflow:auto;}
+    .comment-help, .comment-submit{margin-top:0.5rem;}
+    .comment-help{display:block;}
+    .post-long{display:inline;}
+  }
 
   /* ---------- Homepage listener feed (full-width, below the app) ---------- */
   /* Global listener feed, shown in the left panel's engage zone when idle. */
@@ -1629,26 +1713,14 @@
     /* The station row stays one sideways-scrolling line (RADIO-2);
        Songs/Playlists drop below it. */
     .tabs-list{margin-top:0.15rem;}
-    /* All three loves stay on one line at 56px. Dock spacing is trimmed so
-       the loves row adds its own height plus the one 0.5rem row gap. */
+    /* Dock spacing trimmed on phones. */
     .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
-    .loves{gap:0.4rem;}
-    .loves-q{font-size:1.1rem;}
-    .loves-row{gap:1.6rem;}
-    .love-ic{width:56px; height:56px;}
-    .love-ic svg{width:1.7rem; height:1.7rem;}
-    /* The label and its count sit flush against the button's own box here,
-       so the focus outline (outline-offset:3px) has almost no room around
-       them at this width. A little padding on the button and the label gives
-       both real breathing space instead of crowding the outline. */
-    .love-btn{padding:0.05rem 0.3rem 0.3rem;}
-    .love-label{padding:0 0.2rem;}
     /* On mobile the now-playing panel is NOT a fixed-height flex frame.
        Sections just stack and flow so the PAGE scrolls to reveal the like
-       heart, the reflection form, and the comments -- LISTEN-1 made this
+       heart, the comment form, and the comments -- LISTEN-1 made this
        the desktop behavior too, lyrics included (no more capped/scrolling
        exception for them). */
-    /* Reflections zone flows at natural height instead of being a short inner
+    /* Comments zone flows at natural height instead of being a short inner
        scroller trapped behind the controls. This must stay uncapped so the
        comment box is always reachable (the old .engage 9rem-floor trap). */
     .engage{flex:0 0 auto; min-height:0; max-height:none; height:auto; overflow:visible;}
@@ -1706,11 +1778,20 @@
     .row-badges{width:1.15rem; min-width:1.15rem;}
     .badge-ic{width:1.15rem; height:1.15rem;}
     .badge-pill-t{font-size:0.64rem;}
-    .loves-row{gap:1.4rem;}
   }
 </style>
 </head>
 <body>
+
+<!-- RATE-2: the brand V, traced from icon-512.png (the logo's gold ribbon;
+     the microphone is left out, it turns to mush at 30px). #v-fill is the
+     ribbon; #v-outline is the same silhouette as a ring (the ribbon minus
+     itself shrunk inward), so the empty V keeps exactly the filled one's
+     edge. Both take their colour from `fill` (currentColor by default). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="v-fill" viewBox="0 0 100 95.6"><path d="M27.5 0C30.2 -0.2 33.8 -0.1 36.3 0.4C38.9 1 41.2 2.2 43.1 3.4C44.9 4.5 46.1 5.4 47.5 7.1C48.8 8.9 50.4 11.5 51.3 13.7C52.1 15.8 52.5 17.6 52.7 20C53 22.3 53.3 23.5 52.7 27.9C52.2 32.4 50 42.6 49.4 46.8C48.8 51.1 48.6 49.8 49.2 53.6C49.8 57.3 51.5 64.8 52.9 69.3C54.4 73.8 56.9 76.9 58 80.7C59.1 84.5 59.5 92.2 59.5 92.2C59.5 92.2 60.1 92.8 60.5 91.8C60.9 90.8 61.1 88.5 62 86.3C62.8 84.2 64.4 82 65.5 79C66.7 75.9 66.1 73.2 68.9 68.1C71.7 62.9 79.6 53.2 82.6 48.1C85.6 43 86.4 40.4 87 37.4C87.5 34.4 86.5 31.7 85.9 30C85.4 28.4 84.6 28 83.6 27.3C82.6 26.6 81.8 25.9 80 25.8C78.3 25.8 75 26.4 73.1 27.1C71.2 27.8 70.4 28.6 68.7 30.3C67 31.9 63 37.2 63 37.2C63 37.2 62.2 36.6 62.2 36.6C62.2 36.6 61.6 36.2 63.2 34C64.8 31.9 68.9 26.2 71.8 23.7C74.8 21.3 77.7 19.9 80.7 19.1C83.6 18.3 87.3 18.6 89.5 18.9C91.7 19.2 92.7 20 93.9 20.8C95.1 21.6 95.9 22.5 96.8 23.7C97.8 25 99.1 26.6 99.6 28.4C100.1 30.1 100 34.5 100 34.5C100 34.5 93.3 36.1 93.3 36.1C93.3 36.1 93.3 52.7 93.3 52.7C93.3 52.7 91.5 52.6 91 52.7C90.4 52.9 93.2 50 89.9 53.8C86.6 57.6 75.2 70.5 71 75.6C66.8 80.7 66.7 81.2 64.9 84.5C63.2 87.7 61.4 93.3 60.5 95.2C59.6 97 59.5 95.6 59.5 95.6C59.5 95.6 57 89.4 53.4 84.2C49.7 79.1 41.2 70.1 37.4 64.9C33.5 59.7 32 56.8 30.3 52.9C28.5 49.1 27.8 46.3 27.1 41.6C26.4 36.9 27 28.7 26.3 24.6C25.6 20.5 24.4 18.9 22.9 17C21.4 15.2 19.5 14 17.4 13.4C15.4 12.9 12.6 13 10.7 13.4C8.9 13.9 7.9 14.5 6.3 16.2C4.7 17.9 0.8 23.7 0.8 23.7C0.8 23.7 0 23.3 0 23.3C0 23.3 2.3 17.2 4.2 14.5C6.1 11.8 8.7 9.2 11.3 7.1C14 5 17.5 3.1 20.2 1.9C22.9 0.7 24.8 0.2 27.5 0Z"/></symbol>
+  <symbol id="v-outline" viewBox="0 0 100 95.6"><path fill-rule="evenodd" d="M27.5 0C30.2 -0.2 33.8 -0.1 36.3 0.4C38.9 1 41.2 2.2 43.1 3.4C44.9 4.5 46.1 5.4 47.5 7.1C48.8 8.9 50.4 11.5 51.3 13.7C52.1 15.8 52.5 17.6 52.7 20C53 22.3 53.3 23.5 52.7 27.9C52.2 32.4 50 42.6 49.4 46.8C48.8 51.1 48.6 49.8 49.2 53.6C49.8 57.3 51.5 64.8 52.9 69.3C54.4 73.8 56.9 76.9 58 80.7C59.1 84.5 59.5 92.2 59.5 92.2C59.5 92.2 60.1 92.8 60.5 91.8C60.9 90.8 61.1 88.5 62 86.3C62.8 84.2 64.4 82 65.5 79C66.7 75.9 66.1 73.2 68.9 68.1C71.7 62.9 79.6 53.2 82.6 48.1C85.6 43 86.4 40.4 87 37.4C87.5 34.4 86.5 31.7 85.9 30C85.4 28.4 84.6 28 83.6 27.3C82.6 26.6 81.8 25.9 80 25.8C78.3 25.8 75 26.4 73.1 27.1C71.2 27.8 70.4 28.6 68.7 30.3C67 31.9 63 37.2 63 37.2C63 37.2 62.2 36.6 62.2 36.6C62.2 36.6 61.6 36.2 63.2 34C64.8 31.9 68.9 26.2 71.8 23.7C74.8 21.3 77.7 19.9 80.7 19.1C83.6 18.3 87.3 18.6 89.5 18.9C91.7 19.2 92.7 20 93.9 20.8C95.1 21.6 95.9 22.5 96.8 23.7C97.8 25 99.1 26.6 99.6 28.4C100.1 30.1 100 34.5 100 34.5C100 34.5 93.3 36.1 93.3 36.1C93.3 36.1 93.3 52.7 93.3 52.7C93.3 52.7 91.5 52.6 91 52.7C90.4 52.9 93.2 50 89.9 53.8C86.6 57.6 75.2 70.5 71 75.6C66.8 80.7 66.7 81.2 64.9 84.5C63.2 87.7 61.4 93.3 60.5 95.2C59.6 97 59.5 95.6 59.5 95.6C59.5 95.6 57 89.4 53.4 84.2C49.7 79.1 41.2 70.1 37.4 64.9C33.5 59.7 32 56.8 30.3 52.9C28.5 49.1 27.8 46.3 27.1 41.6C26.4 36.9 27 28.7 26.3 24.6C25.6 20.5 24.4 18.9 22.9 17C21.4 15.2 19.5 14 17.4 13.4C15.4 12.9 12.6 13 10.7 13.4C8.9 13.9 7.9 14.5 6.3 16.2C4.7 17.9 0.8 23.7 0.8 23.7C0.8 23.7 0 23.3 0 23.3C0 23.3 2.3 17.2 4.2 14.5C6.1 11.8 8.7 9.2 11.3 7.1C14 5 17.5 3.1 20.2 1.9C22.9 0.7 24.8 0.2 27.5 0ZM29.4 3.8C31.8 3.6 34.3 4.1 36.6 4.8C38.8 5.6 41.3 7.2 42.9 8.4C44.4 9.6 44.9 10.2 45.8 12C46.7 13.8 48 17 48.5 19.3C49.1 21.7 49.4 21.8 48.9 26.1C48.5 30.3 46.2 40.1 45.6 45C45 49.9 44.6 50.7 45.4 55.5C46.1 60.2 50 73.3 50 73.3C50 73.3 47.4 70.6 45.4 68.1C43.3 65.5 39.9 61.5 37.8 58.2C35.7 54.9 34.1 51.4 33 48.3C31.8 45.2 31.3 43.5 30.9 39.7C30.5 36 30.8 29.3 30.5 25.8C30.1 22.4 30.1 21.4 29 19.1C27.8 16.8 24.9 13.5 23.5 12C22.1 10.5 21.8 10.5 20.6 10.1C19.3 9.6 16 9.2 16 9.2C16 9.2 19.8 6.6 22.1 5.7C24.3 4.8 27 3.9 29.4 3.8ZM84.5 22.5C84.5 22.5 86.2 22.2 87.6 22.7C89 23.1 91.5 23.8 92.9 25.2C94.3 26.6 96 31.1 96 31.1C96 31.1 95 31.4 94.3 31.5C93.7 31.6 92.8 31.3 92.2 31.5C91.6 31.7 90.8 32.8 90.8 32.8C90.8 32.8 90.8 29.9 89.7 28.2C88.7 26.4 84.5 22.5 84.5 22.5ZM89.3 43.7C89.3 43.7 90.9 46.5 89.5 48.9C88.1 51.4 81.1 58.2 81.1 58.2C81.1 58.2 89.3 43.7 89.3 43.7Z"/></symbol>
+</svg>
 
 <!-- HOME-1: shared across /listen and / (the only two routes it shows on),
      so it lives above both route containers rather than inside either. -->
@@ -1819,32 +1900,52 @@
         <span class="station-line-text" id="station-line-text" aria-live="polite"></span>
         <button class="station-change" id="station-change" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="station-panel">Change station</button>
       </div>
-      <!-- The heart (one tap, anonymous, public count) first, then, since
-           1A-6, the words and the music as 1-to-5 ratings that require an
-           account. Hidden until a song is playing. -->
-      <div class="loves hidden" id="loves">
-        <div class="loves-q">What did you think?</div>
-        <div class="loves-row">
-          <button class="love-btn" data-love="song" type="button" aria-pressed="false" aria-label="Love this song">
-            <span class="love-ic"><svg class="love-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.7l-1.44-1.31C6.4 14.98 2.5 11.44 2.5 7.9 2.5 5.1 4.7 3 7.4 3c1.56 0 3.05.73 4.02 1.88h1.16C13.55 3.73 15.04 3 16.6 3 19.3 3 21.5 5.1 21.5 7.9c0 3.54-3.9 7.08-8.06 11.49L12 20.7z"/></svg></span>
-            <span class="love-label">the song <span class="love-count">0</span></span>
-          </button>
+      <!-- RATE-2: "Your thoughts matter". The heart (one tap, anonymous,
+           public count), the words and the music (1 to 5, signed in, through
+           rate_song()) and the comment box, on one grid; Dedicate + Share at
+           the right end of the heading row. Behaviour is unchanged from the
+           heart/stars/comment form this replaced; only the look moved. Two
+           columns once the block itself is wide (container query), stacked
+           below that. Hidden until a song is playing. -->
+      <section class="thoughts hidden" id="loves" aria-labelledby="thoughts-h">
+        <div class="thoughts-head">
+          <h2 class="thoughts-q" id="thoughts-h">Your thoughts matter</h2>
+          <div class="thoughts-actions hidden" id="dock-react">
+            <button class="dedicate-pill" id="now-dedicate-btn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg><span>Dedicate</span></button>
+            <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
+              <span class="share-invite-ic" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
+              </span>
+            </button>
+            <div class="ded-hint" id="ded-hint" hidden>Dedicate this song to someone who deserves this</div>
+          </div>
         </div>
-        <div class="rating-rows" id="rating-rows"></div>
-      </div>
-      <!-- Dedicate + Share: their own row, after the loves. -->
-      <div class="dock-react hidden" id="dock-react">
-        <button class="share-invite" id="now-dedicate-btn" type="button" aria-label="Dedicate this song">
-          <span class="share-invite-ic" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18"/><path d="M12 9v12"/><path d="M12 9c-1.2-2.4-3-3.2-4.2-2.6C6.4 7 6.6 9 8.3 9H12zm0 0c1.2-2.4 3-3.2 4.2-2.6C17.6 7 17.4 9 15.7 9H12z"/></svg>
-          </span>
-        </button>
-        <button class="share-invite" id="now-share-btn" type="button" aria-label="Share this song">
-          <span class="share-invite-ic" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>
-          </span>
-        </button>
-      </div>
+        <div class="thoughts-grid">
+          <div class="thoughts-rates">
+            <div class="vrow vrow-love">
+              <span class="vrow-label">Love the song</span>
+              <button class="love-btn" data-love="song" type="button" aria-pressed="false" aria-label="Love this song">
+                <svg class="v-ic v-off" aria-hidden="true" focusable="false"><use href="#v-outline"/></svg><svg class="v-ic v-on" aria-hidden="true" focusable="false"><use href="#v-fill"/></svg>
+                <span class="love-count">0</span>
+              </button>
+            </div>
+            <div class="rating-rows" id="rating-rows"></div>
+            <div class="thoughts-note" id="thoughts-note"></div>
+            <div class="rating-msg" id="rating-msg" hidden></div>
+          </div>
+          <form class="comment-form is-collapsed" id="comment-form">
+            <textarea id="comment-body" class="comment-textarea" placeholder="Write a comment..." maxlength="1000" rows="2" aria-label="Your comment"></textarea>
+            <div class="comment-optnote">If you'd like to leave your name and/or location, feel free.</div>
+            <div class="comment-idrow">
+              <input type="text" id="comment-name" class="comment-input" placeholder="Name (optional)" maxlength="80" autocomplete="name" aria-label="Name (optional)">
+              <input type="text" id="comment-city" class="comment-input" placeholder="City (optional)" maxlength="80" autocomplete="address-level2" aria-label="City (optional)">
+            </div>
+            <span class="comment-help">A single line is plenty.</span>
+            <button type="submit" class="comment-submit" id="comment-submit">Post<span class="post-long"> comment</span></button>
+            <div class="comment-status" id="comment-status" aria-live="polite"></div>
+          </form>
+        </div>
+      </section>
 
       <!-- DED-2: the latest dedications of this song, hidden when there are
            none. Lives under the ratings, outside .loves (which hides itself
@@ -1875,7 +1976,8 @@
     </div>
 
     <!-- Engagement zone (below the lyrics): the global listener feed
-         when nothing is playing, this song's reflections when one is. -->
+         when nothing is playing, this song's comments when one is (the box
+         to write one is up in "Your thoughts matter"). -->
     <div class="engage" id="engage">
       <!-- Idle / opening: the global "Comments from listeners" feed -->
       <div class="panel-feed" id="panel-feed">
@@ -1887,22 +1989,7 @@
       </div>
 
       <div class="comments-wrap hidden" id="comments-wrap">
-        <div class="reflect-invite">
-          <div class="reflect-title">Share a reflection</div>
-          <div class="reflect-sub">Did this song stir something in you? Leave a few words. A single line is plenty.</div>
-        </div>
-        <form class="comment-form is-collapsed" id="comment-form">
-          <textarea id="comment-body" class="comment-textarea" placeholder="Write your reflection here…" maxlength="1000" aria-label="Your comment"></textarea>
-          <div class="comment-optnote">If you'd like to leave your name and/or location, feel free.</div>
-          <div class="comment-idrow">
-            <input type="text" id="comment-name" class="comment-input" placeholder="Name (optional)" maxlength="80" autocomplete="name" aria-label="Name (optional)">
-            <input type="text" id="comment-city" class="comment-input" placeholder="City (optional)" maxlength="80" autocomplete="address-level2" aria-label="City (optional)">
-          </div>
-          <div class="comment-formfoot">
-            <span class="comment-status" id="comment-status"></span>
-            <button type="submit" class="comment-submit" id="comment-submit">Share</button>
-          </div>
-        </form>
+        <h3 class="comments-h">Comments</h3>
         <div class="comments-list" id="comments-list"></div>
       </div>
     </div>
@@ -5230,8 +5317,8 @@ document.addEventListener('visibilitychange', () => { if(!document.hidden) flush
 // tracking path — GA4 events and the increment_play_count / toggle_like /
 // toggle_love / rate_song RPCs — is a no-op, so browser verification never
 // reaches the database or analytics. NOTE: the guard sits AFTER the optimistic
-// local update in each toggle, not before it, so the three loves and the
-// rating stars still visibly change on screen with the flag on -- only the
+// local update in each toggle, not before it, so the heart and the rating
+// V's still visibly change on screen with the flag on -- only the
 // outbound call is skipped. See the README "Testing" section.
 function noTrack(){ try{ return localStorage.getItem('laivy-no-track') === '1'; }catch(e){ return false; } }
 
@@ -5399,31 +5486,6 @@ const RATING_FACETS = [
   { facet: 'music', en: 'The music' },
 ];
 
-/* Facet icons. DECORATIVE ONLY: aria-hidden so a screen reader skips them (the
-   text label already carries the meaning), no wrapper, no handler, and
-   pointer-events:none in the stylesheet. Freestanding glyphs with no circle,
-   badge or ring -- a circle sitting next to a row of tappable stars reads as a
-   button, which is exactly the confusion to avoid.
-
-   The quill is the original one, lifted unchanged from the love button this row
-   replaced in 1A-6. The music facet used to be an equalizer; this is a new
-   eighth note drawn to match the quill -- same 24x24 box, fill:none,
-   stroke:currentColor, 1.7 width, round caps and joins -- so the pair reads as
-   one set. The note HEAD is the single filled element: an outlined head at this
-   size reads as a ring, not a note. currentColor throughout, so both follow the
-   palette in all four themes and both lightings. */
-const FACET_ICONS = {
-  words: '<svg class="rating-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-       + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
-       + '<path d="M4 20c0-5 2.2-9.3 5.9-12.1C12.6 5.8 16 4.7 20 4.4c-.2 4-1.3 7.4-3.4 10.1C13.7 18.1 9.3 20 4.4 20"/>'
-       + '<path d="M4 20c1.9-2.6 4.3-4.8 7.1-6.4"/>'
-       + '<path d="M14.5 10.2c-1.7.8-3.2 1.9-4.4 3.4"/></svg>',
-  music: '<svg class="rating-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"'
-       + ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
-       + '<path d="M11.4 17.2V4.6c3.4.8 5 2.6 4.7 5.4"/>'
-       + '<ellipse cx="8.2" cy="17.4" rx="3.3" ry="2.6" transform="rotate(-22 8.2 17.4)"'
-       + ' fill="currentColor" stroke="none"/></svg>',
-};
 let MIN_RATINGS = 5;              // refreshed from site_settings on load
 let myRatings = {};               // { '<songId>:<facet>': score } for this account
 
@@ -5446,7 +5508,7 @@ async function loadMyRatings(songId){
       .from('ratings').select('facet, score').eq('song_id', songId);
     if(error) throw error;
     (data || []).forEach(r => { myRatings[songId + ':' + r.facet] = r.score; });
-  }catch(e){ /* leave the stars empty rather than guessing */ }
+  }catch(e){ /* leave the V's empty rather than guessing */ }
 }
 
 function facetAverage(s, facet){
@@ -5456,41 +5518,55 @@ function facetAverage(s, facet){
   return (sum / n).toFixed(1);
 }
 
-function starSvg(filled){
-  return `<svg viewBox="0 0 24 24" aria-hidden="true" class="star-ic${filled ? ' is-on' : ''}">`
-       + `<path d="M12 2.6l2.9 5.9 6.5.9-4.7 4.6 1.1 6.4L12 17.4 6.2 20.4l1.1-6.4L2.6 9.4l6.5-.9z"/></svg>`;
-}
+// RATE-2: a rating V, both states drawn; the button's is-on class shows one.
+const V_GLYPHS = '<svg class="v-ic v-off" aria-hidden="true" focusable="false"><use href="#v-outline"/></svg>'
+  + '<svg class="v-ic v-on" aria-hidden="true" focusable="false"><use href="#v-fill"/></svg>';
 
+/* One row per facet: the label, then a radiogroup of five V's filled up to
+   the rater's own score. Roving tabindex: one V in the row is in the tab
+   order (the checked one, else the first); the arrow keys move along it. */
 function ratingRowHTML(s, cfg){
   const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
   const mine = myRatings[s.id + ':' + cfg.facet] || 0;
-  const avg = facetAverage(s, cfg.facet);
-  const stars = [1,2,3,4,5].map(i =>
-    `<button class="star" type="button" data-facet="${cfg.facet}" data-score="${i}"
-       aria-label="${i} of 5 for ${escHtml(cfg.en.toLowerCase())}">${starSvg(i <= mine)}</button>`
+  const avg = signedIn ? facetAverage(s, cfg.facet) : null;
+  const what = cfg.en.toLowerCase();
+  const vs = [1,2,3,4,5].map(i =>
+    `<button class="vbtn${i <= mine ? ' is-on' : ''}" type="button" role="radio" data-facet="${cfg.facet}" data-score="${i}"
+       aria-checked="${i === mine ? 'true' : 'false'}" tabindex="${i === (mine || 1) ? 0 : -1}"
+       aria-label="${i} of 5">${V_GLYPHS}</button>`
   ).join('');
-  // Never the count: either the average, or a line that says "not yet".
-  const note = avg
-    ? `<span class="rating-avg">${avg} / 5</span>`
-    : `<span class="rating-note">Rated by a few listeners so far</span>`;
-  // Icon and label travel together as one flex item, so a narrow dock can wrap
-  // the row without ever stranding a glyph from the words it labels.
-  return `<div class="rating-row${signedIn ? '' : ' is-locked'}" data-facet="${cfg.facet}">
-      <span class="rating-head">${FACET_ICONS[cfg.facet] || ''}<span class="rating-label">${escHtml(cfg.en)}</span></span>
-      <span class="rating-stars">${stars}</span>
-      ${signedIn ? note : `<span class="rating-note">Sign in to rate</span>`}
+  // Never the count: the average once there are enough ratings, else nothing
+  // here (the one muted line under the rows says "not yet").
+  return `<div class="vrow${signedIn ? '' : ' is-locked'}" data-facet="${cfg.facet}">
+      <span class="vrow-label">${escHtml(cfg.en)}</span>
+      <span class="vrow-vals">
+        <span class="vgroup" role="radiogroup" aria-label="Rate ${escHtml(what)}, 1 to 5">${vs}</span>
+        ${avg ? `<span class="rating-avg">${avg} / 5</span>` : ''}
+      </span>
     </div>`;
 }
 
 function paintRatings(){
   const host = document.getElementById('rating-rows');
+  const note = document.getElementById('thoughts-note');
   if(!host) return;
-  if(currentIdx === null || !SONGS[currentIdx]){ host.innerHTML = ''; return; }
+  if(currentIdx === null || !SONGS[currentIdx]){ host.innerHTML = ''; if(note) note.textContent = ''; return; }
   const s = SONGS[currentIdx];
+  // Repainting replaces the buttons; keep keyboard focus on the same V.
+  const f = document.activeElement;
+  const had = f && f.classList && f.classList.contains('vbtn') ? f.dataset.facet : null;
   host.innerHTML = RATING_FACETS.map(cfg => ratingRowHTML(s, cfg)).join('');
-  const msg = document.createElement('div');
-  msg.className = 'rating-msg'; msg.id = 'rating-msg'; msg.hidden = true;
-  host.appendChild(msg);
+  if(had){
+    const mine = myRatings[s.id + ':' + had] || 0;
+    const to = host.querySelector(`.vbtn[data-facet="${had}"][data-score="${mine || Number(f.dataset.score) || 1}"]`);
+    if(to) to.focus({ preventScroll: true });
+  }
+  // One muted line for all the rows: "not yet" while any average is still
+  // withheld, and the sign-in prompt for a signed-out visitor.
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  const withheld = RATING_FACETS.some(cfg => !facetAverage(s, cfg.facet));
+  if(note) note.textContent = [withheld ? 'Rated by a few listeners so far' : '', signedIn ? '' : 'Sign in to rate']
+    .filter(Boolean).join(' · ');
 }
 
 let ratingMessageTimer = null;
@@ -5506,40 +5582,47 @@ function ratingMessage(text, bad){
   if(text) ratingMessageTimer = setTimeout(() => ratingMessage(''), 5000);
 }
 
-/* One delegated handler for every star. Signed out opens the sign-in modal;
-   otherwise rate_song() is called and ITS message is what the visitor sees --
-   "You cannot rate your own song" and so on. The stars are deliberately not
-   pre-disabled for the signed-out case: a disabled control that does not say
-   why is worse than a tap that explains. */
-document.addEventListener('click', async (e) => {
-  const star = e.target.closest && e.target.closest('.star');
-  if(!star) return;
-  e.preventDefault(); e.stopPropagation();
+/* One rate path for a tap and for the arrow keys. Signed out opens the
+   sign-in modal; otherwise the V's fill at once (optimistic, like the heart)
+   and rate_song() is called -- ITS message is what the visitor sees ("You
+   cannot rate your own song" and so on), and a rejection puts the row back.
+   A tap sends at once; the arrow keys send once they settle, so stepping
+   from 1 to 5 is one call, not four. The V's are deliberately not
+   pre-disabled for the signed-out case: a disabled control that does not
+   say why is worse than a tap that explains. */
+const RATE_SETTLE_MS = 700;
+const pendingRates = {};          // '<songId>:<facet>' -> { song, prev, timer }
+function askSignInToRate(){
+  // FIX-3: no optimistic change at all here -- the V's stay exactly as they
+  // were. The modal explains why and returns here after sign-in.
+  if(window.laivy && window.laivy.accountUI){
+    window.laivy.accountUI.openModal({
+      next: location.pathname,
+      reason: 'Sign in to rate the words and the music',
+    });
+  }
+}
+function rateFacet(facet, score, settle){
   if(currentIdx === null || !SONGS[currentIdx]) return;
   const s = SONGS[currentIdx];
-  const facet = star.dataset.facet;
-  const score = Number(star.dataset.score);
-
-  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
-  if(!signedIn){
-    // FIX-3: no optimistic change at all here -- the stars stay exactly as
-    // they were. The modal explains why and returns here after sign-in.
-    if(window.laivy && window.laivy.accountUI){
-      window.laivy.accountUI.openModal({
-        next: location.pathname,
-        reason: 'Sign in to rate the words and the music',
-      });
-    }
-    return;
-  }
+  const key = s.id + ':' + facet;
   ratingMessage('');
-  const prev = myRatings[s.id + ':' + facet] || 0;
-  myRatings[s.id + ':' + facet] = score;     // optimistic, like the heart
+  const p = pendingRates[key] || (pendingRates[key] = { song: s, prev: myRatings[key] || 0, timer: null });
+  myRatings[key] = score;
   paintRatings();
-  // Do-not-track stops here, exactly like the heart: the stars have already
+  // Do-not-track stops here, exactly like the heart: the V's have already
   // updated on screen, which is what a test needs to be able to check, and
   // only the RPC that would reach the real database is skipped.
-  if(noTrack()) return;
+  if(noTrack()){ delete pendingRates[key]; return; }
+  clearTimeout(p.timer);
+  if(settle) p.timer = setTimeout(() => sendRating(key, facet), RATE_SETTLE_MS);
+  else sendRating(key, facet);
+}
+async function sendRating(key, facet){
+  const p = pendingRates[key];
+  if(!p) return;
+  delete pendingRates[key];
+  const s = p.song, prev = p.prev, score = myRatings[key];
   try{
     const { error } = await supabaseClient.rpc('rate_song', {
       p_song: s.id, p_facet: facet, p_score: score,
@@ -5554,42 +5637,66 @@ document.addEventListener('click', async (e) => {
     else { s[nKey] = (s[nKey] || 0) + 1; s[sKey] = (s[sKey] || 0) + score; }
     paintRatings();
   }catch(err){
-    if(prev) myRatings[s.id + ':' + facet] = prev;
-    else delete myRatings[s.id + ':' + facet];
+    if(prev) myRatings[key] = prev;
+    else delete myRatings[key];
     paintRatings();
     ratingMessage((err && err.message) || 'Could not save that rating.', true);
   }
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest && e.target.closest('.vbtn');
+  if(!v) return;
+  e.preventDefault(); e.stopPropagation();
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  if(!signedIn){ askSignInToRate(); return; }
+  rateFacet(v.dataset.facet, Number(v.dataset.score), false);
+});
+// Arrow keys along a row (radiogroup): right/up one more, left/down one
+// less, Home 1, End 5. Signed out they only move the focus; Enter or Space
+// there still asks for sign-in, through the click above.
+document.addEventListener('keydown', (e) => {
+  const v = e.target.closest && e.target.closest('.vbtn');
+  if(!v) return;
+  const cur = Number(v.dataset.score);
+  const to = { ArrowRight: cur + 1, ArrowUp: cur + 1, ArrowLeft: cur - 1, ArrowDown: cur - 1, Home: 1, End: 5 }[e.key];
+  if(to === undefined) return;
+  e.preventDefault();
+  const score = Math.max(1, Math.min(5, to));
+  const signedIn = !!(window.laivy && window.laivy.auth && window.laivy.auth.user);
+  if(signedIn){ rateFacet(v.dataset.facet, score, true); return; }
+  const row = v.closest('.vgroup');
+  const next = row && row.querySelector(`.vbtn[data-score="${score}"]`);
+  if(next){ row.querySelectorAll('.vbtn').forEach(b => b.tabIndex = b === next ? 0 : -1); next.focus(); }
 });
 
-/* HOVER PREVIEW, delegated the same way the click is. The star under the
-   pointer and every star before it fill solid while the pointer is over them,
-   which is what every star rating in the world does and is the clearest way to
-   say "these are tappable". data-preview on the container carries the
-   position; the CSS does the filling, and only inside @media (hover:hover) so
-   a touch device never gets a stuck preview from a tap.
+/* HOVER PREVIEW, delegated the same way the click is. The V under the
+   pointer and every V before it fill while the pointer is over them, the
+   clearest way to say "these are tappable". data-preview on the group carries
+   the position; the CSS does the filling, and only inside @media (hover:hover)
+   so a touch device never gets a stuck preview from a tap.
 
    Not done in pure CSS because the CSS-only version of "this one and the ones
-   before it" needs the stars laid out in reverse DOM order with row-reverse,
-   which would make the keyboard tab order run 5,4,3,2,1. */
+   before it" needs the V's laid out in reverse DOM order with row-reverse,
+   which would make the keyboard order run 5,4,3,2,1. */
 document.addEventListener('mouseover', (e) => {
-  const star = e.target.closest && e.target.closest('.star');
-  if(!star) return;
-  const row = star.closest('.rating-row');
+  const v = e.target.closest && e.target.closest('.vbtn');
+  if(!v) return;
+  const row = v.closest('.vrow');
   if(row && row.classList.contains('is-locked')) return;   // signed out: no preview
-  const wrap = star.closest('.rating-stars');
-  if(wrap) wrap.dataset.preview = star.dataset.score;
+  const wrap = v.closest('.vgroup');
+  if(wrap) wrap.dataset.preview = v.dataset.score;
 });
 
 document.addEventListener('mouseout', (e) => {
-  const wrap = e.target.closest && e.target.closest('.rating-stars');
+  const wrap = e.target.closest && e.target.closest('.vgroup');
   if(!wrap) return;
-  // Moving between two stars inside the same row is not a leave.
+  // Moving between two V's inside the same row is not a leave.
   const to = e.relatedTarget;
   if(to && wrap.contains(to)) return;
   delete wrap.dataset.preview;
 });
 
-// The rater's stars follow them between songs and across a sign-in.
+// The rater's V's follow them between songs and across a sign-in.
 window.addEventListener('laivy:auth', () => {
   myRatings = {};
   if(currentIdx !== null && SONGS[currentIdx]){
@@ -5623,10 +5730,11 @@ const LOVES_DEBUG = (() => {
 })();
 
 // Read the state the STYLESHEET actually paints, not the class the handler
-// sets: the two are what diverge when a button toggles but never lights. The
-// stylesheet fills .love-btn.on .love-ic with var(--accent-grad), so an "on"
-// circle must compute to a gradient background. Returns null where there is no
-// CSS engine to ask (a headless DOM), so the check reports SKIP, not FAIL.
+// sets: the two are what diverge when a button toggles but never lights.
+// RATE-2: an "on" heart shows the solid V (.v-on) and hides the outline one.
+// The gradient check below is only the calibration: it asks whether this
+// environment can resolve the cascade at all (a headless DOM cannot), so the
+// paint checks report SKIP, not FAIL, there.
 function isGradientFilled(el){
   if(!el || typeof getComputedStyle !== 'function') return false;
   try{
@@ -5642,9 +5750,10 @@ function cssEngineAnswers(){
   return isGradientFilled(document.querySelector('.share-invite-ic'));
 }
 function paintedOn(btn){
-  return isGradientFilled(btn && btn.querySelector('.love-ic'));
+  const on = btn && btn.querySelector('.v-on');
+  return !!on && getComputedStyle(on).display !== 'none';
 }
-const settleForPaint = () => new Promise(r => setTimeout(r, 320));   // let the 0.2s transition land
+const settleForPaint = () => new Promise(r => setTimeout(r, 320));   // let the pulse land
 
 async function lovesSelfTest(){
   const lines = [];
@@ -5668,7 +5777,7 @@ async function lovesSelfTest(){
   flushEventQueue = async () => {};
 
   try{
-    // The words and the music are star ratings since 1A-6; the heart is the
+    // The words and the music are ratings since 1A-6; the heart is the
     // only remaining one-tap love, so it is the only one this test drives.
     for(const kind of ['song']){
       queued = [];
@@ -5739,7 +5848,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
   // Since 1A-6 the heart is the only one-tap love left in the dock: the words
-  // and the music are star ratings, rendered separately below. toggle_love()
+  // and the music are 1-to-5 ratings, rendered separately. toggle_love()
   // is no longer called from the client for either facet. The RPC and the
   // like_lyrics_count / like_tune_count columns stay for history and for the
   // admin's read-only split.
@@ -5750,8 +5859,8 @@ document.addEventListener('click', (e) => {
 });
 
 /* ============================================================
-   Reflections (comments): post as pending, read only approved.
-   Tied to the currently playing song, shown under the lyrics.
+   Comments: post as pending, read only approved. Tied to the currently
+   playing song: written in "Your thoughts matter", listed under the lyrics.
    ============================================================ */
 function fmtCommentDate(iso){
   try{ return new Date(iso).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' }); }
@@ -5780,7 +5889,7 @@ async function loadMemberHandles(ids){
 function renderCommentList(rows, handleMap){
   const list = document.getElementById('comments-list');
   if(!rows || rows.length === 0){
-    list.innerHTML = `<div class="comments-empty">No reflections yet. Be the first to share one.</div>`;
+    list.innerHTML = `<div class="comments-empty">No comments yet. Be the first to share one.</div>`;
     return;
   }
   list.innerHTML = rows.map(c => {
@@ -5804,7 +5913,8 @@ async function loadComments(){
   // Fresh form state for the new song: collapse to the compact prompt.
   const status = document.getElementById('comment-status');
   status.textContent = ''; status.className = 'comment-status';
-  document.getElementById('comment-body').value = '';
+  const bodyEl = document.getElementById('comment-body');
+  bodyEl.value = ''; bodyEl.style.height = ''; bodyEl.style.minHeight = '';
   document.getElementById('comment-form').classList.add('is-collapsed');
   const list = document.getElementById('comments-list');
   list.innerHTML = `<div class="comments-empty">Loading…</div>`;
@@ -5816,7 +5926,7 @@ async function loadComments(){
     .order('created_at', { ascending: false });
   // Ignore if the visitor switched songs while this was in flight.
   if(currentIdx === null || SONGS[currentIdx].id !== reqId) return;
-  if(error){ list.innerHTML = `<div class="comments-empty">Couldn't load reflections right now.</div>`; return; }
+  if(error){ list.innerHTML = `<div class="comments-empty">Couldn't load comments right now.</div>`; return; }
   const handleMap = await loadMemberHandles(data.map(c => c.artist_id));
   if(currentIdx === null || SONGS[currentIdx].id !== reqId) return;
   renderCommentList(data, handleMap);
@@ -5845,7 +5955,7 @@ document.getElementById('comment-form').addEventListener('submit', async (e) => 
     status.className = 'comment-status err';
     return;
   }
-  bodyEl.value = '';
+  bodyEl.value = ''; bodyEl.style.height = '';
   status.textContent = 'Thanks! Your comment is awaiting approval.';
   status.className = 'comment-status ok';
   logActivity('comment', { song_id: song.id, artist_id: song.artist_id });
@@ -5854,7 +5964,23 @@ document.getElementById('comment-form').addEventListener('submit', async (e) => 
 // leaves an empty form (keeps the panel calm but always inviting).
 (function(){
   const form = document.getElementById('comment-form');
-  form.addEventListener('focusin', () => form.classList.remove('is-collapsed'));
+  // RATE-2: stacked (phones), the ~2-row field grows as the visitor types.
+  // Side by side it already fills its column, so it is left to the grid.
+  const bodyEl = document.getElementById('comment-body');
+  const help = form.querySelector('.comment-help');
+  bodyEl.addEventListener('input', () => {
+    if(getComputedStyle(help).display !== 'none'){ bodyEl.style.height = ''; return; }
+    bodyEl.style.height = 'auto';
+    bodyEl.style.height = (bodyEl.scrollHeight + 2) + 'px';
+  });
+  form.addEventListener('focusin', () => {
+    // Side by side, the field keeps the height it has beside the ratings
+    // while name and city unfold under it.
+    if(form.classList.contains('is-collapsed') && getComputedStyle(help).display !== 'none'){
+      bodyEl.style.minHeight = bodyEl.getBoundingClientRect().height + 'px';
+    }
+    form.classList.remove('is-collapsed');
+  });
   form.addEventListener('focusout', () => {
     setTimeout(() => {
       if(form.contains(document.activeElement)) return; // focus moved within the form
@@ -5862,7 +5988,7 @@ document.getElementById('comment-form').addEventListener('submit', async (e) => 
       const name = document.getElementById('comment-name').value.trim();
       const city = document.getElementById('comment-city').value.trim();
       const status = document.getElementById('comment-status').textContent.trim();
-      if(!body && !name && !city && !status) form.classList.add('is-collapsed');
+      if(!body && !name && !city && !status){ form.classList.add('is-collapsed'); bodyEl.style.minHeight = ''; }
     }, 120);
   });
 })();
@@ -5895,7 +6021,7 @@ async function loadFeed(){
     .order('created_at', { ascending: false });
   if(error){ lists.forEach(el => el.innerHTML = `<div class="feed-empty">Couldn't load comments right now.</div>`); return; }
   if(!data || data.length === 0){
-    lists.forEach(el => el.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share a reflection.</div>`);
+    lists.forEach(el => el.innerHTML = `<div class="feed-empty">No comments yet. Be the first to share one.</div>`);
     return;
   }
   feedData = data;
@@ -6898,6 +7024,50 @@ function dedShowSuccess(song, code, occasion, recipient, message, anonymous, oth
   if(stripBtn) stripBtn.addEventListener('click', openDedicateModal);
 })();
 
+/* RATE-2: the one-time Dedicate hint. The first time the Dedicate pill is
+   fully on screen on a song, a bubble above it says what it is for while the
+   pill glows softly for ~3s (no glow with reduced motion). Any tap dismisses
+   it, or it goes by itself after 6s; it is remembered in this browser and
+   never shown again. No storage, no hint. Never over an open dialog, and not
+   while the cover's control bar is in use. */
+(function(){
+  const KEY = 'laivy-ded-hint-v1';
+  const HINT_MS = 6000;
+  const pill = document.getElementById('now-dedicate-btn');
+  const hint = document.getElementById('ded-hint');
+  if(!pill || !hint || !('IntersectionObserver' in window)) return;
+  try{ if(localStorage.getItem(KEY) === '1') return; }catch(e){ return; }
+  let timer = null;
+  const dialogOpen = () => [...document.querySelectorAll('[role="dialog"], [aria-modal="true"]')]
+    .some(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
+  const barInUse = () => {
+    const b = document.getElementById('now-banner');
+    return !!b && (b.classList.contains('show-bar') || b.matches(':hover') || b.matches(':focus-within'));
+  };
+  function dismiss(){
+    clearTimeout(timer);
+    hint.hidden = true;
+    pill.classList.remove('is-hinting');
+    document.removeEventListener('pointerdown', dismiss, true);
+  }
+  const io = new IntersectionObserver((entries) => {
+    if(!entries.some(en => en.isIntersecting)) return;
+    if(currentIdx === null || dialogOpen() || barInUse()) return;
+    try{ localStorage.setItem(KEY, '1'); }catch(e){ return; }
+    io.disconnect();
+    // Aim the pointer at the middle of the pill (the bubble is right-aligned
+    // to the Dedicate + Share group).
+    const box = pill.parentElement.getBoundingClientRect(), p = pill.getBoundingClientRect();
+    hint.style.setProperty('--hint-arrow', Math.round(box.right - (p.left + p.width / 2)) + 'px');
+    hint.hidden = false;
+    pill.classList.add('is-hinting');
+    timer = setTimeout(dismiss, HINT_MS);
+    document.addEventListener('pointerdown', dismiss, true);
+  // Fully visible, with room above it for the bubble.
+  }, { threshold: 1, rootMargin: '-110px 0px 0px 0px' });
+  io.observe(pill);
+})();
+
 /* The latest 5 dedications of the currently playing song. Hidden entirely
    when there are none, same guarding style as the comments feed. */
 async function loadDedicationsStrip(){
@@ -7737,7 +7907,7 @@ async function renderDedicationPage(code){
       <button class="home-primary-btn outlined ded-page-share" type="button" id="ded-page-share-btn">Share</button>
       <a class="quiet-link ded-page-link" href="/song/${escHtml(d.song_slug || '')}">Go to the full song page</a>
       <div class="ded-page-cta">
-        <p>Dedicate a song to someone you love.</p>
+        <p>Dedicate a song to someone who deserves it.</p>
         <a class="home-primary-btn outlined" id="ded-page-cta-link" href="/listen">Browse the catalog</a>
       </div>
     </div>`;
