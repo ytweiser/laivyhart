@@ -1,8 +1,9 @@
 /* ============================================================
    SHARE-1 -- what a song or dedication share actually sends, through the
    real buttons: the song Share button (native sheet, and copy where there
-   is none), the dedication success pane ("Send on WhatsApp" / Copy /
-   Share) and the /d/<code> page's Share button.
+   is none), the dedication success pane ("Send on WhatsApp" / Copy link /
+   More options, SEND-1's own wording below) and the /d/<code> page's
+   Share button.
 
    Song: note + title as the song page shows it + ", by <artist>", the
    inspiration in quotes (cut at a sentence, or a word, with "…" past ~280
@@ -129,7 +130,7 @@ async function scenarioSongs(browser, port, r) {
   // WhatsApp-style encoding of a song share (Hebrew, quotes, line breaks, the note).
   const { page, errors } = await setup(browser, port, 'copy', { songs });
   await openSong(page, port, HEB.slug);
-  const enc = await page.evaluate(() => { const p = songSharePayload(SONGS[currentIdx]); return { wa: shareWhatsAppUrl(p), full: shareFullText(p) }; });
+  const enc = await page.evaluate(() => { const p = songSharePayload(SONGS[currentIdx]); return { wa: 'https://wa.me/?text=' + encodeURIComponent(shareFullText(p)), full: shareFullText(p) }; });
   const back = decodeURIComponent(enc.wa.replace('https://wa.me/?text=', ''));
   r.check('[Hebrew song] wa.me text decodes back exactly (Hebrew, quotes, line breaks, note survive)',
     back === enc.full && enc.wa.includes('%0A') && enc.wa.includes('%F0%9F%8E%B5') && /[֐-׿]/.test(back) && !/\s/.test(enc.wa), enc.wa);
@@ -204,60 +205,66 @@ async function scenarioDedicationTexts(browser, port, r) {
   await page.close();
 }
 
-async function scenarioDedicationSuccess(browser, port, r) {
-  r.section('"Send it to them" after creating a dedication: WhatsApp, Copy, Share');
+/* SEND-1: the success pane sends a message written TO the person:
+     "<sender> dedicated a song to you: <the form's own occasion line>",
+     the note + the song title, the message in quotes, "Listen here: <link>".
+   WhatsApp is a real wa.me link (no window.open after the save); Copy link
+   copies the link alone; the share sheet gets the same lines as `text` and
+   the link once, as `url`. */
+async function sendSuccess(browser, port, fill) {
   const { page, errors } = await setup(browser, port, 'native',
     { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH], createDedicationResult: 'ABCD2345' }, F.SESSION_USERS.NOVA);
   await openSong(page, port, SUPER.slug);
-  await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
   await page.click('#now-dedicate-btn');
   await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
-  await page.fill('#dedicate-recipient', 'אמא Mom');
-  await page.selectOption('#dedicate-occasion', 'birthday');
-  await page.fill('#dedicate-message', 'Love you, "always"!');
+  await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'dedicate-recipient', null, { timeout: 5000 });
+  await fill(page);
   await page.click('#dedicate-submit');
   await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
+  return { page, errors };
+}
+async function checkSend(r, tag, page, lines) {
   const url = `${SITE}/d/ABCD2345`;
-  const lines = [`${NOTE} Happy birthday, אמא Mom`, '“Love you, "always"!”', 'With love, Nova Ash'];
-  await page.click('#dedicate-whatsapp');
-  await page.waitForFunction(() => window.__opened.length > 0, null, { timeout: 5000 });
-  const wa = await page.evaluate(() => window.__opened[0]);
-  r.check('WhatsApp opens wa.me/?text=', wa.startsWith('https://wa.me/?text=') && !/\s/.test(wa), wa);
+  const wa = await page.evaluate(() => document.getElementById('dedicate-whatsapp').getAttribute('href'));
+  r.check(`${tag} WhatsApp is a real wa.me link`, wa.startsWith('https://wa.me/?text=') && !/\s/.test(wa), wa);
   const waText = decodeURIComponent(wa.slice('https://wa.me/?text='.length));
-  checkFull(r, '[WhatsApp]', waText, url, lines);
-  r.check('[WhatsApp] Hebrew, quotes, line breaks and the note survive encoding', wa.includes('%0A') && wa.includes('%22always%22') && wa.includes('%F0%9F%8E%B5') && /[֐-׿]/.test(waText));
-  const copied = await clipboardAfter(page, '#dedicate-copy');
-  r.check('[Copy] copies the same full text as WhatsApp', copied === waText, copied);
+  r.check(`${tag} [WhatsApp] lines exactly as expected`, JSON.stringify(waText.split('\n')) === JSON.stringify([...lines, 'Listen here: ' + url]), JSON.stringify(waText.split('\n')));
+  r.check(`${tag} [WhatsApp] one emoji, the note`, emojiCount(waText) === 1, waText);
+  r.check(`${tag} [Copy link] copies the link alone`, await clipboardAfter(page, '#dedicate-copy') === url);
   await page.click('#dedicate-native-share');
   await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
-  checkNative(r, '[Share]', await lastShared(page), url, lines);
+  const d = await lastShared(page);
+  r.check(`${tag} [More options] the same lines as text, the link once as url`,
+    d && d.url === url && d.text === [...lines, 'Listen here:'].join('\n') && !d.text.includes(url), JSON.stringify(d));
+  return waText;
+}
+
+async function scenarioDedicationSuccess(browser, port, r) {
+  r.section('SEND-1: send it to them after creating a dedication: WhatsApp, Copy link, More options');
+  const { page, errors } = await sendSuccess(browser, port, async (page) => {
+    await page.fill('#dedicate-recipient', 'אמא Mom');
+    await page.selectOption('#dedicate-occasion', 'birthday');
+    await page.fill('#dedicate-message', 'Love you, "always"!');
+  });
+  const waText = await checkSend(r, '[birthday]', page,
+    ['Nova Ash dedicated a song to you: a birthday song for אמא Mom', `${NOTE} Supernova`, '“Love you, "always"!”']);
+  const wa = await page.evaluate(() => document.getElementById('dedicate-whatsapp').getAttribute('href'));
+  r.check('[WhatsApp] Hebrew, quotes, line breaks and the note survive encoding', wa.includes('%0A') && wa.includes('%22always%22') && wa.includes('%F0%9F%8E%B5') && /[֐-׿]/.test(waText));
+  r.check('[WhatsApp] never the sender\'s email', !/nova@example\.test|@/.test(waText), waText);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }
 
 async function scenarioDedicationSuccessOther(browser, port, r) {
-  r.section('SHARE-1b: "Send it to them" for Something else carries the write-in (WhatsApp, Copy, Share)');
-  const { page, errors } = await setup(browser, port, 'native',
-    { selfArtistRow: F.SELF_ARTIST_ROWS[F.NOVA_ASH], createDedicationResult: 'ABCD2345' }, F.SESSION_USERS.NOVA);
-  await openSong(page, port, SUPER.slug);
-  await page.evaluate(() => { window.__opened = []; window.open = (u) => { window.__opened.push(u); return null; }; });
-  await page.click('#now-dedicate-btn');
-  await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
-  await page.fill('#dedicate-recipient', 'Dad');
-  await page.selectOption('#dedicate-occasion', 'other');
-  await page.fill('#dedicate-occasion-other', '  finishing Shas ');
-  await page.click('#dedicate-submit');
-  await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
-  const url = `${SITE}/d/ABCD2345`;
-  const lines = [`${NOTE} This one's for you, Dad: finishing Shas`, 'With love, Nova Ash'];
-  await page.click('#dedicate-whatsapp');
-  await page.waitForFunction(() => window.__opened.length > 0, null, { timeout: 5000 });
-  const waText = decodeURIComponent((await page.evaluate(() => window.__opened[0])).slice('https://wa.me/?text='.length));
-  checkFull(r, '[WhatsApp]', waText, url, lines);
-  r.check('[Copy] the same full text', await clipboardAfter(page, '#dedicate-copy') === waText);
-  await page.click('#dedicate-native-share');
-  await page.waitForFunction(() => window.__shared.length > 0, null, { timeout: 5000 });
-  checkNative(r, '[Share]', await lastShared(page), url, lines);
+  r.section('SEND-1: Something else carries the write-in; private sender shows as Someone');
+  const { page, errors } = await sendSuccess(browser, port, async (page) => {
+    await page.fill('#dedicate-recipient', 'Dad');
+    await page.selectOption('#dedicate-occasion', 'other');
+    await page.fill('#dedicate-occasion-other', '  finishing Shas ');
+    await page.check('#dedicate-anonymous');
+  });
+  await checkSend(r, '[Something else, private]', page,
+    ['Someone dedicated a song to you: a song for Dad: finishing Shas', `${NOTE} Supernova`]);
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
 }

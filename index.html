@@ -1585,7 +1585,47 @@
     font-size:0.92rem; color:var(--text-dim); line-height:1.5; min-height:1.4em;
   }
   #dedicate-submit{margin-top:1.1rem;}
-  .ded-share-actions{display:flex; flex-direction:column; gap:0.6rem; margin:1rem 0;}
+  /* SEND-1: the success pane. "Send on WhatsApp" is the one filled button,
+     48px+, on the --station-on pair (white clears 4.5:1 in every colour and
+     lighting); email, copy and the share sheet are outlined, 44px+, stacked
+     on a phone and one row on a wider screen. */
+  .ded-send{display:flex; flex-direction:column; gap:0.6rem; margin:1rem 0 0.6rem;}
+  .ded-send-more{display:flex; flex-direction:column; gap:0.6rem;}
+  .ded-send-btn{
+    display:flex; align-items:center; justify-content:center; gap:0.5rem; min-height:44px; padding:0 1rem;
+    border-radius:999px; border:1px solid var(--chip-border); background:none; color:var(--text); cursor:pointer;
+    font-family:var(--font-ui); font-size:0.92rem; font-weight:600; text-decoration:none; white-space:nowrap;
+  }
+  .ded-send-btn svg{width:1.15rem; height:1.15rem; flex-shrink:0;}
+  .ded-send-btn:hover{border-color:var(--accent-2);}
+  .ded-send-btn:focus-visible, .ded-email-send:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
+  .ded-send-btn[hidden]{display:none;}
+  .ded-send-btn.is-primary{
+    min-height:52px; border:0; color:#fff; font-size:1.02rem;
+    background:linear-gradient(135deg, var(--station-on-1), var(--station-on-2));
+    box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.3);
+  }
+  .ded-send-btn.is-primary svg{width:1.35rem; height:1.35rem;}
+  .ded-send-btn.is-primary:hover{filter:brightness(1.07);}
+  .ded-email{margin:0.2rem 0 0.4rem;}
+  .ded-email[hidden]{display:none;}
+  .ded-email-row{display:flex; gap:0.5rem;}
+  .ded-email-row .lv-input{flex:1; min-width:0; margin:0; min-height:44px;}
+  .ded-email-send{
+    min-height:44px; padding:0 1.2rem; border:0; border-radius:12px; cursor:pointer; flex-shrink:0;
+    background:linear-gradient(135deg, var(--station-on-1), var(--station-on-2)); color:#fff;
+    font-family:var(--font-ui); font-size:0.92rem; font-weight:600;
+  }
+  .ded-email-send:disabled{opacity:0.55; cursor:default;}
+  .ded-email-ok{font-family:var(--font-ui); font-size:0.88rem; color:var(--text); margin:0.5rem 0 0;}
+  .ded-email-ok[hidden]{display:none;}
+  .ded-success-foot{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:0.8rem;}
+  .ded-success-foot .quiet-link{display:inline-flex; align-items:center; min-height:44px;}
+  @media (min-width:560px){
+    .ded-sheet.is-success{max-width:32rem;}
+    .ded-send-more{flex-direction:row;}
+    .ded-send-more .ded-send-btn{flex:1 1 0; min-width:0; padding:0 0.5rem; font-size:0.88rem; gap:0.4rem;}
+  }
   @media (max-width:560px){
     .ded-modal-backdrop{align-items:flex-end; padding:0;}
     .ded-sheet{max-width:none; max-height:85vh; border-radius:18px 18px 0 0; padding:1.4rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));}
@@ -2264,15 +2304,46 @@
       <button class="lv-btn filled" id="dedicate-submit" type="button">Dedicate this song</button>
     </div>
 
+    <!-- SEND-1: saved, now send it. WhatsApp first, as a real link the
+         sender taps (phones block a window opened after the save itself);
+         email second (the address stays private, sql/031); copy link third;
+         the system share sheet where there is one. -->
     <div data-ded-pane="success" hidden>
-      <h2 class="ded-sheet-title">Your dedication is live.</h2>
+      <h2 class="ded-sheet-title" id="dedicate-success-title">Dedication saved</h2>
       <p class="lv-modal-sub" id="dedicate-success-sub"></p>
-      <div class="ded-share-actions">
-        <button class="lv-btn filled" id="dedicate-whatsapp" type="button">Send on WhatsApp</button>
-        <button class="lv-btn outlined" id="dedicate-copy" type="button">Copy link</button>
-        <button class="lv-btn outlined" id="dedicate-native-share" type="button" hidden>Share</button>
+      <div class="ded-send">
+        <a class="ded-send-btn is-primary" id="dedicate-whatsapp" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.5L3.5 20.5l1.5-4.2A8.5 8.5 0 1 1 20.5 11.6z"/><path d="M9.2 8.2c.2-.4.5-.5.8-.5h.5c.2 0 .4.1.5.4l.7 1.7c.1.2 0 .5-.1.6l-.5.6c-.1.2-.1.4 0 .6.6 1 1.4 1.8 2.4 2.4.2.1.4.1.6 0l.6-.5c.2-.1.4-.2.6-.1l1.7.7c.3.1.4.3.4.5v.5c0 .3-.2.6-.5.8-.6.4-1.5.6-2.4.3-2.3-.7-4.3-2.6-5-4.9-.3-.9-.1-1.8.3-2.4z"/></svg>
+          <span>Send on WhatsApp</span>
+        </a>
+        <div class="ded-send-more">
+          <button class="ded-send-btn" id="dedicate-email-toggle" type="button" aria-expanded="false" aria-controls="dedicate-email-form">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>
+            <span>Send by email</span>
+          </button>
+          <button class="ded-send-btn" id="dedicate-copy" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg>
+            <span id="dedicate-copy-text">Copy link</span>
+          </button>
+          <button class="ded-send-btn" id="dedicate-native-share" type="button" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6l6.8-4.2M8.6 13.4l6.8 4.2"/></svg>
+            <span>More options</span>
+          </button>
+        </div>
       </div>
-      <a class="quiet-link" id="dedicate-view-link" href="#">View your dedication page &rarr;</a>
+      <form class="ded-email" id="dedicate-email-form" hidden novalidate>
+        <label class="lv-label" for="dedicate-email">Their email</label>
+        <div class="ded-email-row">
+          <input class="lv-input" id="dedicate-email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="254" placeholder="name@email.com">
+          <button class="ded-email-send" id="dedicate-email-send" type="submit">Send</button>
+        </div>
+        <p class="lv-err" id="dedicate-email-err" role="alert" hidden></p>
+        <p class="ded-email-ok" id="dedicate-email-ok" role="status" hidden></p>
+      </form>
+      <div class="ded-success-foot">
+        <a class="quiet-link" id="dedicate-view-link" href="#">View your dedication page &rarr;</a>
+        <a class="quiet-link" id="dedicate-done" href="#">Done</a>
+      </div>
     </div>
   </div>
 </div>
@@ -6741,7 +6812,6 @@ function dedSharePayload(d){
   if(!d.anonymous && d.sender) lines.push(dedSenderLine(d.occasion, d.sender, false));
   return { title: headline, text: lines.join('\n'), url: dedShareUrl(d.code) };
 }
-function shareWhatsAppUrl(p){ return 'https://wa.me/?text=' + encodeURIComponent(shareFullText(p)); }
 async function shareCopy(p){
   const full = shareFullText(p);
   try{ await navigator.clipboard.writeText(full); laivyToast('Copied'); }
@@ -6897,6 +6967,7 @@ function openDedicateModalForSong(s){
   modal.querySelector('#dedicate-song-title').textContent = s.title || s.title_translit || '';
   modal.querySelector('[data-ded-pane="form"]').hidden = false;
   modal.querySelector('[data-ded-pane="success"]').hidden = true;
+  modal.querySelector('.ded-sheet').classList.remove('is-success');
   document.getElementById('dedicate-recipient').value = '';
   document.getElementById('dedicate-occasion').value = 'birthday';
   document.getElementById('dedicate-occasion-other').value = '';
@@ -6999,33 +7070,118 @@ function dedUpdateCounter(){
   });
 })();
 
+/* SEND-1: what goes to the person it is for, on WhatsApp and through the
+   share sheet. Never the sender's email: only their display name, or
+   "Someone" when they kept it private.
+     Dana dedicated a song to you: a birthday song for Sarah
+     🎵 Supernova
+     "Happy birthday, love you"
+     Listen here: https://laivyhart.com/d/ABCD2345
+   The occasion is the form preview's own line (dedLine), so the wording
+   matches what the sender saw. */
+function dedSendPayload(d){
+  const who = (!d.anonymous && d.sender) ? d.sender : 'Someone';
+  const line = dedLine(d.occasion, d.recipient || 'you', d.other);
+  const lines = [`${who} dedicated a song to you: ${line.charAt(0).toLowerCase()}${line.slice(1)}`];
+  if(d.songTitle) lines.push(SHARE_NOTE + ' ' + d.songTitle);
+  const msg = (d.message || '').trim();
+  if(msg) lines.push(quoteLine(msg));
+  const url = dedShareUrl(d.code);
+  return { title: 'A song was dedicated to you', text: lines.join('\n') + '\nListen here:', url,
+    full: lines.join('\n') + '\nListen here: ' + url };
+}
+function dedWhatsAppUrl(d){ return 'https://wa.me/?text=' + encodeURIComponent(dedSendPayload(d).full); }
+const DED_WORKER = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
+// The same shape check as the Worker and sql/031: something@host.tld.
+function dedEmailValid(e){ return e.length > 0 && e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e); }
+
 function dedShowSuccess(song, code, occasion, recipient, message, anonymous, other){
   const modal = document.getElementById('dedicate-modal');
   modal.querySelector('[data-ded-pane="form"]').hidden = true;
+  modal.querySelector('.ded-sheet').classList.add('is-success');
   const pane = modal.querySelector('[data-ded-pane="success"]');
   pane.hidden = false;
 
-  // SHARE-1: headline, the message, the sender line, then the link.
-  const p = dedSharePayload({ occasion, other, recipient, message, sender: dedMySenderName(), anonymous, code });
-  modal.querySelector('#dedicate-success-sub').textContent = `For this song's page, share the link below.`;
-  modal.querySelector('#dedicate-view-link').href = p.url;
+  const d = { occasion, other, recipient, message, anonymous, code, sender: dedMySenderName(), songTitle: songShareTitle(song) };
+  const p = dedSendPayload(d);
+  const track = (name) => laivyTrack(name, { song_id: song.id, dedication_code: code });
+  document.getElementById('dedicate-success-sub').textContent = `Now send it to ${recipient}.`;
+  document.getElementById('dedicate-view-link').href = p.url;
 
-  const waBtn = document.getElementById('dedicate-whatsapp');
-  waBtn.onclick = () => {
+  // A real link, so the tap itself opens WhatsApp (or wa.me in a tab).
+  const wa = document.getElementById('dedicate-whatsapp');
+  wa.href = dedWhatsAppUrl(d);
+  wa.onclick = () => {
+    track('dedication_whatsapp_tap');
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_whatsapp' } });
-    window.open(shareWhatsAppUrl(p), '_blank', 'noopener');
   };
-  const copyBtn = document.getElementById('dedicate-copy');
-  copyBtn.onclick = () => {
+
+  const copyText = document.getElementById('dedicate-copy-text');
+  copyText.textContent = 'Copy link';
+  document.getElementById('dedicate-copy').onclick = async () => {
+    track('dedication_copy_link');
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_copy' } });
-    shareCopy(p);
+    try{ await navigator.clipboard.writeText(p.url); }
+    catch(e){ window.prompt('Copy this link:', p.url); return; }
+    copyText.textContent = 'Copied';
+    clearTimeout(copyText._t);
+    copyText._t = setTimeout(() => { copyText.textContent = 'Copy link'; }, 2000);
   };
+
   const nativeBtn = document.getElementById('dedicate-native-share');
-  nativeBtn.hidden = !navigator.share;
+  nativeBtn.hidden = !(navigator.share && typeof navigator.share === 'function');
   nativeBtn.onclick = () => {
+    track('dedication_share_sheet');
     logActivity('share', { song_id: song.id, artist_id: song.artist_id, meta: { channel: 'dedication_native' } });
-    shareNative(p);
+    navigator.share({ title: p.title, text: p.text, url: p.url }).catch(() => { /* dismissed */ });
   };
+
+  // Email: revealed on tap, inside this same sheet.
+  const form = document.getElementById('dedicate-email-form');
+  const toggle = document.getElementById('dedicate-email-toggle');
+  const input = document.getElementById('dedicate-email');
+  const err = document.getElementById('dedicate-email-err');
+  const ok = document.getElementById('dedicate-email-ok');
+  const sendBtn = document.getElementById('dedicate-email-send');
+  form.hidden = true; toggle.setAttribute('aria-expanded', 'false');
+  input.value = ''; input.disabled = false; sendBtn.disabled = false;
+  err.hidden = true; ok.hidden = true;
+  const showErr = (t) => { err.textContent = t; err.hidden = !t; };
+  toggle.onclick = () => {
+    form.hidden = !form.hidden;
+    toggle.setAttribute('aria-expanded', form.hidden ? 'false' : 'true');
+    if(!form.hidden) setTimeout(() => { try{ input.focus(); }catch(e){} }, 30);
+  };
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const email = input.value.trim().toLowerCase();
+    showErr(''); ok.hidden = true;
+    if(!dedEmailValid(email)){ showErr('That doesn’t look like an email address.'); return; }
+    sendBtn.disabled = true;
+    let res = null, body = {};
+    try{
+      const { data } = await supabaseClient.auth.getSession();
+      const token = data && data.session && data.session.access_token;
+      if(!token) throw new Error('signed out');
+      res = await fetch(DED_WORKER + '/dedication/email', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, email }),
+      });
+      try{ body = await res.json(); }catch(e2){ body = {}; }
+    }catch(e2){ body = {}; }
+    laivyTrack('dedication_email_send', { song_id: song.id, dedication_code: code, status: body.status || 'error' });
+    if(body.status === 'sent'){
+      ok.textContent = `Sent to ${body.masked}`;
+      ok.hidden = false;
+      input.disabled = true;
+      return;     // one email per dedication: Send stays off
+    }
+    sendBtn.disabled = body.status === 'already_sent';
+    showErr(body.message || 'We couldn’t send that email just now. Your dedication is saved: send it on WhatsApp or copy the link instead.');
+  };
+
+  document.getElementById('dedicate-done').onclick = (e) => { e.preventDefault(); closeDedicateModal(); };
 }
 
 (function(){

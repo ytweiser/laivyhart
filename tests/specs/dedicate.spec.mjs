@@ -27,6 +27,9 @@ async function gotoSong(page, port, slug) {
 async function openDedicateSheet(page) {
   await page.click('#now-dedicate-btn');
   await page.waitForSelector('#dedicate-modal:not([hidden])', { timeout: 10000 });
+  // The sheet focuses "Who is it for?" 30ms after it opens; typing into
+  // another field before that lands would be moved there mid-fill.
+  await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'dedicate-recipient', null, { timeout: 5000 });
 }
 
 export async function run(browser, port) {
@@ -199,14 +202,7 @@ async function scenarioSuccessShareActions(browser, port, r) {
   const preview = await page.evaluate(() => document.getElementById('dedicate-preview').textContent);
   r.check('the live preview reads like the page: the line, then the sender line', preview === 'A birthday song for Mom. With love, Nova Ash.', preview);
 
-  // Block the real wa.me navigation; navigator.clipboard cannot be reassigned
-  // (it is a getter on the prototype), so the real API is used instead, with
-  // permission granted so it actually works headless.
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: `http://localhost:${port}` });
-  await page.evaluate(() => {
-    window.__opened = [];
-    window.open = (url) => { window.__opened.push(url); return null; };
-  });
 
   await page.click('#dedicate-submit');
   await page.waitForSelector('[data-ded-pane="success"]:not([hidden])', { timeout: 10000 });
@@ -214,30 +210,28 @@ async function scenarioSuccessShareActions(browser, port, r) {
   const after = await page.evaluate(() => ({
     formHidden: document.querySelector('[data-ded-pane="form"]').hidden,
     successHidden: document.querySelector('[data-ded-pane="success"]').hidden,
+    title: document.getElementById('dedicate-success-title').textContent,
+    sub: document.getElementById('dedicate-success-sub').textContent,
     viewLink: document.getElementById('dedicate-view-link').href,
-    waVisible: !document.getElementById('dedicate-whatsapp').hidden,
+    waTag: document.getElementById('dedicate-whatsapp').tagName,
+    wa: document.getElementById('dedicate-whatsapp').getAttribute('href'),
     copyVisible: !document.getElementById('dedicate-copy').hidden,
   }));
   r.check('sent request carries the right payload', shareCalls[0] && shareCalls[0].p_recipient_name === 'Mom' && shareCalls[0].p_occasion === 'birthday' && shareCalls[0].p_is_anonymous === false, JSON.stringify(shareCalls[0]));
   r.check('switches to the success pane', after.formHidden === true && after.successHidden === false, JSON.stringify(after));
+  r.check('SEND-1: "Dedication saved", then "Now send it to Mom."', after.title === 'Dedication saved' && after.sub === 'Now send it to Mom.', JSON.stringify(after));
   r.check('the view link points at the real dedication page', after.viewLink === 'https://laivyhart.com/d/ABCD2345', after.viewLink);
-  r.check('WhatsApp and Copy actions are both present', after.waVisible && after.copyVisible, JSON.stringify(after));
-
-  await page.click('#dedicate-whatsapp');
-  await page.waitForFunction(() => window.__opened.length > 0, { timeout: 10000 });
-  const opened = await page.evaluate(() => window.__opened[0]);
-  // SHARE-1: note + headline, the message in quotes, the sender line, the link.
-  const expectedText = '\u{1F3B5} Happy birthday, Mom\n\u201CLove you!\u201D\nWith love, Nova Ash\nhttps://laivyhart.com/d/ABCD2345';
-  r.check('WhatsApp opens wa.me with the exact expected text, URL-encoded', opened === 'https://wa.me/?text=' + encodeURIComponent(expectedText), opened);
+  // SEND-1: a real link the sender taps, to the person, not "about" them.
+  const expectedText = 'Nova Ash dedicated a song to you: a birthday song for Mom\n\u{1F3B5} Supernova\n“Love you!”\nListen here: https://laivyhart.com/d/ABCD2345';
+  r.check('WhatsApp is a link to wa.me with the exact expected text, URL-encoded', after.waTag === 'A' && after.wa === 'https://wa.me/?text=' + encodeURIComponent(expectedText), after.wa);
 
   await page.click('#dedicate-copy');
   await page.waitForFunction(
     async (expected) => { try { return (await navigator.clipboard.readText()) === expected; } catch (e) { return false; } },
-    expectedText,
+    'https://laivyhart.com/d/ABCD2345',
     { timeout: 10000 },
   );
-  const copied = await page.evaluate(() => navigator.clipboard.readText());
-  r.check('Copy link copies the same full text as WhatsApp', copied === expectedText, copied);
+  r.check('Copy link copies the dedication page link', true);
 
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();

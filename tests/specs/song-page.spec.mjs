@@ -198,7 +198,10 @@ async function scenarioNoLayoutShift(browser, port, r) {
   await page.waitForSelector('#now-artist .now-artist-row', { timeout: 10000 });
   // Measured right after the row exists but almost certainly before the
   // async follow-widget fetch has resolved -- the slot's reserved min-width
-  // (theme.css .follow-pill-slot) is what should keep this stable.
+  // (theme.css .follow-pill-slot) is what should keep this stable. Fonts
+  // first, so a web font landing between the two readings (a 2px shift
+  // under a loaded machine) is never mistaken for the pill moving it.
+  await page.evaluate(() => document.fonts.ready);
   const early = await page.evaluate(() => {
     const r = document.getElementById('now-badges').getBoundingClientRect();
     return { top: r.top, left: r.left };

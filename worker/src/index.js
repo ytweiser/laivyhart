@@ -717,6 +717,274 @@ export async function handleSongIdeaNotify(request, env, ctx, fetchImpl = fetch)
   return json({ ok: true, subject }, 200, origin);
 }
 
+/* ============================================================
+   SEND-1: POST /dedication/email -- email a dedication to the person it is
+   for, once. And GET/POST /unsubscribe -- that person's way out.
+
+   Signed-in senders only (the same JWKS check as the upload routes). Every
+   rule lives in the database, in claim_dedication_email() (sql/031): the
+   caller must own the dedication, the address must look like one, it must
+   not be on email_suppressions, and the limits (5 per sender per day, 1 per
+   sender to an address per 7 days, 3 per address per 7 days from everyone)
+   must allow it. Only then does this route send ONE email through Resend,
+   and finish_dedication_email() records sent or failed. A blocked or failed
+   send never touches the dedication itself; the sender is told plainly and
+   offered WhatsApp and Copy link instead. No open or click tracking: plain
+   links, no pixels.
+   ============================================================ */
+const SITE = 'https://laivyhart.com';
+const WORKER_ORIGIN = 'https://laivyhart-audio-upload.ytweiser-399.workers.dev';
+const DEDICATION_FROM = 'Laivy Hart <hello@laivyhart.com>';
+const DEDICATION_REPLY_TO = 'hello@laivyhart.com';
+export const DEDICATION_SUBJECT = 'A song was dedicated to you';
+
+// The same check sql/031's dedication_email_valid() makes, and the browser.
+export function dedicationEmailValid(email) {
+  const e = String(email || '').trim().toLowerCase();
+  return e.length > 0 && e.length <= 254 && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e);
+}
+// "n***@gmail.com": the first character of the name, the domain in full.
+export function maskEmail(email) {
+  const e = String(email || '').trim().toLowerCase();
+  const at = e.lastIndexOf('@');
+  if (at < 1) return '***';
+  return e[0] + '***' + e.slice(at);
+}
+
+/* The occasion line, the same phrase table as index.html's DED_OCCASION
+   `line` (and middleware.js's copy): a third copy because this runtime has
+   no shared module with either. dedication-send.spec.mjs checks that all
+   three agree for every occasion. */
+const DED_LINE = {
+  birthday: (n) => `A birthday song for ${n}`,
+  engagement: (n) => `A song for ${n}'s engagement`,
+  wedding: (n) => `A wedding song for ${n}`,
+  anniversary: (n) => `An anniversary song for ${n}`,
+  bar_mitzvah: (n) => `A Bar Mitzvah song for ${n}`,
+  bat_mitzvah: (n) => `A Bat Mitzvah song for ${n}`,
+  new_baby: (n) => `A song to welcome ${n}`,
+  bris: (n) => `A song for ${n}'s bris`,
+  upsherin: (n) => `A song for ${n}'s upsherin`,
+  graduation: (n) => `A graduation song for ${n}`,
+  siyum: (n) => `A song for ${n}'s siyum`,
+  new_job: (n) => `A song for ${n}'s new job`,
+  new_home: (n) => `A song for ${n}'s new home`,
+  aliyah: (n) => `A song for ${n}'s aliyah`,
+  retirement: (n) => `A song for ${n}'s retirement`,
+  refuah_shleimah: (n) => `A song wishing ${n} a refuah shleimah`,
+  encouragement: (n) => `A song to lift ${n}'s spirits`,
+  thank_you: (n) => `A thank-you song for ${n}`,
+  in_memory: (n) => `A song in memory of ${n}`,
+  just_because: (n) => `A song for ${n}, just because`,
+};
+export function dedicationLine(occasion, name, other) {
+  if (occasion === 'other') {
+    const t = String(other || '').trim().replace(/[.!?]+$/, '');
+    return t ? `A song for ${name}: ${t}` : `A song for ${name}`;
+  }
+  const fn = DED_LINE[occasion];
+  return fn ? fn(name) : `A song for ${name}`;
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function b64urlEncode(str) {
+  return btoa(String.fromCharCode(...new TextEncoder().encode(str)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(str) {
+  const bin = atob(String(str || '').replace(/-/g, '+').replace(/_/g, '/'));
+  return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+}
+/* The unsubscribe link is signed so nobody can suppress an address by
+   guessing URLs. The key is derived from the service-role secret this
+   Worker already holds (domain-separated by the prefix); no new secret. */
+async function unsubscribeSig(email, env) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode('laivyhart-unsubscribe:' + (env.SUPABASE_SERVICE_ROLE_KEY || '')),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(String(email).toLowerCase()));
+  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+export async function unsubscribeUrl(email, env) {
+  const e = String(email).toLowerCase();
+  return WORKER_ORIGIN + '/unsubscribe?e=' + b64urlEncode(e) + '&s=' + (await unsubscribeSig(e, env));
+}
+
+// d: what claim_dedication_email() returned.
+export async function buildDedicationEmail(d, to, env) {
+  const sender = d.sender_name || 'Someone';
+  const line = dedicationLine(d.occasion, d.recipient_name, d.occasion_other);
+  const link = SITE + '/d/' + encodeURIComponent(d.code);
+  const unsub = await unsubscribeUrl(to, env);
+  const cover = d.cover_url && /^https?:\/\//i.test(d.cover_url)
+    ? 'https://wsrv.nl/?url=' + encodeURIComponent(d.cover_url) + '&w=480&h=480&fit=cover&output=jpg&q=80'
+    : null;
+  const footer = 'Laivy Hart sent this one email for the person who dedicated the song. '
+    + 'We won\'t email you again unless someone else dedicates a song to you.';
+  const text = [
+    `Hi ${d.recipient_name},`,
+    '',
+    `${sender} dedicated a song to you. ${line}.`,
+    d.message ? `\n"${d.message}"\n` : '',
+    `The song: ${d.song_title}`,
+    '',
+    `Listen to your song: ${link}`,
+    '',
+    '--',
+    footer,
+    `Unsubscribe: ${unsub}`,
+    'hello@laivyhart.com',
+  ].filter((x, i, a) => !(x === '' && a[i - 1] === '')).join('\n');
+  const html = `<!doctype html><html><body style="margin:0;background:#f6f2ea;font-family:Georgia,'Times New Roman',serif;color:#2a1018;">
+<div style="max-width:520px;margin:0 auto;padding:28px 22px;">
+  <p style="font-size:17px;margin:0 0 14px;">Hi ${escHtml(d.recipient_name)},</p>
+  <p style="font-size:19px;line-height:1.45;margin:0 0 6px;"><strong>${escHtml(sender)}</strong> dedicated a song to you.</p>
+  <p style="font-size:16px;line-height:1.45;margin:0 0 16px;color:#5a3a44;">${escHtml(line)}.</p>
+  ${d.message ? `<p style="font-size:17px;line-height:1.55;font-style:italic;margin:0 0 18px;padding-left:12px;border-left:3px solid #c9a24a;">&ldquo;${escHtml(d.message)}&rdquo;</p>` : ''}
+  ${cover ? `<img src="${escHtml(cover)}" width="240" height="240" alt="${escHtml(d.song_title)} cover art" style="display:block;width:240px;height:240px;border-radius:12px;margin:0 0 10px;">` : ''}
+  <p style="font-size:16px;margin:0 0 20px;">${escHtml(d.song_title)}</p>
+  <p style="margin:0 0 30px;"><a href="${escHtml(link)}" style="display:inline-block;background:#8A2546;color:#ffffff;text-decoration:none;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:16px;padding:13px 24px;border-radius:999px;">Listen to your song</a></p>
+  <p style="font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#7a6470;margin:0;">${escHtml(footer)}<br>
+  <a href="${escHtml(unsub)}" style="color:#7a6470;">Unsubscribe</a> &middot; <a href="mailto:hello@laivyhart.com" style="color:#7a6470;">hello@laivyhart.com</a></p>
+</div></body></html>`;
+  return { subject: DEDICATION_SUBJECT, text, html, link, unsubscribe: unsub };
+}
+
+// What the sender sees for each outcome.
+export const DEDICATION_EMAIL_MESSAGES = {
+  suppressed: 'We couldn\'t email them, but you can send them the link instead.',
+  sender_daily: 'You\'ve sent 5 dedication emails today, the most we send in a day. Your dedication is saved: send it on WhatsApp or copy the link instead.',
+  same_address_week: 'You already emailed this address a dedication this week. Your dedication is saved: send it on WhatsApp or copy the link instead.',
+  address_week: 'We can\'t email this address again this week. Your dedication is saved: send it on WhatsApp or copy the link instead.',
+  failed: 'We couldn\'t send that email just now. Your dedication is saved: send it on WhatsApp or copy the link instead.',
+  already_sent: 'This dedication has already been emailed.',
+  invalid: 'That doesn\'t look like an email address.',
+};
+
+export async function handleDedicationEmail(request, env, ctx, fetchImpl = fetch) {
+  const origin = request.headers.get('Origin');
+  if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
+  const hdr = request.headers.get('Authorization') || '';
+  const jwt = hdr.startsWith('Bearer ') ? hdr.slice(7) : hdr;
+  let sub;
+  try { sub = await verifySupabaseJwt(jwt, env); }
+  catch (e) { return json({ error: 'Unauthorized: ' + (e && e.message) }, 401, origin); }
+
+  let body;
+  try { body = await request.json(); } catch (e) { return json({ error: 'Invalid JSON body' }, 400, origin); }
+  const code = body && typeof body.code === 'string' ? body.code.trim() : '';
+  const email = body && typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  if (!/^[A-Z0-9]{6,12}$/.test(code)) return json({ error: 'Missing or invalid dedication code' }, 400, origin);
+  if (!dedicationEmailValid(email)) {
+    return json({ status: 'invalid', message: DEDICATION_EMAIL_MESSAGES.invalid }, 400, origin);
+  }
+  if (!env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('dedication email: SUPABASE_SERVICE_ROLE_KEY not set');
+    return json({ error: 'Service role key not configured' }, 500, origin);
+  }
+  const svc = {
+    apikey: env.SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY,
+    'Content-Type': 'application/json',
+  };
+  const rpc = async (name, args) => {
+    const res = await fetchImpl(SUPABASE_URL + '/rest/v1/rpc/' + name, { method: 'POST', headers: svc, body: JSON.stringify(args) });
+    if (!res.ok) throw new Error(name + ' HTTP ' + res.status);
+    const t = await res.text();
+    return t ? JSON.parse(t) : null;
+  };
+
+  let claim;
+  try { claim = await rpc('claim_dedication_email', { p_code: code, p_sender: sub, p_email: email }); }
+  catch (e) {
+    console.error('dedication email: claim failed', code, e && e.message);
+    return json({ status: 'failed', message: DEDICATION_EMAIL_MESSAGES.failed }, 502, origin);
+  }
+  const status = claim && claim.status;
+  if (status === 'not_found') return json({ error: 'Dedication not found' }, 404, origin);
+  if (status === 'not_owner') return json({ error: 'That dedication is not yours' }, 403, origin);
+  if (status === 'invalid') return json({ status, message: DEDICATION_EMAIL_MESSAGES.invalid }, 400, origin);
+  if (status === 'already_sent') return json({ status, message: DEDICATION_EMAIL_MESSAGES.already_sent }, 409, origin);
+  if (status === 'suppressed') return json({ status, message: DEDICATION_EMAIL_MESSAGES.suppressed }, 200, origin);
+  if (status === 'rate_limited') {
+    return json({ status, limit: claim.limit, message: DEDICATION_EMAIL_MESSAGES[claim.limit] || DEDICATION_EMAIL_MESSAGES.address_week }, 429, origin);
+  }
+  if (status !== 'ok') return json({ status: 'failed', message: DEDICATION_EMAIL_MESSAGES.failed }, 502, origin);
+
+  let sent = false;
+  try {
+    if (!env.RESEND_API_KEY) throw new Error('RESEND_API_KEY is not set');
+    const msg = await buildDedicationEmail(claim, email, env);
+    const res = await fetchImpl('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: DEDICATION_FROM, to: [email], reply_to: DEDICATION_REPLY_TO,
+        subject: msg.subject, text: msg.text, html: msg.html,
+        headers: { 'List-Unsubscribe': '<' + msg.unsubscribe + '>' },
+      }),
+    });
+    if (!res.ok) throw new Error('Resend HTTP ' + res.status + ': ' + (await res.text()).slice(0, 200));
+    sent = true;
+  } catch (e) {
+    console.error('dedication email: send failed', code, e && e.message);
+  }
+  try { await rpc('finish_dedication_email', { p_code: code, p_status: sent ? 'sent' : 'failed' }); }
+  catch (e) { console.error('dedication email: could not record the outcome', code, e && e.message); }
+  if (!sent) return json({ status: 'failed', message: DEDICATION_EMAIL_MESSAGES.failed }, 502, origin);
+  return json({ status: 'sent', masked: maskEmail(email) }, 200, origin);
+}
+
+function unsubscribePage(title, bodyHtml) {
+  return new Response(`<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>${escHtml(title)} | Laivy Hart</title>
+<style>body{margin:0;background:#f6f2ea;color:#2a1018;font-family:Georgia,'Times New Roman',serif}
+main{max-width:30rem;margin:0 auto;padding:3rem 1.4rem;text-align:center}h1{font-size:1.5rem;font-weight:600}
+p{font-size:1.05rem;line-height:1.55}button{font:600 1rem Arial,Helvetica,sans-serif;min-height:48px;padding:0 1.6rem;
+border:0;border-radius:999px;background:#8A2546;color:#fff;cursor:pointer}a{color:#8A2546}</style></head>
+<body><main><h1>${escHtml(title)}</h1>${bodyHtml}<p><a href="${SITE}">Laivy Hart</a> &middot; <a href="mailto:hello@laivyhart.com">hello@laivyhart.com</a></p></main></body></html>`,
+  { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
+
+/* GET shows one confirming button; POST (that button) does the write. A
+   GET never writes, so a mail scanner opening the link cannot unsubscribe
+   anyone by itself. */
+export async function handleUnsubscribe(request, env, ctx, fetchImpl = fetch) {
+  const url = new URL(request.url);
+  let email = '';
+  try { email = b64urlDecode(url.searchParams.get('e')).toLowerCase(); } catch (e) { email = ''; }
+  const sig = url.searchParams.get('s') || '';
+  const good = dedicationEmailValid(email) && env.SUPABASE_SERVICE_ROLE_KEY
+    && safeEqual(sig, await unsubscribeSig(email, env));
+  if (!good) {
+    return unsubscribePage('This link does not work', '<p>The unsubscribe link looks incomplete. Write to us and we will take care of it.</p>');
+  }
+  if (request.method === 'GET') {
+    return unsubscribePage('Stop dedication emails?',
+      `<p>Tap below and Laivy Hart will never email ${escHtml(maskEmail(email))} about a dedication again.</p>
+       <form method="post"><button type="submit">Yes, stop these emails</button></form>`);
+  }
+  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405 });
+  try {
+    const res = await fetchImpl(SUPABASE_URL + '/rest/v1/rpc/suppress_dedication_email', {
+      method: 'POST',
+      headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: 'Bearer ' + env.SUPABASE_SERVICE_ROLE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_email: email }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  } catch (e) {
+    console.error('unsubscribe: could not record', e && e.message);
+    return unsubscribePage('Something went wrong', '<p>We could not save that just now. Please try again in a minute, or write to us.</p>');
+  }
+  return unsubscribePage('Done', `<p>We won't email ${escHtml(maskEmail(email))} about dedications again.</p>`);
+}
+
 export default {
   /* The 03:00 UTC cron (06:00 Jerusalem). See wrangler.toml [triggers]. */
   async scheduled(event, env, ctx) {
@@ -742,6 +1010,15 @@ export default {
        before the UPLOAD_TOKEN gate, for the same reason /upload/avatar is. */
     if (new URL(request.url).pathname === '/event') {
       return handleActivityEvent(request, env, ctx);
+    }
+
+    /* --- SEND-1: the dedication email and its unsubscribe page. Before the
+       method gate: /unsubscribe answers a GET (the confirming page). --- */
+    if (new URL(request.url).pathname === '/unsubscribe') {
+      return handleUnsubscribe(request, env, ctx);
+    }
+    if (new URL(request.url).pathname === '/dedication/email') {
+      return handleDedicationEmail(request, env, ctx);
     }
 
     if (request.method !== 'PUT' && request.method !== 'POST') {
