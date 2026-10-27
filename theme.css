@@ -98,9 +98,6 @@
   --chip-bg:rgba(255,255,255,0.06);
   --chip-border:rgba(255,255,255,0.12);
 
-  --play-bg:var(--accent-grad);
-  --play-fg:#ffffff;
-
   /* Accent-tinted hairline: accent-2 in dark, accent-1 in light. */
   --accent-stroke:rgba(var(--accent-2-rgb), var(--stroke-alpha));
 
@@ -155,9 +152,6 @@
 
   --chip-bg:rgba(42,16,24,0.05);
   --chip-border:rgba(42,16,24,0.12);
-
-  --play-bg:var(--accent-solid);
-  --play-fg:#ffffff;
 
   --accent-stroke:rgba(var(--accent-1-rgb), var(--stroke-alpha));
   --star-accent:var(--accent-1);

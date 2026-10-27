@@ -154,108 +154,132 @@
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:0.8rem; flex-wrap:wrap;}
   .topbar-right{display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; justify-content:flex-end;}
 
-  .now-topline{display:flex; align-items:center; gap:0.9rem; margin-top:1.05rem;}
-  .now-thumb{
-    width:52px; height:52px; border-radius:12px; flex-shrink:0;
-    background-size:cover; background-position:center;
-    border:1px solid var(--glass-border);
-    box-shadow:0 6px 18px rgba(0,0,0,0.28);
-  }
-  .now-titles{min-width:0; text-align:left;}
-  .now-title-primary{
-    font-size:1.65rem; line-height:1.18; font-weight:600;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
-  .now-title-secondary{
-    font-family:var(--font-display);
-    font-size:1.02rem; font-style:italic; color:var(--text-dim);
-    line-height:1.2; margin-top:0.05rem;
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-  }
   .heb{font-family:var(--font-heb); direction:rtl;}
   .disp{font-family:var(--font-display);}
 
-  /* Cover-art banner: shown at the top of the now-playing panel when the
-     current song has a cover_url. Full-bleed to the panel's side edges
-     (negative margins cancel the .now padding). The image shows UNCOVERED
-     (object-fit:cover, focal point upper-center) with only a soft fade at the
-     very bottom so it melts into the panel; the title sits in that fade zone
-     over a dark strip so white text stays readable in BOTH themes. */
+  /* PLAYER-5: the cover IS the player, YouTube style. Every song gets one --
+     its cover art, or its generative art when it has none. Full-bleed to the
+     panel's side edges (negative margins cancel the .now padding). Layers,
+     bottom to top: the picture; the top scrim; .now-tap, a full-size button
+     (a tap anywhere plays/pauses and flashes .now-flash); the titles in the
+     top corners (always shown, never fade, taps pass through them); the
+     control bar along the bottom (prev/play/next, seek, time, Sleep). The bar
+     shows on hover (mouse), for 3s after a tap (.show-bar), always while
+     paused (.is-paused), and while something in the cover has keyboard
+     focus. Hidden, it is visibility:hidden, so a tap there reaches .now-tap. */
   .now-banner{
     position:relative; margin:0.35rem -1.5rem 0.35rem; height:270px;
     overflow:hidden; border-bottom:1px solid var(--glass-border);
+    --pad-l:max(1.5rem, env(safe-area-inset-left));
+    --pad-r:max(1.5rem, env(safe-area-inset-right));
   }
   .now-banner.hidden{display:none;}
-  .now-banner-img{
-    width:100%; height:100%; display:block;
-    object-fit:cover; object-position:center 30%;
+  .now-banner-img, .now-banner-art{position:absolute; inset:0; width:100%; height:100%; display:block;}
+  .now-banner-img{object-fit:cover; object-position:center 30%;}
+  .now-banner-art{background-size:cover; background-position:center;}
+  .now-banner-img.hidden, .now-banner-art.hidden{display:none;}
+  /* Soft dark scrim along the top edge so the white titles read over a
+     very light cover in both skins. */
+  .now-banner::before{
+    content:""; position:absolute; inset:0 0 auto; height:65%; z-index:1; pointer-events:none;
+    background:linear-gradient(to bottom, rgba(8,4,8,0.72) 0%, rgba(8,4,8,0.5) 45%, rgba(8,4,8,0) 100%);
   }
-  /* Two stacked gradients: (1) top layer melts the very bottom edge into the
-     panel background per theme; (2) a dark scrim darkens the lower portion so
-     the white title reads in light mode too (never over the middle). */
-  .now-banner::after{
-    content:""; position:absolute; inset:0; pointer-events:none;
-    background:
-      linear-gradient(to bottom, transparent 93%, var(--bg) 100%),
-      linear-gradient(to bottom, transparent 52%, rgba(8,4,8,0.74) 100%);
+  .now-tap{
+    position:absolute; inset:0; z-index:2; width:100%; height:100%; margin:0; padding:0;
+    border:0; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent;
   }
+  .now-tap:focus-visible{outline:2px solid var(--accent-2); outline-offset:-3px;}
+  /* Titles: in the song's own script, big, at the top right for Hebrew and
+     the top left for English; a Hebrew song's English title in the smaller
+     italic serif at the top left. Each up to 45% wide, two lines at most. */
   .now-banner-titles{
-    position:absolute; left:1.5rem; right:1.5rem; bottom:1.6rem; z-index:1;
+    position:absolute; z-index:3; top:0.95rem; left:var(--pad-l); right:var(--pad-r);
+    display:flex; justify-content:space-between; align-items:baseline; gap:0.75rem;
+    pointer-events:none;
   }
+  .now-banner-en, .now-banner-he{
+    flex:0 1 auto; min-width:0; max-width:45%; overflow-wrap:anywhere;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
+  }
+  .now-banner-he{margin-left:auto; text-align:right;}
+  .now-banner-titles.is-single > *{max-width:80%;}
+  .now-banner-titles [hidden]{display:none;}
   .now-banner-title{
     color:#fff; font-weight:600; font-size:1.75rem; line-height:1.16;
     text-shadow:0 2px 14px rgba(0,0,0,0.72), 0 1px 3px rgba(0,0,0,0.6);
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
   .now-banner-sub{
     color:rgba(255,255,255,0.94); font-family:var(--font-display);
-    font-style:italic; font-size:1.05rem; line-height:1.25; margin-top:0.12rem;
+    font-style:italic; font-size:1.05rem; line-height:1.25;
     text-shadow:0 1px 10px rgba(0,0,0,0.7), 0 1px 3px rgba(0,0,0,0.55);
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-
-  /* The cover banner is tappable to open the full image in a lightbox. */
-  .now-banner{cursor:pointer;}
-  .now-banner:focus-visible{outline:2px solid var(--accent-2); outline-offset:-2px;}
-  .now-banner-zoom{
-    position:absolute; top:0.7rem; right:0.7rem; z-index:2;
-    width:2rem; height:2rem; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    background:rgba(20,8,16,0.42); border:1px solid rgba(255,255,255,0.3); color:#fff;
-    box-shadow:0 2px 10px rgba(0,0,0,0.35); pointer-events:none;
-    transition:background 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.18s var(--ease);
+  /* The big icon that flashes and fades on each tap. */
+  .now-flash{
+    position:absolute; z-index:3; left:50%; top:50%; width:4.25rem; height:4.25rem; margin:-2.125rem 0 0 -2.125rem;
+    border-radius:50%; background:rgba(8,4,8,0.5); color:#fff;
+    display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none;
   }
-  .now-banner:hover .now-banner-zoom{background:var(--accent-2); border-color:transparent; transform:scale(1.06);}
-  .now-banner-zoom svg{width:1rem; height:1rem;}
-
-  /* Full-image lightbox: dimmed, blurred backdrop; image shown uncropped. */
-  .lightbox{
-    position:fixed; inset:0; z-index:400; display:flex; align-items:center; justify-content:center;
-    padding:5vh 4vw; box-sizing:border-box;
-    background:rgba(8,4,8,0.82); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-    opacity:0; visibility:hidden; transition:opacity 0.2s var(--ease), visibility 0.2s var(--ease);
+  .now-flash svg{width:2rem; height:2rem; fill:currentColor; display:block;}
+  .now-flash.go{animation:now-flash 0.6s var(--ease) forwards;}
+  @keyframes now-flash{0%{opacity:0.95; transform:scale(0.85);} 100%{opacity:0; transform:scale(1.3);}}
+  @keyframes now-flash-fade{0%{opacity:0.95;} 100%{opacity:0;}}
+  /* The control bar. Its own gradient keeps white controls readable in both
+     skins; pointer-events only on the controls, so the gaps still play/pause. */
+  .now-bar{
+    position:absolute; z-index:4; left:0; right:0; bottom:0;
+    padding:1.4rem max(0.5rem, env(safe-area-inset-right)) 0.2rem max(0.5rem, env(safe-area-inset-left));
+    background:linear-gradient(to bottom, rgba(8,4,8,0) 0%, rgba(8,4,8,0.62) 45%, rgba(8,4,8,0.8) 100%);
+    color:#fff; pointer-events:none;
+    opacity:0; visibility:hidden;
+    transition:opacity 0.25s var(--ease), visibility 0s linear 0.25s;
   }
-  .lightbox.open{opacity:1; visibility:visible;}
-  .lightbox-img{
-    max-width:min(96vw, 1100px); max-height:86vh; width:auto; height:auto;
-    object-fit:contain; border-radius:12px; background:var(--bg-2);
-    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  .now-banner.is-paused .now-bar,
+  .now-banner.show-bar .now-bar,
+  .now-banner:has(:focus-visible) .now-bar{opacity:1; visibility:visible; transition:opacity 0.2s var(--ease);}
+  @media (hover:hover){
+    .now-banner:hover .now-bar{opacity:1; visibility:visible; transition:opacity 0.2s var(--ease);}
   }
-  .lightbox-cap{
-    position:absolute; left:0; right:0; bottom:max(1rem, env(safe-area-inset-bottom));
-    text-align:center; padding:0 1.2rem; pointer-events:none;
-    color:rgba(255,255,255,0.94); font-family:var(--font-display); font-size:1.02rem;
-    text-shadow:0 1px 10px rgba(0,0,0,0.75); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  /* Seek: a 44px-tall touch area around a 4px track; tap or drag. */
+  .now-seek{
+    position:relative; height:44px; margin:0 0.45rem -0.55rem; display:flex; align-items:center;
+    cursor:pointer; touch-action:pan-y; pointer-events:auto; outline:none; --p:0;
   }
-  .lightbox-cap.heb{font-family:var(--font-heb); direction:rtl;}
-  .lightbox-close{
-    position:absolute; top:max(1rem, env(safe-area-inset-top)); right:1rem; z-index:1;
-    width:2.6rem; height:2.6rem; border-radius:50%; cursor:pointer;
-    display:flex; align-items:center; justify-content:center; line-height:1; font-size:1.6rem;
-    background:rgba(20,8,16,0.5); border:1px solid rgba(255,255,255,0.3); color:#fff;
-    transition:background 0.18s var(--ease), border-color 0.18s var(--ease);
+  .now-seek-track{position:relative; flex:1; height:4px; border-radius:4px; background:rgba(255,255,255,0.34);}
+  .now-seek-fill{position:absolute; left:0; top:0; bottom:0; width:calc(var(--p) * 100%); border-radius:inherit; background:var(--accent-2);}
+  .now-seek-knob{
+    position:absolute; top:50%; left:calc(var(--p) * 100%); width:14px; height:14px; margin:-7px 0 0 -7px;
+    border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.5);
   }
-  .lightbox-close:hover{background:var(--accent-2); border-color:transparent;}
+  .now-seek:focus-visible .now-seek-track{outline:2px solid #fff; outline-offset:6px;}
+  .now-bar-row{display:flex; align-items:center; gap:0.1rem;}
+  .now-bar-btn{
+    width:44px; height:44px; flex-shrink:0; padding:0; border:0; border-radius:999px;
+    display:inline-flex; align-items:center; justify-content:center;
+    background:none; color:#fff; cursor:pointer; pointer-events:auto; -webkit-tap-highlight-color:transparent;
+    transition:background 0.18s var(--ease);
+  }
+  .now-bar-btn svg{width:1.3rem; height:1.3rem; fill:currentColor; display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));}
+  .now-bar-btn.play svg{width:1.65rem; height:1.65rem;}
+  .now-bar-btn:hover{background:rgba(255,255,255,0.14);}
+  .now-bar-btn:focus-visible{outline:2px solid #fff; outline-offset:1px;}
+  .now-bar-time{
+    margin-left:0.4rem; min-width:0; overflow:hidden; white-space:nowrap;
+    font-family:var(--font-ui); font-size:0.8rem; font-variant-numeric:tabular-nums;
+    color:rgba(255,255,255,0.94); text-shadow:0 1px 2px rgba(0,0,0,0.6);
+  }
+  /* SLEEP-1's button: a small moon at the right end of the bar, with the
+     time left beside it while a timer runs. Opens the same Sleep menu. */
+  .now-bar-sleep{
+    margin-left:auto; width:auto; min-width:44px; gap:0.3rem; padding:0 0.65rem;
+    font-family:var(--font-ui); font-size:0.78rem; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .now-bar-sleep svg{width:1.15rem; height:1.15rem; fill:none;}
+  .now-bar-sleep.is-on{background:rgba(var(--accent-2-rgb),0.4);}
+  .now-bar-sleep span:empty{display:none;}
+  @media (prefers-reduced-motion: reduce){
+    .now-flash.go{animation-name:now-flash-fade;}
+    .now-bar{transition:none;}
+  }
 
 
   .pullquote{
@@ -315,28 +339,6 @@
     margin-top:1rem; padding-top:1rem; border-top:1px solid var(--line);
     display:flex; flex-direction:column; gap:0.7rem;
   }
-  .scrub-row{display:flex; align-items:center; gap:0.7rem;}
-  .scrub-row time{font-family:var(--font-ui); font-size:0.68rem; color:var(--text-dim); min-width:3.1em; text-align:center;}
-  input.scrub{
-    -webkit-appearance:none; appearance:none; flex:1; height:5px; border-radius:5px; cursor:pointer;
-    background:var(--line); outline:none;
-  }
-  input.scrub::-webkit-slider-thumb{
-    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
-    background:var(--accent-2); border:2px solid var(--bg); cursor:pointer;
-  }
-  input.scrub::-moz-range-thumb{width:12px; height:12px; border-radius:50%; background:var(--accent-2); border:2px solid var(--bg); cursor:pointer;}
-  .transport{display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;}
-  .tbtn{
-    width:2.4rem; height:2.4rem; border-radius:50%; flex-shrink:0;
-    border:1px solid var(--glass-border); background:var(--glass-hi); color:var(--text-dim);
-    cursor:pointer; font-size:0.95rem; display:inline-flex; align-items:center; justify-content:center;
-    transition:transform 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
-  }
-  .tbtn svg{width:1.05rem; height:1.05rem; fill:currentColor; display:block;}
-  .tbtn:hover{transform:translateY(-1px);}
-  .tbtn:not(.play):hover{color:var(--text); border-color:var(--accent-2);}
-  .tbtn.play{width:3rem; height:3rem; font-size:1.1rem; background:var(--play-bg); color:var(--play-fg); border:none; box-shadow:0 6px 18px rgba(var(--accent-1-rgb),0.45);}
   /* RADIO-2: the stations. One component -- .station-btn -- in three places:
      the row on /listen, the "Change station" panel, and (through that panel)
      the mini-player. RADIO (all songs) is the first station, then one per
@@ -1441,11 +1443,7 @@
   /* Soft pulse on tap (the old heart's pop, applied to whichever was tapped). */
   .love-btn.pulse .love-ic{animation:heart-pop 0.34s var(--ease);}
   @keyframes heart-pop{0%{transform:scale(1);} 40%{transform:scale(1.35);} 100%{transform:scale(1);}}
-  /* ---------- Share, pinned to the far right of the transport row ----------
-     Row 2 holds prev/play/next on the left and Share on the right, nothing
-     else; the three loves are their own row beneath. */
-  /* LISTEN-1: its own centered row after .loves now, not sharing the
-     transport row (was margin-left:auto, pinned to that row's right edge). */
+  /* LISTEN-1: Dedicate + Share, their own centered row after .loves. */
   .dock-react{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin-top:0.2rem;}
   .dock-react.hidden{display:none;}
   /* PLAY-1 "Keep playing after each song" (was Autoplay). PLAYER-4: it lives
@@ -1461,24 +1459,6 @@
   .keep-playing-toggle input:checked + .keep-playing-track{background:var(--accent-solid);}
   .keep-playing-toggle input:checked + .keep-playing-track .keep-playing-knob{left:1.04rem; background:#fff;}
   .keep-playing-toggle input:focus-visible + .keep-playing-track{outline:2px solid var(--accent-solid); outline-offset:2px;}
-  /* SLEEP-1: the Sleep timer button. PLAYER-4: at the right end of the play
-     controls row (margin-left:auto), centered with the play button; when the
-     row is too narrow it wraps to its own line under the buttons, still
-     right-aligned and still above the station line. Outlined like "Change
-     station" (--text on the page), so it clears 4.5:1 the same way; its
-     menu is the station panel's sheet with station buttons in it. */
-  .sleep-btn{
-    margin-left:auto; flex-shrink:0;
-    display:inline-flex; align-items:center; gap:0.35rem; cursor:pointer; white-space:nowrap;
-    background:none; border:1px solid rgba(var(--accent-2-rgb),0.55); border-radius:999px;
-    padding:0.25rem 0.7rem; font-family:var(--font-ui); font-size:0.78rem; font-weight:600; color:var(--text);
-    font-variant-numeric:tabular-nums;
-  }
-  .sleep-btn svg{width:0.95rem; height:0.95rem; display:block; flex-shrink:0;}
-  .sleep-btn:hover{background:rgba(var(--accent-2-rgb),0.14);}
-  .sleep-btn:focus-visible{outline:2px solid var(--accent-2); outline-offset:2px;}
-  .sleep-btn.is-on{background:rgba(var(--accent-2-rgb),0.12);}
-  .sleep-btn.hidden{display:none;}
   /* Share: share glyph in the accent-filled circle, unchanged in size. */
   .share-invite{display:inline-flex; align-items:center; background:none; border:none; padding:0; cursor:pointer; color:inherit; font:inherit;}
   .share-invite-ic{
@@ -1625,10 +1605,12 @@
     .app{grid-template-columns:minmax(0,1fr); height:auto; min-height:100dvh; padding:12px; gap:12px;}
     .panel{overflow:visible; min-width:0;}
     .now{padding:1.1rem 1.15rem;}
-    /* Banner: a touch shorter so it is prominent but not overwhelming on a
-       small screen, and full-bleed to the mobile panel padding. */
-    .now-banner{height:200px; margin:0.25rem -1.15rem 0.35rem;}
-    .now-banner-titles{left:1.15rem; right:1.15rem; bottom:1.2rem;}
+    /* Cover player: a touch shorter so it is prominent but not overwhelming
+       on a small screen, and full-bleed to the mobile panel padding. */
+    .now-banner{
+      height:220px; margin:0.25rem -1.15rem 0.35rem;
+      --pad-l:max(1.15rem, env(safe-area-inset-left)); --pad-r:max(1.15rem, env(safe-area-inset-right));
+    }
     .now-banner-title{font-size:1.5rem;}
     /* Undo the desktop sticky/viewport-height pin so the list stacks in the
        single-column flow and grows with the page. */
@@ -1636,11 +1618,9 @@
     /* The station row stays one sideways-scrolling line (RADIO-2);
        Songs/Playlists drop below it. */
     .tabs-list{margin-top:0.15rem;}
-    /* Row 2 stays one line: prev/play/next with Share pinned right. Row 3 keeps
-       all three loves on one line at 56px. Dock spacing is trimmed so the loves
-       row adds its own height plus the one 0.5rem row gap, nothing more. */
+    /* All three loves stay on one line at 56px. Dock spacing is trimmed so
+       the loves row adds its own height plus the one 0.5rem row gap. */
     .dock{gap:0.5rem; padding-top:0.8rem; margin-top:0.8rem;}
-    .transport{gap:0.5rem; flex-wrap:wrap;}   /* PLAYER-4: lets Sleep wrap, never the buttons shrink */
     .loves{gap:0.4rem;}
     .loves-q{font-size:1.1rem;}
     .loves-row{gap:1.6rem;}
@@ -1715,7 +1695,6 @@
     .row-badges{width:1.15rem; min-width:1.15rem;}
     .badge-ic{width:1.15rem; height:1.15rem;}
     .badge-pill-t{font-size:0.64rem;}
-    .transport .tbtn:not(.play){width:2rem; height:2rem;}
     .loves-row{gap:1.4rem;}
   }
 </style>
@@ -1784,21 +1763,27 @@
     </div>
 
     <div id="now-content">
-      <div class="now-banner hidden" id="now-banner" role="button" tabindex="0" aria-label="View the full cover image">
+      <!-- PLAYER-5: the cover is the player (see .now-banner in the CSS). -->
+      <div class="now-banner hidden is-paused" id="now-banner" role="group" aria-label="Player">
         <img class="now-banner-img" id="now-banner-img" alt="">
-        <span class="now-banner-zoom" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>
-        </span>
-        <div class="now-banner-titles">
-          <div class="now-banner-title" id="now-banner-title"></div>
-          <div class="now-banner-sub" id="now-banner-sub"></div>
+        <div class="now-banner-art hidden" id="now-banner-art"></div>
+        <button class="now-tap" id="now-tap" type="button" aria-label="Play or pause"></button>
+        <div class="now-banner-titles" id="now-banner-titles">
+          <div class="now-banner-en" id="now-banner-en"></div>
+          <div class="now-banner-he now-banner-title heb" id="now-banner-he" lang="he" dir="rtl"></div>
         </div>
-      </div>
-      <div class="now-topline" id="now-topline">
-        <div class="now-thumb" id="now-thumb"></div>
-        <div class="now-titles">
-          <div class="now-title-primary" id="now-title-primary"></div>
-          <div class="now-title-secondary" id="now-title-secondary"></div>
+        <div class="now-flash" id="now-flash" aria-hidden="true"></div>
+        <div class="now-bar" id="now-bar">
+          <div class="now-seek" id="scrub" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0:00 of 0:00">
+            <div class="now-seek-track" id="scrub-track"><div class="now-seek-fill"></div><div class="now-seek-knob"></div></div>
+          </div>
+          <div class="now-bar-row">
+            <button class="now-bar-btn" id="prev-btn" type="button" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
+            <button class="now-bar-btn play" id="play-btn" type="button" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg></button>
+            <button class="now-bar-btn" id="next-btn" type="button" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
+            <span class="now-bar-time"><span id="t-elapsed">0:00</span> / <span id="t-total">0:00</span></span>
+            <button class="now-bar-btn now-bar-sleep" id="sleep-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sleep-panel" aria-label="Sleep timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleep-btn-text"></span></button>
+          </div>
         </div>
       </div>
       <div class="now-artist" id="now-artist"></div>
@@ -1813,23 +1798,10 @@
       <div class="pullquote hidden" id="now-about"></div>
     </div>
 
-    <!-- LISTEN-1: everything acted on, above the lyrics -- progress bar;
-         prev/play/next; heart, words and music stars, Dedicate, Share;
-         Dedications strip. Was below the lyrics; moved up here. -->
+    <!-- LISTEN-1: everything acted on, above the lyrics -- heart, words and
+         music stars, Dedicate, Share; Dedications strip. PLAYER-5: the
+         progress bar and prev/play/next/Sleep live in the cover now. -->
     <div class="dock">
-      <div class="scrub-row">
-        <time id="t-elapsed">0:00</time>
-        <input type="range" class="scrub" id="scrub" min="0" max="1000" value="0" aria-label="Seek">
-        <time id="t-remaining">0:00</time>
-      </div>
-      <div class="transport">
-        <button class="tbtn" id="prev-btn" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L18 18L9.5 12Z"/><rect x="6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <button class="tbtn play" id="play-btn" aria-label="Play or pause">&#9654;</button>
-        <button class="tbtn" id="next-btn" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L6 18L14.5 12Z"/><rect x="15.6" y="6" width="2.4" height="12" rx="1"/></svg></button>
-        <!-- SLEEP-1: stop the music by itself after a while. PLAYER-4: here,
-             at the right end of the controls row. -->
-        <button class="sleep-btn hidden" id="sleep-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="sleep-panel" aria-label="Sleep timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="sleep-btn-text">Sleep</span></button>
-      </div>
       <!-- RADIO-2: what is playing ("On Radio: All songs", "On Radio: <mood>",
            "Playing: <queue>") and the way to switch. -->
       <div class="station-line hidden" id="station-line">
@@ -1849,8 +1821,7 @@
         </div>
         <div class="rating-rows" id="rating-rows"></div>
       </div>
-      <!-- Dedicate + Share: their own row now, after the loves, no longer
-           sharing the transport row. -->
+      <!-- Dedicate + Share: their own row, after the loves. -->
       <div class="dock-react hidden" id="dock-react">
         <button class="share-invite" id="now-dedicate-btn" type="button" aria-label="Dedicate this song">
           <span class="share-invite-ic" aria-hidden="true">
@@ -2204,12 +2175,6 @@
 
 <audio id="audio-el"></audio>
 
-<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Cover image">
-  <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Close">&times;</button>
-  <img class="lightbox-img" id="lightbox-img" alt="">
-  <div class="lightbox-cap" id="lightbox-cap"></div>
-</div>
-
 <script>
 /* ============================================================
    Config, client, flags
@@ -2429,11 +2394,10 @@ function refreshGenArt(){
   // list: its plate is a [data-color] CSS background and has already swapped.
   const home = document.getElementById('page-home');
   if(home && !home.classList.contains('hidden')) renderHomepage();
-  const thumb = document.getElementById('now-thumb');
-  if(thumb){
-    if(currentIdx === null) thumb.style.cssText = genArtStyle('laivy hart');
-    else { const s = SONGS[currentIdx]; if(s) thumb.style.cssText = thumbStyle(s); }
-  }
+  // The cover player's generative art, for a song with no cover.
+  const art = document.getElementById('now-banner-art');
+  const cur = currentIdx === null ? null : SONGS[currentIdx];
+  if(art && cur && !cur.cover) art.style.cssText = songArtStyle(cur);
 }
 function applyColor(name){
   if(!COLORS.includes(name)) name = 'royal';
@@ -3121,10 +3085,7 @@ const ambient = document.getElementById('ambient');
 /* ============================================================
    Covers and thumbnails
    ============================================================ */
-function thumbStyle(song){
-  if(song.cover){
-    return `background-image:url("${song.cover}");`;
-  }
+function songArtStyle(song){
   return genArtStyle(song.title || song.title_translit || song.id);
 }
 
@@ -4394,14 +4355,9 @@ function renderNow(){
   const empty = document.getElementById('now-empty');
   const orig = document.getElementById('lyrics-orig');
   const trans = document.getElementById('lyrics-trans');
-  const primary = document.getElementById('now-title-primary');
-  const secondary = document.getElementById('now-title-secondary');
-  const thumb = document.getElementById('now-thumb');
-  const topline = document.getElementById('now-topline');
   const banner = document.getElementById('now-banner');
   const bannerImg = document.getElementById('now-banner-img');
-  const bannerTitle = document.getElementById('now-banner-title');
-  const bannerSub = document.getElementById('now-banner-sub');
+  const bannerArt = document.getElementById('now-banner-art');
   const nowTags = document.getElementById('now-tags');
   const about = document.getElementById('now-about');
   const langBtn = document.getElementById('lyrics-lang-btn');
@@ -4416,10 +4372,7 @@ function renderNow(){
   if(currentIdx === null){
     empty.classList.remove('hidden');
     orig.classList.add('hidden'); trans.classList.add('hidden');
-    primary.textContent = ''; secondary.textContent = '';
-    thumb.style.cssText = genArtStyle('laivy hart');
     banner.classList.add('hidden'); bannerImg.removeAttribute('src');
-    topline.classList.remove('hidden');
     nowTags.innerHTML = ''; about.classList.add('hidden'); langBtn.classList.add('hidden');
     const nbIdle = document.getElementById('now-badges'); if(nbIdle) nbIdle.innerHTML = '';
     const naIdle = document.getElementById('now-artist'); if(naIdle) naIdle.innerHTML = '';
@@ -4439,8 +4392,6 @@ function renderNow(){
   const s = SONGS[currentIdx];
   const heb = isHebrew(s);
   empty.classList.add('hidden');
-
-  thumb.style.cssText = thumbStyle(s);
 
   /* Attribution row: a 28px avatar (or the initial on the theme gradient) and
      the artist's name, the whole row linking to their page. It sits under the
@@ -4474,20 +4425,8 @@ function renderNow(){
     }
   }
 
-  // Titles: primary in the original script, secondary transliteration.
-  primary.textContent = heb ? s.title : (s.title || s.title_translit);
-  primary.className = 'now-title-primary ' + (heb ? 'heb' : 'disp');
-  if(heb && s.title_translit){
-    secondary.textContent = s.title_translit;
-    secondary.className = 'now-title-secondary disp';
-    secondary.style.display = '';
-  } else {
-    secondary.style.display = 'none';
-  }
-
-  // Cover-art banner when the song has a cover; otherwise fall back to the
-  // compact generative-art thumb + text titles (the current look), so songs
-  // without a cover still look complete.
+  // PLAYER-5: every song gets the cover player -- its cover art, or its
+  // generative art when it has none.
   if(s.cover){
     bannerImg.src = cdnImg(s.cover, 1000);
     bannerImg.onerror = () => { bannerImg.onerror = null; bannerImg.src = s.cover; };
@@ -4501,22 +4440,27 @@ function renderNow(){
       bannerImg.style.objectPosition = `${fx}% ${fy}%`;
     }
     bannerImg.alt = (s.title || s.title_translit || '') + ' cover art';
-    bannerTitle.textContent = heb ? s.title : (s.title || s.title_translit);
-    bannerTitle.className = 'now-banner-title ' + (heb ? 'heb' : 'disp');
-    if(heb && s.title_translit){
-      bannerSub.textContent = s.title_translit;
-      bannerSub.style.display = '';
-    } else {
-      bannerSub.textContent = '';
-      bannerSub.style.display = 'none';
-    }
-    banner.classList.remove('hidden');
-    topline.classList.add('hidden');
+    bannerImg.classList.remove('hidden');
+    bannerArt.classList.add('hidden');
   } else {
-    banner.classList.add('hidden');
     bannerImg.removeAttribute('src');
-    topline.classList.remove('hidden');
+    bannerImg.classList.add('hidden');
+    bannerArt.style.cssText = songArtStyle(s);
+    bannerArt.classList.remove('hidden');
   }
+  // Titles in the top corners: English at the left (a Hebrew song's English
+  // title in the smaller italic serif), Hebrew at the right. One title alone
+  // sits at its own corner with the other side left empty.
+  const titleEn = document.getElementById('now-banner-en');
+  const titleHe = document.getElementById('now-banner-he');
+  const en = heb ? (s.title_translit || '') : (s.title || s.title_translit || '');
+  titleEn.textContent = en;
+  titleEn.className = 'now-banner-en ' + (heb ? 'now-banner-sub' : 'now-banner-title disp');
+  titleEn.hidden = !en;
+  titleHe.textContent = heb ? (s.title || '') : '';
+  titleHe.hidden = !titleHe.textContent;
+  document.getElementById('now-banner-titles').classList.toggle('is-single', titleEn.hidden || titleHe.hidden);
+  banner.classList.remove('hidden');
 
   paintLoves();
   dockReact.classList.remove('hidden');
@@ -4752,8 +4696,6 @@ function radioLabel(){
   return c ? 'Radio · ' + c.title : 'Radio';
 }
 function paintPlayMode(){
-  const sleep = document.getElementById('sleep-btn');
-  if(sleep) sleep.classList.toggle('hidden', currentIdx === null);
   paintStations();
   paintStationLine();
   const sw = document.getElementById('keep-playing-switch');
@@ -4812,8 +4754,10 @@ function paintSleep(){
   const end = sleepTimer && !sleepTimer.deadline;
   const btn = document.getElementById('sleep-btn');
   if(btn){
+    // PLAYER-5: just the moon until a timer runs, then the time left beside
+    // it (the moon alone, filled, for the end of the song).
     const t = document.getElementById('sleep-btn-text');
-    const txt = !sleepTimer ? 'Sleep' : end ? 'Sleep: end of song' : 'Sleep ' + left;
+    const txt = !sleepTimer || end ? '' : left;
     if(t && t.textContent !== txt) t.textContent = txt;
     btn.classList.toggle('is-on', !!sleepTimer);
     btn.setAttribute('aria-label', !sleepTimer ? 'Sleep timer'
@@ -5017,19 +4961,25 @@ function playCurrent(){
     audioEl.removeAttribute('src'); audioEl.load();
     setPlayIcon(false);
     setAmbientPlaying(false);
-    resetScrub();
+    paintScrub();
     // Keep radio, playlists, and a rail "Play all" moving even before audio.
     if(mode !== 'manual' || manualQueue) idleTimer = setTimeout(onTrackDone, 9000);
   }
 }
 
+const PLAY_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6L19 12z"/></svg>';
+const PAUSE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.2" y="5" width="4" height="14" rx="1"/><rect x="13.8" y="5" width="4" height="14" rx="1"/></svg>';
+// The one place every play-state indicator is set: the cover's bar (and,
+// through .is-paused, whether the bar stays up) and the mini-player.
 function setPlayIcon(playing){
-  const icon = playing ? '&#10074;&#10074;' : '&#9654;';
-  document.getElementById('play-btn').innerHTML = icon;
+  const pb = document.getElementById('play-btn');
+  pb.innerHTML = playing ? PAUSE_SVG : PLAY_SVG;
+  pb.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  document.getElementById('now-banner').classList.toggle('is-paused', !playing);
   const mp = document.getElementById('mini-play');
-  if(mp) mp.innerHTML = icon;
+  if(mp) mp.innerHTML = playing ? '&#10074;&#10074;' : '&#9654;';
 }
-// Shared play/pause + next so the dock and the mini-player behave identically.
+// Shared play/pause + next so the cover and the mini-player behave identically.
 function togglePlay(){
   if(currentIdx === null){ startRadio(); return; }
   if(!SONGS[currentIdx].audio) return;
@@ -5046,21 +4996,27 @@ function playNext(){
   }
   if(mode !== 'manual' && queue.length) advanceQueue(); else manualStep(1);
 }
-function resetScrub(){
-  document.getElementById('scrub').value = 0;
-  document.getElementById('t-elapsed').textContent = '0:00';
-  document.getElementById('t-remaining').textContent = '0:00';
+// The cover bar's seek slider and its "0:31 / 2:10". No duration yet (a new
+// song loading, or a song with no audio) reads 0:00 / 0:00 at the start.
+function paintScrub(){
+  const dur = audioEl.duration;
+  const has = isFinite(dur) && dur > 0;
+  const cur = has ? Math.min(audioEl.currentTime, dur) : 0;
+  const frac = has ? cur / dur : 0;
+  const seek = document.getElementById('scrub');
+  seek.style.setProperty('--p', frac);
+  seek.setAttribute('aria-valuenow', String(Math.round(frac * 100)));
+  seek.setAttribute('aria-valuetext', fmtTime(cur) + ' of ' + fmtTime(has ? dur : 0));
+  document.getElementById('t-elapsed').textContent = fmtTime(cur);
+  document.getElementById('t-total').textContent = fmtTime(has ? dur : 0);
 }
-
-document.getElementById('play-btn').addEventListener('click', togglePlay);
+audioEl.addEventListener('durationchange', paintScrub);
 
 audioEl.addEventListener('timeupdate', () => {
   const dur = audioEl.duration;
   if(!isFinite(dur) || dur <= 0) return;
   const frac = audioEl.currentTime / dur;
-  document.getElementById('scrub').value = Math.round(frac * 1000);
-  document.getElementById('t-elapsed').textContent = fmtTime(audioEl.currentTime);
-  document.getElementById('t-remaining').textContent = '-' + fmtTime(dur - audioEl.currentTime);
+  paintScrub();
   // ACT-1: real-progress play milestones, once each per play (reset in
   // loadSong). Checked in order so a seek straight past 50% to 90% still
   // logs 25 and 50 on this same tick, never just the highest one reached.
@@ -5076,11 +5032,64 @@ audioEl.addEventListener('timeupdate', () => {
     if(frac >= 0.75) fire('p75', 'play_75');
   }
 });
-document.getElementById('scrub').addEventListener('input', (e) => {
-  const dur = audioEl.duration;
-  if(!isFinite(dur) || dur <= 0) return;
-  audioEl.currentTime = (Number(e.target.value) / 1000) * dur;
-});
+/* PLAYER-5: the cover player. A tap anywhere on the cover (.now-tap, also
+   Enter/Space when it has focus) plays or pauses and flashes the new state
+   big in the middle; so does the bar's play button. Any touch on the cover
+   brings the bar up for 3 seconds. The seek slider takes a tap, a drag, and
+   the arrow, Page and Home/End keys. */
+(function(){
+  const banner = document.getElementById('now-banner');
+  const flash = document.getElementById('now-flash');
+  let barTimer = null;
+  banner.addEventListener('pointerdown', () => {
+    banner.classList.add('show-bar');
+    clearTimeout(barTimer);
+    barTimer = setTimeout(() => banner.classList.remove('show-bar'), 3000);
+  });
+  function toggleFromCover(){
+    const was = audioEl.paused;
+    togglePlay();
+    if(audioEl.paused === was) return;   // nothing to play (no audio yet)
+    flash.innerHTML = audioEl.paused ? PAUSE_SVG : PLAY_SVG;
+    flash.classList.remove('go');
+    void flash.offsetWidth;              // restart the animation on a quick second tap
+    flash.classList.add('go');
+  }
+  document.getElementById('now-tap').addEventListener('click', toggleFromCover);
+  document.getElementById('play-btn').addEventListener('click', toggleFromCover);
+
+  const seek = document.getElementById('scrub');
+  const track = document.getElementById('scrub-track');
+  const canSeek = () => isFinite(audioEl.duration) && audioEl.duration > 0;
+  const seekTo = (t) => {
+    audioEl.currentTime = Math.max(0, Math.min(audioEl.duration, t));
+    paintScrub();
+  };
+  const timeAt = (x) => {
+    const r = track.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (x - r.left) / r.width)) * audioEl.duration;
+  };
+  let dragging = false;
+  seek.addEventListener('pointerdown', (e) => {
+    if(e.button !== 0 || !canSeek()) return;
+    dragging = true;
+    try{ seek.setPointerCapture(e.pointerId); }catch(err){}
+    seekTo(timeAt(e.clientX));
+  });
+  seek.addEventListener('pointermove', (e) => { if(dragging) seekTo(timeAt(e.clientX)); });
+  seek.addEventListener('pointerup', () => { dragging = false; });
+  seek.addEventListener('pointercancel', () => { dragging = false; });
+  seek.addEventListener('keydown', (e) => {
+    if(!canSeek()) return;
+    const d = audioEl.duration, t = audioEl.currentTime;
+    const step = { ArrowLeft: -5, ArrowDown: -5, ArrowRight: 5, ArrowUp: 5, PageDown: -d / 10, PageUp: d / 10 }[e.key];
+    if(step !== undefined) seekTo(t + step);
+    else if(e.key === 'Home') seekTo(0);
+    else if(e.key === 'End') seekTo(d);
+    else return;
+    e.preventDefault();
+  });
+})();
 audioEl.addEventListener('play', () => {
   setPlayIcon(true); setAmbientPlaying(true);
   if(playCounted || currentIdx === null) return;
@@ -6904,50 +6913,6 @@ async function loadDedicationsStrip(){
       </div>`;
   }).join('');
 }
-
-/* ============================================================
-   Cover lightbox: tap the now-playing banner to see the full,
-   uncropped cover image. List thumbnails are unaffected.
-   ============================================================ */
-(function(){
-  const lb = document.getElementById('lightbox');
-  const lbImg = document.getElementById('lightbox-img');
-  const lbCap = document.getElementById('lightbox-cap');
-  const lbClose = document.getElementById('lightbox-close');
-  const banner = document.getElementById('now-banner');
-  if(!lb || !banner) return;
-
-  function openLightbox(){
-    if(currentIdx === null) return;
-    const s = SONGS[currentIdx];
-    if(!s || !s.cover) return;               // only real covers, never the generative fallback
-    const heb = isHebrew(s);
-    lbImg.src = cdnImg(s.cover, 1600);
-    lbImg.onerror = () => { lbImg.onerror = null; lbImg.src = s.cover; };
-    lbImg.alt = (s.title || s.title_translit || '') + ' cover art';
-    lbCap.textContent = heb ? s.title : (s.title || s.title_translit || '');
-    lbCap.className = 'lightbox-cap' + (heb ? ' heb' : '');
-    lb.classList.add('open');
-    document.body.style.overflow = 'hidden';
-    lbClose.focus();
-  }
-  function closeLightbox(){
-    lb.classList.remove('open');
-    document.body.style.overflow = '';
-    lbImg.removeAttribute('src');
-  }
-
-  banner.addEventListener('click', openLightbox);
-  banner.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); openLightbox(); }
-  });
-  lbClose.addEventListener('click', closeLightbox);
-  // Click on the dark backdrop (not the image or caption) closes.
-  lb.addEventListener('click', (e) => { if(e.target === lb) closeLightbox(); });
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape' && lb.classList.contains('open')) closeLightbox();
-  });
-})();
 
 /* ============================================================
    Routing: "/" homepage, "/listen" song page (History API)

@@ -122,8 +122,8 @@ async function scenarioLineAndPanel(browser, port, r) {
   await page.click('#artist-playall');
   await page.waitForFunction(() => currentIdx !== null && manualQueue && manualQueue.length, null, { timeout: 10000 });
   r.check('Play all: "Playing: Nova Ash: Play all"', await lineText(page) === 'Playing: Nova Ash: Play all', await lineText(page));
-  r.check('the line sits directly under the play controls', await page.evaluate(() =>
-    document.querySelector('.transport').nextElementSibling === document.getElementById('station-line')));
+  r.check('the line opens the dock, right under the song details (the play controls are in the cover)', await page.evaluate(() =>
+    document.querySelector('.dock').firstElementChild === document.getElementById('station-line')));
   r.check('nothing highlighted during a queue', (await page.evaluate(() => [...document.querySelectorAll('.station-row .is-on')].length)) === 0);
 
   await page.click('#station-change');

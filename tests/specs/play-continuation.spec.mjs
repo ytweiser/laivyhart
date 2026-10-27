@@ -289,6 +289,7 @@ async function scenarioAutoplayOff(browser, port, r) {
       && !document.getElementById('autoplay-switch') && !document.getElementById('play-mode-row')));
   r.check('labelled "Keep playing after each song"', await page.evaluate(() =>
     document.querySelector('label[for="keep-playing-switch"]').textContent.trim()) === 'Keep playing after each song');
+  await page.hover('#now-tap');   // PLAYER-5: the cover's bar is up on hover while playing
   await page.click('#sleep-btn');
   await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
   await page.click('label.keep-playing-toggle');
@@ -303,13 +304,15 @@ async function scenarioAutoplayOff(browser, port, r) {
   const b = await state(page);
   r.check('the song does not change', b.id === a.id, JSON.stringify(b));
   r.check('nothing is queued', await page.evaluate(() => nextUp === null));
-  r.check('play icon shows stopped', await page.evaluate(() => document.getElementById('play-btn').innerHTML.includes('▶')));
+  r.check('play icon shows stopped', await page.evaluate(() => document.getElementById('play-btn').getAttribute('aria-label') === 'Play'
+    && document.getElementById('now-banner').classList.contains('is-paused')));
   await page.reload({ waitUntil: 'load' });
   await page.waitForSelector('#rows .row', { timeout: 10000 });
   r.check('after a reload Keep playing is still off', await page.evaluate(() => document.getElementById('keep-playing-switch').checked === false && autoplayOn === false));
   // And back on, from the menu: continuous play returns.
   await clickFirstRow(page);
   await waitPlaying(page);
+  await page.hover('#now-tap');   // PLAYER-5: the cover's bar is up on hover while playing
   await page.click('#sleep-btn');
   await page.waitForFunction(() => !document.getElementById('sleep-panel').hidden, null, { timeout: 5000 });
   await page.click('label.keep-playing-toggle');
