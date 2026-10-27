@@ -69,6 +69,7 @@ export async function run(browser, port) {
   await scenarioCoverTitles(browser, port, r);
   await scenarioCoverControls(browser, port, r);
   await scenarioCoverKeyboardAndA11y(browser, port, r);
+  await scenarioFlashTiming(browser, port, r);
   return r;
 }
 
@@ -424,4 +425,67 @@ async function scenarioCoverKeyboardAndA11y(browser, port, r) {
   r.check('...(still playing after Space on the slider)', await page.evaluate(() => !audioEl.paused));
   r.check('no console/page errors', errors.length === 0, errors.join(' | '));
   await page.close();
+}
+
+/* PLAYER-6: the flash lasts --flash-ms (1200ms): on at once, scales up a
+   touch, holds at full opacity for the first ~600ms, fades over the last
+   ~600ms, then is cleared. A tap mid-flash restarts it with the new state's
+   icon; it never blocks taps. Reduced motion: the same timing, no scaling. */
+async function scenarioFlashTiming(browser, port, r) {
+  for (const [width, motion] of [[1280, 'no-preference'], [380, 'no-preference'], [380, 'reduce']]) {
+    const tag = `[${width}px${motion === 'reduce' ? ', reduced motion' : ''}]`;
+    r.section(`PLAYER-6: flash timing ${tag}`);
+    const { page, errors } = await playerPage(browser, { width, height: 900 });
+    await page.emulateMedia({ reducedMotion: motion });
+    await gotoSlug(page, port, SLUG);
+    await page.evaluate(() => { if (!audioEl.paused) audioEl.pause(); });
+    await page.waitForFunction(() => audioEl.paused, null, { timeout: 5000 });
+    // Tap, then sample the icon every frame for 1.6s.
+    const tl = await page.evaluate(() => new Promise((res) => {
+      const f = document.getElementById('now-flash');
+      document.getElementById('now-tap').click();
+      const t0 = performance.now(), out = [];
+      const tick = () => {
+        const t = performance.now() - t0, cs = getComputedStyle(f);
+        const m = /matrix\(([\d.]+)/.exec(cs.transform);
+        out.push({ t, o: parseFloat(cs.opacity), sc: m ? parseFloat(m[1]) : 1, icon: f.innerHTML.includes('M8 5.2') ? 'play' : f.innerHTML ? 'pause' : '' });
+        if (t < 1600) requestAnimationFrame(tick); else res({ out, playing: !audioEl.paused, ms: getComputedStyle(f).getPropertyValue('--flash-ms').trim() });
+      };
+      requestAnimationFrame(tick);
+    }));
+    const at = (a, b) => tl.out.filter((x) => x.t >= a && x.t <= b);
+    const first = tl.out[0];
+    r.check(`${tag} one tunable duration: --flash-ms is 1200ms`, tl.ms === '1200ms', tl.ms);
+    r.check(`${tag} appears at once, with the play icon`, first.o >= 0.95 && first.icon === 'play' && tl.playing, JSON.stringify(first));
+    r.check(`${tag} holds at full opacity through ~550ms`, at(0, 550).every((x) => x.o >= 0.99), JSON.stringify(at(0, 550).map((x) => [Math.round(x.t), x.o])));
+    r.check(`${tag} still visible at ~1000ms, fading`, at(950, 1050).every((x) => x.o > 0.05 && x.o < 0.99), JSON.stringify(at(950, 1050).map((x) => [Math.round(x.t), x.o])));
+    r.check(`${tag} gone by ~1300ms and the icon cleared`, at(1300, 1600).every((x) => x.o === 0 && x.icon === ''), JSON.stringify(at(1250, 1600).map((x) => [Math.round(x.t), x.o, x.icon])));
+    if (motion === 'reduce') {
+      r.check(`${tag} a plain fade: no scaling at all`, tl.out.every((x) => x.sc === 1), JSON.stringify(tl.out.slice(0, 5)));
+    } else {
+      const sc = at(0, 1250).map((x) => x.sc);
+      r.check(`${tag} scales up slightly (never more than ~10%)`, sc[0] < 1 && Math.max(...sc) > 1 && Math.max(...sc) <= 1.1 && Math.min(...sc) >= 0.85, JSON.stringify(sc.slice(0, 4).concat(sc.slice(-2))));
+    }
+    // Rapid taps through the cover, mid-flash: each restarts with the right icon.
+    const rapid = [];
+    for (let i = 0; i < 5; i++) {
+      await page.click('#now-tap');
+      await page.waitForTimeout(120);
+      rapid.push(await page.evaluate(() => {
+        const f = document.getElementById('now-flash');
+        return { paused: audioEl.paused, icon: f.innerHTML.includes('M8 5.2') ? 'play' : f.innerHTML ? 'pause' : '', o: parseFloat(getComputedStyle(f).opacity) };
+      }));
+    }
+    r.check(`${tag} rapid taps all land (the flash never blocks a tap) and the icon always matches the new state`,
+      rapid.every((x, i) => x.paused === (i % 2 === 0) && x.icon === (x.paused ? 'pause' : 'play') && x.o >= 0.99), JSON.stringify(rapid));
+    await page.waitForTimeout(1350);
+    r.check(`${tag} after the last tap the icon is gone, nothing left behind`, await page.evaluate(() => {
+      const f = document.getElementById('now-flash');
+      return f.innerHTML === '' && !f.classList.contains('go') && parseFloat(getComputedStyle(f).opacity) === 0;
+    }));
+    r.check(`${tag} the control bar timer is untouched (3s after a touch)`, /setTimeout\(\(\) => banner\.classList\.remove\('show-bar'\), 3000\)/.test(
+      await page.evaluate(() => [...document.scripts].map((s) => s.textContent).join('\n'))));
+    r.check('no console/page errors', errors.length === 0, errors.join(' | '));
+    await page.close();
+  }
 }

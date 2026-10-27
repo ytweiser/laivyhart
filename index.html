@@ -213,16 +213,25 @@
     font-style:italic; font-size:1.05rem; line-height:1.25;
     text-shadow:0 1px 10px rgba(0,0,0,0.7), 0 1px 3px rgba(0,0,0,0.55);
   }
-  /* The big icon that flashes and fades on each tap. */
+  /* The big icon that flashes on each tap: it appears at once, scales up a
+     touch, holds for the first half of --flash-ms, then fades out over the
+     second half. --flash-ms is the one knob; the JS that clears the icon
+     afterwards reads it from here. */
   .now-flash{
+    --flash-ms:1200ms;
     position:absolute; z-index:3; left:50%; top:50%; width:4.25rem; height:4.25rem; margin:-2.125rem 0 0 -2.125rem;
     border-radius:50%; background:rgba(8,4,8,0.5); color:#fff;
     display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none;
   }
   .now-flash svg{width:2rem; height:2rem; fill:currentColor; display:block;}
-  .now-flash.go{animation:now-flash 0.6s var(--ease) forwards;}
-  @keyframes now-flash{0%{opacity:0.95; transform:scale(0.85);} 100%{opacity:0; transform:scale(1.3);}}
-  @keyframes now-flash-fade{0%{opacity:0.95;} 100%{opacity:0;}}
+  .now-flash.go{animation:now-flash var(--flash-ms) linear forwards;}
+  @keyframes now-flash{
+    0%{opacity:1; transform:scale(0.9);}
+    15%{opacity:1; transform:scale(1);}
+    50%{opacity:1; transform:scale(1);}
+    100%{opacity:0; transform:scale(1.06);}
+  }
+  @keyframes now-flash-fade{0%, 50%{opacity:1;} 100%{opacity:0;}}
   /* The control bar. Its own gradient keeps white controls readable in both
      skins; pointer-events only on the controls, so the gaps still play/pause. */
   .now-bar{
@@ -277,7 +286,9 @@
   .now-bar-sleep.is-on{background:rgba(var(--accent-2-rgb),0.4);}
   .now-bar-sleep span:empty{display:none;}
   @media (prefers-reduced-motion: reduce){
-    .now-flash.go{animation-name:now-flash-fade;}
+    /* A plain fade, no scaling, at the same length. theme.css collapses
+       every animation here to ~0; a fade is not motion, so keep its time. */
+    .now-flash.go{animation-name:now-flash-fade; animation-duration:var(--flash-ms) !important;}
     .now-bar{transition:none;}
   }
 
@@ -5040,7 +5051,7 @@ audioEl.addEventListener('timeupdate', () => {
 (function(){
   const banner = document.getElementById('now-banner');
   const flash = document.getElementById('now-flash');
-  let barTimer = null;
+  let barTimer = null, flashTimer = null;
   banner.addEventListener('pointerdown', () => {
     banner.classList.add('show-bar');
     clearTimeout(barTimer);
@@ -5050,10 +5061,16 @@ audioEl.addEventListener('timeupdate', () => {
     const was = audioEl.paused;
     togglePlay();
     if(audioEl.paused === was) return;   // nothing to play (no audio yet)
+    // A tap during a flash restarts it with the new state's icon.
+    clearTimeout(flashTimer);
     flash.innerHTML = audioEl.paused ? PAUSE_SVG : PLAY_SVG;
     flash.classList.remove('go');
-    void flash.offsetWidth;              // restart the animation on a quick second tap
+    void flash.offsetWidth;              // restart the animation
     flash.classList.add('go');
+    // Clear it once the animation is over: same length as the CSS
+    // (--flash-ms), plus a frame or two so it is never cut short.
+    const ms = parseFloat(getComputedStyle(flash).getPropertyValue('--flash-ms')) || 1200;
+    flashTimer = setTimeout(() => { flash.classList.remove('go'); flash.innerHTML = ''; }, ms + 50);
   }
   document.getElementById('now-tap').addEventListener('click', toggleFromCover);
   document.getElementById('play-btn').addEventListener('click', toggleFromCover);
