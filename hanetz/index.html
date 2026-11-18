@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hanetz Jerusalem</title>
+<meta name="description" content="Visible sunrise (hanetz) calculator with every input editable: coordinates, disk definition, skyline, temperature, pressure and refraction.">
+<meta name="robots" content="noindex">
+<style>html{box-sizing:border-box}body{margin:0;padding:0}[hidden]{display:none!important}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single column of instrument panels; the result sits first, the dials below, always visible together on desktop via a two-column grid. */
+:root {
+  --bg: #f6f3ec;
+  --panel: #fffdf8;
+  --fg: #1d1a14;
+  --muted: #6b6457;
+  --line: #d9d2c4;
+  --accent: #a5531b;
+  --accent-soft: #f3e3d4;
+  --override: #1f5f7a;
+  --override-soft: #dcebf1;
+  --good: #3b6d3a;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15130f; --panel: #1e1b16; --fg: #ece6da; --muted: #a39b8c; --line: #3a352c;
+    --accent: #e08a4a; --accent-soft: #3a2616; --override: #6fb3d1; --override-soft: #17303c; --good: #8fc48d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15130f; --panel: #1e1b16; --fg: #ece6da; --muted: #a39b8c; --line: #3a352c;
+  --accent: #e08a4a; --accent-soft: #3a2616; --override: #6fb3d1; --override-soft: #17303c; --good: #8fc48d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .wrap { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; } .col-main { order: 2; position: sticky; top: 16px; } .col-side { order: 1; } }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--display); font-weight: 500; font-size: 30px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--muted); font-size: 18px; margin-left: 10px; font-family: var(--body); font-weight: 400; }
+.tag { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.panel + .panel { margin-top: 16px; }
+.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.big { font-family: var(--display); font-size: clamp(44px, 9vw, 72px); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.big small { font-size: 0.4em; color: var(--muted); font-weight: 500; margin-left: 6px; }
+.sub { color: var(--muted); margin-top: 6px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 13px; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+tr.me td { color: var(--accent); font-weight: 600; }
+.fields { display: grid; gap: 10px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+.field label { font-size: 13px; color: var(--muted); grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
+.field label .sens { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.field input, .field select { width: 100%; font: 15px var(--mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); min-width: 0; }
+.field input:focus, .field select:focus, button:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field.over input, .field.over select { border-color: var(--override); background: var(--override-soft); }
+.field .reset { font: 12px var(--body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; visibility: hidden; }
+.field.over .reset { visibility: visible; color: var(--override); border-color: var(--override); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+button.btn { font: 500 14px var(--body); padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--fg); cursor: pointer; }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: 13px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.diff { font-family: var(--mono); font-size: 14px; }
+.diff.plus { color: var(--accent); } .diff.minus { color: var(--override); }
+svg { width: 100%; height: auto; display: block; }
+textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); padding: 8px; resize: vertical; min-height: 60px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.about p { margin: 6px 0; font-size: 13.5px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { .field input, .field select { transition: background .15s, border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Hanetz Jerusalem <span>visible sunrise, every variable adjustable</span></h1>
+    <div class="tag">Phase 1: geometry and refraction</div>
+  </header>
+
+  <div class="col-main">
+    <section class="panel" aria-live="polite">
+      <h2>Visible sunrise for <span id="outDate"></span></h2>
+      <div class="big"><span id="outTime">--:--:--</span><small id="outZone"></small></div>
+      <div class="sub" id="outLine"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="pinBtn" type="button">Pin as baseline</button>
+        <span class="status" id="pinStatus">No baseline pinned. Pin the current result, then change anything to see the difference.</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Compared with other definitions, same inputs</h2>
+      <table>
+        <thead><tr><th>Definition</th><th class="n">Time</th><th class="n">vs yours</th></tr></thead>
+        <tbody id="cmpBody"></tbody>
+      </table>
+      <p class="hint">"Printed tables" means the textbook rule most schedules use: the Sun's center 50 arcminutes below a flat sea-level horizon, with a fixed allowance for refraction instead of the day's weather.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Limb altitude in the minutes around sunrise</h2>
+      <svg id="chart" viewBox="0 0 640 220" role="img" aria-label="Apparent altitude of the chosen point on the Sun's disk against time, with the horizon line"></svg>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Current inputs</span><span><i style="background:var(--override)"></i>Pinned baseline</span><span><i style="background:var(--line)"></i>Skyline</span></div>
+    </section>
+
+    <section class="panel about">
+      <h2>What this version does and does not do</h2>
+      <p>Solar position follows Meeus (Astronomical Algorithms) with nutation and aberration, checked against the PyEphem library to within a few seconds. Refraction uses the Saemundsson formula scaled by the pressure and temperature you enter, applied to the chosen point on the disk, not to the center.</p>
+      <p>Not yet in this version: a real terrain skyline from elevation data (the "Skyline elevation" field stands in for it, so set it by hand for now), and a temperature profile or inversion model (the "Refraction multiplier" field lets you explore that by hand). Those are Phase 2 and Phase 3.</p>
+      <p>Times are rounded to the second but the real uncertainty on any given morning is tens of seconds from the atmosphere alone, which is exactly what the later phases and the calibration log are for.</p>
+    </section>
+  </div>
+
+  <div class="col-side">
+    <section class="panel">
+      <h2>Place and time</h2>
+      <div class="fields">
+        <div class="field" data-key="date"><label for="f-date">Date</label><input id="f-date" type="date"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="tz"><label for="f-tz">Time zone for display</label><input id="f-tz" type="text" spellcheck="false"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="lat"><label for="f-lat"><span>Latitude (degrees north)</span><span class="sens"></span></label><input id="f-lat" type="number" step="0.0001" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="lon"><label for="f-lon"><span>Longitude (degrees east)</span><span class="sens"></span></label><input id="f-lon" type="number" step="0.0001" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+      </div>
+      <p class="hint">Paste coordinates from a map app into either box. Default is central Jerusalem as a placeholder until the real vantage point is set.</p>
+    </section>
+
+    <section class="panel">
+      <h2>What counts as sunrise</h2>
+      <div class="fields">
+        <div class="field" data-key="disk"><label for="f-disk">Point on the Sun's disk</label>
+          <select id="f-disk">
+            <option value="1">First sliver (upper limb)</option>
+            <option value="0.5">Upper quarter of the disk</option>
+            <option value="0">Center of the disk</option>
+            <option value="-1">Whole disk up (lower limb)</option>
+            <option value="custom">Custom fraction</option>
+          </select><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="diskFrac" id="diskFracField" hidden><label for="f-diskFrac"><span>Custom fraction (+1 top edge, 0 center, -1 bottom edge)</span><span class="sens"></span></label><input id="f-diskFrac" type="number" step="0.05" min="-1" max="1" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Horizon</h2>
+      <div class="fields">
+        <div class="field" data-key="horizon"><label for="f-horizon"><span>Skyline elevation at the sunrise azimuth (degrees)</span><span class="sens"></span></label><input id="f-horizon" type="number" step="0.01" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="dip"><label for="f-dip"><span>Observer height above the horizon plane (m)</span><span class="sens"></span></label><input id="f-dip" type="number" step="1" min="0" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+      </div>
+      <p class="hint">Skyline elevation is the angle of the ridge or building the Sun actually rises behind, measured from level. Phase 2 will fill this in automatically from terrain data for the date's azimuth. Observer height matters when the ground falls away toward the east; leave it at 0 if the skyline is above eye level.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Atmosphere</h2>
+      <div class="fields">
+        <div class="field" data-key="temp"><label for="f-temp"><span>Air temperature (°C)</span><span class="sens"></span></label><input id="f-temp" type="number" step="0.5" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="pres"><label for="f-pres"><span>Station pressure at the observer (hPa)</span><span class="sens"></span></label><input id="f-pres" type="number" step="0.5" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="rscale"><label for="f-rscale"><span>Refraction multiplier (1 = standard air)</span><span class="sens"></span></label><input id="f-rscale" type="number" step="0.05" min="0" max="3" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="wxBtn" type="button">Fetch live weather</button>
+        <span class="status" id="wxStatus">Using typical Jerusalem values. Press the button to pull live temperature and pressure.</span>
+      </div>
+      <p class="hint">Station pressure is the pressure where you stand, not the sea-level value weather sites show. Jerusalem at 780 m sits near 925 hPa. The multiplier is a hand control for the inversion question: a strong morning inversion over the rift bends light more (try 1.2 to 1.5), dry warm air less.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Save and share settings</h2>
+      <div class="row">
+        <button class="btn" id="copyBtn" type="button">Copy settings</button>
+        <button class="btn" id="loadBtn" type="button">Load pasted settings</button>
+        <button class="btn" id="resetAllBtn" type="button">Reset everything</button>
+        <span class="status" id="copyStatus"></span>
+      </div>
+      <textarea id="settingsBox" style="margin-top:10px" placeholder="Copied settings appear here. Paste a settings line from someone else, then press Load." spellcheck="false"></textarea>
+    </section>
+  </div>
+</div>
+
+<script>
+/* Hanetz engine: solar position, atmospheric refraction, and sunrise search.
+   Pure functions, no DOM. Works in a browser (window.HanetzEngine) and in Node (module.exports). */
+(function (root) {
+  'use strict';
+
+  var RAD = Math.PI / 180;
+  function sind(x) { return Math.sin(x * RAD); }
+  function cosd(x) { return Math.cos(x * RAD); }
+  function tand(x) { return Math.tan(x * RAD); }
+  function norm360(x) { x = x % 360; return x < 0 ? x + 360 : x; }
+
+  // TT minus UT1 in seconds, estimated for 2026.
+  var DELTA_T = 69.2;
+
+  function julianDay(ms) { return ms / 86400000 + 2440587.5; }
+
+  /* Apparent geocentric position of the Sun (Meeus, Astronomical Algorithms, ch. 25,
+     with nutation and aberration folded in). */
+  function sunPosition(ms) {
+    var jd = julianDay(ms);
+    var jde = jd + DELTA_T / 86400;
+    var T = (jde - 2451545) / 36525;
+    var L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
+    var M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+    var e = 0.016708634 - 0.000042037 * T - 0.0000001267 * T * T;
+    var C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * sind(M) +
+            (0.019993 - 0.000101 * T) * sind(2 * M) +
+            0.000289 * sind(3 * M);
+    var trueLong = L0 + C;
+    var nu = M + C;
+    var R = 1.000001018 * (1 - e * e) / (1 + e * cosd(nu));
+    var omega = 125.04 - 1934.136 * T;
+    var lambda = trueLong - 0.00569 - 0.00478 * sind(omega);
+    var eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+    var eps = eps0 + 0.00256 * cosd(omega);
+    var ra = norm360(Math.atan2(cosd(eps) * sind(lambda), cosd(lambda)) / RAD);
+    var dec = Math.asin(sind(eps) * sind(lambda)) / RAD;
+    var dpsi = -0.004778 * sind(omega) - 0.000366 * sind(2 * L0);
+
+    var Tu = (jd - 2451545) / 36525;
+    var gmst = norm360(280.46061837 + 360.98564736629 * (jd - 2451545) +
+                       0.000387933 * Tu * Tu - Tu * Tu * Tu / 38710000);
+    var gast = norm360(gmst + dpsi * cosd(eps));
+
+    return { ra: ra, dec: dec, R: R, gast: gast, sd: 0.266564 / R, parallax: 0.0024428 / R };
+  }
+
+  /* Topocentric altitude (degrees, no refraction) and azimuth (degrees from north, clockwise)
+     of the Sun's center. lon is east-positive. */
+  function altAz(ms, lat, lon) {
+    var s = sunPosition(ms);
+    var H = s.gast + lon - s.ra;
+    var sinh = sind(lat) * sind(s.dec) + cosd(lat) * cosd(s.dec) * cosd(H);
+    var h = Math.asin(sinh) / RAD;
+    var az = norm360(Math.atan2(sind(H), cosd(H) * sind(lat) - tand(s.dec) * cosd(lat)) / RAD + 180);
+    h -= s.parallax * cosd(h);
+    return { alt: h, az: az, sd: s.sd, dec: s.dec, R: s.R };
+  }
+
+  /* Refraction in arcminutes for a TRUE altitude in degrees (Saemundsson),
+     scaled for station pressure (hPa) and temperature (deg C). */
+  function refractionArcmin(hTrue, pressure, tempC) {
+    var h = Math.max(hTrue, -1.7);
+    var r = 1.02 / tand(h + 10.3 / (h + 5.11));
+    return r * (pressure / 1010) * (283 / (273.15 + tempC));
+  }
+
+  /* Horizon dip in degrees for an observer h meters above the horizon plane. */
+  function dipDegrees(heightM) {
+    return heightM > 0 ? 1.76 * Math.sqrt(heightM) / 60 : 0;
+  }
+
+  /* Opts:
+     lat, lon         degrees (east positive)
+     diskFraction     -1 lower limb, 0 center, +1 upper limb
+     horizon          apparent elevation of the skyline, degrees
+     dipHeight        meters above a lower horizon plane (0 for none)
+     pressure         hPa at the observer
+     tempC            deg C at the observer
+     refractionScale  1 = standard behavior, 0 = no refraction */
+  function pointAltitude(ms, o) {
+    var p = altAz(ms, o.lat, o.lon);
+    var hTrue = p.alt + o.diskFraction * p.sd;
+    var r = o.refractionScale * refractionArcmin(hTrue, o.pressure, o.tempC) / 60;
+    return { app: hTrue + r, refraction: r * 60, az: p.az, trueAlt: hTrue };
+  }
+
+  function horizonAltitude(o) {
+    return o.horizon - dipDegrees(o.dipHeight || 0);
+  }
+
+  function clearance(ms, o) {
+    return pointAltitude(ms, o).app - horizonAltitude(o);
+  }
+
+  /* Find the sunrise for the solar day centered on local mean solar noon of y-m-d.
+     Returns null if the point never clears the horizon that morning. */
+  function findSunrise(o, y, m, d) {
+    var noon = Date.UTC(y, m - 1, d, 12) - o.lon / 15 * 3600000;
+    var step = 600000;
+    var t = noon - 12 * 3600000;
+    var prev = clearance(t, o);
+    if (prev >= 0) return null;
+    for (var i = 0; i < 72; i++) {
+      var next = t + step;
+      var v = clearance(next, o);
+      if (v >= 0) {
+        var lo = t, hi = next;
+        for (var k = 0; k < 34; k++) {
+          var mid = (lo + hi) / 2;
+          if (clearance(mid, o) >= 0) hi = mid; else lo = mid;
+        }
+        var ms = (lo + hi) / 2;
+        var pt = pointAltitude(ms, o);
+        return { ms: ms, az: pt.az, refraction: pt.refraction, apparentAlt: pt.app };
+      }
+      t = next;
+      prev = v;
+    }
+    return null;
+  }
+
+  /* The textbook value: Sun's center 50 arcminutes below a flat sea-level horizon,
+     no refraction model. This is what most printed schedules use. */
+  function standardOpts(o) {
+    return {
+      lat: o.lat, lon: o.lon, diskFraction: 0, horizon: -50 / 60, dipHeight: 0,
+      pressure: 1010, tempC: 10, refractionScale: 0
+    };
+  }
+
+  var api = {
+    sunPosition: sunPosition,
+    altAz: altAz,
+    refractionArcmin: refractionArcmin,
+    dipDegrees: dipDegrees,
+    pointAltitude: pointAltitude,
+    horizonAltitude: horizonAltitude,
+    clearance: clearance,
+    findSunrise: findSunrise,
+    standardOpts: standardOpts
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.HanetzEngine = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var E = window.HanetzEngine;
+
+  var DEFAULTS = {
+    date: null,            // filled with today in Jerusalem
+    tz: 'Asia/Jerusalem',
+    lat: 31.7683, lon: 35.2137,
+    disk: '1', diskFrac: 1,
+    horizon: 0, dip: 0,
+    temp: 12, pres: 926, rscale: 1
+  };
+  var FIELD_KEYS = ['date', 'tz', 'lat', 'lon', 'disk', 'diskFrac', 'horizon', 'dip', 'temp', 'pres', 'rscale'];
+  var NUMERIC = { lat: 1, lon: 1, diskFrac: 1, horizon: 1, dip: 1, temp: 1, pres: 1, rscale: 1 };
+  var live = {};           // values that came from the live/default source
+  var over = {};           // user overrides
+  var baseline = null;
+
+  function todayIn(tz) {
+    var p = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    var o = {}; p.forEach(function (x) { o[x.type] = x.value; });
+    return o.year + '-' + o.month + '-' + o.day;
+  }
+  DEFAULTS.date = todayIn(DEFAULTS.tz);
+  Object.keys(DEFAULTS).forEach(function (k) { live[k] = DEFAULTS[k]; });
+
+  function val(k) { return k in over ? over[k] : live[k]; }
+  function fieldEl(k) { return document.querySelector('.field[data-key="' + k + '"]'); }
+  function inputEl(k) { return document.getElementById('f-' + k); }
+
+  function paintField(k) {
+    var f = fieldEl(k), el = inputEl(k);
+    if (!f || !el) return;
+    if (document.activeElement !== el) el.value = val(k);
+    f.classList.toggle('over', k in over);
+  }
+  function paintAll() { FIELD_KEYS.forEach(paintField); document.getElementById('diskFracField').hidden = val('disk') !== 'custom'; }
+
+  function validTz(tz) { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch (e) { return false; } }
+
+  function opts(v) {
+    var frac = v.disk === 'custom' ? +v.diskFrac : +v.disk;
+    return { lat: +v.lat, lon: +v.lon, diskFraction: frac, horizon: +v.horizon, dipHeight: +v.dip, pressure: +v.pres, tempC: +v.temp, refractionScale: +v.rscale };
+  }
+  function snapshot() { var v = {}; FIELD_KEYS.forEach(function (k) { v[k] = val(k); }); return v; }
+  function ymd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? [+m[1], +m[2], +m[3]] : null; }
+  function rise(v, o) { var d = ymd(v.date); if (!d) return null; return E.findSunrise(o, d[0], d[1], d[2]); }
+
+  function fmtTime(ms, tz) {
+    var s = Math.round(ms / 1000) * 1000;
+    return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(s));
+  }
+  function fmtDate(s, tz) {
+    var d = ymd(s); if (!d) return s;
+    return new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(Date.UTC(d[0], d[1] - 1, d[2], 12)));
+  }
+  function signed(sec) { var r = Math.round(sec); return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r) + ' s'; }
+
+  function compute() {
+    var v = snapshot();
+    var tz = validTz(v.tz) ? v.tz : 'Asia/Jerusalem';
+    var o = opts(v);
+    var r = rise(v, o);
+    document.getElementById('outDate').textContent = fmtDate(v.date, tz);
+    document.getElementById('outZone').textContent = tz.replace(/_/g, ' ');
+    var outTime = document.getElementById('outTime'), outLine = document.getElementById('outLine');
+    if (!r) { outTime.textContent = 'no rise'; outLine.textContent = 'With these inputs the chosen point never clears the skyline that morning.'; }
+    else {
+      outTime.textContent = fmtTime(r.ms, tz);
+      outLine.textContent = 'Sun rises at azimuth ' + r.az.toFixed(1) + '° (' + compass(r.az) + '), refraction at that moment ' + r.refraction.toFixed(1) + ' arcminutes, apparent altitude of the chosen point ' + (r.apparentAlt * 60).toFixed(1) + ' arcminutes.';
+    }
+
+    // comparison table
+    var rows = [
+      ['Printed tables (center at -50\', fixed refraction)', E.standardOpts(o)],
+      ['First sliver, upper limb', Object.assign({}, o, { diskFraction: 1 })],
+      ['Center of the disk', Object.assign({}, o, { diskFraction: 0 })],
+      ['Whole disk, lower limb', Object.assign({}, o, { diskFraction: -1 })],
+      ['Same point, no refraction at all', Object.assign({}, o, { refractionScale: 0 })]
+    ];
+    var body = document.getElementById('cmpBody'); body.innerHTML = '';
+    rows.forEach(function (row) {
+      var rr = rise(v, row[1]);
+      var tr = document.createElement('tr');
+      var same = r && rr && Math.abs(rr.ms - r.ms) < 500;
+      if (same) tr.className = 'me';
+      tr.innerHTML = '<td>' + row[0] + '</td><td class="n">' + (rr ? fmtTime(rr.ms, tz) : 'no rise') + '</td><td class="n">' + (rr && r ? signed((rr.ms - r.ms) / 1000) : '') + '</td>';
+      body.appendChild(tr);
+    });
+
+    // sensitivity: seconds of change for one step of each field
+    var steps = { lat: [0.01, '0.01°'], lon: [0.01, '0.01°'], diskFrac: [0.1, '0.1'], horizon: [0.1, '0.1°'], dip: [10, '10 m'], temp: [5, '5°C'], pres: [10, '10 hPa'], rscale: [0.1, '0.1'] };
+    Object.keys(steps).forEach(function (k) {
+      var f = fieldEl(k); if (!f) return;
+      var span = f.querySelector('.sens'); if (!span) return;
+      if (!r) { span.textContent = ''; return; }
+      var v2 = Object.assign({}, v); v2[k] = +v[k] + steps[k][0];
+      if (k === 'diskFrac' && v.disk !== 'custom') { span.textContent = ''; return; }
+      var r2 = rise(v2, opts(v2));
+      span.textContent = r2 ? signed((r2.ms - r.ms) / 1000) + ' per ' + steps[k][1] : '';
+    });
+
+    // baseline
+    var ps = document.getElementById('pinStatus');
+    if (baseline) {
+      var rb = rise(baseline.v, opts(baseline.v));
+      if (rb && r) {
+        var d = (r.ms - rb.ms) / 1000;
+        ps.innerHTML = 'Baseline ' + fmtTime(rb.ms, tz) + ' (' + baseline.label + '). Now <span class="diff ' + (d > 0.5 ? 'plus' : d < -0.5 ? 'minus' : '') + '">' + signed(d) + '</span>' + (d > 0.5 ? ' later' : d < -0.5 ? ' earlier' : ', unchanged') + '.';
+      } else ps.textContent = 'Baseline pinned, but one of the two cases has no sunrise.';
+    }
+    drawChart(v, o, r, baseline ? baseline.v : null, tz);
+  }
+
+  function compass(az) {
+    var names = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    return names[Math.round(az / 22.5) % 16];
+  }
+
+  function drawChart(v, o, r, bv, tz) {
+    var svg = document.getElementById('chart');
+    var W = 640, H = 220, L = 48, R = 28, T = 14, B = 34;
+    if (!r) { svg.innerHTML = '<text x="320" y="110" text-anchor="middle" fill="var(--muted)" font-size="14">No sunrise to plot.</text>'; return; }
+    var t0 = r.ms - 6 * 60000, t1 = r.ms + 6 * 60000;
+    var hz = E.horizonAltitude(o) * 60;
+    var yMin = hz - 60, yMax = hz + 60;
+    function X(t) { return L + (t - t0) / (t1 - t0) * (W - L - R); }
+    function Y(a) { return T + (yMax - a) / (yMax - yMin) * (H - T - B); }
+    function path(oo, color) {
+      var d = '';
+      for (var i = 0; i <= 120; i++) {
+        var t = t0 + (t1 - t0) * i / 120;
+        var a = E.pointAltitude(t, oo).app * 60;
+        d += (i ? 'L' : 'M') + X(t).toFixed(1) + ' ' + Y(Math.max(yMin - 10, Math.min(yMax + 10, a))).toFixed(1);
+      }
+      return '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.2" stroke-linejoin="round"/>';
+    }
+    var s = '';
+    // grid
+    for (var g = -60; g <= 60; g += 20) {
+      var yy = Y(hz + g);
+      s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + yy.toFixed(1) + '" y2="' + yy.toFixed(1) + '" stroke="var(--line)" stroke-width="' + (g === 0 ? 2 : 0.6) + '"/>';
+      s += '<text x="' + (L - 6) + '" y="' + (yy + 4).toFixed(1) + '" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">' + (g > 0 ? '+' : '') + g + '\'</text>';
+    }
+    for (var m = -6; m <= 6; m += 2) {
+      var xx = X(r.ms + m * 60000);
+      s += '<line x1="' + xx.toFixed(1) + '" x2="' + xx.toFixed(1) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--line)" stroke-width="0.6"/>';
+      s += '<text x="' + xx.toFixed(1) + '" y="' + (H - B + 16) + '" text-anchor="middle" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">' + fmtTime(r.ms + m * 60000, tz).slice(0, 5) + '</text>';
+    }
+    s += '<text x="' + (W - R) + '" y="' + (Y(hz) - 6).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--muted)">skyline</text>';
+    s += '<text x="' + (L + 4) + '" y="' + (T + 10) + '" font-size="11" fill="var(--muted)">arcminutes above skyline</text>';
+    if (bv) { var ob = opts(bv); if (ymd(bv.date) && bv.date === v.date) s += path(ob, 'var(--override)'); }
+    s += path(o, 'var(--accent)');
+    s += '<circle cx="' + X(r.ms).toFixed(1) + '" cy="' + Y(hz).toFixed(1) + '" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>';
+    svg.innerHTML = s;
+  }
+
+  // wiring
+  FIELD_KEYS.forEach(function (k) {
+    var el = inputEl(k), f = fieldEl(k); if (!el || !f) return;
+    el.addEventListener('input', function () {
+      var raw = el.value;
+      if (NUMERIC[k]) { if (raw === '' || isNaN(+raw)) return; over[k] = +raw; }
+      else over[k] = raw;
+      if (String(over[k]) === String(live[k])) delete over[k];
+      if (k === 'disk') document.getElementById('diskFracField').hidden = val('disk') !== 'custom';
+      f.classList.toggle('over', k in over);
+      compute(); persist();
+    });
+    f.querySelector('.reset').addEventListener('click', function () { delete over[k]; paintField(k); if (k === 'disk') paintAll(); compute(); persist(); });
+  });
+
+  document.getElementById('pinBtn').addEventListener('click', function () {
+    var v = snapshot();
+    var tz = validTz(v.tz) ? v.tz : 'Asia/Jerusalem';
+    var r = rise(v, opts(v));
+    baseline = { v: v, label: r ? 'pinned at ' + fmtTime(r.ms, tz) : 'pinned' };
+    compute();
+  });
+
+  function settingsString() { return JSON.stringify({ over: over, baseline: baseline ? baseline.v : null }); }
+  function applySettings(txt) {
+    var obj = JSON.parse(txt);
+    over = {};
+    if (obj && obj.over) Object.keys(obj.over).forEach(function (k) { if (FIELD_KEYS.indexOf(k) >= 0) over[k] = NUMERIC[k] ? +obj.over[k] : String(obj.over[k]); });
+    baseline = obj && obj.baseline ? { v: obj.baseline, label: 'loaded' } : null;
+    paintAll(); compute();
+  }
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var txt = settingsString(); var box = document.getElementById('settingsBox'); box.value = txt;
+    var st = document.getElementById('copyStatus');
+    try { navigator.clipboard.writeText(txt).then(function () { st.textContent = 'Copied.'; }, function () { box.select(); st.textContent = 'Select and copy the text below.'; }); }
+    catch (e) { box.select(); st.textContent = 'Select and copy the text below.'; }
+  });
+  document.getElementById('loadBtn').addEventListener('click', function () {
+    var st = document.getElementById('copyStatus');
+    try { applySettings(document.getElementById('settingsBox').value); st.textContent = 'Loaded.'; persist(); }
+    catch (e) { st.textContent = 'That is not a settings line this page can read.'; }
+  });
+  document.getElementById('resetAllBtn').addEventListener('click', function () { over = {}; baseline = null; document.getElementById('pinStatus').textContent = 'No baseline pinned.'; paintAll(); compute(); persist(); });
+
+  function persist() { try { localStorage.setItem('hanetz-settings', settingsString()); } catch (e) {} }
+  function restore() { try { var s = localStorage.getItem('hanetz-settings'); if (s) applySettings(s); } catch (e) {} }
+
+  // Live weather: Open-Meteo (free, no key, CORS enabled).
+  document.getElementById('wxBtn').addEventListener('click', function () {
+    var st = document.getElementById('wxStatus');
+    var lat = +val('lat'), lon = +val('lon');
+    st.className = 'status'; st.textContent = 'Fetching...';
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,surface_pressure,relative_humidity_2m&timezone=auto';
+    var done = false;
+    var timer = setTimeout(function () { if (!done) { done = true; st.textContent = 'No answer from the weather service. Check the connection and try again, or type the values by hand.'; } }, 8000);
+    fetch(url).then(function (res) { return res.json(); }).then(function (j) {
+      if (done) return; done = true; clearTimeout(timer);
+      var c = j.current || {};
+      if (typeof c.temperature_2m === 'number') { live.temp = c.temperature_2m; delete over.temp; }
+      if (typeof c.surface_pressure === 'number') { live.pres = c.surface_pressure; delete over.pres; }
+      paintAll(); compute(); persist();
+      st.className = 'status ok'; st.textContent = 'Live: ' + c.temperature_2m + '°C, ' + c.surface_pressure + ' hPa at the model elevation ' + j.elevation + ' m (' + (c.time || '') + ').';
+    }).catch(function () {
+      if (done) return; done = true; clearTimeout(timer);
+      st.textContent = 'Could not reach the weather service. Check the connection and try again, or type the values by hand.';
+    });
+  });
+
+  paintAll(); restore(); compute();
+})();
+</script>
+
+</body></html>
