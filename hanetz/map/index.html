@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hanetz: earliest sunrise point, day by day</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{--bg:#f6f1e7;--panel:#fffdf8;--fg:#1d1a14;--muted:#6b6457;--line:#d9d2c4;--accent:#a5531b;--accent-soft:#f3e3d4;--ref:#1f5f7a;
+--display:"Fraunces",Georgia,serif;--body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;--mono:"IBM Plex Mono",Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15130f;--panel:#1e1b16;--fg:#ece6da;--muted:#a39b8c;--line:#3a352c;--accent:#e08a4a;--accent-soft:#3a2616;--ref:#6fb3d1;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45;padding:20px 16px 48px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.wrap{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}.full{grid-column:1/-1}}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+h1{font-family:var(--display);font-weight:500;font-size:28px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.tag{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+h2{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;font-weight:600}
+.big{font-family:var(--display);font-weight:600;font-size:56px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+input[type=date]{font:inherit;font-family:var(--mono);padding:7px 9px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-size:13px;font-weight:500;padding:7px 11px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--fg);cursor:pointer}
+button:hover{border-color:var(--accent)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:14px 0 0;font-size:14px}
+dt{color:var(--muted)}dd{margin:0;font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:13px}
+a{color:var(--accent)}
+.btnlink{display:inline-block;font-size:13px;font-weight:600;padding:8px 12px;border-radius:4px;background:var(--accent);color:var(--panel);text-decoration:none}
+#selnote{margin:12px 0 0;color:var(--fg)}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:var(--accent);color:var(--panel);font-weight:600;font-size:12px;padding:0 6px}
+svg{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:-2px;border:1px solid var(--line)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+tr.now td{background:var(--accent-soft)}
+tbody tr{cursor:pointer}
+details summary{cursor:pointer;font-weight:500}
+.note p{margin:0 0 10px;font-size:14px;max-width:75ch}
+.status{font-size:13px;color:var(--muted)}
+</style></head><body>
+<div class="wrap">
+<header class="full"><h1>Earliest sunrise point, day by day</h1><span class="tag">Hanetz, Ramat Shlomo hilltop, draft model &middot; <a href="/hanetz" id="calcTop">open the calculator</a></span></header>
+
+<section class="panel">
+  <h2>Pick a day</h2>
+  <div class="row"><button id="prev" type="button" aria-label="Previous day">&larr;</button><input type="date" id="date" min="2026-11-19" max="2027-11-18"><button id="next" type="button" aria-label="Next day">&rarr;</button><button id="today" type="button">Today</button></div>
+  <div id="out">
+    <div class="tag" id="dlabel"></div>
+    <div class="big" id="time"></div>
+    <div class="sub">first sliver of the sun, Israel clock time, from point <span class="badge" id="letter"></span>, <span id="how"></span></div>
+    <dl>
+      <dt>Stand at</dt><dd><span class="mono" id="coords"></span> &middot; <a id="gmap" href="#" target="_blank" rel="noopener">open in Google Maps</a></dd>
+      <dt>Surface height</dt><dd id="elev"></dd>
+      <dt>Sun appears at</dt><dd id="az"></dd>
+      <dt>Versus reference</dt><dd id="gain"></dd>
+      <dt>Versus flat horizon</dt><dd id="flat"></dd>
+    </dl>
+    <p class="status" id="selnote" hidden></p>
+    <div class="row" style="margin:14px 0 0"><a class="btnlink" id="calc" href="/hanetz">Open this day in the calculator</a><button id="backauto" type="button" hidden>Back to the earliest point</button></div>
+  </div>
+  <p class="status" id="oor" hidden>This schedule covers 19 November 2026 through 18 November 2027.</p>
+</section>
+
+<section class="panel">
+  <h2>Map: where the first sliver is seen earliest</h2>
+  <svg id="map" role="img" aria-label="Map of the neighborhood showing the earliest-sunrise points"></svg>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section class="panel full">
+  <h2>Schedule: which point to use on which dates</h2>
+  <div class="tablewrap"><table id="sched"><thead><tr><th>Dates</th><th>Days</th><th>Point</th><th>Coordinates</th><th>Time, first day</th><th>Time, last day</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section class="panel full">
+  <details><summary>Every day (365 rows)</summary>
+  <div class="row" style="margin-top:12px"><button id="copy" type="button">Copy as CSV</button><span class="status" id="copyst"></span></div>
+  <div class="tablewrap"><table id="daily"><thead><tr><th>Date</th><th>Time</th><th>Point</th><th>Latitude</th><th>Longitude</th><th>Sun azimuth</th><th>Earlier than reference</th></tr></thead><tbody></tbody></table></div>
+  </details>
+</section>
+
+<section class="panel full note">
+  <h2>How this was made, and how far to trust it</h2>
+  <p>For every 30 m square in the box from 31.804 to 31.818 north and 35.208 to 35.226 east (about 3,300 squares), the real skyline was traced in every direction from 56&deg; to 124&deg; out to about 75 km, including Earth's curvature. For each day, the calculator found the moment the upper edge of the sun clears that skyline from each square, and kept the earliest.</p>
+  <p>The winning squares hop around by a few dozen meters from day to day, which is finer than the data can resolve. So the schedule uses 16 fixed points and keeps a point for as long as it is within 20 seconds of that day's best square.</p>
+  <p>Terrain is the Copernicus 30 m surface model. It includes buildings and trees, and its heights can be off by several meters. A few meters on a ridge 1.5 km away is roughly half a minute of sunrise. Treat times as good to about a minute and locations as good to about 50 m until someone checks them on the ground.</p>
+  <p>Because the surface model includes roofs, some points may be rooftops and not ground. Points A, C, J and M on the west side are the likeliest, since they sit toward the built streets. Open each point in Google Maps satellite view before relying on it.</p>
+  <p>The calculator uses this schedule by default: for each date it loads that day's point and its skyline, and it can then be adjusted for the morning's real temperature and pressure. Picking a different letter here and pressing the button sends that point to the calculator for that one day.</p>
+  <p>Border: the search went a little past Highway 21 on the east side. Point G appears to sit about 100 m beyond the road. That is accepted for now and will be redone if the Rav rules that the road is the border.</p>
+  <p>Air is fixed at 12&deg;C and 926 hPa for the whole year. Real mornings differ by tens of seconds. The observer stands 1.7 m above the surface.</p>
+  <p>The reference point is the data square nearest 31.8125, 35.2225 (surface 811 m). In this model that square has slightly higher ground close by to the east and northeast, which is why it comes out later, most of all in summer. That needs a look on site.</p>
+  <p>Open question: a HeyWhatsThat reading from the reference point put the skyline at 111&deg; almost exactly level, set by a ridge about 50 km away. This model instead finds a ridge about 1.7 km away standing about 0.6&deg; above level in that direction. One photo of the eastern horizon from the hilltop would settle which is right.</p>
+</section>
+</div>
+<script>
+/* Hanetz engine: solar position, atmospheric refraction, and sunrise search.
+   Pure functions, no DOM. Works in a browser (window.HanetzEngine) and in Node (module.exports). */
+(function (root) {
+  'use strict';
+
+  var RAD = Math.PI / 180;
+  function sind(x) { return Math.sin(x * RAD); }
+  function cosd(x) { return Math.cos(x * RAD); }
+  function tand(x) { return Math.tan(x * RAD); }
+  function norm360(x) { x = x % 360; return x < 0 ? x + 360 : x; }
+
+  // TT minus UT1 in seconds, estimated for 2026.
+  var DELTA_T = 69.2;
+
+  function julianDay(ms) { return ms / 86400000 + 2440587.5; }
+
+  /* Apparent geocentric position of the Sun (Meeus, Astronomical Algorithms, ch. 25,
+     with nutation and aberration folded in). */
+  function sunPosition(ms) {
+    var jd = julianDay(ms);
+    var jde = jd + DELTA_T / 86400;
+    var T = (jde - 2451545) / 36525;
+    var L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
+    var M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+    var e = 0.016708634 - 0.000042037 * T - 0.0000001267 * T * T;
+    var C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * sind(M) +
+            (0.019993 - 0.000101 * T) * sind(2 * M) +
+            0.000289 * sind(3 * M);
+    var trueLong = L0 + C;
+    var nu = M + C;
+    var R = 1.000001018 * (1 - e * e) / (1 + e * cosd(nu));
+    var omega = 125.04 - 1934.136 * T;
+    var lambda = trueLong - 0.00569 - 0.00478 * sind(omega);
+    var eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+    var eps = eps0 + 0.00256 * cosd(omega);
+    var ra = norm360(Math.atan2(cosd(eps) * sind(lambda), cosd(lambda)) / RAD);
+    var dec = Math.asin(sind(eps) * sind(lambda)) / RAD;
+    var dpsi = -0.004778 * sind(omega) - 0.000366 * sind(2 * L0);
+
+    var Tu = (jd - 2451545) / 36525;
+    var gmst = norm360(280.46061837 + 360.98564736629 * (jd - 2451545) +
+                       0.000387933 * Tu * Tu - Tu * Tu * Tu / 38710000);
+    var gast = norm360(gmst + dpsi * cosd(eps));
+
+    return { ra: ra, dec: dec, R: R, gast: gast, sd: 0.266564 / R, parallax: 0.0024428 / R };
+  }
+
+  /* Topocentric altitude (degrees, no refraction) and azimuth (degrees from north, clockwise)
+     of the Sun's center. lon is east-positive. */
+  function altAz(ms, lat, lon) {
+    var s = sunPosition(ms);
+    var H = s.gast + lon - s.ra;
+    var sinh = sind(lat) * sind(s.dec) + cosd(lat) * cosd(s.dec) * cosd(H);
+    var h = Math.asin(sinh) / RAD;
+    var az = norm360(Math.atan2(sind(H), cosd(H) * sind(lat) - tand(s.dec) * cosd(lat)) / RAD + 180);
+    h -= s.parallax * cosd(h);
+    return { alt: h, az: az, sd: s.sd, dec: s.dec, R: s.R };
+  }
+
+  /* Refraction in arcminutes for a TRUE altitude in degrees (Saemundsson),
+     scaled for station pressure (hPa) and temperature (deg C). */
+  function refractionArcmin(hTrue, pressure, tempC) {
+    var h = Math.max(hTrue, -1.7);
+    var r = 1.02 / tand(h + 10.3 / (h + 5.11));
+    return r * (pressure / 1010) * (283 / (273.15 + tempC));
+  }
+
+  /* Horizon dip in degrees for an observer h meters above the horizon plane. */
+  function dipDegrees(heightM) {
+    return heightM > 0 ? 1.76 * Math.sqrt(heightM) / 60 : 0;
+  }
+
+  /* Opts:
+     lat, lon         degrees (east positive)
+     diskFraction     -1 lower limb, 0 center, +1 upper limb
+     horizon          apparent elevation of the skyline, degrees
+     dipHeight        meters above a lower horizon plane (0 for none)
+     pressure         hPa at the observer
+     tempC            deg C at the observer
+     refractionScale  1 = standard behavior, 0 = no refraction */
+  function pointAltitude(ms, o) {
+    var p = altAz(ms, o.lat, o.lon);
+    var hTrue = p.alt + o.diskFraction * p.sd;
+    var r = o.refractionScale * refractionArcmin(hTrue, o.pressure, o.tempC) / 60;
+    return { app: hTrue + r, refraction: r * 60, az: p.az, trueAlt: hTrue };
+  }
+
+  /* Skyline profile: integers in units of 0.005 degrees, one per half degree of azimuth from 56 degrees. */
+  var PROF_AZ0 = 56, PROF_STEP = 0.5, PROF_UNIT = 0.005;
+  function profileAt(p, az) {
+    var x = (az - PROF_AZ0) / PROF_STEP;
+    if (x <= 0) return p[0] * PROF_UNIT;
+    if (x >= p.length - 1) return p[p.length - 1] * PROF_UNIT;
+    var i = Math.floor(x);
+    return (p[i] + (p[i + 1] - p[i]) * (x - i)) * PROF_UNIT;
+  }
+
+  /* With o.profile and an azimuth, the skyline comes from the terrain profile; otherwise from o.horizon. */
+  function skyline(o, az) {
+    return (o.profile && az != null) ? profileAt(o.profile, az) : o.horizon;
+  }
+  function horizonAltitude(o, az) {
+    return skyline(o, az) - dipDegrees(o.dipHeight || 0);
+  }
+
+  function clearance(ms, o) {
+    var p = pointAltitude(ms, o);
+    return p.app - horizonAltitude(o, p.az);
+  }
+
+  /* Find the sunrise for the solar day centered on local mean solar noon of y-m-d.
+     Returns null if the point never clears the horizon that morning. */
+  function findSunrise(o, y, m, d) {
+    var noon = Date.UTC(y, m - 1, d, 12) - o.lon / 15 * 3600000;
+    /* A terrain skyline is jagged, so first find when the point clears a level line just
+       below the lowest part of the profile, then walk forward in 10 second steps. */
+    var c = o;
+    if (o.profile) {
+      var mn = Infinity;
+      for (var q = 0; q < o.profile.length; q++) if (o.profile[q] < mn) mn = o.profile[q];
+      c = {}; for (var key in o) c[key] = o[key];
+      c.profile = null; c.horizon = mn * PROF_UNIT - 0.05;
+    }
+    function bisect(lo, hi, oo) {
+      for (var k = 0; k < 34; k++) {
+        var mid = (lo + hi) / 2;
+        if (clearance(mid, oo) >= 0) hi = mid; else lo = mid;
+      }
+      return (lo + hi) / 2;
+    }
+    function result(ms) {
+      var pt = pointAltitude(ms, o);
+      return { ms: ms, az: pt.az, refraction: pt.refraction, apparentAlt: pt.app, horizon: skyline(o, pt.az) };
+    }
+    var step = 600000;
+    var t = noon - 12 * 3600000;
+    if (clearance(t, c) >= 0) return null;
+    for (var i = 0; i < 72; i++) {
+      var next = t + step;
+      if (clearance(next, c) >= 0) {
+        var ms0 = bisect(t, next, c);
+        if (!o.profile) return result(ms0);
+        var a = ms0, limit = ms0 + 3 * 3600000;
+        while (a < limit) {
+          var b = a + 10000;
+          if (clearance(b, o) >= 0) return result(bisect(a, b, o));
+          a = b;
+        }
+        return null;
+      }
+      t = next;
+    }
+    return null;
+  }
+
+  /* The textbook value: Sun's center 50 arcminutes below a flat sea-level horizon,
+     no refraction model. This is what most printed schedules use. */
+  function standardOpts(o) {
+    return {
+      lat: o.lat, lon: o.lon, diskFraction: 0, horizon: -50 / 60, dipHeight: 0,
+      pressure: 1010, tempC: 10, refractionScale: 0
+    };
+  }
+
+  var api = {
+    sunPosition: sunPosition,
+    altAz: altAz,
+    refractionArcmin: refractionArcmin,
+    dipDegrees: dipDegrees,
+    profileAt: profileAt,
+    skyline: skyline,
+    pointAltitude: pointAltitude,
+    horizonAltitude: horizonAltitude,
+    clearance: clearance,
+    findSunrise: findSunrise,
+    standardOpts: standardOpts
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.HanetzEngine = api;
+})(typeof window !== 'undefined' ? window : this);
+(function(){
+'use strict';
+var HANETZ_DATA = {start: Date.UTC(2026, 10, 19), assign: "NNNMMMMMMMMMMMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMMEEEOOEEEEBBBBBBBBBHHKKFFFFFCIIDDDDDDDDDEEEBBBBBBHHHHKKFFFFIIIDDDDEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEFFFFGGDDDDDCCJJJJDGGGGGCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGDDDJJCCDDDDDFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEEEEEEEEEEEEEEEEEEEEDDDDDIIFFFFFKKHHHHBBBBBBBEEDDDDDDDDIICCFFFFFKKHHHHPPPPPPPPEELL", stn: [[31.81125, 35.21875, 811], [31.81319, 35.22292, 816], [31.81264, 35.21736, 810], [31.81125, 35.22153, 813], [31.81347, 35.22292, 816], [31.81208, 35.22264, 812], [31.81208, 35.22542, 808], [31.81264, 35.22292, 813], [31.81153, 35.22153, 812], [31.81236, 35.21708, 810], [31.81236, 35.22236, 811], [31.81375, 35.22264, 811], [31.81153, 35.21681, 808], [31.81403, 35.22264, 808], [31.81375, 35.22292, 810], [31.81319, 35.22319, 816]], ref: [31.81264, 35.22236, 811], prof: [[20,31,40,45,51,57,63,69,75,81,88,87,81,76,71,74,73,63,51,47,43,39,35,30,26,21,16,10,6,3,1,1,-1,-4,-6,-9,-11,-14,-16,-18,-20,-21,-23,-21,1,18,35,49,61,69,76,87,99,101,101,101,100,89,84,80,74,58,45,38,31,31,36,50,64,70,84,95,107,102,95,85,75,69,65,60,51,42,32,25,23,15,11,11,7,1,10,64,69,73,90,106,114,150,149,134,130,127,131,128,118,119,128,135,137,136,133,127,117,108,100,89,71,63,55,52,51,47,44,50,77,95,102,93,104,103,88,85,80,74,68,78,70],[-19,-121,4,15,17,-136,-122,-107,-92,13,6,-33,-17,0,17,34,39,44,45,45,33,16,-1,-12,3,-24,1,-1,-2,-1,-8,-8,-10,-14,-16,-17,-19,-19,-19,-22,-24,-27,-27,-26,-24,-21,-16,-19,-17,-22,-23,-21,-21,-18,-23,-20,-10,-4,13,24,35,44,51,58,69,79,84,85,86,85,85,82,74,66,61,57,53,40,27,14,6,-1,-6,-5,7,22,34,40,51,62,71,82,84,80,75,66,57,51,45,38,35,33,23,13,1,-9,-13,-16,-26,-21,21,41,46,58,72,85,98,105,116,120,120,120,124,122,111,106,105,101,112,121,122,123,121,121,114,101,93],[3,-13,-34,12,-65,-78,14,16,17,-128,10,-109,-98,-86,-74,-12,-51,-22,-27,-56,-17,-19,-14,-46,-28,-14,3,28,45,62,74,78,80,67,49,36,27,19,13,17,11,-7,1,11,19,27,38,52,65,71,74,77,82,86,91,95,89,83,78,72,77,85,97,100,99,100,100,90,85,79,72,57,48,41,35,34,43,57,66,77,87,97,96,92,82,75,71,66,60,51,42,32,27,23,16,13,7,44,66,71,83,103,110,115,137,137,129,123,127,116,115,119,128,130,130,128,123,112,104,96,85,68,63,54,50,49,49,53,87,96,94,97,99,90,83,73,80],[45,56,62,68,73,62,52,37,25,16,9,-2,-13,-14,-23,-14,-50,-52,-50,-19,-46,-45,-59,-3,4,-25,-1,0,0,-1,-9,-9,-11,-12,-16,-15,-18,-18,-19,-21,-11,2,21,45,52,62,69,76,85,96,102,103,104,105,103,90,84,77,72,59,48,41,34,27,23,24,31,44,57,68,84,98,110,119,110,101,91,82,74,67,62,59,49,40,31,21,15,12,7,-2,-6,-11,-17,-13,47,65,70,79,100,116,119,126,154,157,144,143,136,140,134,126,126,129,142,142,145,145,142,139,128,118,110,102,93,73,65,60,51,45,45,46,41,52,86,101,97,94,103],[-21,-12,-136,15,-112,14,19,14,15,-122,-107,3,-4,-9,-8,-18,-1,16,27,38,42,42,47,42,37,20,5,-1,-3,-2,-8,-8,-9,-13,-16,-16,-19,-19,-19,-21,-24,-27,-26,-25,-25,-20,-17,-19,-17,-22,-23,-22,-21,-18,-22,-20,-21,-20,-10,-9,10,24,35,46,52,59,68,79,89,90,90,90,90,90,85,77,70,66,63,57,43,27,15,9,2,-2,7,23,36,42,50,63,74,86,98,93,88,77,66,57,55,49,43,38,30,22,12,2,-7,-11,-14,-4,31,48,53,65,74,93,101,109,115,121,129,122,134,145,132,106,102,106,123,122,123,124,125,121,117],[22,40,55,70,86,85,83,82,81,67,51,36,24,16,8,1,0,2,-16,-32,-20,-15,-14,-57,-30,-25,-3,-1,2,0,-9,-8,-11,-13,-15,-15,-18,-18,-18,-22,-24,-27,-25,-27,-23,-2,4,21,45,57,67,77,83,90,99,109,115,117,118,118,118,111,103,95,89,83,74,63,51,44,36,31,30,34,47,60,71,80,94,106,117,127,122,115,107,97,87,82,75,72,69,60,50,40,31,22,21,14,7,3,-1,25,61,75,78,90,106,122,129,139,146,153,164,157,149,151,142,136,134,132,142,152,154,152,154,150,146,135,126,120,112,99,82,74,67,57,53],[39,26,13,18,-9,16,18,19,18,-10,8,-31,-6,-9,-60,-62,-63,-24,-27,-45,-18,-13,-15,-62,-23,-23,0,-1,1,1,-8,-7,-10,-11,-14,-13,-16,-17,-17,-2,20,40,58,79,97,109,120,131,138,145,152,163,173,181,178,181,183,182,185,180,173,166,160,156,152,145,130,116,102,95,87,79,77,77,78,86,100,114,122,136,151,167,179,190,200,190,181,173,164,155,147,146,141,134,128,126,116,107,99,89,78,69,63,60,54,45,44,65,102,113,118,127,140,154,169,179,187,198,201,201,215,224,233,227,217,205,191,183,183,196,206,205,206,209,208,205,199],[-16,-10,-37,15,1,17,34,51,67,76,81,80,79,71,54,38,25,16,2,-7,-14,-15,-14,-27,-34,-24,0,0,0,0,-8,-9,-10,-14,-16,-15,-18,-19,-18,-21,-24,-27,-26,-26,-24,-19,-14,-18,-18,-17,-6,8,22,36,48,60,70,77,84,94,104,109,110,111,111,111,106,98,90,85,80,73,60,48,38,30,23,22,22,35,49,59,67,82,96,107,116,114,106,98,90,83,78,75,69,63,55,47,38,28,19,12,9,3,-6,-6,44,64,67,77,90,105,116,126,136,141,142,149,153,145,140,129,127,127,134,142,145,146,145,144,143,130,121,115,107,95,81],[7,26,44,58,75,80,78,77,74,58,43,28,18,11,3,2,0,-17,-26,-42,-21,-15,-14,-43,-29,-25,-3,-2,1,0,-9,-9,-11,-12,-16,-15,-18,-18,-18,-21,-24,-26,-9,10,27,41,53,65,74,81,91,102,111,111,112,112,113,102,95,89,83,75,61,51,44,37,31,31,32,45,58,68,84,99,111,122,118,110,101,92,83,78,71,70,61,52,42,33,23,21,17,9,3,-2,-11,-1,53,71,76,85,101,117,125,130,151,182,162,140,141,143,137,128,129,138,148,148,150,149,147,139,130,122,117,107,94,77,71,63,53,53,51,44,50,59,87,103,106],[-19,-37,-5,-63,18,15,-111,-126,-127,17,-108,6,-1,-9,-7,-12,-17,-57,-67,-29,-45,-46,-36,-11,3,17,37,53,68,73,77,70,52,39,28,20,12,16,10,15,29,43,56,70,71,74,77,81,85,90,87,82,76,70,65,60,57,68,75,81,92,99,97,99,98,91,85,80,75,60,48,41,35,35,40,55,65,78,89,99,95,89,81,74,70,64,57,50,40,30,27,19,16,15,16,34,67,69,81,100,108,117,135,131,125,124,126,118,111,118,127,128,129,129,119,110,104,95,81,68,63,52,50,53,47,57,95,91,92,95,97,95,80,74,80,70,76],[121,117,114,109,105,101,97,92,88,92,97,96,95,81,64,49,41,35,29,23,18,12,7,1,4,1,-2,-2,3,1,-9,-7,-11,-13,-16,-15,-18,-18,-18,-22,-24,-27,-26,-26,-23,-18,-13,-16,6,18,33,49,61,73,81,88,97,108,119,121,121,122,122,122,111,104,97,89,81,72,62,53,45,38,35,36,47,61,70,80,93,105,117,129,126,120,112,102,92,87,80,76,75,65,56,46,36,28,26,18,13,9,8,55,77,79,89,102,122,130,136,143,146,157,172,162,150,146,136,135,134,145,154,154,156,154,154,143,134,127,121,109,96,84,73,68,59],[-164,-153,2,-130,18,16,-91,-77,-75,16,8,4,-102,-88,-72,-13,-42,-21,-12,12,35,52,68,85,98,103,106,106,103,85,68,51,40,31,23,15,5,4,7,9,-4,-22,-24,-25,-25,-20,-18,-18,-16,-21,-22,-20,-20,-18,-20,-19,-20,-19,-10,3,9,17,31,54,65,75,84,90,96,107,118,123,123,122,123,123,122,114,106,101,97,94,82,68,53,45,38,34,40,56,69,74,82,95,107,120,133,128,117,107,97,89,88,82,76,70,62,54,44,35,26,22,16,51,75,76,88,100,116,126,131,137,149,149,143,151,188,149,131,130,134,145,148,150,147,148,146],[-61,-84,-3,-120,18,15,14,16,16,16,-48,-34,-2,-9,-7,-39,-17,-10,5,23,45,62,78,83,87,78,77,81,85,90,94,98,103,103,109,104,97,90,84,78,72,69,65,61,57,54,52,51,51,51,52,64,75,82,90,102,107,106,106,105,95,90,86,75,61,52,45,44,46,57,69,83,97,110,113,105,96,85,78,73,68,59,57,55,51,38,26,25,18,13,39,74,78,90,109,116,138,140,132,132,131,133,127,120,128,137,138,138,135,129,119,110,103,88,74,67,61,61,58,53,62,91,100,105,99,106,106,91,85,88,79,87,78,60,47,53,57],[-21,-11,-138,15,-118,-106,19,17,17,-51,9,-54,-1,-8,-6,-74,-15,-42,-25,-12,4,18,41,59,83,100,116,126,137,136,137,137,138,122,105,89,74,65,56,48,41,42,43,43,33,18,3,-9,-9,-10,-10,-9,-6,-4,-2,-2,-15,-18,-20,-15,6,28,27,35,44,68,85,96,106,112,118,127,137,148,148,148,149,149,149,146,139,132,128,125,117,101,84,75,67,62,64,76,89,95,103,115,130,144,153,150,140,132,124,117,113,109,103,100,94,85,75,65,54,49,41,72,91,96,109,122,135,147,155,164,163,167,173,179,186,177,163,149,157,163,165,166,170],[-144,-132,2,-110,18,15,-64,-73,-78,17,8,4,-68,-52,-36,-13,-7,13,38,55,72,88,105,111,115,120,124,115,97,79,65,53,43,35,27,19,16,20,24,12,-6,-24,-24,-25,-24,-19,-17,-18,-15,-21,-22,-20,-20,-18,-21,-19,-20,-18,-1,13,22,31,42,62,73,83,92,98,105,115,126,132,132,133,133,133,134,127,120,114,111,107,96,79,63,56,49,44,48,61,74,80,87,99,113,127,141,141,130,120,111,103,97,97,90,85,79,70,61,52,43,34,28,33,74,82,86,99,112,126,136,142,154,156,154,153,166,171,154,143,139,145,148,157,157,158,158],[-20,-117,4,15,16,-111,-96,-82,-64,13,6,-7,10,27,33,38,43,48,43,25,12,-2,-14,-24,3,-23,0,-1,0,-1,-8,-8,-10,-13,-15,-17,-19,-20,-19,-22,-24,-27,-27,-26,-24,-20,-16,-19,-18,-22,-22,-20,-21,-18,-22,-20,-14,-1,14,25,36,47,54,61,71,81,85,86,88,87,87,85,77,70,65,62,59,47,30,15,8,1,-4,-6,4,20,32,39,48,61,71,83,92,88,83,75,64,54,51,44,38,36,32,19,9,-1,-11,-14,-17,-28,-4,32,44,51,64,76,90,101,111,118,117,125,124,136,130,119,106,104,103,119,122,122,124,125,122,118,106],[340,336,332,328,324,320,317,313,309,305,301,294,286,278,271,264,256,249,242,235,228,221,214,208,201,195,188,184,181,177,174,171,167,164,161,157,154,150,147,143,139,136,132,128,124,121,117,113,109,105,101,97,93,89,85,81,80,87,94,105,116,123,122,123,123,124,117,108,103,95,86,78,68,58,50,43,37,36,42,55,69,75,87,102,114,127,134,127,117,107,97,91,86,79,76,73,60,51,41,30,27,25,14,13,14,54,76,79,90,103,120,131,134,142,153,156,190,175,148,144,136,132,135,152,151,152,154,154,151,145,134,125,118,111,95,81,75]]};
+var D=HANETZ_DATA,E=window.HanetzEngine,STN=D.stn,REF=D.ref,START=D.start,DAY=86400000;
+var RLE='4x572 3x2 4x60 3x6 4x60 3x7 4x59 3x7 4x58 3x2 2x3 3x2 4x42 3 4x15 2x7 3 4x40 3x4 4x13 2 1x3 2x3 3x2 4x38 3 2 3x5 4x12 1x3 2x4 3x3 4x36 2x4 3x4 4x11 1x4 2x4 3x2 4x36 2x6 3x3 4x10 1x5 2x4 3x2 2 3 4x32 2x8 3 4x11 2 1x5 2x7 4x31 3 1x5 3 2x2 3x4 4x6 3 2 1x7 2x6 4x30 3 2 1x2 2x6 3x10 2 1x9 2x5 4x30 1x4 3 2x5 3 2x4 3 2x3 1x10 2x3 1 2x2 4x30 1x3 3 4x2 3x2 2x8 1x11 2x3 1 2x4 4x30 2 1x3 3x2 4 2 1 2x5 3x2 2 1x8 2x10 4x31 2 1 2 3 2x3 1x2 2x2 1x2 2 3x2 1x7 2x3 3 2x7 4x32 3x2 4 3x2 2 1 2x3 1 2 3x3 1x6 2x3 3x6 2x3 4x38 3x10 1x4 2x3 3x10 4x43 3x4 4 2 1 2x5 3x10 4x43 3x5 2 1 2x4 3x4 4x4 3x3 4x41 3 4 3x5 2x5 3x4 4x6 3x2 4x46 3x2 2x5 3x4 4x55 3x2 2x3 3x4 4x58 3 2 3x5 4x58 3x7 4x57 3x6 4x60 3x3 4x61 3x4 4x12 3 4x64 3 4x845';
+var X0=749,Y0=655,NX=65,NY=51;
+var LAG=[];RLE.split(' ').forEach(function(tk){var p=tk.split('x'),n=p[1]?+p[1]:1;for(var i=0;i<n;i++)LAG.push(+p[0]);});
+var L=function(i){return String.fromCharCode(65+i);};
+var TZ='Asia/Jerusalem';
+var fT=new Intl.DateTimeFormat('en-GB',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+var fD=new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',weekday:'long',day:'numeric',month:'long',year:'numeric'});
+var fS=new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'numeric',month:'short',year:'numeric'});
+function tm(ms){return fT.format(new Date(Math.round(ms/1000)*1000));}
+function iso(n){return new Date(START+n*DAY).toISOString().slice(0,10);}
+function dur(s){s=Math.round(Math.abs(s));var m=Math.floor(s/60),r=s%60;return m?(m+' min '+r+' s'):(r+' s');}
+function compass(a){return ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(a/22.5)%16];}
+
+/* Same engine and the same standard air as the calculator's defaults: first sliver, 12 C, 926 hPa. */
+function rise(n,lat,lon,profile){var d=new Date(START+n*DAY);
+ return E.findSunrise({lat:lat,lon:lon,diskFraction:1,horizon:0,dipHeight:0,pressure:926,tempC:12,refractionScale:1,profile:profile},d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());}
+function risePoint(n,i){return rise(n,STN[i][0],STN[i][1],D.prof[i]);}
+function assigned(n){return D.assign.charCodeAt(n)-65;}
+var RA=[],RR=[];for(var n0=0;n0<365;n0++){RA.push(risePoint(n0,assigned(n0)));RR.push(rise(n0,REF[0],REF[1],D.prof[16]));}
+
+/* Map geometry: units are meters. */
+var CW=26.26,CH=30.89,MW=NX*CW;
+function mx(lon){return ((lon-35)*3600-X0)*CW;}
+function my(lat){return ((32-lat)*3600-Y0)*CH;}
+var NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,text){var e=document.createElementNS(NS,tag);for(var k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e;}
+var svg=document.getElementById('map');
+var VX=mx(35.2140),VY=my(31.8162),VW=MW-VX,VH=my(31.8080)-VY;svg.setAttribute('viewBox',VX.toFixed(0)+' '+VY.toFixed(0)+' '+VW.toFixed(0)+' '+VH.toFixed(0));
+var MIX=[78,52,30,13,0],LAB=['within 1 min of the best, on average','1 to 3 min later','3 to 6 min later','6 to 12 min later','more than 12 min later, or blocked'];
+function fill(c){return 'color-mix(in srgb, var(--accent) '+MIX[c]+'%, var(--panel))';}
+for(var j=0;j<NY;j++){var i=0;while(i<NX){var c=LAG[j*NX+i],k=i;while(k<NX&&LAG[j*NX+k]===c)k++;if(c<4)svg.appendChild(el('rect',{x:(i*CW).toFixed(1),y:(j*CH).toFixed(1),width:((k-i)*CW+0.6).toFixed(1),height:(CH+0.6).toFixed(1),style:'fill:'+fill(c)}));i=k;}}
+var leg=document.getElementById('legend');LAB.forEach(function(t,c){var s=document.createElement('span');var sw=document.createElement('i');sw.style.background=fill(c);s.appendChild(sw);s.appendChild(document.createTextNode(t));leg.appendChild(s);});
+(function(){var s=document.createElement('span');s.textContent='Letters: schedule points. Click a letter to see that point on the selected day. Diamond: reference point (31.8125, 35.2225). Line: direction of the sun at first sliver.';leg.appendChild(s);})();
+svg.appendChild(el('line',{x1:VX+30,y1:VY+VH-30,x2:VX+230,y2:VY+VH-30,style:'stroke:var(--fg);stroke-width:4'}));
+svg.appendChild(el('text',{x:VX+30,y:VY+VH-42,style:'fill:var(--fg);font:500 24px var(--body)'},'200 m'));
+svg.appendChild(el('path',{d:'M'+(VX+50)+' '+(VY+110)+' L'+(VX+50)+' '+(VY+40)+' M'+(VX+36)+' '+(VY+62)+' L'+(VX+50)+' '+(VY+40)+' L'+(VX+64)+' '+(VY+62),style:'stroke:var(--fg);stroke-width:4;fill:none'}));
+svg.appendChild(el('text',{x:VX+50,y:VY+140,'text-anchor':'middle',style:'fill:var(--fg);font:600 24px var(--body)'},'N'));
+svg.appendChild(el('text',{x:VX+30,y:my(31.8098),style:'fill:var(--muted);font:500 22px var(--body);letter-spacing:.08em'},'← RAMAT SHLOMO STREETS'));
+svg.appendChild(el('text',{x:VX+VW-30,y:VY+VH-30,'text-anchor':'end',style:'fill:var(--muted);font:500 22px var(--body);letter-spacing:.08em'},'FRENCH HILL ↘'));
+var ray=el('line',{style:'stroke:var(--accent);stroke-width:4;stroke-dasharray:12 9'});svg.appendChild(ray);
+var rx=mx(REF[1]),ry=my(REF[0]);
+svg.appendChild(el('path',{d:'M'+rx+' '+(ry-18)+' L'+(rx+18)+' '+ry+' L'+rx+' '+(ry+18)+' L'+(rx-18)+' '+ry+' Z',style:'fill:var(--ref);stroke:var(--panel);stroke-width:3'}));
+var marks=STN.map(function(s,i){var g=el('g',{style:'cursor:pointer',tabindex:'0',role:'button','aria-label':'Point '+L(i)});var cx=mx(s[1]),cy=my(s[0]);
+ var c=el('circle',{cx:cx,cy:cy,r:15,style:'fill:var(--panel);stroke:var(--accent);stroke-width:3'});var t=el('text',{x:cx,y:cy+7,'text-anchor':'middle',style:'fill:var(--fg);font:600 20px var(--body)'},L(i));
+ g.appendChild(c);g.appendChild(t);g.appendChild(el('title',{},'Point '+L(i)+': '+s[0].toFixed(5)+', '+s[1].toFixed(5)+', '+s[2]+' m'));svg.appendChild(g);
+ function pick(){show(cur,i);}
+ g.addEventListener('click',pick);g.addEventListener('keydown',function(ev){if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();pick();}});
+ return {g:g,c:c,t:t};});
+
+/* Schedule by date range */
+var segs=[];for(var n1=0;n1<365;n1++){var a1=assigned(n1),last=segs[segs.length-1];if(last&&last.s===a1)last.to=n1;else segs.push({s:a1,from:n1,to:n1});}
+var sb=document.querySelector('#sched tbody');
+segs.forEach(function(sg){var s=STN[sg.s],tr=document.createElement('tr');tr.dataset.from=sg.from;tr.dataset.to=sg.to;
+ var d1=fS.format(START+sg.from*DAY),d2=fS.format(START+sg.to*DAY);
+ function td(h){var c=document.createElement('td');c.innerHTML=h;tr.appendChild(c);}
+ td(sg.from===sg.to?d1:(d1+' to '+d2));td(sg.to-sg.from+1);td('<span class="badge">'+L(sg.s)+'</span>');
+ td('<span class="mono">'+s[0].toFixed(5)+', '+s[1].toFixed(5)+'</span>');td(tm(RA[sg.from].ms));td(tm(RA[sg.to].ms));
+ tr.addEventListener('click',function(){show(sg.from);window.scrollTo({top:0,behavior:'smooth'});});sb.appendChild(tr);});
+
+/* Daily table and CSV */
+var db=document.querySelector('#daily tbody'),csv=['date,time_israel,point,latitude,longitude,surface_m,sun_azimuth_deg,seconds_earlier_than_reference'];
+for(var n2=0;n2<365;n2++){(function(n){var a=assigned(n),s=STN[a],r=RA[n],g=Math.round((RR[n].ms-r.ms)/1000),tr=document.createElement('tr');
+ [iso(n),tm(r.ms),L(a),s[0].toFixed(5),s[1].toFixed(5),r.az.toFixed(1)+'°',dur(g)].forEach(function(v){var c=document.createElement('td');c.textContent=v;tr.appendChild(c);});
+ tr.addEventListener('click',function(){show(n);window.scrollTo({top:0,behavior:'smooth'});});db.appendChild(tr);
+ csv.push([iso(n),tm(r.ms),L(a),s[0].toFixed(5),s[1].toFixed(5),s[2],r.az.toFixed(1),g].join(','));})(n2);}
+document.getElementById('copy').addEventListener('click',function(){var st=document.getElementById('copyst');
+ try{navigator.clipboard.writeText(csv.join('\n')).then(function(){st.textContent='Copied. Paste into a spreadsheet.';},function(){st.textContent='Copy was blocked by the browser.';});}catch(e){st.textContent='Copy was blocked by the browser.';}});
+
+var cur=0,curPick=null,dateEl=document.getElementById('date');
+function show(n,pick){var out=document.getElementById('out'),oor=document.getElementById('oor');
+ if(!(n>=0&&n<365)){out.hidden=true;oor.hidden=false;return;}out.hidden=false;oor.hidden=true;cur=n;dateEl.value=iso(n);
+ var a=assigned(n),byHand=pick!=null&&pick!==a,idx=byHand?pick:a;curPick=byHand?pick:null;
+ var s=STN[idx],r=byHand?risePoint(n,idx):RA[n],t=r.ms;
+ document.getElementById('dlabel').textContent=fD.format(START+n*DAY);
+ document.getElementById('time').textContent=tm(t);
+ document.getElementById('letter').textContent=L(idx);
+ document.getElementById('how').textContent=byHand?'picked by hand':'the earliest point for this day';
+ document.getElementById('coords').textContent=s[0].toFixed(5)+', '+s[1].toFixed(5);
+ document.getElementById('gmap').href='https://www.google.com/maps?q='+s[0].toFixed(5)+','+s[1].toFixed(5);
+ document.getElementById('elev').textContent=s[2]+' m above sea level, plus 1.7 m eye height';
+ document.getElementById('az').textContent='azimuth '+r.az.toFixed(1)+'° ('+compass(r.az)+'), skyline '+(r.horizon>=0?'+':'−')+Math.abs(r.horizon).toFixed(2)+'° from level';
+ var g=(RR[n].ms-t)/1000;
+ document.getElementById('gain').textContent=dur(g)+(g>=0?' earlier':' later')+' than at 31.8125, 35.2225';
+ var f=rise(n,s[0],s[1],null),df=f?(t-f.ms)/1000:null;
+ document.getElementById('flat').textContent=df==null?'not available':(dur(df)+(df>=0?' later':' earlier')+' than a level horizon at the same point');
+ var note=document.getElementById('selnote'),back=document.getElementById('backauto');
+ if(byHand){var dd=(t-RA[n].ms)/1000;note.hidden=false;back.hidden=false;
+  note.textContent='You picked point '+L(idx)+'. On this day it is '+dur(dd)+(dd>=0?' later':' earlier')+' than the schedule’s point, '+L(a)+' ('+tm(RA[n].ms)+').';}
+ else{note.hidden=true;back.hidden=true;}
+ var href='/hanetz?date='+iso(n)+(byHand?'&point='+L(idx):'');
+ document.getElementById('calc').href=href;document.getElementById('calcTop').href='/hanetz?date='+iso(n);
+ document.getElementById('calc').textContent=byHand?('Use point '+L(idx)+' for this day in the calculator'):'Open this day in the calculator';
+ var cx=mx(s[1]),cy=my(s[0]),len=1500,rad=Math.PI/180;ray.setAttribute('x1',cx);ray.setAttribute('y1',cy);ray.setAttribute('x2',cx+len*Math.sin(r.az*rad));ray.setAttribute('y2',cy-len*Math.cos(r.az*rad));
+ marks.forEach(function(m,i){var on=i===idx;m.c.style.fill=on?'var(--accent)':'var(--panel)';m.t.style.fill=on?'var(--panel)':'var(--fg)';m.c.setAttribute('r',on?20:15);m.c.style.strokeDasharray=(i===a&&!on)?'5 4':'';if(on)svg.appendChild(m.g);});
+ Array.prototype.forEach.call(sb.children,function(tr){tr.className=(n>=+tr.dataset.from&&n<=+tr.dataset.to)?'now':'';});
+}
+function nOf(str){var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(str||'');return m?Math.round((Date.UTC(+m[1],+m[2]-1,+m[3])-START)/DAY):null;}
+dateEl.addEventListener('input',function(){var n=nOf(dateEl.value);if(n!=null)show(n);});
+document.getElementById('prev').addEventListener('click',function(){show(Math.max(0,cur-1));});
+document.getElementById('next').addEventListener('click',function(){show(Math.min(364,cur+1));});
+document.getElementById('backauto').addEventListener('click',function(){show(cur);});
+function todayN(){var p=new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('-');var n=Math.round((Date.UTC(+p[0],+p[1]-1,+p[2])-START)/DAY);return (n>=0&&n<365)?n:0;}
+document.getElementById('today').addEventListener('click',function(){show(todayN());});
+var startN=todayN();
+try{var qn=nOf(new URLSearchParams(location.search).get('date'));if(qn!=null&&qn>=0&&qn<365)startN=qn;}catch(e){}
+show(startN);
+})();
+</script>
+</body></html>

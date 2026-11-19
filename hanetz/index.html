@@ -49,7 +49,9 @@ h1 span { color: var(--muted); font-size: 18px; margin-left: 10px; font-family: 
 .panel + .panel { margin-top: 16px; }
 .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
 .big { font-family: var(--display); font-size: clamp(44px, 9vw, 72px); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
-.big small { font-size: 0.4em; color: var(--muted); font-weight: 500; margin-left: 6px; }
+.big small { display: block; font-size: 0.24em; color: var(--muted); font-weight: 500; margin-top: 8px; letter-spacing: 0; font-family: var(--body); }
+a { color: var(--accent); }
+.pointline { font-size: 13.5px; margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
 .sub { color: var(--muted); margin-top: 6px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -84,7 +86,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
 <div class="wrap">
   <header>
     <h1>Hanetz Jerusalem <span>visible sunrise, every variable adjustable</span></h1>
-    <div class="tag">Phase 1: geometry and refraction</div>
+    <div class="tag">Phase 2: terrain skyline &middot; <a href="/hanetz/map" id="mapTop">map and schedule</a></div>
   </header>
 
   <div class="col-main">
@@ -110,13 +112,14 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     <section class="panel">
       <h2>Limb altitude in the minutes around sunrise</h2>
       <svg id="chart" viewBox="0 0 640 220" role="img" aria-label="Apparent altitude of the chosen point on the Sun's disk against time, with the horizon line"></svg>
-      <div class="legend"><span><i style="background:var(--accent)"></i>Current inputs</span><span><i style="background:var(--override)"></i>Pinned baseline</span><span><i style="background:var(--line)"></i>Skyline</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Current inputs</span><span><i style="background:var(--override)"></i>Pinned baseline</span><span><i style="background:var(--muted)"></i>Skyline</span></div>
     </section>
 
     <section class="panel about">
       <h2>What this version does and does not do</h2>
       <p>Solar position follows Meeus (Astronomical Algorithms) with nutation and aberration, checked against the PyEphem library to within a few seconds. Refraction uses the Saemundsson formula scaled by the pressure and temperature you enter, applied to the chosen point on the disk, not to the center.</p>
-      <p>Not yet in this version: a real terrain skyline from elevation data (the "Skyline elevation" field stands in for it, so set it by hand for now), and a temperature profile or inversion model (the "Refraction multiplier" field lets you explore that by hand). Those are Phase 2 and Phase 3.</p>
+      <p>The observation point and its skyline come from the Copernicus 30 m surface model, traced from 16 points on the hilltop east of Ramat Shlomo. Each date uses the point where the first sliver appears earliest. The <a href="/hanetz/map">map and schedule page</a> explains the choice. The model includes buildings and trees and still needs a check on the ground, so treat times as good to about a minute.</p>
+      <p>Not yet in this version: a temperature profile or inversion model (the "Refraction multiplier" field lets you explore that by hand). That is Phase 3.</p>
       <p>Times are rounded to the second but the real uncertainty on any given morning is tens of seconds from the atmosphere alone, which is exactly what the later phases and the calibration log are for.</p>
     </section>
   </div>
@@ -127,10 +130,13 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       <div class="fields">
         <div class="field" data-key="date"><label for="f-date">Date</label><input id="f-date" type="date"><button class="reset" type="button">reset</button></div>
         <div class="field" data-key="tz"><label for="f-tz">Time zone for display</label><input id="f-tz" type="text" spellcheck="false"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="point"><label for="f-point">Observation point</label>
+          <select id="f-point"><option value="auto">Earliest for this date (automatic)</option></select><button class="reset" type="button">reset</button></div>
         <div class="field" data-key="lat"><label for="f-lat"><span>Latitude (degrees north)</span><span class="sens"></span></label><input id="f-lat" type="number" step="0.0001" inputmode="decimal"><button class="reset" type="button">reset</button></div>
         <div class="field" data-key="lon"><label for="f-lon"><span>Longitude (degrees east)</span><span class="sens"></span></label><input id="f-lon" type="number" step="0.0001" inputmode="decimal"><button class="reset" type="button">reset</button></div>
       </div>
-      <p class="hint">Paste coordinates from a map app into either box. Default is central Jerusalem as a placeholder until the real vantage point is set.</p>
+      <p class="pointline" id="pointLine"></p>
+      <p class="hint">The coordinates fill themselves in with the point in the neighborhood where the first sliver is seen earliest on this date. Typing your own coordinates switches to a level horizon, because the terrain skyline is only stored for the 16 schedule points.</p>
     </section>
 
     <section class="panel">
@@ -154,7 +160,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
         <div class="field" data-key="horizon"><label for="f-horizon"><span>Skyline elevation at the sunrise azimuth (degrees)</span><span class="sens"></span></label><input id="f-horizon" type="number" step="0.01" inputmode="decimal"><button class="reset" type="button">reset</button></div>
         <div class="field" data-key="dip"><label for="f-dip"><span>Observer height above the horizon plane (m)</span><span class="sens"></span></label><input id="f-dip" type="number" step="1" min="0" inputmode="decimal"><button class="reset" type="button">reset</button></div>
       </div>
-      <p class="hint">Skyline elevation is the angle of the ridge or building the Sun actually rises behind, measured from level. Phase 2 will fill this in automatically from terrain data for the date's azimuth. Observer height matters when the ground falls away toward the east; leave it at 0 if the skyline is above eye level.</p>
+      <p class="hint">Skyline elevation is the angle of the ridge or building the Sun actually rises behind, measured from level. For a schedule point it is filled in from terrain data at the azimuth where the Sun appears; typing a number here replaces it. Observer height matters when the ground falls away toward the east; leave it at 0 if the skyline is above eye level.</p>
     </section>
 
     <section class="panel">
@@ -272,37 +278,70 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     return { app: hTrue + r, refraction: r * 60, az: p.az, trueAlt: hTrue };
   }
 
-  function horizonAltitude(o) {
-    return o.horizon - dipDegrees(o.dipHeight || 0);
+  /* Skyline profile: integers in units of 0.005 degrees, one per half degree of azimuth from 56 degrees. */
+  var PROF_AZ0 = 56, PROF_STEP = 0.5, PROF_UNIT = 0.005;
+  function profileAt(p, az) {
+    var x = (az - PROF_AZ0) / PROF_STEP;
+    if (x <= 0) return p[0] * PROF_UNIT;
+    if (x >= p.length - 1) return p[p.length - 1] * PROF_UNIT;
+    var i = Math.floor(x);
+    return (p[i] + (p[i + 1] - p[i]) * (x - i)) * PROF_UNIT;
+  }
+
+  /* With o.profile and an azimuth, the skyline comes from the terrain profile; otherwise from o.horizon. */
+  function skyline(o, az) {
+    return (o.profile && az != null) ? profileAt(o.profile, az) : o.horizon;
+  }
+  function horizonAltitude(o, az) {
+    return skyline(o, az) - dipDegrees(o.dipHeight || 0);
   }
 
   function clearance(ms, o) {
-    return pointAltitude(ms, o).app - horizonAltitude(o);
+    var p = pointAltitude(ms, o);
+    return p.app - horizonAltitude(o, p.az);
   }
 
   /* Find the sunrise for the solar day centered on local mean solar noon of y-m-d.
      Returns null if the point never clears the horizon that morning. */
   function findSunrise(o, y, m, d) {
     var noon = Date.UTC(y, m - 1, d, 12) - o.lon / 15 * 3600000;
+    /* A terrain skyline is jagged, so first find when the point clears a level line just
+       below the lowest part of the profile, then walk forward in 10 second steps. */
+    var c = o;
+    if (o.profile) {
+      var mn = Infinity;
+      for (var q = 0; q < o.profile.length; q++) if (o.profile[q] < mn) mn = o.profile[q];
+      c = {}; for (var key in o) c[key] = o[key];
+      c.profile = null; c.horizon = mn * PROF_UNIT - 0.05;
+    }
+    function bisect(lo, hi, oo) {
+      for (var k = 0; k < 34; k++) {
+        var mid = (lo + hi) / 2;
+        if (clearance(mid, oo) >= 0) hi = mid; else lo = mid;
+      }
+      return (lo + hi) / 2;
+    }
+    function result(ms) {
+      var pt = pointAltitude(ms, o);
+      return { ms: ms, az: pt.az, refraction: pt.refraction, apparentAlt: pt.app, horizon: skyline(o, pt.az) };
+    }
     var step = 600000;
     var t = noon - 12 * 3600000;
-    var prev = clearance(t, o);
-    if (prev >= 0) return null;
+    if (clearance(t, c) >= 0) return null;
     for (var i = 0; i < 72; i++) {
       var next = t + step;
-      var v = clearance(next, o);
-      if (v >= 0) {
-        var lo = t, hi = next;
-        for (var k = 0; k < 34; k++) {
-          var mid = (lo + hi) / 2;
-          if (clearance(mid, o) >= 0) hi = mid; else lo = mid;
+      if (clearance(next, c) >= 0) {
+        var ms0 = bisect(t, next, c);
+        if (!o.profile) return result(ms0);
+        var a = ms0, limit = ms0 + 3 * 3600000;
+        while (a < limit) {
+          var b = a + 10000;
+          if (clearance(b, o) >= 0) return result(bisect(a, b, o));
+          a = b;
         }
-        var ms = (lo + hi) / 2;
-        var pt = pointAltitude(ms, o);
-        return { ms: ms, az: pt.az, refraction: pt.refraction, apparentAlt: pt.app };
+        return null;
       }
       t = next;
-      prev = v;
     }
     return null;
   }
@@ -321,6 +360,8 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     altAz: altAz,
     refractionArcmin: refractionArcmin,
     dipDegrees: dipDegrees,
+    profileAt: profileAt,
+    skyline: skyline,
     pointAltitude: pointAltitude,
     horizonAltitude: horizonAltitude,
     clearance: clearance,
@@ -337,16 +378,20 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
 (function () {
   'use strict';
   var E = window.HanetzEngine;
+  var HANETZ_DATA = {start: Date.UTC(2026, 10, 19), assign: "NNNMMMMMMMMMMMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMMEEEOOEEEEBBBBBBBBBHHKKFFFFFCIIDDDDDDDDDEEEBBBBBBHHHHKKFFFFIIIDDDDEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEFFFFGGDDDDDCCJJJJDGGGGGCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCGGGGGDDDJJCCDDDDDFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEEEEEEEEEEEEEEEEEEEEDDDDDIIFFFFFKKHHHHBBBBBBBEEDDDDDDDDIICCFFFFFKKHHHHPPPPPPPPEELL", stn: [[31.81125, 35.21875, 811], [31.81319, 35.22292, 816], [31.81264, 35.21736, 810], [31.81125, 35.22153, 813], [31.81347, 35.22292, 816], [31.81208, 35.22264, 812], [31.81208, 35.22542, 808], [31.81264, 35.22292, 813], [31.81153, 35.22153, 812], [31.81236, 35.21708, 810], [31.81236, 35.22236, 811], [31.81375, 35.22264, 811], [31.81153, 35.21681, 808], [31.81403, 35.22264, 808], [31.81375, 35.22292, 810], [31.81319, 35.22319, 816]], ref: [31.81264, 35.22236, 811], prof: [[20,31,40,45,51,57,63,69,75,81,88,87,81,76,71,74,73,63,51,47,43,39,35,30,26,21,16,10,6,3,1,1,-1,-4,-6,-9,-11,-14,-16,-18,-20,-21,-23,-21,1,18,35,49,61,69,76,87,99,101,101,101,100,89,84,80,74,58,45,38,31,31,36,50,64,70,84,95,107,102,95,85,75,69,65,60,51,42,32,25,23,15,11,11,7,1,10,64,69,73,90,106,114,150,149,134,130,127,131,128,118,119,128,135,137,136,133,127,117,108,100,89,71,63,55,52,51,47,44,50,77,95,102,93,104,103,88,85,80,74,68,78,70],[-19,-121,4,15,17,-136,-122,-107,-92,13,6,-33,-17,0,17,34,39,44,45,45,33,16,-1,-12,3,-24,1,-1,-2,-1,-8,-8,-10,-14,-16,-17,-19,-19,-19,-22,-24,-27,-27,-26,-24,-21,-16,-19,-17,-22,-23,-21,-21,-18,-23,-20,-10,-4,13,24,35,44,51,58,69,79,84,85,86,85,85,82,74,66,61,57,53,40,27,14,6,-1,-6,-5,7,22,34,40,51,62,71,82,84,80,75,66,57,51,45,38,35,33,23,13,1,-9,-13,-16,-26,-21,21,41,46,58,72,85,98,105,116,120,120,120,124,122,111,106,105,101,112,121,122,123,121,121,114,101,93],[3,-13,-34,12,-65,-78,14,16,17,-128,10,-109,-98,-86,-74,-12,-51,-22,-27,-56,-17,-19,-14,-46,-28,-14,3,28,45,62,74,78,80,67,49,36,27,19,13,17,11,-7,1,11,19,27,38,52,65,71,74,77,82,86,91,95,89,83,78,72,77,85,97,100,99,100,100,90,85,79,72,57,48,41,35,34,43,57,66,77,87,97,96,92,82,75,71,66,60,51,42,32,27,23,16,13,7,44,66,71,83,103,110,115,137,137,129,123,127,116,115,119,128,130,130,128,123,112,104,96,85,68,63,54,50,49,49,53,87,96,94,97,99,90,83,73,80],[45,56,62,68,73,62,52,37,25,16,9,-2,-13,-14,-23,-14,-50,-52,-50,-19,-46,-45,-59,-3,4,-25,-1,0,0,-1,-9,-9,-11,-12,-16,-15,-18,-18,-19,-21,-11,2,21,45,52,62,69,76,85,96,102,103,104,105,103,90,84,77,72,59,48,41,34,27,23,24,31,44,57,68,84,98,110,119,110,101,91,82,74,67,62,59,49,40,31,21,15,12,7,-2,-6,-11,-17,-13,47,65,70,79,100,116,119,126,154,157,144,143,136,140,134,126,126,129,142,142,145,145,142,139,128,118,110,102,93,73,65,60,51,45,45,46,41,52,86,101,97,94,103],[-21,-12,-136,15,-112,14,19,14,15,-122,-107,3,-4,-9,-8,-18,-1,16,27,38,42,42,47,42,37,20,5,-1,-3,-2,-8,-8,-9,-13,-16,-16,-19,-19,-19,-21,-24,-27,-26,-25,-25,-20,-17,-19,-17,-22,-23,-22,-21,-18,-22,-20,-21,-20,-10,-9,10,24,35,46,52,59,68,79,89,90,90,90,90,90,85,77,70,66,63,57,43,27,15,9,2,-2,7,23,36,42,50,63,74,86,98,93,88,77,66,57,55,49,43,38,30,22,12,2,-7,-11,-14,-4,31,48,53,65,74,93,101,109,115,121,129,122,134,145,132,106,102,106,123,122,123,124,125,121,117],[22,40,55,70,86,85,83,82,81,67,51,36,24,16,8,1,0,2,-16,-32,-20,-15,-14,-57,-30,-25,-3,-1,2,0,-9,-8,-11,-13,-15,-15,-18,-18,-18,-22,-24,-27,-25,-27,-23,-2,4,21,45,57,67,77,83,90,99,109,115,117,118,118,118,111,103,95,89,83,74,63,51,44,36,31,30,34,47,60,71,80,94,106,117,127,122,115,107,97,87,82,75,72,69,60,50,40,31,22,21,14,7,3,-1,25,61,75,78,90,106,122,129,139,146,153,164,157,149,151,142,136,134,132,142,152,154,152,154,150,146,135,126,120,112,99,82,74,67,57,53],[39,26,13,18,-9,16,18,19,18,-10,8,-31,-6,-9,-60,-62,-63,-24,-27,-45,-18,-13,-15,-62,-23,-23,0,-1,1,1,-8,-7,-10,-11,-14,-13,-16,-17,-17,-2,20,40,58,79,97,109,120,131,138,145,152,163,173,181,178,181,183,182,185,180,173,166,160,156,152,145,130,116,102,95,87,79,77,77,78,86,100,114,122,136,151,167,179,190,200,190,181,173,164,155,147,146,141,134,128,126,116,107,99,89,78,69,63,60,54,45,44,65,102,113,118,127,140,154,169,179,187,198,201,201,215,224,233,227,217,205,191,183,183,196,206,205,206,209,208,205,199],[-16,-10,-37,15,1,17,34,51,67,76,81,80,79,71,54,38,25,16,2,-7,-14,-15,-14,-27,-34,-24,0,0,0,0,-8,-9,-10,-14,-16,-15,-18,-19,-18,-21,-24,-27,-26,-26,-24,-19,-14,-18,-18,-17,-6,8,22,36,48,60,70,77,84,94,104,109,110,111,111,111,106,98,90,85,80,73,60,48,38,30,23,22,22,35,49,59,67,82,96,107,116,114,106,98,90,83,78,75,69,63,55,47,38,28,19,12,9,3,-6,-6,44,64,67,77,90,105,116,126,136,141,142,149,153,145,140,129,127,127,134,142,145,146,145,144,143,130,121,115,107,95,81],[7,26,44,58,75,80,78,77,74,58,43,28,18,11,3,2,0,-17,-26,-42,-21,-15,-14,-43,-29,-25,-3,-2,1,0,-9,-9,-11,-12,-16,-15,-18,-18,-18,-21,-24,-26,-9,10,27,41,53,65,74,81,91,102,111,111,112,112,113,102,95,89,83,75,61,51,44,37,31,31,32,45,58,68,84,99,111,122,118,110,101,92,83,78,71,70,61,52,42,33,23,21,17,9,3,-2,-11,-1,53,71,76,85,101,117,125,130,151,182,162,140,141,143,137,128,129,138,148,148,150,149,147,139,130,122,117,107,94,77,71,63,53,53,51,44,50,59,87,103,106],[-19,-37,-5,-63,18,15,-111,-126,-127,17,-108,6,-1,-9,-7,-12,-17,-57,-67,-29,-45,-46,-36,-11,3,17,37,53,68,73,77,70,52,39,28,20,12,16,10,15,29,43,56,70,71,74,77,81,85,90,87,82,76,70,65,60,57,68,75,81,92,99,97,99,98,91,85,80,75,60,48,41,35,35,40,55,65,78,89,99,95,89,81,74,70,64,57,50,40,30,27,19,16,15,16,34,67,69,81,100,108,117,135,131,125,124,126,118,111,118,127,128,129,129,119,110,104,95,81,68,63,52,50,53,47,57,95,91,92,95,97,95,80,74,80,70,76],[121,117,114,109,105,101,97,92,88,92,97,96,95,81,64,49,41,35,29,23,18,12,7,1,4,1,-2,-2,3,1,-9,-7,-11,-13,-16,-15,-18,-18,-18,-22,-24,-27,-26,-26,-23,-18,-13,-16,6,18,33,49,61,73,81,88,97,108,119,121,121,122,122,122,111,104,97,89,81,72,62,53,45,38,35,36,47,61,70,80,93,105,117,129,126,120,112,102,92,87,80,76,75,65,56,46,36,28,26,18,13,9,8,55,77,79,89,102,122,130,136,143,146,157,172,162,150,146,136,135,134,145,154,154,156,154,154,143,134,127,121,109,96,84,73,68,59],[-164,-153,2,-130,18,16,-91,-77,-75,16,8,4,-102,-88,-72,-13,-42,-21,-12,12,35,52,68,85,98,103,106,106,103,85,68,51,40,31,23,15,5,4,7,9,-4,-22,-24,-25,-25,-20,-18,-18,-16,-21,-22,-20,-20,-18,-20,-19,-20,-19,-10,3,9,17,31,54,65,75,84,90,96,107,118,123,123,122,123,123,122,114,106,101,97,94,82,68,53,45,38,34,40,56,69,74,82,95,107,120,133,128,117,107,97,89,88,82,76,70,62,54,44,35,26,22,16,51,75,76,88,100,116,126,131,137,149,149,143,151,188,149,131,130,134,145,148,150,147,148,146],[-61,-84,-3,-120,18,15,14,16,16,16,-48,-34,-2,-9,-7,-39,-17,-10,5,23,45,62,78,83,87,78,77,81,85,90,94,98,103,103,109,104,97,90,84,78,72,69,65,61,57,54,52,51,51,51,52,64,75,82,90,102,107,106,106,105,95,90,86,75,61,52,45,44,46,57,69,83,97,110,113,105,96,85,78,73,68,59,57,55,51,38,26,25,18,13,39,74,78,90,109,116,138,140,132,132,131,133,127,120,128,137,138,138,135,129,119,110,103,88,74,67,61,61,58,53,62,91,100,105,99,106,106,91,85,88,79,87,78,60,47,53,57],[-21,-11,-138,15,-118,-106,19,17,17,-51,9,-54,-1,-8,-6,-74,-15,-42,-25,-12,4,18,41,59,83,100,116,126,137,136,137,137,138,122,105,89,74,65,56,48,41,42,43,43,33,18,3,-9,-9,-10,-10,-9,-6,-4,-2,-2,-15,-18,-20,-15,6,28,27,35,44,68,85,96,106,112,118,127,137,148,148,148,149,149,149,146,139,132,128,125,117,101,84,75,67,62,64,76,89,95,103,115,130,144,153,150,140,132,124,117,113,109,103,100,94,85,75,65,54,49,41,72,91,96,109,122,135,147,155,164,163,167,173,179,186,177,163,149,157,163,165,166,170],[-144,-132,2,-110,18,15,-64,-73,-78,17,8,4,-68,-52,-36,-13,-7,13,38,55,72,88,105,111,115,120,124,115,97,79,65,53,43,35,27,19,16,20,24,12,-6,-24,-24,-25,-24,-19,-17,-18,-15,-21,-22,-20,-20,-18,-21,-19,-20,-18,-1,13,22,31,42,62,73,83,92,98,105,115,126,132,132,133,133,133,134,127,120,114,111,107,96,79,63,56,49,44,48,61,74,80,87,99,113,127,141,141,130,120,111,103,97,97,90,85,79,70,61,52,43,34,28,33,74,82,86,99,112,126,136,142,154,156,154,153,166,171,154,143,139,145,148,157,157,158,158],[-20,-117,4,15,16,-111,-96,-82,-64,13,6,-7,10,27,33,38,43,48,43,25,12,-2,-14,-24,3,-23,0,-1,0,-1,-8,-8,-10,-13,-15,-17,-19,-20,-19,-22,-24,-27,-27,-26,-24,-20,-16,-19,-18,-22,-22,-20,-21,-18,-22,-20,-14,-1,14,25,36,47,54,61,71,81,85,86,88,87,87,85,77,70,65,62,59,47,30,15,8,1,-4,-6,4,20,32,39,48,61,71,83,92,88,83,75,64,54,51,44,38,36,32,19,9,-1,-11,-14,-17,-28,-4,32,44,51,64,76,90,101,111,118,117,125,124,136,130,119,106,104,103,119,122,122,124,125,122,118,106],[340,336,332,328,324,320,317,313,309,305,301,294,286,278,271,264,256,249,242,235,228,221,214,208,201,195,188,184,181,177,174,171,167,164,161,157,154,150,147,143,139,136,132,128,124,121,117,113,109,105,101,97,93,89,85,81,80,87,94,105,116,123,122,123,123,124,117,108,103,95,86,78,68,58,50,43,37,36,42,55,69,75,87,102,114,127,134,127,117,107,97,91,86,79,76,73,60,51,41,30,27,25,14,13,14,54,76,79,90,103,120,131,134,142,153,156,190,175,148,144,136,132,135,152,151,152,154,154,151,145,134,125,118,111,95,81,75]]};
+  var D = HANETZ_DATA;
+  function letter(i) { return String.fromCharCode(65 + i); }
 
   var DEFAULTS = {
     date: null,            // filled with today in Jerusalem
+    point: 'auto',
     tz: 'Asia/Jerusalem',
     lat: 31.7683, lon: 35.2137,
     disk: '1', diskFrac: 1,
     horizon: 0, dip: 0,
     temp: 12, pres: 926, rscale: 1
   };
-  var FIELD_KEYS = ['date', 'tz', 'lat', 'lon', 'disk', 'diskFrac', 'horizon', 'dip', 'temp', 'pres', 'rscale'];
+  var FIELD_KEYS = ['date', 'tz', 'point', 'lat', 'lon', 'disk', 'diskFrac', 'horizon', 'dip', 'temp', 'pres', 'rscale'];
   var NUMERIC = { lat: 1, lon: 1, diskFrac: 1, horizon: 1, dip: 1, temp: 1, pres: 1, rscale: 1 };
   var live = {};           // values that came from the live/default source
   var over = {};           // user overrides
@@ -361,6 +406,40 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   Object.keys(DEFAULTS).forEach(function (k) { live[k] = DEFAULTS[k]; });
 
   function val(k) { return k in over ? over[k] : live[k]; }
+
+  /* The schedule covers one year; other years reuse the same calendar day. */
+  function scheduleIndex(dateStr) {
+    var d = ymd(dateStr); if (!d) return -1;
+    var mo = d[1], da = d[2]; if (mo === 2 && da === 29) da = 28;
+    var yr = (mo > 11 || (mo === 11 && da >= 19)) ? 2026 : 2027;
+    return Math.round((Date.UTC(yr, mo - 1, da) - D.start) / 86400000);
+  }
+  function autoPoint() { var n = scheduleIndex(val('date')); return n >= 0 && n < 365 ? D.assign.charCodeAt(n) - 65 : -1; }
+  function activePoint() { var p = val('point'); return p === 'auto' ? autoPoint() : p.charCodeAt(0) - 65; }
+  /* Terrain applies only while the coordinates and the skyline field are left alone. */
+  function terrainOn() { return activePoint() >= 0 && !('lat' in over) && !('lon' in over) && !('horizon' in over); }
+  function syncPoint() {
+    var i = activePoint();
+    if (i >= 0) { live.lat = D.stn[i][0]; live.lon = D.stn[i][1]; }
+    else { live.lat = DEFAULTS.lat; live.lon = DEFAULTS.lon; }
+    if (!terrainOn()) live.horizon = 0;
+  }
+  function mapHref() { return '/hanetz/map?date=' + encodeURIComponent(val('date')); }
+  function paintPointLine() {
+    var el = document.getElementById('pointLine'), i = activePoint(), a = autoPoint(), txt;
+    var link = ' <a href="' + mapHref() + '">See it on the map</a>.';
+    if ('lat' in over || 'lon' in over) txt = 'Using coordinates you typed, with a level horizon. Press reset on latitude and longitude to go back to the automatic point.' + link;
+    else if (i < 0) txt = 'No schedule point for this date.';
+    else {
+      var where = 'point ' + letter(i) + ' (' + D.stn[i][0].toFixed(5) + ', ' + D.stn[i][1].toFixed(5) + ', ' + D.stn[i][2] + ' m)';
+      if (val('point') === 'auto') txt = 'Using ' + where + ', the earliest point for this date.';
+      else txt = 'Using ' + where + ', chosen by hand.' + (a >= 0 && a !== i ? ' The earliest point for this date is ' + letter(a) + '.' : ' It is also the earliest point for this date.');
+      if ('horizon' in over) txt += ' The skyline is the number you typed, not the terrain.';
+      txt += link;
+    }
+    el.innerHTML = txt;
+    document.getElementById('mapTop').href = mapHref();
+  }
   function fieldEl(k) { return document.querySelector('.field[data-key="' + k + '"]'); }
   function inputEl(k) { return document.getElementById('f-' + k); }
 
@@ -376,9 +455,10 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
 
   function opts(v) {
     var frac = v.disk === 'custom' ? +v.diskFrac : +v.disk;
-    return { lat: +v.lat, lon: +v.lon, diskFraction: frac, horizon: +v.horizon, dipHeight: +v.dip, pressure: +v.pres, tempC: +v.temp, refractionScale: +v.rscale };
+    return { lat: +v.lat, lon: +v.lon, diskFraction: frac, horizon: +v.horizon, dipHeight: +v.dip, pressure: +v.pres, tempC: +v.temp, refractionScale: +v.rscale,
+      profile: v.prof >= 0 && D.prof[v.prof] ? D.prof[v.prof] : null };
   }
-  function snapshot() { var v = {}; FIELD_KEYS.forEach(function (k) { v[k] = val(k); }); return v; }
+  function snapshot() { var v = {}; FIELD_KEYS.forEach(function (k) { v[k] = val(k); }); v.prof = terrainOn() ? activePoint() : -1; return v; }
   function ymd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? [+m[1], +m[2], +m[3]] : null; }
   function rise(v, o) { var d = ymd(v.date); if (!d) return null; return E.findSunrise(o, d[0], d[1], d[2]); }
 
@@ -393,10 +473,14 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function signed(sec) { var r = Math.round(sec); return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r) + ' s'; }
 
   function compute() {
+    syncPoint();
     var v = snapshot();
     var tz = validTz(v.tz) ? v.tz : 'Asia/Jerusalem';
     var o = opts(v);
     var r = rise(v, o);
+    if (v.prof >= 0) { live.horizon = r ? Math.round(r.horizon * 1000) / 1000 : 0; v.horizon = live.horizon; }
+    ['lat', 'lon', 'horizon'].forEach(paintField);
+    paintPointLine();
     document.getElementById('outDate').textContent = fmtDate(v.date, tz);
     document.getElementById('outZone').textContent = tz.replace(/_/g, ' ');
     var outTime = document.getElementById('outTime'), outLine = document.getElementById('outLine');
@@ -431,6 +515,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       var span = f.querySelector('.sens'); if (!span) return;
       if (!r) { span.textContent = ''; return; }
       var v2 = Object.assign({}, v); v2[k] = +v[k] + steps[k][0];
+      if (k === 'horizon') v2.prof = -1;
       if (k === 'diskFrac' && v.disk !== 'custom') { span.textContent = ''; return; }
       var r2 = rise(v2, opts(v2));
       span.textContent = r2 ? signed((r2.ms - r.ms) / 1000) + ' per ' + steps[k][1] : '';
@@ -458,7 +543,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     var W = 640, H = 220, L = 48, R = 28, T = 14, B = 34;
     if (!r) { svg.innerHTML = '<text x="320" y="110" text-anchor="middle" fill="var(--muted)" font-size="14">No sunrise to plot.</text>'; return; }
     var t0 = r.ms - 6 * 60000, t1 = r.ms + 6 * 60000;
-    var hz = E.horizonAltitude(o) * 60;
+    var hz = E.horizonAltitude(o, r.az) * 60;
     var yMin = hz - 60, yMax = hz + 60;
     function X(t) { return L + (t - t0) / (t1 - t0) * (W - L - R); }
     function Y(a) { return T + (yMax - a) / (yMax - yMin) * (H - T - B); }
@@ -485,6 +570,15 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     }
     s += '<text x="' + (W - R) + '" y="' + (Y(hz) - 6).toFixed(1) + '" text-anchor="end" font-size="11" fill="var(--muted)">skyline</text>';
     s += '<text x="' + (L + 4) + '" y="' + (T + 10) + '" font-size="11" fill="var(--muted)">arcminutes above skyline</text>';
+    if (o.profile) {
+      var sd = '';
+      for (var si = 0; si <= 120; si++) {
+        var st = t0 + (t1 - t0) * si / 120;
+        var sa = E.horizonAltitude(o, E.pointAltitude(st, o).az) * 60;
+        sd += (si ? 'L' : 'M') + X(st).toFixed(1) + ' ' + Y(Math.max(yMin - 10, Math.min(yMax + 10, sa))).toFixed(1);
+      }
+      s += '<path d="' + sd + '" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-linejoin="round"/>';
+    }
     if (bv) { var ob = opts(bv); if (ymd(bv.date) && bv.date === v.date) s += path(ob, 'var(--override)'); }
     s += path(o, 'var(--accent)');
     s += '<circle cx="' + X(r.ms).toFixed(1) + '" cy="' + Y(hz).toFixed(1) + '" r="5" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>';
@@ -500,10 +594,11 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       else over[k] = raw;
       if (String(over[k]) === String(live[k])) delete over[k];
       if (k === 'disk') document.getElementById('diskFracField').hidden = val('disk') !== 'custom';
+      if (k === 'date' && 'point' in over) { delete over.point; paintField('point'); }
       f.classList.toggle('over', k in over);
       compute(); persist();
     });
-    f.querySelector('.reset').addEventListener('click', function () { delete over[k]; paintField(k); if (k === 'disk') paintAll(); compute(); persist(); });
+    f.querySelector('.reset').addEventListener('click', function () { delete over[k]; if (k === 'date') { delete over.point; paintField('point'); } paintField(k); if (k === 'disk') paintAll(); compute(); persist(); });
   });
 
   document.getElementById('pinBtn').addEventListener('click', function () {
@@ -515,6 +610,8 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   });
 
   function settingsString() { return JSON.stringify({ over: over, baseline: baseline ? baseline.v : null }); }
+  /* The date and a hand-picked point are for one visit only, so they are not remembered. */
+  function storedString() { var o2 = {}; Object.keys(over).forEach(function (k) { if (k !== 'date' && k !== 'point') o2[k] = over[k]; }); return JSON.stringify({ over: o2, baseline: baseline ? baseline.v : null }); }
   function applySettings(txt) {
     var obj = JSON.parse(txt);
     over = {};
@@ -535,7 +632,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   });
   document.getElementById('resetAllBtn').addEventListener('click', function () { over = {}; baseline = null; document.getElementById('pinStatus').textContent = 'No baseline pinned.'; paintAll(); compute(); persist(); });
 
-  function persist() { try { localStorage.setItem('hanetz-settings', settingsString()); } catch (e) {} }
+  function persist() { try { localStorage.setItem('hanetz-settings', storedString()); } catch (e) {} }
   function restore() { try { var s = localStorage.getItem('hanetz-settings'); if (s) applySettings(s); } catch (e) {} }
 
   // Live weather: Open-Meteo (free, no key, CORS enabled).
@@ -559,7 +656,21 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     });
   });
 
-  paintAll(); restore(); compute();
+  (function () {
+    var sel = document.getElementById('f-point');
+    D.stn.forEach(function (p, i) { var op = document.createElement('option'); op.value = letter(i); op.textContent = 'Point ' + letter(i) + ' (' + p[0].toFixed(5) + ', ' + p[1].toFixed(5) + ')'; sel.appendChild(op); });
+  })();
+  paintAll(); restore();
+  /* A link from the map page can carry ?date=YYYY-MM-DD&point=G. */
+  (function () {
+    var q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return; }
+    var qd = q.get('date'), qp = (q.get('point') || '').toUpperCase();
+    if (qd && ymd(qd) && qd !== live.date) over.date = qd;
+    if (/^[A-P]$/.test(qp)) over.point = qp;
+    if (qd || qp) { delete over.lat; delete over.lon; delete over.horizon; }
+  })();
+  syncPoint(); paintAll(); compute();
 })();
 </script>
 

@@ -14,7 +14,7 @@
    activate -> clients.claim so the new worker takes over promptly, and old
    caches are purged.
    ============================================================ */
-const CACHE_VERSION = 'v150';
+const CACHE_VERSION = 'v151';
 const SHELL_CACHE = 'laivy-shell-' + CACHE_VERSION;
 const ASSET_CACHE = 'laivy-assets-' + CACHE_VERSION;
 
@@ -106,7 +106,7 @@ self.addEventListener('fetch', (event) => {
       (url.pathname.startsWith('/auth/') || url.pathname === '/settings')) return;
   if (/(^|\.)supabase\.co$/.test(url.hostname)) return;
 
-  // /hanetz is a standalone private page, not part of the app: never cached,
+  // /hanetz (and /hanetz/map) are standalone private pages, not part of the app: never cached,
   // precached or answered with the app shell. Without this, networkFirstDoc
   // would also store it as the offline 'index.html'. Straight to the network.
   if (url.origin === self.location.origin &&

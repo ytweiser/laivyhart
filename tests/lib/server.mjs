@@ -31,6 +31,7 @@ function rewrite(pathname) {
   if (/^\/u\/[^/.]+\/?$/.test(pathname)) return '/index.html';
   if (['/listen', '/settings', '/upload', '/auth/callback'].includes(pathname)) return '/index.html';
   if (pathname === '/hanetz' || pathname === '/hanetz/') return '/hanetz/index.html';
+  if (pathname === '/hanetz/map' || pathname === '/hanetz/map/') return '/hanetz/map/index.html';
   if (pathname === '/about') return '/about.html';
   if (pathname === '/terms') return '/terms.html';
   if (pathname === '/your-song') return '/your-song.html';

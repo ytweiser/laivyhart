@@ -12,6 +12,14 @@
       "destination": "/hanetz/index.html"
     },
     {
+      "source": "/hanetz/map",
+      "destination": "/hanetz/map/index.html"
+    },
+    {
+      "source": "/hanetz/map/",
+      "destination": "/hanetz/map/index.html"
+    },
+    {
       "source": "/listen",
       "destination": "/index.html"
     },
