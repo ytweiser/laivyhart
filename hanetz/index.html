@@ -171,10 +171,10 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
         <div class="field" data-key="rscale"><label for="f-rscale"><span>Refraction multiplier (1 = standard air)</span><span class="sens"></span></label><input id="f-rscale" type="number" step="0.05" min="0" max="3" inputmode="decimal"><button class="reset" type="button">reset</button></div>
       </div>
       <div class="row" style="margin-top:10px">
-        <button class="btn" id="wxBtn" type="button">Fetch live weather</button>
-        <span class="status" id="wxStatus">Using typical Jerusalem values. Press the button to pull live temperature and pressure.</span>
+        <button class="btn" id="wxBtn" type="button">Refresh forecast</button>
+        <span class="status" id="wxStatus">Getting the latest forecast for the sunrise time.</span>
       </div>
-      <p class="hint">Station pressure is the pressure where you stand, not the sea-level value weather sites show. Jerusalem at 780 m sits near 925 hPa. The multiplier is a hand control for the inversion question: a strong morning inversion over the rift bends light more (try 1.2 to 1.5), dry warm air less.</p>
+      <p class="hint">Temperature and pressure fill themselves in from the latest forecast for the minute of sunrise, fetched each time the page opens. Station pressure is the pressure where you stand, not the sea-level value weather sites show. Jerusalem at 780 m sits near 925 hPa. The multiplier is a hand control for the inversion question: a strong morning inversion over the rift bends light more (try 1.2 to 1.5), dry warm air less.</p>
     </section>
 
     <section class="panel">
@@ -424,6 +424,39 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     else { live.lat = DEFAULTS.lat; live.lon = DEFAULTS.lon; }
     if (!terrainOn()) live.horizon = 0;
   }
+  var wx = { state: 'idle', seq: 0, t: null, temp: null, pres: null, at: 0, lat: null, lon: null, used: null, moveTimer: null };
+  function round1(x) { return Math.round(x * 10) / 10; }
+  /* Read the forecast at the sunrise minute. Sunrise is first found with typical air, which is close enough to pick the minute. */
+  function applyForecast() {
+    live.temp = DEFAULTS.temp; live.pres = DEFAULTS.pres; wx.used = null;
+    if (!wx.t) return;
+    var v = snapshot(); v.temp = DEFAULTS.temp; v.pres = DEFAULTS.pres;
+    var r = rise(v, opts(v)); if (!r) return;
+    var sec = r.ms / 1000, T = wx.t, i = -1;
+    for (var k = 0; k < T.length - 1; k++) if (T[k] <= sec && sec <= T[k + 1]) { i = k; break; }
+    if (i < 0) return;
+    var a = wx.temp[i], b = wx.temp[i + 1], p = wx.pres[i], q = wx.pres[i + 1];
+    if (a == null || b == null || p == null || q == null) return;
+    var f = (sec - T[i]) / (T[i + 1] - T[i]);
+    live.temp = round1(a + f * (b - a)); live.pres = round1(p + f * (q - p));
+    wx.used = r.ms;
+  }
+  function paintWx(tz) {
+    var el = document.getElementById('wxStatus'), txt, typical = 'Using typical values, ' + DEFAULTS.temp + '\u00b0C and ' + DEFAULTS.pres + ' hPa.';
+    tz = tz || 'Asia/Jerusalem';
+    el.className = 'status';
+    if (wx.state === 'idle' || wx.state === 'loading') txt = 'Getting the latest forecast for the sunrise time. ' + typical;
+    else if (wx.state === 'failed') txt = 'Could not reach the weather service. ' + typical + ' Press the button to try again.';
+    else if (wx.used == null) txt = 'No forecast for this date (the service covers about a week back and two weeks ahead). ' + typical;
+    else {
+      el.className = 'status ok';
+      var d = ymd(val('date')), day = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'long' }).format(new Date(Date.UTC(d[0], d[1] - 1, d[2], 12)));
+      txt = 'Forecast for ' + fmtTime(wx.used, tz).slice(0, 5) + ' on ' + day + ': ' + live.temp + '\u00b0C, ' + live.pres + ' hPa. Fetched at ' + fmtTime(wx.at, tz).slice(0, 5) + '.';
+      var typed = ['temp', 'pres'].filter(function (k) { return k in over; });
+      if (typed.length) txt += ' You typed your own ' + (typed.length === 2 ? 'temperature and pressure' : typed[0] === 'temp' ? 'temperature' : 'pressure') + '; press reset to use the forecast.';
+    }
+    el.textContent = txt;
+  }
   function mapHref() { return '/hanetz/map?date=' + encodeURIComponent(val('date')); }
   function paintPointLine() {
     var el = document.getElementById('pointLine'), i = activePoint(), a = autoPoint(), txt;
@@ -474,13 +507,16 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
 
   function compute() {
     syncPoint();
+    applyForecast();
+    if (wx.state === 'ok' && (Math.abs(+val('lat') - wx.lat) > 0.05 || Math.abs(+val('lon') - wx.lon) > 0.05)) { clearTimeout(wx.moveTimer); wx.moveTimer = setTimeout(fetchForecast, 900); }
     var v = snapshot();
     var tz = validTz(v.tz) ? v.tz : 'Asia/Jerusalem';
     var o = opts(v);
     var r = rise(v, o);
     if (v.prof >= 0) { live.horizon = r ? Math.round(r.horizon * 1000) / 1000 : 0; v.horizon = live.horizon; }
-    ['lat', 'lon', 'horizon'].forEach(paintField);
+    ['lat', 'lon', 'horizon', 'temp', 'pres'].forEach(paintField);
     paintPointLine();
+    paintWx(tz);
     document.getElementById('outDate').textContent = fmtDate(v.date, tz);
     document.getElementById('outZone').textContent = tz.replace(/_/g, ' ');
     var outTime = document.getElementById('outTime'), outLine = document.getElementById('outLine');
@@ -635,26 +671,33 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function persist() { try { localStorage.setItem('hanetz-settings', storedString()); } catch (e) {} }
   function restore() { try { var s = localStorage.getItem('hanetz-settings'); if (s) applySettings(s); } catch (e) {} }
 
-  // Live weather: Open-Meteo (free, no key, CORS enabled).
-  document.getElementById('wxBtn').addEventListener('click', function () {
-    var st = document.getElementById('wxStatus');
-    var lat = +val('lat'), lon = +val('lon');
-    st.className = 'status'; st.textContent = 'Fetching...';
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&current=temperature_2m,surface_pressure,relative_humidity_2m&timezone=auto';
-    var done = false;
-    var timer = setTimeout(function () { if (!done) { done = true; st.textContent = 'No answer from the weather service. Check the connection and try again, or type the values by hand.'; } }, 8000);
-    fetch(url).then(function (res) { return res.json(); }).then(function (j) {
-      if (done) return; done = true; clearTimeout(timer);
-      var c = j.current || {};
-      if (typeof c.temperature_2m === 'number') { live.temp = c.temperature_2m; delete over.temp; }
-      if (typeof c.surface_pressure === 'number') { live.pres = c.surface_pressure; delete over.pres; }
-      paintAll(); compute(); persist();
-      st.className = 'status ok'; st.textContent = 'Live: ' + c.temperature_2m + '°C, ' + c.surface_pressure + ' hPa at the model elevation ' + j.elevation + ' m (' + (c.time || '') + ').';
+  /* Forecast: every time the page opens (and every 15 minutes while it stays open) the latest hourly
+     forecast is fetched from Open-Meteo, and the temperature and pressure are read off at the sunrise minute. */
+  function fetchForecast() {
+    var lat = +val('lat'), lon = +val('lon'), i = activePoint();
+    var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lon.toFixed(4) +
+      (terrainOn() && i >= 0 ? '&elevation=' + D.stn[i][2] : '') +
+      '&hourly=temperature_2m,surface_pressure&past_days=7&forecast_days=16&timeformat=unixtime&timezone=UTC';
+    var my = ++wx.seq;
+    if (wx.state !== 'ok') { wx.state = 'loading'; paintWx(); }
+    var timer = setTimeout(function () { if (my === wx.seq && wx.state === 'loading') { wx.state = 'failed'; compute(); } }, 12000);
+    fetch(url, { cache: 'no-store' }).then(function (res) { if (!res.ok) throw new Error('http'); return res.json(); }).then(function (j) {
+      if (my !== wx.seq) return;
+      clearTimeout(timer);
+      var h = j && j.hourly;
+      if (!h || !h.time || !h.temperature_2m || !h.surface_pressure) throw new Error('shape');
+      wx.t = h.time; wx.temp = h.temperature_2m; wx.pres = h.surface_pressure;
+      wx.state = 'ok'; wx.at = Date.now(); wx.lat = lat; wx.lon = lon;
+      compute();
     }).catch(function () {
-      if (done) return; done = true; clearTimeout(timer);
-      st.textContent = 'Could not reach the weather service. Check the connection and try again, or type the values by hand.';
+      if (my !== wx.seq) return;
+      clearTimeout(timer);
+      if (!wx.t) wx.state = 'failed';
+      compute();
     });
-  });
+  }
+  document.getElementById('wxBtn').addEventListener('click', fetchForecast);
+  setInterval(fetchForecast, 15 * 60000);
 
   (function () {
     var sel = document.getElementById('f-point');
@@ -671,6 +714,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     if (qd || qp) { delete over.lat; delete over.lon; delete over.horizon; }
   })();
   syncPoint(); paintAll(); compute();
+  fetchForecast();
 })();
 </script>
 
