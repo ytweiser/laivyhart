@@ -80,6 +80,14 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
 .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
 .legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 .about p { margin: 6px 0; font-size: 13.5px; color: var(--muted); }
+.clockrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+.mid { font-family: var(--display); font-size: clamp(28px, 5.4vw, 40px); font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.clockrow .lab { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.pick { height: 280px; margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); z-index: 0; }
+.pick.off { display: grid; place-items: center; height: auto; padding: 14px; font-size: 13px; color: var(--muted); }
+.leaflet-container { font: 12px var(--body); cursor: crosshair; }
+.leaflet-container svg { width: auto; height: auto; }
+.pointline.warn { border-color: var(--accent); background: var(--accent-soft); }
 @media (prefers-reduced-motion: no-preference) { .field input, .field select { transition: background .15s, border-color .15s; } }
 </style>
 
@@ -90,6 +98,14 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   </header>
 
   <div class="col-main">
+    <section class="panel" aria-label="Clock and time until the next netz">
+      <div class="clockrow">
+        <div><div class="lab">Time now</div><div class="mid" id="clkNow">--:--:--</div><div class="sub" id="clkDate"></div></div>
+        <div><div class="lab">Until the next netz</div><div class="mid" id="clkLeft">--:--:--</div><div class="sub" id="clkAt"></div></div>
+      </div>
+      <p class="hint" id="clkNote"></p>
+    </section>
+
     <section class="panel" aria-live="polite">
       <h2>Visible sunrise for <span id="outDate"></span></h2>
       <div class="big"><span id="outTime">--:--:--</span><small id="outZone"></small></div>
@@ -119,6 +135,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       <h2>What this version does and does not do</h2>
       <p>Solar position follows Meeus (Astronomical Algorithms) with nutation and aberration, checked against the PyEphem library to within a few seconds. Refraction uses the Saemundsson formula scaled by the pressure and temperature you enter, applied to the chosen point on the disk, not to the center.</p>
       <p>The observation point and its skyline come from a 30 m bare-ground terrain model (FABDEM, which is the Copernicus model with buildings and trees removed), so buildings do not count as blocking the view. Each date uses the point on the hilltop east of Ramat Shlomo where the first sliver appears earliest. The <a href="/hanetz/map">map and schedule page</a> explains the choice. The model still needs a check on the ground, so treat times as good to about a minute.</p>
+      <p>A spot picked on the map uses different data: worldwide elevation tiles of about 30 m (Mapzen Terrain Tiles on AWS, built mostly from SRTM), which describe the surface and so partly include buildings and trees. The eye is 1.7 m above that surface. Treat those times as estimates.</p>
       <p>Not yet in this version: a temperature profile or inversion model (the "Refraction multiplier" field lets you explore that by hand). That is Phase 3.</p>
       <p>Times are rounded to the second but the real uncertainty on any given morning is tens of seconds from the atmosphere alone, which is exactly what the later phases and the calibration log are for.</p>
     </section>
@@ -136,7 +153,12 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
         <div class="field" data-key="lon"><label for="f-lon"><span>Longitude (degrees east)</span><span class="sens"></span></label><input id="f-lon" type="number" step="0.0001" inputmode="decimal"><button class="reset" type="button">reset</button></div>
       </div>
       <p class="pointline" id="pointLine"></p>
-      <p class="hint">The coordinates fill themselves in with the point in the neighborhood where the first sliver is seen earliest on this date. Typing your own coordinates switches to a level horizon, because the terrain skyline is only stored for the schedule points.</p>
+      <div class="pick" id="pick" role="application" aria-label="Map. Click a spot to use it as the observation point."></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="backBtn" type="button">Back to the scheduled point</button>
+        <span class="status" id="mapNote">Click anywhere on the map to stand there.</span>
+      </div>
+      <p class="hint">The coordinates fill themselves in with the point in the neighborhood where the first sliver is seen earliest on this date. Click the map, or type coordinates, to stand somewhere else: the page then traces the skyline for that spot from worldwide terrain data. That is an estimate. On our checked points it was within about a minute on most days and within two minutes on nine days out of ten, and it can be far off where a building stands right beside the spot. A spot you pick is for this visit only and is not remembered.</p>
     </section>
 
     <section class="panel">
@@ -159,8 +181,9 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       <div class="fields">
         <div class="field" data-key="horizon"><label for="f-horizon"><span>Skyline elevation at the sunrise azimuth (degrees)</span><span class="sens"></span></label><input id="f-horizon" type="number" step="0.01" inputmode="decimal"><button class="reset" type="button">reset</button></div>
         <div class="field" data-key="dip"><label for="f-dip"><span>Observer height above the horizon plane (m)</span><span class="sens"></span></label><input id="f-dip" type="number" step="1" min="0" inputmode="decimal"><button class="reset" type="button">reset</button></div>
+        <div class="field" data-key="near"><label for="f-near"><span>For a spot you picked: ignore terrain closer than (m)</span><span class="sens"></span></label><input id="f-near" type="number" step="50" min="0" max="5000" inputmode="decimal"><button class="reset" type="button">reset</button></div>
       </div>
-      <p class="hint">Skyline elevation is the angle of the ground the Sun actually rises behind (buildings do not count), measured from level. For a schedule point it is filled in from terrain data at the azimuth where the Sun appears; typing a number here replaces it. Observer height matters when the ground falls away toward the east; leave it at 0 if the skyline is above eye level.</p>
+      <p class="hint">Skyline elevation is the angle of the ground the Sun actually rises behind (buildings do not count), measured from level. For a schedule point it is filled in from terrain data at the azimuth where the Sun appears; typing a number here replaces it. Observer height matters when the ground falls away toward the east; leave it at 0 if the skyline is above eye level. The last field only matters for a spot picked on the map: the worldwide data partly includes buildings, so if one beside the spot is blocking the view, enter 150 to look past it.</p>
     </section>
 
     <section class="panel">
@@ -388,11 +411,11 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     tz: 'Asia/Jerusalem',
     lat: 31.7683, lon: 35.2137,
     disk: '1', diskFrac: 1,
-    horizon: 0, dip: 0,
+    horizon: 0, dip: 0, near: 0,
     temp: 12, pres: 926, rscale: 1
   };
-  var FIELD_KEYS = ['date', 'tz', 'point', 'lat', 'lon', 'disk', 'diskFrac', 'horizon', 'dip', 'temp', 'pres', 'rscale'];
-  var NUMERIC = { lat: 1, lon: 1, diskFrac: 1, horizon: 1, dip: 1, temp: 1, pres: 1, rscale: 1 };
+  var FIELD_KEYS = ['date', 'tz', 'point', 'lat', 'lon', 'disk', 'diskFrac', 'horizon', 'dip', 'near', 'temp', 'pres', 'rscale'];
+  var NUMERIC = { lat: 1, lon: 1, diskFrac: 1, horizon: 1, dip: 1, near: 1, temp: 1, pres: 1, rscale: 1 };
   var live = {};           // values that came from the live/default source
   var over = {};           // user overrides
   var baseline = null;
@@ -418,19 +441,118 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function activePoint() { var p = val('point'); return p === 'auto' ? autoPoint() : p.charCodeAt(0) - 65; }
   /* Terrain applies only while the coordinates and the skyline field are left alone. */
   function terrainOn() { return activePoint() >= 0 && !('lat' in over) && !('lon' in over) && !('horizon' in over); }
+
+  /* ---- Live skyline for any spot -------------------------------------------------------
+     Worldwide elevation tiles (Terrarium PNG: height = R*256 + G + B/256 - 32768 meters).
+     Zoom 13 (about 16 m per pixel here) out to 6 km, zoom 11 beyond, rays every half degree
+     from 56 to 124 degrees out to 80 km, Earth curvature with k = 0.13, eye 1.7 m up. */
+  var TILE_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/';
+  var TT = { wait: {}, data: {} };
+  var RE = 6371000, KREF = 0.13, D2R = Math.PI / 180, EYE = 1.7;
+  function ttXY(lat, lon, z) {
+    var n = Math.pow(2, z), sn = Math.sin(lat * D2R);
+    return [(lon + 180) / 360 * n, (0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * n];
+  }
+  function ttLoad(key) {
+    if (TT.wait[key]) return TT.wait[key];
+    TT.wait[key] = fetch(TILE_URL + key + '.png').then(function (res) { if (!res.ok) throw new Error('http'); return res.blob(); })
+      .then(function (b) { return createImageBitmap(b, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }); })
+      .then(function (bmp) {
+        var c = document.createElement('canvas'); c.width = 256; c.height = 256;
+        var g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0);
+        TT.data[key] = g.getImageData(0, 0, 256, 256).data;
+      }).catch(function () { TT.data[key] = null; delete TT.wait[key]; });
+    return TT.wait[key];
+  }
+  function ttNeed(lat, lon, z, set) {
+    var p = ttXY(lat, lon, z), fx = Math.floor(p[0] * 256 - 0.5), fy = Math.floor(p[1] * 256 - 0.5);
+    for (var dx = 0; dx < 2; dx++) for (var dy = 0; dy < 2; dy++) set[z + '/' + Math.floor((fx + dx) / 256) + '/' + Math.floor((fy + dy) / 256)] = 1;
+  }
+  function ttPix(z, px, py) {
+    var tx = Math.floor(px / 256), ty = Math.floor(py / 256), d = TT.data[z + '/' + tx + '/' + ty];
+    if (!d) return NaN;
+    var i = ((py - ty * 256) * 256 + (px - tx * 256)) * 4;
+    return d[i] * 256 + d[i + 1] + d[i + 2] / 256 - 32768;
+  }
+  function ttElev(lat, lon, z) {
+    var p = ttXY(lat, lon, z), fx = p[0] * 256 - 0.5, fy = p[1] * 256 - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
+    return ttPix(z, x0, y0) * (1 - ax) * (1 - ay) + ttPix(z, x0 + 1, y0) * ax * (1 - ay) + ttPix(z, x0, y0 + 1) * (1 - ax) * ay + ttPix(z, x0 + 1, y0 + 1) * ax * ay;
+  }
+  function ttDest(lat, lon, az, d) {
+    var dl = d / RE, la1 = lat * D2R;
+    var la2 = Math.asin(Math.sin(la1) * Math.cos(dl) + Math.cos(la1) * Math.sin(dl) * Math.cos(az));
+    var lo2 = lon * D2R + Math.atan2(Math.sin(az) * Math.sin(dl) * Math.cos(la1), Math.cos(dl) - Math.sin(la1) * Math.sin(la2));
+    return [la2 / D2R, lo2 / D2R];
+  }
+  /* Resolves to { prof, dist, ground }: the skyline in the engine's units, the distance in meters
+     to whatever forms it in each direction, and the ground height at the spot. */
+  function trace(lat, lon, near) {
+    var steps = [], d = 0, need = {}, rays = [], i, j;
+    while (d < 80000) { d += d < 5000 ? 30 : d < 30000 ? 60 : 150; if (d >= near) steps.push(d); }
+    ttNeed(lat, lon, 13, need);
+    for (i = 0; i < 137; i++) {
+      var az = (56 + i * 0.5) * D2R, row = [];
+      for (j = 0; j < steps.length; j++) { var p = ttDest(lat, lon, az, steps[j]), z = steps[j] < 6000 ? 13 : 11; ttNeed(p[0], p[1], z, need); row.push(p[0], p[1], z); }
+      rays.push(row);
+    }
+    return Promise.all(Object.keys(need).map(ttLoad)).then(function () {
+      var g = ttElev(lat, lon, 13);
+      if (isNaN(g)) throw new Error('no terrain here');
+      /* Sea tiles carry the depth of the sea bed. Seen from land, the sea is a surface at height 0. */
+      var h0 = g + EYE, prof = [], dist = [], seen = 0, sea = g >= 0;
+      for (i = 0; i < 137; i++) {
+        var row2 = rays[i], best = -90, bd = 0;
+        for (j = 0; j < steps.length; j++) {
+          var h = ttElev(row2[j * 3], row2[j * 3 + 1], row2[j * 3 + 2]);
+          if (isNaN(h)) continue;
+          seen++;
+          if (sea && h < 0) h = 0;
+          var dd = steps[j], a = Math.atan((h - h0 - dd * dd * (1 - KREF) / (2 * RE)) / dd) / D2R;
+          if (a > best) { best = a; bd = dd; }
+        }
+        prof.push(Math.round(best / 0.005)); dist.push(bd);
+      }
+      if (seen < 137 * steps.length * 0.9) throw new Error('terrain incomplete');
+      return { prof: prof, dist: dist, ground: g };
+    });
+  }
+  /* The picked spot: any coordinates the reader clicked or typed. */
+  var cp = { key: '', state: 'idle', prof: null, dist: null, ground: null, seq: 0, timer: null };
+  function customWanted() { return 'lat' in over || 'lon' in over; }
+  function cpKey() { return (+val('lat')).toFixed(5) + ',' + (+val('lon')).toFixed(5) + ',' + Math.max(0, +val('near') || 0); }
+  function customOn() { return customWanted() && !('horizon' in over) && cp.state === 'ok' && cp.key === cpKey(); }
+  function ensureTrace() {
+    if (!customWanted()) return;
+    var k = cpKey();
+    if (cp.key === k && cp.state !== 'idle') return;
+    var lat = +val('lat'), lon = +val('lon'), near = Math.max(0, +val('near') || 0), my = ++cp.seq;
+    cp.key = k; cp.prof = null; cp.dist = null; cp.ground = null;
+    clearTimeout(cp.timer);
+    if (!(Math.abs(lat) <= 60) || !(Math.abs(lon) <= 180)) { cp.state = 'failed'; return; }
+    cp.state = 'loading';
+    cp.timer = setTimeout(function () {
+      trace(lat, lon, near).then(function (r) {
+        if (my !== cp.seq) return;
+        cp.prof = r.prof; cp.dist = r.dist; cp.ground = r.ground; cp.state = 'ok';
+        if (wx.state !== 'idle') fetchForecast();
+        compute();
+      }, function () { if (my !== cp.seq) return; cp.state = 'failed'; compute(); });
+    }, 500);
+  }
+  function typicalPres() { return customOn() && cp.ground != null ? Math.round(1013.25 * Math.exp(-cp.ground / 8434)) : DEFAULTS.pres; }
   function syncPoint() {
     var i = activePoint();
     if (i >= 0) { live.lat = D.stn[i][0]; live.lon = D.stn[i][1]; }
     else { live.lat = DEFAULTS.lat; live.lon = DEFAULTS.lon; }
-    if (!terrainOn()) live.horizon = 0;
+    if (!terrainOn() && !customOn()) live.horizon = 0;
   }
   var wx = { state: 'idle', seq: 0, t: null, temp: null, pres: null, at: 0, lat: null, lon: null, used: null, moveTimer: null };
   function round1(x) { return Math.round(x * 10) / 10; }
   /* Read the forecast at the sunrise minute. Sunrise is first found with typical air, which is close enough to pick the minute. */
   function applyForecast() {
-    live.temp = DEFAULTS.temp; live.pres = DEFAULTS.pres; wx.used = null;
+    live.temp = DEFAULTS.temp; live.pres = typicalPres(); wx.used = null;
     if (!wx.t) return;
-    var v = snapshot(); v.temp = DEFAULTS.temp; v.pres = DEFAULTS.pres;
+    var v = snapshot(); v.temp = DEFAULTS.temp; v.pres = typicalPres();
     var r = rise(v, opts(v)); if (!r) return;
     var sec = r.ms / 1000, T = wx.t, i = -1;
     for (var k = 0; k < T.length - 1; k++) if (T[k] <= sec && sec <= T[k + 1]) { i = k; break; }
@@ -442,7 +564,7 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     wx.used = r.ms;
   }
   function paintWx(tz) {
-    var el = document.getElementById('wxStatus'), txt, typical = 'Using typical values, ' + DEFAULTS.temp + '\u00b0C and ' + DEFAULTS.pres + ' hPa.';
+    var el = document.getElementById('wxStatus'), txt, typical = 'Using typical values, ' + DEFAULTS.temp + '\u00b0C and ' + typicalPres() + ' hPa.';
     tz = tz || 'Asia/Jerusalem';
     el.className = 'status';
     if (wx.state === 'idle' || wx.state === 'loading') txt = 'Getting the latest forecast for the sunrise time. ' + typical;
@@ -461,7 +583,21 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function paintPointLine() {
     var el = document.getElementById('pointLine'), i = activePoint(), a = autoPoint(), txt;
     var link = ' <a href="' + mapHref() + '">See it on the map</a>.';
-    if ('lat' in over || 'lon' in over) txt = 'Using coordinates you typed, with a level horizon. Press reset on latitude and longitude to go back to the automatic point.' + link;
+    el.classList.remove('warn');
+    if (customWanted()) {
+      var spot = 'the spot you picked (' + (+val('lat')).toFixed(5) + ', ' + (+val('lon')).toFixed(5) + ')', back = ' Press "Back to the scheduled point" to return.';
+      if ('horizon' in over) txt = 'Using ' + spot + ' with the skyline number you typed.' + back;
+      else if (cp.state === 'ok' && cp.key === cpKey()) {
+        txt = 'Using ' + spot + ', ground about ' + Math.round(cp.ground) + ' m. The skyline is traced live from worldwide terrain data, so this time is an estimate.';
+        var bi = lastRise ? Math.round((lastRise.az - 56) / 0.5) : -1, bdist = bi >= 0 && bi < 137 ? cp.dist[bi] : 0;
+        if (bdist) txt += ' On this date the sun comes up over ground ' + (bdist < 1000 ? Math.round(bdist / 10) * 10 + ' m' : (bdist / 1000).toFixed(bdist < 10000 ? 1 : 0) + ' km') + ' away.';
+        if (bdist && bdist <= 150) { el.classList.add('warn'); txt += ' That is very close, and is probably a building in the data. To look past it, set "ignore terrain closer than" to 150 in the Horizon box.'; }
+        if (Math.abs(+val('lon') - D.ref[1]) > 3 && val('tz') === DEFAULTS.tz) txt += ' Times are shown in Jerusalem time; for this place, change "Time zone for display" (for example America/New_York).';
+        txt += back;
+      }
+      else if (cp.state === 'failed' && cp.key === cpKey()) txt = 'Using ' + spot + ' with a level horizon, because the terrain data for it could not be loaded (it covers latitudes up to 60 degrees and needs a connection).' + back;
+      else txt = 'Tracing the skyline for ' + spot + '. Showing a level horizon until it is ready.';
+    }
     else if (i < 0) txt = 'No schedule point for this date.';
     else {
       var where = 'point ' + letter(i) + ' (' + D.stn[i][0].toFixed(5) + ', ' + D.stn[i][1].toFixed(5) + ', ' + D.stn[i][2] + ' m)';
@@ -489,9 +625,9 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function opts(v) {
     var frac = v.disk === 'custom' ? +v.diskFrac : +v.disk;
     return { lat: +v.lat, lon: +v.lon, diskFraction: frac, horizon: +v.horizon, dipHeight: +v.dip, pressure: +v.pres, tempC: +v.temp, refractionScale: +v.rscale,
-      profile: v.prof >= 0 && D.prof[v.prof] ? D.prof[v.prof] : null };
+      profile: v.prof >= 0 && D.prof[v.prof] ? D.prof[v.prof] : (v.cprof || null) };
   }
-  function snapshot() { var v = {}; FIELD_KEYS.forEach(function (k) { v[k] = val(k); }); v.prof = terrainOn() ? activePoint() : -1; return v; }
+  function snapshot() { var v = {}; FIELD_KEYS.forEach(function (k) { v[k] = val(k); }); v.prof = terrainOn() ? activePoint() : -1; v.cprof = customOn() ? cp.prof : null; return v; }
   function ymd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? [+m[1], +m[2], +m[3]] : null; }
   function rise(v, o) { var d = ymd(v.date); if (!d) return null; return E.findSunrise(o, d[0], d[1], d[2]); }
 
@@ -505,7 +641,9 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   }
   function signed(sec) { var r = Math.round(sec); return (r > 0 ? '+' : r < 0 ? '-' : '') + Math.abs(r) + ' s'; }
 
+  var lastRise = null;
   function compute() {
+    ensureTrace();
     syncPoint();
     applyForecast();
     if (wx.state === 'ok' && (Math.abs(+val('lat') - wx.lat) > 0.05 || Math.abs(+val('lon') - wx.lon) > 0.05)) { clearTimeout(wx.moveTimer); wx.moveTimer = setTimeout(fetchForecast, 900); }
@@ -513,7 +651,8 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     var tz = validTz(v.tz) ? v.tz : 'Asia/Jerusalem';
     var o = opts(v);
     var r = rise(v, o);
-    if (v.prof >= 0) { live.horizon = r ? Math.round(r.horizon * 1000) / 1000 : 0; v.horizon = live.horizon; }
+    lastRise = r;
+    if (v.prof >= 0 || v.cprof) { live.horizon = r ? Math.round(r.horizon * 1000) / 1000 : 0; v.horizon = live.horizon; }
     ['lat', 'lon', 'horizon', 'temp', 'pres'].forEach(paintField);
     paintPointLine();
     paintWx(tz);
@@ -545,13 +684,14 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
     });
 
     // sensitivity: seconds of change for one step of each field
-    var steps = { lat: [0.01, '0.01°'], lon: [0.01, '0.01°'], diskFrac: [0.1, '0.1'], horizon: [0.1, '0.1°'], dip: [10, '10 m'], temp: [5, '5°C'], pres: [10, '10 hPa'], rscale: [0.1, '0.1'] };
+    var steps = { near: [0, ''], lat: [0.01, '0.01°'], lon: [0.01, '0.01°'], diskFrac: [0.1, '0.1'], horizon: [0.1, '0.1°'], dip: [10, '10 m'], temp: [5, '5°C'], pres: [10, '10 hPa'], rscale: [0.1, '0.1'] };
     Object.keys(steps).forEach(function (k) {
       var f = fieldEl(k); if (!f) return;
       var span = f.querySelector('.sens'); if (!span) return;
       if (!r) { span.textContent = ''; return; }
       var v2 = Object.assign({}, v); v2[k] = +v[k] + steps[k][0];
-      if (k === 'horizon') v2.prof = -1;
+      if (k === 'horizon') { v2.prof = -1; v2.cprof = null; }
+      if (k === 'near') { span.textContent = ''; return; }
       if (k === 'diskFrac' && v.disk !== 'custom') { span.textContent = ''; return; }
       var r2 = rise(v2, opts(v2));
       span.textContent = r2 ? signed((r2.ms - r.ms) / 1000) + ' per ' + steps[k][1] : '';
@@ -567,6 +707,9 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
       } else ps.textContent = 'Baseline pinned, but one of the two cases has no sunrise.';
     }
     drawChart(v, o, r, baseline ? baseline.v : null, tz);
+    paintMap();
+    nextNetz();
+    tick();
   }
 
   function compass(az) {
@@ -646,8 +789,8 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   });
 
   function settingsString() { return JSON.stringify({ over: over, baseline: baseline ? baseline.v : null }); }
-  /* The date and a hand-picked point are for one visit only, so they are not remembered. */
-  function storedString() { var o2 = {}; Object.keys(over).forEach(function (k) { if (k !== 'date' && k !== 'point') o2[k] = over[k]; }); return JSON.stringify({ over: o2, baseline: baseline ? baseline.v : null }); }
+  /* The date, a hand-picked point and a spot picked on the map are for one visit only, so they are not remembered. */
+  function storedString() { var o2 = {}; Object.keys(over).forEach(function (k) { if (k !== 'date' && k !== 'point' && k !== 'lat' && k !== 'lon') o2[k] = over[k]; }); return JSON.stringify({ over: o2, baseline: baseline ? baseline.v : null }); }
   function applySettings(txt) {
     var obj = JSON.parse(txt);
     over = {};
@@ -671,12 +814,109 @@ textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); b
   function persist() { try { localStorage.setItem('hanetz-settings', storedString()); } catch (e) {} }
   function restore() { try { var s = localStorage.getItem('hanetz-settings'); if (s) applySettings(s); } catch (e) {} }
 
+
+  /* ---- Clock and time until the next netz -------------------------------------------------
+     The next netz uses the same place and settings as the page, but for today (or tomorrow once
+     today's has passed), with that morning's scheduled point and forecast. */
+  var nx = null;
+  function addDay(s) { var d = ymd(s), t = new Date(Date.UTC(d[0], d[1] - 1, d[2] + 1)); return t.toISOString().slice(0, 10); }
+  function wxAt(ms) {
+    if (!wx.t) return null;
+    var sec = ms / 1000, T = wx.t;
+    for (var k = 0; k < T.length - 1; k++) if (T[k] <= sec && sec <= T[k + 1]) {
+      var a = wx.temp[k], b = wx.temp[k + 1], p = wx.pres[k], q = wx.pres[k + 1];
+      if (a == null || b == null || p == null || q == null) return null;
+      var f = (sec - T[k]) / (T[k + 1] - T[k]);
+      return [round1(a + f * (b - a)), round1(p + f * (q - p))];
+    }
+    return null;
+  }
+  function riseOn(dateStr) {
+    var v = snapshot(), where = '', fc = false;
+    v.date = dateStr;
+    if (customWanted()) where = v.cprof ? 'the spot you picked' : 'the spot you picked, level horizon';
+    else {
+      var n = scheduleIndex(dateStr), i = val('point') === 'auto' ? (n >= 0 && n < 365 ? D.assign.charCodeAt(n) - 65 : -1) : val('point').charCodeAt(0) - 65;
+      if (i >= 0) { v.lat = D.stn[i][0]; v.lon = D.stn[i][1]; v.prof = 'horizon' in over ? -1 : i; where = 'point ' + letter(i); }
+    }
+    if (!('temp' in over) || !('pres' in over)) {
+      var v0 = Object.assign({}, v); if (!('temp' in over)) v0.temp = DEFAULTS.temp; if (!('pres' in over)) v0.pres = typicalPres();
+      var r0 = rise(v0, opts(v0)), w = r0 ? wxAt(r0.ms) : null;
+      if (!('temp' in over)) v.temp = w ? w[0] : DEFAULTS.temp;
+      if (!('pres' in over)) v.pres = w ? w[1] : typicalPres();
+      fc = !!w;
+    }
+    return { r: rise(v, opts(v)), where: where, fc: fc };
+  }
+  function nextNetz() {
+    var tz = validTz(val('tz')) ? val('tz') : 'Asia/Jerusalem', now = Date.now(), d = todayIn(tz);
+    nx = null;
+    for (var n = 0; n < 3; n++) {
+      var x = riseOn(d);
+      if (x.r && x.r.ms > now) { nx = { ms: x.r.ms, date: d, where: x.where, fc: x.fc, tz: tz, today: n === 0 }; return; }
+      d = addDay(d);
+    }
+  }
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function tick() {
+    var tz = validTz(val('tz')) ? val('tz') : 'Asia/Jerusalem', now = Date.now();
+    if (nx && now >= nx.ms) nextNetz();
+    document.getElementById('clkNow').textContent = fmtTime(Math.floor(now / 1000) * 1000, tz);
+    document.getElementById('clkDate').textContent = fmtDate(todayIn(tz), tz) + ', ' + tz.replace(/_/g, ' ');
+    var left = document.getElementById('clkLeft'), at = document.getElementById('clkAt'), note = document.getElementById('clkNote');
+    if (!nx) { left.textContent = '--:--:--'; at.textContent = 'No sunrise found for the next three days with these inputs.'; note.textContent = ''; return; }
+    var s = Math.max(0, Math.ceil((nx.ms - now) / 1000));
+    left.textContent = Math.floor(s / 3600) + ':' + two(Math.floor(s / 60) % 60) + ':' + two(s % 60);
+    at.textContent = 'Netz at ' + fmtTime(nx.ms, nx.tz) + (nx.today ? ' today' : nx.date === addDay(todayIn(tz)) ? ' tomorrow' : ' on ' + fmtDate(nx.date, tz));
+    note.textContent = 'Counted for ' + (nx.where || 'the coordinates shown') + ', with ' + (nx.fc ? 'the forecast for that minute' : 'your own or typical temperature and pressure') + ' and the sunrise definition chosen below. It can move by a few seconds when a newer forecast arrives.';
+  }
+  setInterval(tick, 1000);
+
+  /* ---- Map: click to stand somewhere ---------------------------------------------------- */
+  var map = null, mark = null;
+  function pickSpot(lat, lon) {
+    over.lat = Math.round(lat * 1e5) / 1e5; over.lon = Math.round(lon * 1e5) / 1e5;
+    paintField('lat'); paintField('lon'); compute(); persist();
+  }
+  function initMap() {
+    var box = document.getElementById('pick');
+    if (!window.L) { box.className = 'pick off'; box.textContent = 'The map could not be loaded. You can still type coordinates above.'; return; }
+    map = L.map(box, { preferCanvas: true, zoomControl: true }).setView([D.ref[0], D.ref[1]], 15);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
+    D.stn.forEach(function (p, i) {
+      L.circleMarker([p[0], p[1]], { radius: 6, color: '#1f5f7a', weight: 2, fillColor: '#ffffff', fillOpacity: 1 }).addTo(map)
+        .bindTooltip('Schedule point ' + letter(i)).on('click', function (e) {
+          L.DomEvent.stopPropagation(e);
+          delete over.lat; delete over.lon; delete over.horizon; over.point = letter(i);
+          paintAll(); compute(); persist();
+        });
+    });
+    mark = L.circleMarker([+val('lat'), +val('lon')], { radius: 9, color: '#a5531b', weight: 3, fillColor: '#a5531b', fillOpacity: 0.35, interactive: false }).addTo(map);
+    map.on('click', function (e) { pickSpot(e.latlng.lat, e.latlng.lng); });
+    paintMap();
+  }
+  function paintMap() {
+    if (!map || !mark) return;
+    var lat = +val('lat'), lon = +val('lon');
+    if (!(Math.abs(lat) <= 90) || !(Math.abs(lon) <= 180)) return;
+    mark.setLatLng([lat, lon]);
+    if (!map.getBounds().contains([lat, lon])) map.panTo([lat, lon]);
+  }
+  document.getElementById('backBtn').addEventListener('click', function () {
+    delete over.lat; delete over.lon; delete over.point;
+    paintAll(); compute(); persist();
+  });
+  (function () {
+    var css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    var js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload = initMap; js.onerror = initMap; document.head.appendChild(js);
+  })();
+
   /* Forecast: every time the page opens (and every 15 minutes while it stays open) the latest hourly
      forecast is fetched from Open-Meteo, and the temperature and pressure are read off at the sunrise minute. */
   function fetchForecast() {
     var lat = +val('lat'), lon = +val('lon'), i = activePoint();
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lon.toFixed(4) +
-      (terrainOn() && i >= 0 ? '&elevation=' + D.stn[i][2] : '') +
+      (terrainOn() && i >= 0 ? '&elevation=' + D.stn[i][2] : customOn() && cp.ground != null ? '&elevation=' + Math.round(cp.ground) : '') +
       '&hourly=temperature_2m,surface_pressure&past_days=7&forecast_days=16&timeformat=unixtime&timezone=UTC';
     var my = ++wx.seq;
     if (wx.state !== 'ok') { wx.state = 'loading'; paintWx(); }
