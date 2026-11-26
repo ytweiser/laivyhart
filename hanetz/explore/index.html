@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Hanetz explorer</title>
+<meta name="description" content="Find the earliest visible sunrise for a town: inside its edge, or up to a set distance beyond it.">
+<meta name="robots" content="noindex">
+<style>html{box-sizing:border-box}body{margin:0;padding:0}[hidden]{display:none!important}</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+/* Layout: a single column of instrument panels; the result sits first, the dials below, always visible together on desktop via a two-column grid. */
+:root {
+  --bg: #f6f3ec;
+  --panel: #fffdf8;
+  --fg: #1d1a14;
+  --muted: #6b6457;
+  --line: #d9d2c4;
+  --accent: #a5531b;
+  --accent-soft: #f3e3d4;
+  --override: #1f5f7a;
+  --override-soft: #dcebf1;
+  --good: #3b6d3a;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15130f; --panel: #1e1b16; --fg: #ece6da; --muted: #a39b8c; --line: #3a352c;
+    --accent: #e08a4a; --accent-soft: #3a2616; --override: #6fb3d1; --override-soft: #17303c; --good: #8fc48d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15130f; --panel: #1e1b16; --fg: #ece6da; --muted: #a39b8c; --line: #3a352c;
+  --accent: #e08a4a; --accent-soft: #3a2616; --override: #6fb3d1; --override-soft: #17303c; --good: #8fc48d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .wrap { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; } .col-main { order: 2; position: sticky; top: 16px; } .col-side { order: 1; } }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--display); font-weight: 500; font-size: 30px; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--muted); font-size: 18px; margin-left: 10px; font-family: var(--body); font-weight: 400; }
+.tag { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.panel + .panel { margin-top: 16px; }
+.panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+.big { font-family: var(--display); font-size: clamp(44px, 9vw, 72px); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.big small { display: block; font-size: 0.24em; color: var(--muted); font-weight: 500; margin-top: 8px; letter-spacing: 0; font-family: var(--body); }
+a { color: var(--accent); }
+.pointline { font-size: 13.5px; margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.sub { color: var(--muted); margin-top: 6px; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 13px; }
+td.n, th.n { text-align: right; font-family: var(--mono); font-size: 14px; white-space: nowrap; }
+tr.me td { color: var(--accent); font-weight: 600; }
+.fields { display: grid; gap: 10px; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+.field label { font-size: 13px; color: var(--muted); grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
+.field label .sens { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.field input, .field select { width: 100%; font: 15px var(--mono); padding: 7px 9px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); min-width: 0; }
+.field input:focus, .field select:focus, button:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field.over input, .field.over select { border-color: var(--override); background: var(--override-soft); }
+.field .reset { font: 12px var(--body); padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--muted); cursor: pointer; visibility: hidden; }
+.field.over .reset { visibility: visible; color: var(--override); border-color: var(--override); }
+.hint { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; }
+button.btn { font: 500 14px var(--body); padding: 8px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--fg); cursor: pointer; }
+button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.status { font-size: 13px; color: var(--muted); }
+.status.ok { color: var(--good); }
+.diff { font-family: var(--mono); font-size: 14px; }
+.diff.plus { color: var(--accent); } .diff.minus { color: var(--override); }
+svg { width: 100%; height: auto; display: block; }
+textarea { width: 100%; font: 12px var(--mono); border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); padding: 8px; resize: vertical; min-height: 60px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.about p { margin: 6px 0; font-size: 13.5px; color: var(--muted); }
+.clockrow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; }
+.mid { font-family: var(--display); font-size: clamp(28px, 5.4vw, 40px); font-weight: 600; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.clockrow .lab { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.pick { height: 280px; margin-top: 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); z-index: 0; }
+.pick.off { display: grid; place-items: center; height: auto; padding: 14px; font-size: 13px; color: var(--muted); }
+.leaflet-container { font: 12px var(--body); cursor: crosshair; }
+.leaflet-container svg { width: auto; height: auto; }
+.pointline.warn { border-color: var(--accent); background: var(--accent-soft); }
+@media (prefers-reduced-motion: no-preference) { .field input, .field select { transition: background .15s, border-color .15s; } }
+</style>
+<style>
+.wrap.ex { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .wrap.ex { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); } .wrap.ex .col-main { order: 1; position: static; } .wrap.ex .col-side { order: 2; } }
+.map { height: 560px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); z-index: 0; }
+@media (max-width: 700px) { .map { height: 430px; } }
+.map.off { display: grid; place-items: center; height: auto; padding: 20px; color: var(--muted); }
+.leaflet-container { font: 12px var(--body); }
+.leaflet-container svg { width: auto; height: auto; }
+.searchrow { display: flex; gap: 8px; }
+.searchrow input { flex: 1; min-width: 0; font: 15px var(--body); padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--fg); }
+.searchrow input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+#qList { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+#qList li { margin: 2px 0; }
+.linkish { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; text-align: left; }
+.place { font-family: var(--display); font-size: 19px; margin: 12px 0 8px; }
+.note { font-size: 13px; color: var(--muted); margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.note.warn { border-color: var(--accent); background: var(--accent-soft); color: var(--fg); }
+.small { font-size: 12.5px; color: var(--muted); margin-top: 3px; font-weight: 400; }
+.small-btn { font-size: 12.5px; padding: 4px 8px; margin-top: 6px; }
+#resBody td { padding: 10px 4px; }
+#resBody td.n { font-size: 17px; }
+tr.r-in td:first-child { border-left: 4px solid #3b6d3a; padding-left: 8px; }
+tr.r-all td:first-child { border-left: 4px solid #1f5f7a; padding-left: 8px; }
+tr.r-pin td:first-child { border-left: 4px solid #a5531b; padding-left: 8px; }
+tr.r-std td:first-child { border-left: 4px solid var(--line); padding-left: 8px; }
+.ic-pin { background: #a5531b; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1.5px #a5531b, 0 1px 4px rgba(0,0,0,.4); }
+.ic-vtx { background: #fff; border: 2px solid #a5531b; border-radius: 2px; cursor: move; }
+.ic-mid { background: rgba(255,255,255,.75); border: 1.5px solid #a5531b; border-radius: 50%; cursor: copy; }
+.ic-in { background: #3b6d3a; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1.5px #3b6d3a; }
+.ic-all { background: #1f5f7a; border: 3px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1.5px #1f5f7a; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.key i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 5px; border: 2px solid #fff; box-shadow: 0 0 0 1px currentColor; }
+</style>
+
+<div class="wrap ex">
+  <header>
+    <h1>Hanetz explorer <span>any town, three ways to measure</span></h1>
+    <div class="tag"><a href="/hanetz">back to the calculator</a> &middot; <a href="/hanetz/map">Ramat Shlomo map</a></div>
+  </header>
+
+  <div class="col-main">
+    <section class="panel">
+      <h2>Find a place</h2>
+      <form id="qForm" class="searchrow" role="search">
+        <input id="q" type="search" placeholder="A town or neighborhood, for example Lakewood, Beitar Illit, Monsey" aria-label="Place to search for" autocomplete="off">
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <p class="hint" id="qStatus"></p>
+      <ul id="qList"></ul>
+      <div class="place" id="placeName"></div>
+      <div class="map" id="map" role="application" aria-label="Map. Click to move the pin. Drag the square corners to change the outline."></div>
+      <div class="key"><span style="color:#a5531b"><i style="background:#a5531b"></i>Your spot (pin)</span><span style="color:#3b6d3a"><i style="background:#3b6d3a"></i>Earliest inside the outline</span><span style="color:#1f5f7a"><i style="background:#1f5f7a"></i>Earliest beyond it</span><span>Solid line: the edge of the town. Dashed line: the limit beyond it.</span></div>
+      <p class="note" id="edgeNote"></p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="edgeBtn" type="button">Find the edge again around the pin</button>
+        <button class="btn" id="linkBtn" type="button">Copy a link to this setup</button>
+        <span class="status" id="linkStatus"></span>
+      </div>
+      <p class="hint">Click the map to move the pin, or drag it. Drag a square corner to move the edge; drag a round dot between corners to add a corner; right-click a corner (or press and hold on a phone) to remove it. Every change is recalculated by itself.</p>
+    </section>
+  </div>
+
+  <div class="col-side">
+    <section class="panel" aria-live="polite">
+      <h2>Visible sunrise (first sliver)</h2>
+      <table><thead><tr><th>From where</th><th class="n">Time</th><th class="n">vs inside</th></tr></thead><tbody id="resBody"></tbody></table>
+      <p class="hint" id="tzShown"></p>
+      <p class="status" id="runStatus">Starting...</p>
+    </section>
+
+    <section class="panel">
+      <h2>Settings</h2>
+      <div class="fields">
+        <div class="field"><label for="f-date">Date</label><input id="f-date" type="date"></div>
+        <div class="field"><label for="f-margin">How far beyond the edge to look (m)</label><input id="f-margin" type="number" min="0" max="3000" step="100" inputmode="decimal"></div>
+        <div class="field"><label for="f-near">Ignore anything closer than (m)</label><input id="f-near" type="number" min="0" max="1000" step="25" inputmode="decimal"></div>
+        <div class="field"><label for="f-tz">Time zone (leave empty to use the place's own)</label><input id="f-tz" type="text" spellcheck="false" placeholder="found automatically"></div>
+      </div>
+      <p class="hint">The Rav's rule is up to 1,000 m beyond the last buildings. Set it to 0 to stay inside the edge. "Ignore anything closer than" lets each spot see past the buildings right next to it, since buildings do not count.</p>
+    </section>
+
+    <section class="panel about">
+      <h2>How this works, and how far to trust it</h2>
+      <p><b>The three answers.</b> Your spot is wherever the pin stands, for example a shul. The earliest inside the outline is the first place in the town where the sun is seen. The earliest beyond it allows the extra distance set above, which is where Rav Keller's vantage points lie for Ramat Shlomo.</p>
+      <p><b>The edge.</b> The page loads the buildings within 2.5 km of the pin from OpenStreetMap and joins every building to any other within 60 m, starting from the one nearest the pin. The outline is drawn around that group. It is only as good as the map: where OpenStreetMap is missing buildings, the edge will be wrong, so drag it. In a big city the buildings never stop, so there is no edge to find.</p>
+      <p><b>The search.</b> The page lays a grid of up to about 4,000 spots over the outline and the band around it, looks from each one toward where the sun comes up, then works out the best 20 inside and the best 20 overall exactly, with a skyline traced out to 80 km.</p>
+      <p><b>The data.</b> Heights come from worldwide terrain tiles of about 30 m (Mapzen Terrain Tiles on AWS, built mostly from SRTM). They describe the surface, so they partly include buildings and trees. To stand on the ground and not on a roof, each spot takes the lowest height within about 25 m of it, and anything closer than the distance set above is ignored. Air at sunrise comes from the Open-Meteo forecast when the date is within about two weeks. Places are found with OpenStreetMap Nominatim.</p>
+      <p><b>How good is it.</b> For Ramat Shlomo, where we have a careful bare-ground model, this kind of tracing was within about a minute on most days and two minutes on nine days out of ten. Elsewhere, treat it as an estimate to play with, not a luach.</p>
+    </section>
+  </div>
+</div>
+<script>
+/* Hanetz engine: solar position, atmospheric refraction, and sunrise search.
+   Pure functions, no DOM. Works in a browser (window.HanetzEngine) and in Node (module.exports). */
+(function (root) {
+  'use strict';
+
+  var RAD = Math.PI / 180;
+  function sind(x) { return Math.sin(x * RAD); }
+  function cosd(x) { return Math.cos(x * RAD); }
+  function tand(x) { return Math.tan(x * RAD); }
+  function norm360(x) { x = x % 360; return x < 0 ? x + 360 : x; }
+
+  // TT minus UT1 in seconds, estimated for 2026.
+  var DELTA_T = 69.2;
+
+  function julianDay(ms) { return ms / 86400000 + 2440587.5; }
+
+  /* Apparent geocentric position of the Sun (Meeus, Astronomical Algorithms, ch. 25,
+     with nutation and aberration folded in). */
+  function sunPosition(ms) {
+    var jd = julianDay(ms);
+    var jde = jd + DELTA_T / 86400;
+    var T = (jde - 2451545) / 36525;
+    var L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
+    var M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+    var e = 0.016708634 - 0.000042037 * T - 0.0000001267 * T * T;
+    var C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * sind(M) +
+            (0.019993 - 0.000101 * T) * sind(2 * M) +
+            0.000289 * sind(3 * M);
+    var trueLong = L0 + C;
+    var nu = M + C;
+    var R = 1.000001018 * (1 - e * e) / (1 + e * cosd(nu));
+    var omega = 125.04 - 1934.136 * T;
+    var lambda = trueLong - 0.00569 - 0.00478 * sind(omega);
+    var eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+    var eps = eps0 + 0.00256 * cosd(omega);
+    var ra = norm360(Math.atan2(cosd(eps) * sind(lambda), cosd(lambda)) / RAD);
+    var dec = Math.asin(sind(eps) * sind(lambda)) / RAD;
+    var dpsi = -0.004778 * sind(omega) - 0.000366 * sind(2 * L0);
+
+    var Tu = (jd - 2451545) / 36525;
+    var gmst = norm360(280.46061837 + 360.98564736629 * (jd - 2451545) +
+                       0.000387933 * Tu * Tu - Tu * Tu * Tu / 38710000);
+    var gast = norm360(gmst + dpsi * cosd(eps));
+
+    return { ra: ra, dec: dec, R: R, gast: gast, sd: 0.266564 / R, parallax: 0.0024428 / R };
+  }
+
+  /* Topocentric altitude (degrees, no refraction) and azimuth (degrees from north, clockwise)
+     of the Sun's center. lon is east-positive. */
+  function altAz(ms, lat, lon) {
+    var s = sunPosition(ms);
+    var H = s.gast + lon - s.ra;
+    var sinh = sind(lat) * sind(s.dec) + cosd(lat) * cosd(s.dec) * cosd(H);
+    var h = Math.asin(sinh) / RAD;
+    var az = norm360(Math.atan2(sind(H), cosd(H) * sind(lat) - tand(s.dec) * cosd(lat)) / RAD + 180);
+    h -= s.parallax * cosd(h);
+    return { alt: h, az: az, sd: s.sd, dec: s.dec, R: s.R };
+  }
+
+  /* Refraction in arcminutes for a TRUE altitude in degrees (Saemundsson),
+     scaled for station pressure (hPa) and temperature (deg C). */
+  function refractionArcmin(hTrue, pressure, tempC) {
+    var h = Math.max(hTrue, -1.7);
+    var r = 1.02 / tand(h + 10.3 / (h + 5.11));
+    return r * (pressure / 1010) * (283 / (273.15 + tempC));
+  }
+
+  /* Horizon dip in degrees for an observer h meters above the horizon plane. */
+  function dipDegrees(heightM) {
+    return heightM > 0 ? 1.76 * Math.sqrt(heightM) / 60 : 0;
+  }
+
+  /* Opts:
+     lat, lon         degrees (east positive)
+     diskFraction     -1 lower limb, 0 center, +1 upper limb
+     horizon          apparent elevation of the skyline, degrees
+     dipHeight        meters above a lower horizon plane (0 for none)
+     pressure         hPa at the observer
+     tempC            deg C at the observer
+     refractionScale  1 = standard behavior, 0 = no refraction */
+  function pointAltitude(ms, o) {
+    var p = altAz(ms, o.lat, o.lon);
+    var hTrue = p.alt + o.diskFraction * p.sd;
+    var r = o.refractionScale * refractionArcmin(hTrue, o.pressure, o.tempC) / 60;
+    return { app: hTrue + r, refraction: r * 60, az: p.az, trueAlt: hTrue };
+  }
+
+  /* Skyline profile: integers in units of 0.005 degrees, one per half degree of azimuth from 56 degrees. */
+  var PROF_AZ0 = 56, PROF_STEP = 0.5, PROF_UNIT = 0.005;
+  function profileAt(p, az) {
+    var x = (az - PROF_AZ0) / PROF_STEP;
+    if (x <= 0) return p[0] * PROF_UNIT;
+    if (x >= p.length - 1) return p[p.length - 1] * PROF_UNIT;
+    var i = Math.floor(x);
+    return (p[i] + (p[i + 1] - p[i]) * (x - i)) * PROF_UNIT;
+  }
+
+  /* With o.profile and an azimuth, the skyline comes from the terrain profile; otherwise from o.horizon. */
+  function skyline(o, az) {
+    return (o.profile && az != null) ? profileAt(o.profile, az) : o.horizon;
+  }
+  function horizonAltitude(o, az) {
+    return skyline(o, az) - dipDegrees(o.dipHeight || 0);
+  }
+
+  function clearance(ms, o) {
+    var p = pointAltitude(ms, o);
+    return p.app - horizonAltitude(o, p.az);
+  }
+
+  /* Find the sunrise for the solar day centered on local mean solar noon of y-m-d.
+     Returns null if the point never clears the horizon that morning. */
+  function findSunrise(o, y, m, d) {
+    var noon = Date.UTC(y, m - 1, d, 12) - o.lon / 15 * 3600000;
+    /* A terrain skyline is jagged, so first find when the point clears a level line just
+       below the lowest part of the profile, then walk forward in 10 second steps. */
+    var c = o;
+    if (o.profile) {
+      var mn = Infinity;
+      for (var q = 0; q < o.profile.length; q++) if (o.profile[q] < mn) mn = o.profile[q];
+      c = {}; for (var key in o) c[key] = o[key];
+      c.profile = null; c.horizon = mn * PROF_UNIT - 0.05;
+    }
+    function bisect(lo, hi, oo) {
+      for (var k = 0; k < 34; k++) {
+        var mid = (lo + hi) / 2;
+        if (clearance(mid, oo) >= 0) hi = mid; else lo = mid;
+      }
+      return (lo + hi) / 2;
+    }
+    function result(ms) {
+      var pt = pointAltitude(ms, o);
+      return { ms: ms, az: pt.az, refraction: pt.refraction, apparentAlt: pt.app, horizon: skyline(o, pt.az) };
+    }
+    var step = 600000;
+    var t = noon - 12 * 3600000;
+    if (clearance(t, c) >= 0) return null;
+    for (var i = 0; i < 72; i++) {
+      var next = t + step;
+      if (clearance(next, c) >= 0) {
+        var ms0 = bisect(t, next, c);
+        if (!o.profile) return result(ms0);
+        var a = ms0, limit = ms0 + 3 * 3600000;
+        while (a < limit) {
+          var b = a + 10000;
+          if (clearance(b, o) >= 0) return result(bisect(a, b, o));
+          a = b;
+        }
+        return null;
+      }
+      t = next;
+    }
+    return null;
+  }
+
+  /* The textbook value: Sun's center 50 arcminutes below a flat sea-level horizon,
+     no refraction model. This is what most printed schedules use. */
+  function standardOpts(o) {
+    return {
+      lat: o.lat, lon: o.lon, diskFraction: 0, horizon: -50 / 60, dipHeight: 0,
+      pressure: 1010, tempC: 10, refractionScale: 0
+    };
+  }
+
+  var api = {
+    sunPosition: sunPosition,
+    altAz: altAz,
+    refractionArcmin: refractionArcmin,
+    dipDegrees: dipDegrees,
+    profileAt: profileAt,
+    skyline: skyline,
+    pointAltitude: pointAltitude,
+    horizonAltitude: horizonAltitude,
+    clearance: clearance,
+    findSunrise: findSunrise,
+    standardOpts: standardOpts
+  };
+
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.HanetzEngine = api;
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function () {
+  'use strict';
+  var E = window.HanetzEngine;
+  var RE = 6371000, KREF = 0.13, D2R = Math.PI / 180, EYE = 1.7, MPD = 111195;
+  var TILE_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/';
+  var OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+  var OVERPASS_LATE = ['https://overpass.private.coffee/api/interpreter'];
+  var FETCH_R = 2500, LINK = 60, SECTORS = 24, MAX_SPOTS = 4000, TOP = 20;
+  var DEF = { pin: [31.8111, 35.2175], margin: 1000, near: 100 };
+
+  function $(id) { return document.getElementById(id); }
+  function todayLocal() { var d = new Date(); return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()); }
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return m ? [+m[1], +m[2], +m[3]] : null; }
+  function validTz(tz) { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch (e) { return false; } }
+  function fmtTime(ms, tz) { return new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(Math.round(ms / 1000) * 1000)); }
+  function fmtDist(m) { return m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km'; }
+  function signed(s) { var r = Math.round(s); if (!r) return 'same'; var a = Math.abs(r), t = a >= 60 ? Math.floor(a / 60) + ' min ' + (a % 60) + ' s' : a + ' s'; return (r > 0 ? '+' : '-') + t; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function timeout(p, ms) { return Promise.race([p, new Promise(function (_, j) { setTimeout(function () { j(new Error('timeout')); }, ms); })]); }
+
+  /* ---- Elevation tiles (Terrarium PNG: height = R*256 + G + B/256 - 32768 m) ---- */
+  var TT = { wait: {}, data: {}, miss: {} };
+  function ttXY(lat, lon, z) { var n = Math.pow(2, z), s = Math.sin(lat * D2R); return [(lon + 180) / 360 * n, (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * n]; }
+  function ttLoad(key) {
+    if (TT.wait[key]) return TT.wait[key];
+    TT.wait[key] = fetch(TILE_URL + key + '.png').then(function (r) { if (!r.ok) throw new Error('http'); return r.blob(); })
+      .then(function (b) { return createImageBitmap(b, { premultiplyAlpha: 'none', colorSpaceConversion: 'none' }); })
+      .then(function (bmp) { var c = document.createElement('canvas'); c.width = 256; c.height = 256; var g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(bmp, 0, 0); TT.data[key] = g.getImageData(0, 0, 256, 256).data; })
+      .catch(function () { TT.data[key] = null; });
+    return TT.wait[key];
+  }
+  var TC = { z: -1, tx: 0, ty: 0, d: null };
+  function pix(z, px, py) {
+    var tx = Math.floor(px / 256), ty = Math.floor(py / 256);
+    if (z !== TC.z || tx !== TC.tx || ty !== TC.ty) {
+      var k = z + '/' + tx + '/' + ty, d = TT.data[k];
+      if (d === undefined) { TT.miss[k] = 1; d = null; }
+      TC.z = z; TC.tx = tx; TC.ty = ty; TC.d = d;
+    }
+    var dd = TC.d; if (!dd) return NaN;
+    var i = ((py - ty * 256) * 256 + (px - tx * 256)) * 4;
+    return dd[i] * 256 + dd[i + 1] + dd[i + 2] / 256 - 32768;
+  }
+  function elev(lat, lon, z) {
+    var p = ttXY(lat, lon, z), fx = p[0] * 256 - 0.5, fy = p[1] * 256 - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), ax = fx - x0, ay = fy - y0;
+    return pix(z, x0, y0) * (1 - ax) * (1 - ay) + pix(z, x0 + 1, y0) * ax * (1 - ay) + pix(z, x0, y0 + 1) * (1 - ax) * ay + pix(z, x0 + 1, y0 + 1) * ax * ay;
+  }
+  /* Ground under a spot: the lowest of the 3 by 3 pixels around it (about 50 m across), so a roof is not taken as the ground. */
+  function groundAt(lat, lon) {
+    var p = ttXY(lat, lon, 13), px = Math.floor(p[0] * 256), py = Math.floor(p[1] * 256), m = Infinity;
+    for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) { var h = pix(13, px + dx, py + dy); if (isNaN(h)) return NaN; if (h < m) m = h; }
+    return m;
+  }
+  function loadMissing() { var keys = Object.keys(TT.miss); TT.miss = {}; return Promise.all(keys.map(ttLoad)).then(function () { TC.z = -1; return keys.length; }); }
+  function stepsFor(near) { var a = [], d = 0; while (d < 80000) { d += d < 5000 ? 30 : d < 30000 ? 60 : 150; if (d >= near) a.push(d); } return a; }
+  /* Highest angle of the ground along one direction, from an eye at height h0. Returns [degrees, meters away]. */
+  function ray(lat, lon, h0, azDeg, steps, sea) {
+    var la1 = lat * D2R, sl = Math.sin(la1), cl = Math.cos(la1), az = azDeg * D2R, sa = Math.sin(az), ca = Math.cos(az), lo1 = lon * D2R, best = -90, bd = 0;
+    for (var j = 0; j < steps.length; j++) {
+      var d = steps[j], dl = d / RE, sd = Math.sin(dl), cd = Math.cos(dl);
+      var s2 = sl * cd + cl * sd * ca, la2 = Math.asin(s2), lo2 = lo1 + Math.atan2(sa * sd * cl, cd - sl * s2);
+      var h = elev(la2 / D2R, lo2 / D2R, d < 6000 ? 13 : 11);
+      if (h !== h) continue;
+      if (sea && h < 0) h = 0;
+      var a = Math.atan((h - h0 - d * d * (1 - KREF) / (2 * RE)) / d) / D2R;
+      if (a > best) { best = a; bd = d; }
+    }
+    return [best, bd];
+  }
+
+  /* ---- Flat geometry around the pin ---- */
+  var O = { lat: 0, lon: 0, kx: 1 };
+  function setOrigin(lat, lon) { O.lat = lat; O.lon = lon; O.kx = MPD * Math.cos(lat * D2R); }
+  function xy(lat, lon) { return [(lon - O.lon) * O.kx, (lat - O.lat) * MPD]; }
+  function ll(x, y) { return [O.lat + y / MPD, O.lon + x / O.kx]; }
+  function inPoly(x, y, P) {
+    var c = false;
+    for (var i = 0, j = P.length - 1; i < P.length; j = i++) { var xi = P[i][0], yi = P[i][1], xj = P[j][0], yj = P[j][1]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; }
+    return c;
+  }
+  function distPoly(x, y, P) {
+    var m = Infinity;
+    for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+      var ax = P[j][0], ay = P[j][1], bx = P[i][0] - ax, by = P[i][1] - ay, L = bx * bx + by * by, t = L ? ((x - ax) * bx + (y - ay) * by) / L : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t; var dx = x - ax - t * bx, dy = y - ay - t * by, d = dx * dx + dy * dy; if (d < m) m = d;
+    }
+    return Math.sqrt(m);
+  }
+
+  /* ---- State ---- */
+  var S = { pin: DEF.pin.slice(), edge: null, center: null, margin: DEF.margin, near: DEF.near, date: todayLocal(), tz: '', tzAuto: '' };
+  var map, pinM, edgeL, marginL, vtxG, midG, resG;
+
+  /* ---- Map ---- */
+  function icon(cls, size) { return L.divIcon({ className: cls, iconSize: [size, size] }); }
+  function initMap() {
+    map = L.map('map', { zoomControl: true }).setView(S.pin, 15);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map);
+    marginL = L.polygon([], { color: '#1f5f7a', weight: 1.5, dashArray: '6 6', fill: false, interactive: false }).addTo(map);
+    edgeL = L.polygon([], { color: '#a5531b', weight: 2.5, fillOpacity: 0.08 }).addTo(map);
+    midG = L.layerGroup().addTo(map); vtxG = L.layerGroup().addTo(map); resG = L.layerGroup().addTo(map);
+    pinM = L.marker(S.pin, { draggable: true, icon: icon('ic-pin', 20), zIndexOffset: 1000, title: 'Your spot. Drag it, or click the map.' }).addTo(map);
+    pinM.on('dragend', function () { var p = pinM.getLatLng(); S.pin = [p.lat, p.lng]; changed(); });
+    map.on('click', function (e) { setPin(e.latlng.lat, e.latlng.lng); changed(); });
+  }
+  function setPin(lat, lon) { S.pin = [+lat.toFixed(5), +lon.toFixed(5)]; pinM.setLatLng(S.pin); }
+  function drawEdge() {
+    vtxG.clearLayers(); midG.clearLayers();
+    if (!S.edge) { edgeL.setLatLngs([]); marginL.setLatLngs([]); return; }
+    edgeL.setLatLngs(S.edge);
+    S.edge.forEach(function (p, i) {
+      var m = L.marker(p, { draggable: true, icon: icon('ic-vtx', 12), title: 'Drag to move. Right-click or long-press to remove.' }).addTo(vtxG);
+      m.on('drag', function () { var q = m.getLatLng(); S.edge[i] = [q.lat, q.lng]; edgeL.setLatLngs(S.edge); });
+      m.on('dragend', function () { drawEdge(); changed(); });
+      m.on('contextmenu dblclick', function (e) { if (e.originalEvent) L.DomEvent.preventDefault(e.originalEvent); if (S.edge.length > 3) { S.edge.splice(i, 1); drawEdge(); changed(); } });
+      var n = S.edge[(i + 1) % S.edge.length];
+      var mid = L.marker([(p[0] + n[0]) / 2, (p[1] + n[1]) / 2], { draggable: true, icon: icon('ic-mid', 10), title: 'Drag to add a corner here.' }).addTo(midG);
+      mid.on('dragend', function () { var q = mid.getLatLng(); S.edge.splice(i + 1, 0, [q.lat, q.lng]); drawEdge(); changed(); });
+    });
+    drawMargin();
+  }
+  /* The dashed line: everything within the margin of the edge, traced along 72 directions from the middle of the outline. */
+  function drawMargin() {
+    if (!S.edge || !S.margin) { marginL.setLatLngs([]); return; }
+    var c = edgeCenter(); setOrigin(c[0], c[1]);
+    var P = S.edge.map(function (p) { return xy(p[0], p[1]); }), R = 0, out = [];
+    P.forEach(function (p) { R = Math.max(R, Math.hypot(p[0], p[1])); });
+    for (var k = 0; k < 72; k++) {
+      var a = k * 5 * D2R, sx = Math.sin(a), sy = Math.cos(a), last = 0;
+      for (var r = 0; r <= R + S.margin + 100; r += 20) { var x = r * sx, y = r * sy; if (inPoly(x, y, P) || distPoly(x, y, P) <= S.margin) last = r; }
+      out.push(ll(last * sx, last * sy));
+    }
+    marginL.setLatLngs(out);
+  }
+  function edgeCenter() { if (S.center) return S.center; var a = 0, b = 0; S.edge.forEach(function (p) { a += p[0]; b += p[1]; }); return [a / S.edge.length, b / S.edge.length]; }
+
+  /* ---- Search (OpenStreetMap Nominatim; one search per press, as its rules ask) ---- */
+  function search(q) {
+    var list = $('qList'), st = $('qStatus');
+    q = q.trim(); if (!q) return;
+    st.textContent = 'Searching...'; list.innerHTML = '';
+    timeout(fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=en&q=' + encodeURIComponent(q)), 12000)
+      .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+      .then(function (j) {
+        if (!j.length) { st.textContent = 'Nothing found for "' + q + '". Try adding the country, for example "Lakewood, New Jersey".'; return; }
+        st.textContent = j.length > 1 ? 'Showing the first match. Not the right one? Pick another:' : '';
+        j.forEach(function (x, i) {
+          var li = document.createElement('li'), b = document.createElement('button');
+          b.type = 'button'; b.className = 'linkish'; b.textContent = x.display_name;
+          b.addEventListener('click', function () { choose(x); });
+          li.appendChild(b); if (i) list.appendChild(li);
+        });
+        choose(j[0]);
+      })
+      .catch(function () { st.textContent = 'The search service did not answer. Try again in a moment, or drag the pin by hand.'; });
+  }
+  function choose(x) {
+    setPin(+x.lat, +x.lon);
+    var bb = x.boundingbox && x.boundingbox.map(Number);
+    if (bb && bb[1] - bb[0] < 0.08 && bb[3] - bb[2] < 0.08) map.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 16 });
+    else map.setView(S.pin, 14);
+    $('placeName').textContent = x.display_name;
+    S.tzAuto = ''; proposeEdge();
+  }
+
+  /* ---- The edge: buildings joined to each other within 60 m, starting from the one nearest the pin ---- */
+  function overpass(lat, lon) {
+    var q = '[out:json][timeout:25];way["building"](around:' + FETCH_R + ',' + lat.toFixed(5) + ',' + lon.toFixed(5) + ');out tags center qt;';
+    function one(url, ctl) {
+      return fetch(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, signal: ctl.signal })
+        .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+        .then(function (j) { if (!j || !j.elements) throw new Error('shape'); return j.elements.filter(function (e) { return e.center; }).map(function (e) { return [e.center.lat, e.center.lon]; }); });
+    }
+    function race(urls, ms) {
+      var ctls = urls.map(function () { return new AbortController(); });
+      return new Promise(function (res, rej) {
+        var left = urls.length, done = false;
+        urls.forEach(function (u, i) {
+          one(u, ctls[i]).then(function (v) { if (done) return; done = true; ctls.forEach(function (c, k) { if (k !== i) c.abort(); }); res(v); },
+            function () { if (--left === 0 && !done) rej(new Error('all failed')); });
+        });
+        setTimeout(function () { if (!done) { done = true; ctls.forEach(function (c) { c.abort(); }); rej(new Error('timeout')); } }, ms);
+      });
+    }
+    return race(OVERPASS, 35000).catch(function () { return race(OVERPASS_LATE, 30000); });
+  }
+  var edgeSeq = 0;
+  function proposeEdge() {
+    var my = ++edgeSeq, note = $('edgeNote'), lat = S.pin[0], lon = S.pin[1];
+    note.className = 'note'; note.textContent = 'Loading the buildings within ' + FETCH_R / 1000 + ' km of the pin from OpenStreetMap. This can take up to half a minute.';
+    S.edge = null; S.center = null; drawEdge(); clearResults('Waiting for the outline.');
+    overpass(lat, lon).then(function (pts) {
+      if (my !== edgeSeq) return;
+      var r = outline(lat, lon, pts);
+      S.edge = r.edge; S.center = r.center; drawEdge();
+      var bnd = marginL.getLatLngs()[0]; map.fitBounds(L.latLngBounds(bnd && bnd.length ? bnd : S.edge).pad(0.05), { maxZoom: 16 });
+      note.textContent = r.note; if (r.warn) note.className = 'note warn';
+      changed();
+    }, function () {
+      if (my !== edgeSeq) return;
+      circleEdge(lat, lon, 300);
+      note.className = 'note warn'; note.textContent = 'The building data could not be loaded (the free servers are sometimes busy). A 300 m circle is drawn instead. Drag its corners to the edge of the town, or press "Find the edge again" in a minute.';
+      changed();
+    });
+  }
+  function circleEdge(lat, lon, r) {
+    setOrigin(lat, lon); S.center = [lat, lon]; S.edge = [];
+    for (var k = 0; k < 12; k++) { var a = k * 30 * D2R; S.edge.push(ll(r * Math.sin(a), r * Math.cos(a))); }
+    drawEdge();
+  }
+  function outline(lat, lon, pts) {
+    setOrigin(lat, lon);
+    var P = pts.map(function (p) { return xy(p[0], p[1]); }), n = P.length;
+    if (!n) return fallback('OpenStreetMap has no buildings drawn within ' + FETCH_R / 1000 + ' km of the pin.');
+    var grid = {}, cell = LINK, i, best = -1, bd = Infinity;
+    for (i = 0; i < n; i++) { var k = Math.floor(P[i][0] / cell) + ',' + Math.floor(P[i][1] / cell); (grid[k] = grid[k] || []).push(i); var d = Math.hypot(P[i][0], P[i][1]); if (d < bd) { bd = d; best = i; } }
+    if (bd > 400) return fallback('The nearest building in OpenStreetMap is ' + fmtDist(bd) + ' from the pin. Move the pin into the town and press "Find the edge again".');
+    var inC = new Uint8Array(n), queue = [best], members = []; inC[best] = 1;
+    while (queue.length) {
+      var a = queue.pop(); members.push(a);
+      var cx = Math.floor(P[a][0] / cell), cy = Math.floor(P[a][1] / cell);
+      for (var gx = cx - 1; gx <= cx + 1; gx++) for (var gy = cy - 1; gy <= cy + 1; gy++) {
+        var g = grid[gx + ',' + gy]; if (!g) continue;
+        for (var q = 0; q < g.length; q++) { var b = g[q]; if (!inC[b] && Math.hypot(P[a][0] - P[b][0], P[a][1] - P[b][1]) <= LINK) { inC[b] = 1; queue.push(b); } }
+      }
+    }
+    var capped = false, rad = [], m, sx = 0, sy = 0;
+    members.forEach(function (j) { sx += P[j][0]; sy += P[j][1]; if (Math.hypot(P[j][0], P[j][1]) > FETCH_R - 150) capped = true; });
+    var c = bd <= 150 ? [0, 0] : [sx / members.length, sy / members.length];
+    for (i = 0; i < SECTORS; i++) rad.push(0);
+    members.forEach(function (j) {
+      var dx = P[j][0] - c[0], dy = P[j][1] - c[1], az = (Math.atan2(dx, dy) / D2R + 360) % 360, s = Math.floor(az / (360 / SECTORS)) % SECTORS, d = Math.hypot(dx, dy);
+      if (d > rad[s]) rad[s] = d;
+    });
+    for (i = 0; i < SECTORS; i++) if (!rad[i]) { var l = rad[(i + SECTORS - 1) % SECTORS], r2 = rad[(i + 1) % SECTORS]; rad[i] = Math.max(60, Math.min(l || r2, r2 || l)); }
+    var edge = [];
+    for (i = 0; i < SECTORS; i++) { var ang = (i + 0.5) * (360 / SECTORS) * D2R, rr = rad[i] + 20; edge.push(ll(c[0] + rr * Math.sin(ang), c[1] + rr * Math.cos(ang))); }
+    var center = ll(c[0], c[1]);
+    var txt = 'Outline drawn around ' + members.length.toLocaleString('en') + ' buildings that join one another within ' + LINK + ' m, starting from the one nearest the pin (OpenStreetMap data). Drag the corners to fix it.';
+    if (!capped && members.length < 60) { txt = 'Only ' + members.length + ' buildings join up here. OpenStreetMap is probably missing many of the buildings in this place (common outside Israel and Europe), so this outline is likely too small. Drag the corners out to the real edge of the town. ' + txt; capped = true; }
+    if (capped && members.length >= 60) txt = 'The buildings keep going past the ' + FETCH_R / 1000 + ' km that was loaded, so this place has no clear edge (a big city, or towns that run into each other). The outline below is cut off at that distance. Drag it to the area you mean. ' + txt;
+    return { edge: edge, center: center, note: txt, warn: capped };
+    function fallback(msg) { setOrigin(lat, lon); var e = []; for (var k = 0; k < 12; k++) { var a2 = k * 30 * D2R; e.push(ll(300 * Math.sin(a2), 300 * Math.cos(a2))); } return { edge: e, center: [lat, lon], note: msg + ' A 300 m circle is drawn instead; drag its corners.', warn: true }; }
+  }
+
+  /* ---- Weather and time zone (Open-Meteo, which also names the time zone of the place) ---- */
+  var WX = {};
+  function weather(lat, lon, ground, date) {
+    var key = lat.toFixed(2) + ',' + lon.toFixed(2) + ',' + date;
+    if (!WX[key]) WX[key] = timeout(fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(4) + '&longitude=' + lon.toFixed(4) + '&elevation=' + Math.round(ground) +
+      '&hourly=temperature_2m,surface_pressure&past_days=7&forecast_days=16&timeformat=unixtime&timezone=auto', { cache: 'no-store' }), 10000)
+      .then(function (r) { if (!r.ok) throw new Error('http'); return r.json(); })
+      .then(function (j) { return { tz: j.timezone, t: j.hourly.time, T: j.hourly.temperature_2m, P: j.hourly.surface_pressure, at: Date.now() }; })
+      .catch(function () { delete WX[key]; return null; });
+    return WX[key];
+  }
+  function wxAt(w, ms) {
+    if (!w) return null; var s = ms / 1000;
+    for (var k = 0; k < w.t.length - 1; k++) if (w.t[k] <= s && s <= w.t[k + 1]) {
+      if (w.T[k] == null || w.T[k + 1] == null || w.P[k] == null || w.P[k + 1] == null) return null;
+      var f = (s - w.t[k]) / (w.t[k + 1] - w.t[k]); return [w.T[k] + f * (w.T[k + 1] - w.T[k]), w.P[k] + f * (w.P[k + 1] - w.P[k])];
+    }
+    return null;
+  }
+
+  /* ---- Sunrise over a traced skyline, for one spot ---- */
+  var WIN = 4, WSTEP = 0.5;
+  function windowRays(lat, lon, h0, az0, steps, sea) {
+    var a = [], d = [];
+    for (var az = az0 - WIN; az <= az0 + WIN + 1e-9; az += WSTEP) { var r = ray(lat, lon, h0, az, steps, sea); a.push(r[0]); d.push(r[1]); }
+    return { az0: az0 - WIN, a: a, d: d };
+  }
+  function riseOver(lat, lon, T, P, win, dt) {
+    var o = { lat: lat, lon: lon, diskFraction: 1, horizon: 0, dipHeight: 0, pressure: P, tempC: T, refractionScale: 1, profile: null };
+    var n = win.a.length, mn = Math.min.apply(null, win.a);
+    function sky(az) { var x = (az - win.az0) / WSTEP; if (x <= 0) return win.a[0]; if (x >= n - 1) return win.a[n - 1]; var i = Math.floor(x); return win.a[i] + (win.a[i + 1] - win.a[i]) * (x - i); }
+    function c(t) { var p = E.pointAltitude(t, o); return p.app - sky(p.az); }
+    var f = E.findSunrise(Object.assign({}, o, { horizon: mn - 0.05 }), dt[0], dt[1], dt[2]);
+    if (!f) return null;
+    var t = f.ms, lim = t + 3 * 3600000, hit = null;
+    if (c(t) >= 0) hit = t;
+    while (hit === null && t < lim) {
+      var b = t + 5000;
+      if (c(b) >= 0) { var lo = t, hi = b; for (var k = 0; k < 22; k++) { var mid = (lo + hi) / 2; if (c(mid) >= 0) hi = mid; else lo = mid; } hit = hi; }
+      t = b;
+    }
+    if (hit === null) return null;
+    var az = E.pointAltitude(hit, o).az, i2 = Math.max(0, Math.min(n - 1, Math.round((az - win.az0) / WSTEP)));
+    return { ms: hit, az: az, sky: sky(az), dist: win.d[i2] };
+  }
+
+  /* ---- The search ---- */
+  var run = { seq: 0, timer: null };
+  function changed() { writeHash(); clearTimeout(run.timer); run.seq++; status('Recalculating...'); run.timer = setTimeout(go, 600); }
+  function status(t) { $('runStatus').textContent = t; }
+  function clearResults(t) { $('resBody').innerHTML = ''; resG.clearLayers(); status(t || ''); }
+
+  async function go() {
+    var my = run.seq, t0 = performance.now();
+    if (!S.edge) return;
+    var dt = ymd(S.date); if (!dt) { status('Pick a date.'); return; }
+    var pin = S.pin.slice();
+    var flat = E.findSunrise({ lat: pin[0], lon: pin[1], diskFraction: 1, horizon: 0, dipHeight: 0, pressure: 1010, tempC: 10, refractionScale: 1, profile: null }, dt[0], dt[1], dt[2]);
+    if (!flat) { clearResults('The sun does not rise here on this date.'); return; }
+    var az0 = flat.az, saz = Math.sin(az0 * D2R), caz = Math.cos(az0 * D2R);
+    setOrigin(pin[0], pin[1]);
+    var P = S.edge.map(function (p) { return xy(p[0], p[1]); });
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    P.forEach(function (p) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); });
+    x0 -= S.margin; x1 += S.margin; y0 -= S.margin; y1 += S.margin;
+    var spacing = Math.max(25, Math.sqrt(((x1 - x0) * (y1 - y0)) / (MAX_SPOTS * 1.3)));
+    var spots = [];
+    for (var gx = x0; gx <= x1; gx += spacing) for (var gy = y0; gy <= y1; gy += spacing) {
+      var inside = inPoly(gx, gy, P), dd = inside ? 0 : distPoly(gx, gy, P);
+      if (inside || dd <= S.margin) { var q = ll(gx, gy); spots.push({ lat: q[0], lon: q[1], x: gx, y: gy, inside: inside, beyond: dd }); }
+    }
+    status('Loading terrain...');
+    /* Load the tiles the rays will cross: a 3 by 3 lattice over the area, in the directions the sun can rise. */
+    var steps = stepsFor(S.near);
+    for (var a = 0; a <= 2; a++) for (var b = 0; b <= 2; b++) {
+      var o2 = ll(x0 + (x1 - x0) * a / 2, y0 + (y1 - y0) * b / 2); groundAt(o2[0], o2[1]);
+      [-WIN, 0, WIN].forEach(function (dz) { ray(o2[0], o2[1], 0, az0 + dz, steps, false); });
+    }
+    var c1 = ttXY(ll(x0, y1)[0], ll(x0, y1)[1], 13), c2 = ttXY(ll(x1, y0)[0], ll(x1, y0)[1], 13);
+    for (var tx = Math.floor(c1[0]); tx <= Math.floor(c2[0]); tx++) for (var ty = Math.floor(c1[1]); ty <= Math.floor(c2[1]); ty++) if (TT.data['13/' + tx + '/' + ty] === undefined) TT.miss['13/' + tx + '/' + ty] = 1;
+    await loadMissing(); if (my !== run.seq) return;
+
+    var w = await weather(pin[0], pin[1], groundAt(pin[0], pin[1]) || 0, S.date); if (my !== run.seq) return;
+    var tz = S.tz && validTz(S.tz) ? S.tz : w && w.tz && validTz(w.tz) ? w.tz : S.tzAuto || 'UTC';
+    if (w && w.tz) { S.tzAuto = w.tz; if (!S.tz) $('f-tz').placeholder = w.tz; }
+    var wnow = wxAt(w, flat.ms);
+
+    /* Pass 1: one ray toward where the sun comes up, from every spot on the grid. */
+    for (var pass = 0; pass < 3; pass++) {
+      for (var s = 0; s < spots.length; s++) {
+        var sp = spots[s], g = groundAt(sp.lat, sp.lon);
+        if (g !== g) { sp.score = Infinity; continue; }
+        var rr = ray(sp.lat, sp.lon, g + EYE, az0, steps, g >= 0);
+        sp.g = g; sp.score = rr[0] - (sp.x * saz + sp.y * caz) / MPD;
+        if (s % 200 === 199) { status('Checking ' + spots.length.toLocaleString('en') + ' spots, ' + Math.round(100 * s / spots.length) + '%'); await sleep(0); if (my !== run.seq) return; }
+      }
+      if (!Object.keys(TT.miss).length) break;
+      status('Loading more terrain...'); await loadMissing(); if (my !== run.seq) return;
+    }
+    /* Pass 2: the best spots inside and beyond the edge, and the pin, worked out properly. */
+    var ok = spots.filter(function (x) { return isFinite(x.score); });
+    var ins = ok.filter(function (x) { return x.inside; }).sort(function (p, q) { return p.score - q.score; }).slice(0, TOP);
+    var all = ok.slice().sort(function (p, q) { return p.score - q.score; }).slice(0, TOP);
+    var cand = ins.concat(all.filter(function (x) { return ins.indexOf(x) < 0; }));
+    var pinSpot = { lat: pin[0], lon: pin[1], x: 0, y: 0, inside: inPoly(0, 0, P), beyond: 0, pin: true };
+    cand.push(pinSpot);
+    var gp = groundAt(pin[0], pin[1]);
+    for (var k2 = 0; k2 < cand.length; k2++) {
+      var cs = cand[k2], cg = groundAt(cs.lat, cs.lon);
+      for (var tries = 0; tries < 3 && cg !== cg; tries++) { await loadMissing(); cg = groundAt(cs.lat, cs.lon); }
+      if (cg !== cg) continue;
+      cs.g = cg;
+      var win = windowRays(cs.lat, cs.lon, cg + EYE, az0, steps, cg >= 0);
+      if (Object.keys(TT.miss).length) { await loadMissing(); if (my !== run.seq) return; win = windowRays(cs.lat, cs.lon, cg + EYE, az0, steps, cg >= 0); }
+      var Tc = wnow ? wnow[0] : 15 - 0.0065 * cg, Pc = wnow ? wnow[1] * Math.exp(-(cg - (gp || cg)) / 8434) : 1013.25 * Math.exp(-cg / 8434);
+      cs.r = riseOver(cs.lat, cs.lon, Tc, Pc, win, dt);
+      if (k2 % 5 === 4) { status('Working out the best spots, ' + Math.round(100 * k2 / cand.length) + '%'); await sleep(0); if (my !== run.seq) return; }
+    }
+    var bestIn = null, bestAll = null;
+    cand.forEach(function (x) { if (x.pin || !x.r) return; if (x.inside && (!bestIn || x.r.ms < bestIn.r.ms)) bestIn = x; if (!bestAll || x.r.ms < bestAll.r.ms) bestAll = x; });
+    var std = E.findSunrise(E.standardOpts({ lat: pin[0], lon: pin[1] }), dt[0], dt[1], dt[2]);
+    render({ pin: pinSpot, bestIn: bestIn, bestAll: bestAll, std: std, tz: tz, wx: wnow, n: spots.length, spacing: spacing, secs: (performance.now() - t0) / 1000 });
+  }
+
+  function render(R) {
+    var tz = R.tz, body = $('resBody'), rows = [];
+    var ref = R.bestIn && R.bestIn.r ? R.bestIn.r.ms : null;
+    function detail(x) {
+      if (!x.r) return 'The sun does not clear the skyline from here.';
+      return 'Ground about ' + Math.round(x.g) + ' m. The sun comes up over ground ' + fmtDist(x.r.dist) + ' away' + (x.r.dist < 300 ? ', which is very close: a hillside, or buildings in the data (raise "Ignore anything closer than" to look past buildings)' : '') + '. (' + x.lat.toFixed(5) + ', ' + x.lon.toFixed(5) + ')';
+    }
+    function row(cls, title, x, extra, btn) {
+      var t = x && x.r ? fmtTime(x.r.ms, tz) : '--:--:--', d = x && x.r && ref ? signed((x.r.ms - ref) / 1000) : '';
+      rows.push('<tr class="' + cls + '"><td><b>' + title + '</b><div class="small">' + (x ? detail(x) : 'Not found.') + (extra ? ' ' + extra : '') + '</div>' + (btn && x && x.r ? '<button class="btn small-btn" type="button" data-go="' + x.lat + ',' + x.lon + '">Move the pin here</button>' : '') + '</td><td class="n">' + t + '</td><td class="n">' + d + '</td></tr>');
+    }
+    row('r-pin', 'Your spot (the pin)', R.pin, R.pin.inside ? '' : 'The pin is outside the outline.', false);
+    row('r-in', 'Earliest inside the outline', R.bestIn, '', true);
+    var beyond = R.bestAll && R.bestAll !== R.bestIn ? (R.bestAll.inside ? 'This one is inside the outline.' : fmtDist(R.bestAll.beyond) + ' beyond the outline.') : 'Nothing beyond the outline is earlier than the best spot inside it.';
+    if (S.margin > 0) row('r-all', 'Earliest up to ' + fmtDist(S.margin) + ' beyond the outline', R.bestAll, beyond, true);
+    rows.push('<tr class="r-std"><td><b>Standard sunrise at the pin</b><div class="small">The textbook figure most calendars print: sea-level horizon, no hills.</div></td><td class="n">' + (R.std ? fmtTime(R.std.ms, tz) : '--') + '</td><td class="n">' + (R.std && ref ? signed((R.std.ms - ref) / 1000) : '') + '</td></tr>');
+    body.innerHTML = rows.join('');
+    Array.prototype.forEach.call(body.querySelectorAll('[data-go]'), function (b) { b.addEventListener('click', function () { var p = b.getAttribute('data-go').split(','); setPin(+p[0], +p[1]); changed(); }); });
+    resG.clearLayers();
+    if (R.bestAll && R.bestAll !== R.bestIn && R.bestAll.r) L.marker([R.bestAll.lat, R.bestAll.lon], { icon: icon('ic-all', 16), interactive: false }).addTo(resG);
+    if (R.bestIn && R.bestIn.r) L.marker([R.bestIn.lat, R.bestIn.lon], { icon: icon('ic-in', 16), interactive: false }).addTo(resG);
+    $('tzShown').textContent = 'Times in ' + tz.replace(/_/g, ' ') + (tz === 'UTC' ? ' (the time zone of this place could not be found; type it in the box)' : '') + '.';
+    status('Checked ' + R.n.toLocaleString('en') + ' spots, ' + Math.round(R.spacing) + ' m apart, in ' + R.secs.toFixed(1) + ' s. ' +
+      (R.wx ? 'Air at sunrise from the forecast: ' + R.wx[0].toFixed(1) + '°C, ' + Math.round(R.wx[1]) + ' hPa at the pin.' : 'No forecast for this date, so standard air for the height is used.'));
+  }
+
+  /* ---- Link that saves the whole setup ---- */
+  function writeHash() {
+    var h = 'p=' + S.pin[0].toFixed(5) + ',' + S.pin[1].toFixed(5) + '&m=' + S.margin + '&n=' + S.near + '&d=' + S.date + (S.tz ? '&tz=' + encodeURIComponent(S.tz) : '');
+    if (S.edge) h += '&e=' + S.edge.map(function (p) { return p[0].toFixed(5) + ',' + p[1].toFixed(5); }).join(';');
+    try { history.replaceState(null, '', '#' + h); } catch (e) {}
+  }
+  function readHash() {
+    var h = (location.hash || '').slice(1); if (!h) return false;
+    var q = {}; h.split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) q[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); });
+    var p = (q.p || '').split(',').map(Number);
+    if (p.length !== 2 || !isFinite(p[0]) || !isFinite(p[1])) return false;
+    S.pin = p;
+    if (isFinite(+q.m) && q.m !== '') S.margin = Math.max(0, Math.min(3000, +q.m));
+    if (isFinite(+q.n) && q.n !== '') S.near = Math.max(0, Math.min(1000, +q.n));
+    if (ymd(q.d)) S.date = q.d;
+    if (q.tz && validTz(q.tz)) S.tz = q.tz;
+    if (q.e) { var e = q.e.split(';').map(function (s) { return s.split(',').map(Number); }).filter(function (x) { return x.length === 2 && isFinite(x[0]) && isFinite(x[1]); }); if (e.length >= 3) S.edge = e; }
+    return true;
+  }
+
+  /* ---- Wiring ---- */
+  function fields() {
+    $('f-date').value = S.date; $('f-margin').value = S.margin; $('f-near').value = S.near; $('f-tz').value = S.tz;
+  }
+  function boot() {
+    if (!window.L) { $('map').className = 'map off'; $('map').textContent = 'The map could not be loaded. Check the connection and reload the page.'; return; }
+    var had = readHash();
+    initMap(); fields();
+    $('qForm').addEventListener('submit', function (e) { e.preventDefault(); search($('q').value); });
+    $('edgeBtn').addEventListener('click', function () { proposeEdge(); });
+    $('linkBtn').addEventListener('click', function () {
+      writeHash(); var st = $('linkStatus');
+      try { navigator.clipboard.writeText(location.href).then(function () { st.textContent = 'Link copied. It opens this exact setup.'; }, function () { st.textContent = 'Copy the address from the browser bar.'; }); } catch (e) { st.textContent = 'Copy the address from the browser bar.'; }
+    });
+    $('f-date').addEventListener('input', function () { if (ymd(this.value)) { S.date = this.value; changed(); } });
+    $('f-margin').addEventListener('input', function () { var v = +this.value; if (this.value !== '' && v >= 0 && v <= 3000) { S.margin = v; drawMargin(); changed(); } });
+    $('f-near').addEventListener('input', function () { var v = +this.value; if (this.value !== '' && v >= 0 && v <= 1000) { S.near = v; changed(); } });
+    $('f-tz').addEventListener('input', function () { var v = this.value.trim(); if (!v || validTz(v)) { S.tz = v; changed(); } });
+    if (had && S.edge) { map.fitBounds(L.latLngBounds(S.edge).pad(0.3)); drawEdge(); $('edgeNote').textContent = 'Outline loaded from the link.'; changed(); }
+    else { map.setView(S.pin, 15); $('placeName').textContent = had ? 'Pin from the link' : 'Ramat Shlomo, Jerusalem (the starting example)'; proposeEdge(); }
+  }
+  boot();
+})();
+</script>
+</body></html>

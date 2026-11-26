@@ -20,6 +20,14 @@
       "destination": "/hanetz/map/index.html"
     },
     {
+      "source": "/hanetz/explore",
+      "destination": "/hanetz/explore/index.html"
+    },
+    {
+      "source": "/hanetz/explore/",
+      "destination": "/hanetz/explore/index.html"
+    },
+    {
       "source": "/listen",
       "destination": "/index.html"
     },
